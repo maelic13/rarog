@@ -587,6 +587,10 @@ try {
             run_record_sha256      = Get-HarnessSha256 -Path $recordPath
             resolved_config_sha256 = Get-HarnessSha256 -Path $resolvedPath
             pgn                    = "moved from the run directory to output.path"
+            # How the games ended, as the runner counted them (run-record
+            # schema 6): the share that reached the move cap, read without
+            # parsing the PGN. Absent from an older record.
+            terminations           = if ($record.results.terminations) { $record.results.terminations.overall } else { $null }
         }
     }
 

@@ -58,9 +58,6 @@ pub(super) struct ThreadData {
     pub(super) root_move_offset: usize,
     /// 0 = main thread, 1.. = helper index.
     pub(super) thread_id: usize,
-    pub(super) root_iteration_nodes: u64,
-    pub(super) root_best_nodes: u64,
-    pub(super) root_best_effort: f64,
     /// Width of the root window of the current aspiration step.
     pub(super) root_delta: i32,
     /// While a null-move verification search runs, the first ply at which the
@@ -70,6 +67,10 @@ pub(super) struct ThreadData {
     /// The depth of the iteration this thread is searching; positive
     /// extensions stop at twice it. Zero before any root search.
     pub(super) root_depth: i32,
+    /// The root score this thread's previous search in the game ended on,
+    /// which the falling eval compares with this search's; none at a new
+    /// game, so the first move reads no fall across the pair.
+    pub(super) previous_search_score: Option<i32>,
     /// The plies at which a null move was made, for the tests of its gates.
     #[cfg(test)]
     pub(super) null_move_plies: Vec<usize>,
@@ -100,6 +101,10 @@ pub(super) struct ThreadData {
     pub(super) lmr_at_root: u64,
     #[cfg(test)]
     pub(super) lmr_in_check: u64,
+    /// A clock for the tests of the clock's stops: from this node count on,
+    /// the search reads this many elapsed milliseconds, and none before it.
+    #[cfg(test)]
+    pub(super) test_clock: Option<(u64, f64)>,
 }
 
 impl Default for ThreadData {
@@ -130,12 +135,10 @@ impl Default for ThreadData {
             corr: CorrectionTables::default(),
             root_move_offset: 0,
             thread_id: 0,
-            root_iteration_nodes: 0,
-            root_best_nodes: 0,
-            root_best_effort: 0.0,
             root_delta: 1,
             nmp_min_ply: 0,
             root_depth: 0,
+            previous_search_score: None,
             #[cfg(test)]
             null_move_plies: Vec::new(),
             #[cfg(test)]
@@ -156,6 +159,8 @@ impl Default for ThreadData {
             lmr_at_root: 0,
             #[cfg(test)]
             lmr_in_check: 0,
+            #[cfg(test)]
+            test_clock: None,
         }
     }
 }

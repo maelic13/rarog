@@ -23,8 +23,9 @@ that and is for inspection, not for a measurement anyone will cite.
 The harness is qualified in its own repository (Colosseum PLAN Phase 10, GUIDE
 10.9r: scale, verdict, ratings and the SPSA recovery test, with Rarog as the
 validation engine). Rarog trusts a released binary and repeats none of it. A
-null pair is owed here only on the trigger PROCESS names — a runner, scheduler
-or CPU-topology change on this host — and `calibrate-null.toml` is what runs it.
+null pair is owed here only on the trigger PROCESS names — a scheduler or
+CPU-topology change on this host, never a re-pin of the runner (maintainer
+decision 2026-10-22) — and `calibrate-null.toml` is what runs it.
 
 | File | Workflow | Bracket or size |
 |---|---|---|
@@ -116,9 +117,10 @@ from its registration cannot be tuned by accident.
 `colosseum.pin.json` names the source revision and the SHA-256. Only the hash
 can be enforced — a stripped release executable does not carry its revision —
 so `setup_tools.ps1` and every wrapper run compare hashes and refuse a
-mismatch rather than substituting a build. Since 2026-10-14 the pin is the
-published release `cli-v0.3.0` (`cb12cd3`; before it `cli-v0.2.0` at
-`ca05dfa2` from 2026-09-25, and `cli-v0.1.0` at `40a15b1b` from 2026-09-22):
+mismatch rather than substituting a build. Since 2026-10-22 the pin is the
+published release `cli-v0.4.0` (`9c72539`; before it `cli-v0.3.0` at
+`cb12cd3` from 2026-10-14, `cli-v0.2.0` at `ca05dfa2` from 2026-09-25, and
+`cli-v0.1.0` at `40a15b1b` from 2026-09-22):
 its `archive` entry carries the
 asset URL and the digest GitHub serves for it, checked on download, and the
 top-level `sha256` is checked on the extracted executable. Re-pinning to a
@@ -147,6 +149,30 @@ game. A 900-game fixed-node benchmark takes 28% less wall time than under
 fastchess, while a full 569,664-game generation runs level with it (about
 3,310 against 3,270 games a minute;
 `analysis/c84_colosseum_datagen_gap_2026-10-14.md`).
+
+0.4.0 changes reporting only: no game is played, paired, scored or tested
+differently. A two-engine run's record (`run-record.json`, schema 6) keeps
+under `results` each engine's games by colour, how the counted games ended,
+faults and time losses by engine, and each engine's search: depth with and
+without mate scores, nodes and milliseconds a move, nodes per second, and
+the harness hold beside each move (`h=`) as percentiles with the moves over
+the margin. `colosseum.ps1` copies them into the run's manifest, so a ledger
+row quotes the runner's figures and nobody re-derives them from `games.pgn`.
+A tournament's record adds every pair (W/D/L, Elo with its interval, the
+pentanomial) and the standings, and `datagen.ps1` keeps the termination
+counts. Two sides with one name, as in a categorical match, share one search
+line because the PGN names them alike. A tune now counts the iterations on
+which each coordinate's arm was clamped at a range end (`result.json`
+schema 4, `tune_audit`), and its dry run lists `rail_warnings`, the
+coordinates whose first arms `seed ± c_0` already leave the range. The
+wrapper records both in the manifest and `spsa_block_rule.py` prints the
+clamps beside its verdict. Neither is a refusal. The re-pin was qualified as
+above: both digests through `setup_tools.ps1`, `test_colosseum_guards.ps1`
+58/58 with the new reporting cases, a real `match` and an `spsa` dry run
+through the wrapper, and a `datagen.ps1` run. No null pair was played: a
+re-pin owes none. No fastchess cross-check was run either: a release that
+changes reporting only owes none (maintainer decisions 2026-10-22;
+PROCESS, *Harness*).
 
 ## The backup path
 

@@ -20,6 +20,27 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent
 
 
+def clamp_lines(result: dict, done: int) -> list[str]:
+    """The coordinates whose arms the runner clamped at a range end, from
+    result.json's tune_audit (SPSA result schema 4, Colosseum CLI 0.4.0). A
+    clamped arm measured a smaller perturbation than the update assumed, so a
+    mover clamped on most iterations is read with that in mind. They inform
+    the rule's reader and do not change the rule."""
+    audit = result.get("tune_audit")
+    schema = result.get("schema_version")
+    if audit is None or not isinstance(schema, int) or schema < 4:
+        # Before schema 4 the audit existed but never counted clamps.
+        return [f"  arm clamps: not recorded (result schema {schema})"]
+    clamped = [w for w in audit.get("warnings", []) if w.get("kind") == "arms-clamped-at-range-end"]
+    if not clamped:
+        return ["  arm clamps: none"]
+    return ["  arm clamps:"] + [
+        f"    {w['name']:30} at min on {w['clamped_at_min']}, at max on {w['clamped_at_max']} "
+        f"of {w.get('completed_iterations', done)} iterations (range {w['min']}..{w['max']})"
+        for w in clamped
+    ]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("group")
@@ -65,6 +86,7 @@ def main() -> int:
         f"from the block's seeds; rule needs {args.min_moved}: {verdict}",
     ]
     lines += [f"  {n:32} {o:>8} -> {t:<8} {m:+.2f} steps" for n, o, t, m in movers]
+    lines += clamp_lines(result, done)
     text = "\n".join(lines)
     print(text)
     (run / "block-rule.txt").write_text(text + "\n", encoding="utf-8")

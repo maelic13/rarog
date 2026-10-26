@@ -8,3 +8,6 @@ b33       # RAR-S83, block-2 theta baked into all 36 coordinates in f53ca7d
 b43       # RAR-S86, block-1 theta baked on fourteen coordinates with CoreQsEvasionPrune on
 c2margin  # RAR-E24, the block's theta baked on 26 of its 28 coordinates in 1abeb46
 c3margin  # RAR-E25, the block's theta baked into the 28 defaults with C.3's unit, dcef971
+c10pilot  # RAR-S101, C.10.3's sensitivity pilot; a diagnostic, never baked
+c10block1 # RAR-S103, stopped unread at 80 iterations and superseded by RAR-S104; never baked
+c10long   # RAR-S104, its theta baked into the 82 defaults in 60e865f after RAR-S105 accepted it

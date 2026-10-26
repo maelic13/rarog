@@ -1,0 +1,136 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index d74bd69..2b14219 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -20,7 +20,7 @@ checksum = "3e0f1c7c3a72c66fd80abe965175f7523475c0489a87d3ff9d6e8c87d87a9d2d"
+ 
+ [[package]]
+ name = "rarog"
+-version = "2.7.0-dev"
++version = "2.7.0-dev+d16gate2"
+ dependencies = [
+  "cc",
+ ]
+diff --git a/Cargo.toml b/Cargo.toml
+index 920cd40..3d83c56 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,7 +1,7 @@
+ [package]
+ name = "rarog"
+ authors = ["Miloslav Macurek"]
+-version = "2.7.0-dev"
++version = "2.7.0-dev+d16gate2"
+ edition = "2024"
+ # MSRV = the pinned toolchain (rust-toolchain.toml). Kept in lockstep so a
+ # stale local toolchain fails with a clear cargo message, not a confusing
+diff --git a/src/search/params.rs b/src/search/params.rs
+index cea1ed3..b3450fa 100644
+--- a/src/search/params.rs
++++ b/src/search/params.rs
+@@ -160,15 +160,15 @@ search_params! {
+     // dynamics. Ship the mechanism inert, fit it, then gate it.
+     /// Delta growth per fail-LOW, in percent of the current delta.
+     /// 150 reproduces the old `d + d/2` (both are `floor(3d/2)`).
+-    asp_growth_pct = 164, "AspGrowthPct", 100..=400;
++    asp_growth_pct = 178, "AspGrowthPct", 100..=400;
+     /// Delta growth per fail-HIGH, in percent. Separate from the fail-low side
+     /// so the growth can become asymmetric — fail-highs and fail-lows carry
+     /// different information, and nothing forced them to share a rate except
+     /// that the old code was written as one expression. 150 = old behaviour.
+-    asp_growth_high_pct = 165, "AspGrowthHighPct", 100..=400;
++    asp_growth_high_pct = 168, "AspGrowthHighPct", 100..=400;
+     /// Additive term applied with the growth, so a small delta still escapes
+     /// its own rounding. 5 = old behaviour.
+-    asp_growth_add = 8, "AspGrowthAdd", 0..=50;
++    asp_growth_add = 10, "AspGrowthAdd", 0..=50;
+     /// ⛔ TERMINATION BY CONSTRUCTION. After this many consecutive fails on one
+     /// side, that side opens to ±INF unconditionally, so it cannot fail again;
+     /// the loop is bounded at `2 × asp_max_fails` iterations regardless of
+@@ -206,14 +206,14 @@ search_params! {
+     /// average over 26,394), so a won position's window starts 150–340 wide
+     /// at 1,800 cp where `AspirationDelta` alone gives 12. 0 = off (today);
+     /// at ordinary scores the term is a few centipawns.
+-    asp_delta_square_div = 0, "AspDeltaSquareDiv", 0..=100000;
++    asp_delta_square_div = 14_707, "AspDeltaSquareDiv", 0..=100000;
+     /// The known-win offset a bare-king ending the winner can mate in is
+     /// given in both phases of the evaluation, pushed into the evaluator at
+     /// every search start (Stockfish 11's classical evaluation returns such
+     /// a value, about 55 pawns; Rarog's mop-up leaves the material and a
+     /// drive). 0 = off (today). With the score-scaled first window it ends
+     /// the root fail-high cascade of a won ending (RAR-R19, RAR-R20).
+-    mopup_known_win = 0, "MopupKnownWin", 0..=20000;
++    mopup_known_win = 5_826, "MopupKnownWin", 0..=20000;
+ 
+     // ── Qsearch SEE thresholds ───────────────────────────────────────────────
+     // Coordinates so SEE's consumers can be re-tuned with SEE itself: a more
+@@ -269,7 +269,7 @@ search_params! {
+     /// Overall multiplier on `optimum_ms` (10000 = ×1.0). The single
+     /// highest-leverage TM knob; lets SPSA scale base time allocation. The
+     /// range reaches 0.3, the value a harness wire check sets.
+-    tm_opt_scale = 10_000, "TmOptScale", 2000..=20000;  // ×1.0
++    tm_opt_scale = 10_801, "TmOptScale", 2000..=20000;  // ×1.08
+     /// Falling-eval base term. Seed 1187 (0.1187).
+     tm_fall_base = 1_187, "TmFallBase", 0..=5000;  // 0.1187
+     /// Falling-eval slope on `(prev_avg_score - score)`. Seed 221 (0.0221).
+@@ -321,7 +321,7 @@ search_params! {
+     /// deepening past half its target (`increaseDepth`). The clock then
+     /// meets completed iterations whose cost no longer grows. Off at
+     /// 10000000, a thousand targets, past every maximum.
+-    tm_depth_freeze = 10_000_000, "TmDepthFreeze", 1000..=10000000;  // off
++    tm_depth_freeze = 5_781, "TmDepthFreeze", 1000..=10000000;
+ }
+ 
+ // The selectivity core's own coordinates. Seeds follow the handoff's seed
+@@ -413,18 +413,18 @@ search_params! {
+ 
+     // Late-move reductions, in 1024ths of a ply.
+     lmr_log = 150, "CoreLmrLog", 0..=1024;
+-    lmr_improvement = 333, "CoreLmrImprovement", 0..=2048;
++    lmr_improvement = 282, "CoreLmrImprovement", 0..=2048;
+     /// Bounds of the improvement term, in reduction units. Seeded at the
+     /// donor's values; converting them to Rarog's evaluation scale measured
+     /// worse (RAR-S74), so the fit decides them.
+     lmr_improvement_clamp_lo = -162, "CoreLmrImprovementClampLo", -1024..=0;
+     lmr_improvement_clamp_hi = 1_065, "CoreLmrImprovementClampHi", 0..=4096;
+-    lmr_correction = 3_330, "CoreLmrCorrection", 0..=8192;
++    lmr_correction = 3_357, "CoreLmrCorrection", 0..=8192;
+     lmr_exact = 1_748, "CoreLmrExact", 0..=4096;
+     lmr_tt_score_below_alpha = 526, "CoreLmrTtScoreBelowAlpha", 0..=2048;
+     lmr_tt_shallow = 58, "CoreLmrTtShallow", 0..=2048;
+     lmr_quiet = 1_932, "CoreLmrQuiet", 0..=6144;
+-    lmr_quiet_history = 316, "CoreLmrQuietHistory", 0..=1024;
++    lmr_quiet_history = 347, "CoreLmrQuietHistory", 0..=1024;
+     lmr_alpha_gap = 291, "CoreLmrAlphaGap", 0..=2048;
+     /// Bounds of `alpha - estimated score` in the quiet term, evaluation
+     /// units, seeded at the donor's values like the improvement bounds.
+@@ -433,16 +433,16 @@ search_params! {
+     lmr_noisy = 830, "CoreLmrNoisy", 0..=6144;
+     lmr_noisy_history = 182, "CoreLmrNoisyHistory", 0..=1024;
+     lmr_critical_ply = 171, "CoreLmrCriticalPly", 0..=512;
+-    lmr_pv = 399, "CoreLmrPv", 0..=2048;
+-    lmr_pv_window = 306, "CoreLmrPvWindow", 0..=2048;
++    lmr_pv = 401, "CoreLmrPv", 0..=2048;
++    lmr_pv_window = 279, "CoreLmrPvWindow", 0..=2048;
+     lmr_non_pv = 358, "CoreLmrNonPv", -1024..=1024;
+     lmr_laterality = 24, "CoreLmrLaterality", 0..=256;
+-    lmr_tt_pv = 179, "CoreLmrTtPv", 0..=2048;
++    lmr_tt_pv = 155, "CoreLmrTtPv", 0..=2048;
+     lmr_tt_pv_score = 571, "CoreLmrTtPvScore", 0..=2048;
+     lmr_tt_pv_depth = 633, "CoreLmrTtPvDepth", 0..=2048;
+     lmr_cut_node = 2_071, "CoreLmrCutNode", 0..=4096;
+     lmr_cut_node_no_tt_move = 2_073, "CoreLmrCutNodeNoTtMove", 0..=4096;
+-    lmr_gives_check = 1_030, "CoreLmrGivesCheck", 0..=4096;
++    lmr_gives_check = 840, "CoreLmrGivesCheck", 0..=4096;
+     lmr_child_cutoffs = 1_334, "CoreLmrChildCutoffs", 0..=4096;
+     lmr_child_cutoffs_all_node = 253, "CoreLmrChildCutoffsAllNode", 0..=2048;
+     lmr_parent = 130, "CoreLmrParent", 0..=1024;
+@@ -458,7 +458,7 @@ search_params! {
+     /// grows past twice the iteration's depth plus quiescence, which is the
+     /// budget's stated invariant; today (0) they bypass it, and in won rook
+     /// endings lines reach the ply cap at nominal depth 18 (D.1.6.1).
+-    lmr_deeper_budget = 0, "CoreLmrDeeperBudget", 0..=1;
++    lmr_deeper_budget = 1, "CoreLmrDeeperBudget", 0..=1;
+     /// The line budget in eighths of the root depth: the positive extensions
+     /// a line may take from the root sum to at most this share of the
+     /// iteration's depth. 8 = today (a line may reach twice the iteration

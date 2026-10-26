@@ -92,6 +92,24 @@ commit that adds it.
 | [`time_forfeit_2026-09-09.md`](time_forfeit_2026-09-09.md) | Time forfeits at `3+0.03` — diagnosis and repair (PLAN A.3.3, RAR-R11) | Deliverable | A.3.3 |
 | [`uci_info_review_2026-09-16.md`](uci_info_review_2026-09-16.md) | UCI `info` line conformance against Stockfish and Reckless — PLAN B.2.5, D.3 | Deliverable | B.2.5, D.3 |
 | [`universal_binary_2026-09.md`](universal_binary_2026-09.md) | Universal x86-64 binary — design record and deferral | Deliverable | A.4, G.2 |
+| [`b51_research_2026-09-30.md`](b51_research_2026-09-30.md) | B.5.1 — the two cards from the Gyatso read | Deliverable | B.5.1, RAR-S91 |
+| [`b52_research_2026-10-01.md`](b52_research_2026-10-01.md) | B.5.2 — tablebase root, in-search probes and PV: the investigation | Deliverable | B.5.2, RAR-S93 |
+| [`b8_removed_2026-10-03.md`](b8_removed_2026-10-03.md) | B.8 removal register — 2026-10-03 | Deliverable | B.8, RAR-P34, RAR-S74, RAR-S80, RAR-S87, RAR-S91, RAR-S92 |
+| [`c04_king_unit_2026-10-06.md`](c04_king_unit_2026-10-06.md) | C.0.4 — the first evaluation unit: where king safety's residual sits and the magnitude contract | Deliverable | C.0.4, C.3, RAR-E21, RAR-E25, RAR-E26 |
+| [`c051_endgame_classification_2026-10-09.md`](c051_endgame_classification_2026-10-09.md) | C.5.1 — endgame family classification, deciding instruments and the opposite-bishop step | Deliverable | C.5.1, RAR-E26 |
+| [`c4_threats_mobility_2026-10-10.md`](c4_threats_mobility_2026-10-10.md) | C.4 — threats and mobility: what the donor's families still carry and whether a unit is justified | Deliverable | C.4, RAR-E30, RAR-E31, RAR-E32 |
+| [`c6_pawns_passers_2026-10-11.md`](c6_pawns_passers_2026-10-11.md) | C.6 — pawns and passers: what the donor's families still carry, and the unstoppable-passer test | Deliverable | C.6, RAR-E39, RAR-E40, RAR-E41, RAR-E42 |
+| [`c67_pawn_definitions_2026-10-12.md`](c67_pawn_definitions_2026-10-12.md) | C.6.7 — Rarog's pawn and passer definitions against the donor's | Deliverable | C.6.7, RAR-E43 |
+| [`c84_colosseum_datagen_gap_2026-10-14.md`](c84_colosseum_datagen_gap_2026-10-14.md) | Datagen on Colosseum: the gap check (C.8.4 step 1) | Deliverable | C.8.4, `tools/colosseum/README.md` |
+| [`c135_cards_2026-10-15.md`](c135_cards_2026-10-15.md) | C.13.5 — definition cards: material × men and mobility × men | Deliverable | C.13.5, RAR-E66 |
+| [`c137_contempt_card_2026-10-16.md`](c137_contempt_card_2026-10-16.md) | C.13.7 — contempt and draw avoidance: research card | Deliverable | C.13.7 |
+| [`c9_sweep_2026-10-19.md`](c9_sweep_2026-10-19.md) | C.9 — curvature sweep of the unfitted nonlinear evaluation coordinates | Deliverable | C.9, RAR-E69 |
+| [`c10_research_2026-10-19.md`](c10_research_2026-10-19.md) | C.10 — the joint search tune on the classical evaluation: research card | Deliverable | C.10, RAR-S100, RAR-S101 |
+| [`c103_search_coordinates_2026-10-19.md`](c103_search_coordinates_2026-10-19.md) | C.10.3.1 — dead and switched-off search coordinates before the joint tune | Deliverable | C.10.3.1 |
+| [`phase_c_review_2026-10-19.md`](phase_c_review_2026-10-19.md) | Phase C review: C.9's skip, C.10's design, and the HCE against Stockfish's classical evaluation | Deliverable | C.9, C.10, RAR-E70, RAR-E71, RAR-E72, RAR-O07 |
+| [`d11_tm_diagnosis_2026-10-06.md`](d11_tm_diagnosis_2026-10-06.md) | D.1.1 — why the head spends its hard maximum in won endings (`NO_CHANGE`) | Deliverable | D.1.1, D.1.2, RAR-R13 |
+| [`d12_tm_research_2026-10-22.md`](d12_tm_research_2026-10-22.md) | D.1.2 — time management: the 2.6.0 head's clock use in games, the ADR-0065 audit, both donors' shape, the clock cluster's handoff | Deliverable | D.1.2, D.1.3, D.1.4, D.1.5, RAR-R14 |
+| [`d15_mechanism_review_2026-10-23.md`](d15_mechanism_review_2026-10-23.md) | D.1.5 — the clock cluster's mechanisms reviewed during its SPRT: where the candidate's time goes (front-loaded, and the horizon halves the late budget), the overlapping factors, and whether Reckless's shape fits | Review | D.1.5, RAR-R16 |
 | [`answer_harness_rset_correction.md`](answer_harness_rset_correction.md) | Correction: every `--rset` screen before this commit measured the defaults | Record | RAR-S70 |
 | [`board_audit_2026-09-05.md`](board_audit_2026-09-05.md) | Rarog board audit and measured comparison — 2026-09-05 | Record | RAR-M20 |
 | [`board_benchmark_recipe_2026-09-05.md`](board_benchmark_recipe_2026-09-05.md) | Reproducing the 2026-09-05 board comparison | Record | RAR-M20, RAR-M43 |
@@ -125,6 +143,13 @@ commit that adds it.
 | [`see_kernel_2026-09-08.md`](see_kernel_2026-09-08.md) | Incremental SEE attacker maintenance — RAR-M35 / 4.11b.11 | Record | RAR-M35 |
 | [`see_value_injection_2026-09-07.md`](see_value_injection_2026-09-07.md) | Neutral SEE values and normalized comparison — RAR-M29 / 4.11b.6 | Record | cited by PLAN or another analysis |
 | [`texel_corpus_book_shape_2026-09-02.md`](texel_corpus_book_shape_2026-09-02.md) | The datagen book was the wrong shape, not the wrong size — 2026-09-02 | Record | cited by PLAN or another analysis |
+| [`b72_audit_a_tt_prefetch.patch`](b72_audit_a_tt_prefetch.patch) | B.7.2 audit candidate (a) as a patch: TT prefetch | Record | RAR-P30, B.7.2 |
+| [`b72_audit_b_static_attacks.patch`](b72_audit_b_static_attacks.patch) | B.7.2 audit candidate (b) as a patch: static attack tables | Record | RAR-P30, B.7.2 |
+| [`b72_audit_d_history_prefetch.patch`](b72_audit_d_history_prefetch.patch) | B.7.2 audit candidate (d) as a patch: history prefetch | Record | RAR-P30, B.7.2 |
+| [`b72_audit_i_correction_prefetch.patch`](b72_audit_i_correction_prefetch.patch) | B.7.2 audit candidate (i) as a patch: correction-history prefetch | Record | RAR-P30, B.7.2 |
+| [`texel_delta_scale_rule50_2026-10-11.md`](texel_delta_scale_rule50_2026-10-11.md) | The texel delta scale without the rule-50 factor | Record | C.8 |
+| [`hce_audit_2026-10-15.md`](hce_audit_2026-10-15.md) | HCE audit, 2026-10-15 | Record | C.13, C.10.3.1 |
+| [`pst_orientation_2026-10-23.md`](pst_orientation_2026-10-23.md) | PST orientation against PeSTO: seven tables mirrored v1.0.0–v2.1.0, repaired by the v2.2.0 fit, none mirrored now | Record | E.3.0 |
 | [`hce_analysis.md`](archive/hce_analysis.md) | Rarog HCE analysis | Archived | RAR-E03 |
 | [`infra_analysis.md`](archive/infra_analysis.md) | Rarog Board and Infrastructure Analysis | Archived | RAR-C01 |
 | [`search_analysis.md`](archive/search_analysis.md) | Rarog search analysis | Archived | RAR-C02, RAR-S11 |

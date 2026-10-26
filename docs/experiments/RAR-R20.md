@@ -1,0 +1,319 @@
+# RAR-R20 — D.1.6.3: the cascade fix as one cluster of four parts; the probe, a wire check, and the gate's registration — REGISTERED 2026-10-23, before any game
+
+Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+
+- **Date / owner:** registered 2026-10-23, before any game. The probe and the
+  200-game wire check are the agent's (idle host); the fit and the gate are
+  the maintainer's.
+- **Kind:** PLAN D.1.6.3, the gate of D.1.6's cluster, after D.1.6.1's
+  research (RAR-R19) and the maintainer's decision of 2026-10-23 to have the
+  whole fix, every part, done now and verified.
+- **The cluster, four parts** (the research's device, RAR-R19): every part is
+  a switch on `d1` at its neutral default and is baked on as the default on
+  the arm.
+  1. **A known-win evaluation** of a bare-king ending the winner can mate in
+     (`mopup_known_win` 6000 in both phases, with the winner's sign; engine
+     `571eb83`). Rarog's HCE valued king, rook and bishop against king at
+     about eight pawns, Stockfish 11's classical evaluation at 55; the
+     search had to carry the win across the horizon itself.
+  2. **A score-scaled first window** (`AspDeltaSquareDiv` 10193: the first
+     window's half-width is `AspirationDelta + score² / 10193`, Stockfish's
+     form; `ff14793`). Alone the known win made the cascade worse; with this
+     window the cascade is gone: one or two windows an iteration and a
+     gradual score.
+  3. **The line budget charged for deeper reduced searches**
+     (`CoreLmrDeeperBudget` 1; `0366884`): a reduced move searched above its
+     nominal depth draws on the line's extension budget, so no line grows
+     past twice the iteration plus quiescence, the budget's stated invariant
+     (Stockfish allows the deeper search only while the ply is under twice
+     the root depth).
+  4. **The deepening freeze** (`TmDepthFreeze` 5000; `097ea5d`): once a
+     completed iteration finds half the soft target spent, the following
+     iterations no longer deepen, each searched `3 (n + 1) / 4` plies short
+     (Stockfish's `increaseDepth`), so a clock search past its target meets
+     completed iterations whose cost no longer grows.
+- **Baseline:** the 2.6.0 engine, `rarog-d15head-pext-pgo.exe` (`468ed7b`,
+  `273FEDF4…`, bench 13,987,223), the same binary RAR-R16–R19 used.
+- **Candidate:** the throwaway branch `d16-arm2` at `6fd195e` on `097ea5d`,
+  recipe `analysis/arm_patches/6fd195e-rar-r20-d16fix4.patch` (SHA-256
+  `f45cfa24…483bfa`; applied to `097ea5d` through a temporary index it
+  reproduces the arm's tree `3678a90f…`), version `2.7.0-dev+d16fix4`.
+  Binary `tools/test_engines/rarog-d16fix4-pext-pgo.exe`, SHA-256
+  `95268163F88276FFE66F731CFDB29207B7703BA98C37AE60D0F99B6183F5C30F`, built
+  clean by `tools/build_test.ps1 -SourceRoot` (`cargo xtask build --arch
+  pext --pgo`, `rustc 1.99.1`); **bench 8,996,837**, 0.643 × the head's.
+  Release tests on the arm: 33 suites, all passing.
+- **The evaluation half** is a change to the frozen evaluation (engine
+  source `9fb525e`), allowed by the maintainer on 2026-10-23 for this
+  cluster; it moves `bench 13`, so the fingerprint is re-declared when the
+  cluster lands.
+
+## Verification before any game (2026-10-23, idle host)
+
+**The probe, no clock stop on either side** (`tm_rec_probe_d16.py`; the
+`diag,tune` builds with the switches set, about 1.3 × slower than PGO;
+`tm_rec_probe_fix3.txt`, `tm_rec_probe_fix4.txt`):
+
+| Clock | Position | Head (2.6.0 engine) | Parts 1–3 | Parts 1–4 |
+|---|---|---|---|---|
+| `60000+600` | rec1 | 4.1 s (0.88 × optimum), depth 18 | 5.7 s (1.21 ×), depth 16 | **2.7 s (0.58 ×)**, depth 16 |
+| `60000+600` | rec3 | **30.3 s, the hard maximum** (6.87 ×) | 3.9 s (0.89 ×), depth 22 | **3.1 s (0.70 ×)**, depth 22 |
+| `180000+2000` | rec1 | 37.5 s (2.47 ×), depth 19 | 12.3 s (0.81 ×), depth 17 | **9.4 s (0.62 ×)**, depth 17 |
+| `180000+2000` | rec3 | **98.0 s, the hard maximum** (6.87 ×) | 30.8 s (2.16 ×), depth 24 | **6.9 s (0.49 ×)**, depth 23 |
+
+Parts 1–3 end every probed stall under the maximum; part 4 ends every move
+within the optimum at both clocks, so the result no longer depends on which
+iteration crosses the target (the speed luck that failed RAR-R19's first
+arm). The probe is re-run on the PGO arm below.
+
+## The gate (frozen)
+
+- **SPRT:** Colosseum `sprt-repair` (`[-5,5]` nElo, pentanomial,
+  `model=normalized`, α = β = 0.05; AGENTS' repair case 3), `3+0.03`, 20 ms
+  margin, Hash 64, one thread, 14 slots, the UHO book in random order, no
+  adjudication, **cap 20,000 pairs**, seed 20261042, run directory
+  `rar-r20-gate`; then `match-fixed-ltc` 1,000 games at `10+0.1`, seed
+  20261043, `rar-r20-ltc`; then the probe on both PGO binaries.
+  `run_r20.ps1 -Read gate|ltc|probe|wire` beside this entry.
+- **Before the gate, the research recommends a fit:** C.10 fitted the
+  aspiration and reduction constants around the fail-hard, flat-valuation
+  search; the cluster changes what they trade off. A registered SPSA block
+  over `AspirationDelta`, `AspGrowthPct`, `AspGrowthHighPct`, `AspGrowthAdd`,
+  `AspDeltaSquareDiv`, `CoreLmrCorrection`, `CoreLmrPv`, `CoreLmrPvWindow`
+  and `TmDepthFreeze` on a tune build of the arm's source (60,000 games,
+  about ten hours) is the cheaper path to a gate that can pass; the gate on
+  the unfitted seeds is registered here so the maintainer can choose.
+- **Dispositions:** H1 lands the four parts on `d1` as the defaults,
+  re-declares the fingerprint, deletes `TmFailHighTarget` and its test and
+  writes the user-facing changelog entry; D.1.2.1's cascade half ticks on
+  the probe. H0 refutes the cluster at these seeds; the fit is then the
+  registered next step, not a device change. The cap records "unresolved".
+- **Prediction, frozen before any game:** unfitted, **−6 ± 8 Elo** at
+  `3+0.03` (80% band −14 to +2); H1 0.30, cap 0.25, H0 0.45. Bench 13 is
+  about 0.73 × the head's (the known win and the squared window remove
+  cascades in bench's own won positions; the budget removes 30% of the
+  tree), which is a different tree, not a faster one. `10+0.1`: better than
+  STC by a few Elo (the stalls and the deep won endings are worth more
+  there), P(point estimate above STC's) 0.65. Most likely miss: the sign
+  at STC, from the unfitted constants.
+- **The 200-game wire check** (agent-run, `3+0.03`, the PGO arm against the
+  head, seed 20261044, `rar-r20-wire`): it decides nothing about strength
+  (±35 Elo); it shows the cluster plays whole games without fault and reads
+  the arms' time use, and the manifest's `search:` lines confirm the arm is
+  the baked one.
+
+## PRE-REGISTERED PREDICTION (frozen before exposure)
+
+1. The PGO arm's probe: PASS at both clocks, every move under 1.5 × its
+   optimum (0.85).
+2. The wire check: 0 faults, 0 time losses (0.9); the arm's time a move
+   within ±5% of the head's (0.7); the arm's result within ±35 Elo (0.9).
+3. The gate as above.
+
+**Evidence layer:** the probe and the wire check are milliseconds and
+counts; only the gate is Elo.
+
+## Results (2026-10-23, agent-run, idle host)
+
+**The probe on the PGO binaries** (`tm_rec_probe_r20.txt`; host 2.9% busy,
+no engine, harness or build process):
+
+| Clock | Position | Head | The arm (all four parts) |
+|---|---|---|---|
+| `60000+600` | rec1 | 4.4 s (0.93 ×), depth 18 | **2.3 s (0.49 ×)**, depth 16 |
+| `60000+600` | rec3 | **30.3 s, the hard maximum** | **2.5 s (0.56 ×)**, depth 22 |
+| `180000+2000` | rec1 | 40.0 s (2.63 ×), depth 19 | **8.3 s (0.55 ×)**, depth 17 |
+| `180000+2000` | rec3 | **98.0 s, the hard maximum** | **98.0 s, the hard maximum**, depth 24 lowerbound 1624, 255 M nodes |
+
+- **Seven of eight rows pass; one does not.** On the PGO arm, 1.3 × faster
+  than the `diag,tune` build that passed all eight, rec3's depth 23
+  completes under half the target, so the freeze has not engaged when depth
+  24 begins; depth 24 then walks a cascade (the squared window at a score
+  near 1,100 is 130 wide, the walk to 1,624 and beyond four or five
+  windows) and each window at that depth costs tens of millions of nodes,
+  the per-window cost RAR-R19 left open (one window at depth 21–24 in a rook
+  ending: 75–170 M against the oracle's 1–3 M). Prediction 1 (PASS at both
+  clocks, every move under 1.5 × optimum, 0.85) **missed on that row** and
+  held on the other seven. Nothing in the cluster bounds one iteration that
+  begins before the freeze engages; Stockfish's does not either, its windows
+  at that depth are simply cheap.
+- **What would bound it:** either the search-cluster half (the tree's cost
+  per window at depth 20 and beyond in rook endings: pruning rates a third
+  to a tenth of the oracle's, twice the singular attempts, effective depth
+  twice nominal), a programme of its own, or an in-iteration clock piece,
+  RAR-R18's fail-high stop at twice the target (probe PASS there, +12.2 ±
+  8.8 against the stop at the target, Elo-neutral against no stop), which
+  the maintainer set aside and which, with the cluster, would fire only on
+  the rare iteration that outruns both the freeze and the window.
+
+**The wire check** (`tools/results/rar-r20-wire`, 200 games at `3+0.03`,
+host idle, 0 faults, 0 time losses, the runner's recount agreeing):
+**−52.5 ± 23.9 Elo** (−107.5 ± 48.2 nElo) for the arm against the head.
+Prediction 2 held on faults and time use and **missed badly on the result**
+(within ±35: read −52.5 with its whole interval below −28). The unfitted
+cluster is a large strength loss at `3+0.03`: bench 0.643 × says it searches
+a different tree, not a faster one, and C.10's constants were fitted around
+the old one. Two equal-speed decompositions on a tune build follow.
+
+**Decompositions, 200 games each at `3+0.03` on one tune build**
+(`rarog-d16inst-tune.exe`, built clean from `883b973`, whose engine inputs
+are `097ea5d`'s, bench 13,987,223; `-CategoricalTuneBuild`, both arms the
+same binary, so speed is equal; `tools/results/rar-r20-wire-searchparts`,
+`rar-r20-wire-freeze`; host idle, 0 faults, 0 time losses):
+
+| Arm A against the defaults | Elo |
+|---|---|
+| the three search parts (`AspDeltaSquareDiv` 10193, `CoreLmrDeeperBudget` 1, `TmDepthFreeze` 5000) | **−15.6 ± 29.5** |
+| the deepening freeze alone (`TmDepthFreeze` 5000) | −19.1 ± 27.3 |
+
+At this resolution the three search parts together, and the freeze alone,
+read within noise of even and lean negative, so most of the arm's −52.5 is
+the known-win evaluation half, read against a PGO head: an evaluation that
+returns +54 pawns for a bare-king ending changes how the search treats
+every leaf near such an ending, and C.10's constants were not fitted for
+it. The evaluation half is the part that most needs the fit, or a smaller
+offset; the search parts can be fitted with it.
+
+## Disposition after verification: the cluster works for the stall, is not yet playable, and one row stays open
+
+- **Verified to work, where it was built to:** every probed stall but one
+  ends within its optimum (the `diag,tune` build all eight rows, the PGO
+  arm seven of eight; the head: two rows at the hard maximum), and the
+  whole cluster plays 200 games without a fault or a time loss. The one open
+  row, rec3 at `180000+2000` on the PGO arm, is an iteration that begins
+  before the freeze engages and whose windows each cost tens of millions of
+  nodes: the per-window cost of Rarog's tree at depth 24 in a rook ending,
+  which no part of this cluster changes.
+- **Not yet playable:** −52.5 ± 23.9 Elo unfitted at `3+0.03`, most of it
+  the evaluation half. The registered gate would fail on these seeds; the
+  research recommends the registered fit first (the aspiration and
+  reduction constants and the offset's size, with the cluster on), then the
+  gate on the fitted values.
+- **To bound the open row,** either the search-cluster half (the tree's
+  per-window cost in won rook endings, a programme with its own research and
+  gate) or RAR-R18's fail-high stop at twice the target as a fifth part,
+  which with the cluster would fire only on an iteration that outruns both
+  the freeze and the window; the maintainer set the stop aside and decides.
+- **Calibration:** prediction 1 held on seven rows and missed on one;
+  prediction 2 held on faults and time use and missed on the result by
+  more than its band; the gate's prediction (−6 ± 8) stands as frozen and
+  the wire check says it leans high.
+
+**Evidence layer:** the probe is milliseconds, the wire check and the
+decompositions are 200-game Elo reads (±24 to ±30) that decide nothing.
+
+## Where the wire check's loss is (2026-10-23, agent-run)
+
+**The known-win offset became the `MopupKnownWin` coordinate** (engine
+`2f17467`: pushed into the evaluator at every search start as `LazyMargin`
+is, so a tune build sets it per arm and a tune can fit it; fmt, clippy at
+zero warnings, debug, release and texel-tuner tests green with the one
+load-sensitive test re-run alone and passing, bench 13,987,223 at the
+defaults).
+
+**The offset's size, zero games** (`sweep_reads.log`): with the squared
+window and the budget on, bench is 9.24 M at 0, 8.74 M at 1500, 9.28 M at
+3000 and 9.00 M at 6000, the correction history never nears saturation at
+any size, and on rec1 every size gives one window an iteration to depth 21;
+the size changes where the deep single-window cost arrives, not whether.
+
+**Equal-speed reads, 200 games each on one clean tune build
+(`rarog-d16inst2-tune.exe`, `2f17467`, both arms the same binary; host
+idle, 0 faults, 0 time losses):**
+
+| Arm A against the defaults | Elo |
+|---|---|
+| known win 6000 with the squared window | **+3.5 ± 27.3** |
+| known win 3000 with the squared window | +10.4 ± 27.7 |
+| known win 1500 with the squared window | −10.4 ± 28.5 |
+| the three search parts (squared window, budget, freeze) | −15.6 ± 29.5 |
+| the freeze alone | −19.1 ± 27.3 |
+
+**The evaluation half is not the loss.** At equal speed the known win with
+its window reads even at every size. The PGO wire check's −52.5 has three
+visible components in its manifest's `search:` lines: the arm ran 4.6%
+slower in games (2,292,838 against 2,402,919 nodes a second; in-game speed
+also reflects the tree's composition, and a PGO build pair carries ±1.5%),
+it **spent 5.3% less time a move** (65.8 against 69.5 ms: the freeze and
+the smoother iterations let the soft stop fire sooner, and the time it
+saves is left on the clock, the mechanism RAR-R17 read at −15 Elo for
+−7.4%), and the rest is the parts together and 200-game noise. The first
+two are about −20 Elo by the time rule; both are tunable (`TmDepthFreeze`,
+and the clock's scale once D.1.5 reads it on the landed engine), neither is
+the cluster's decision quality.
+
+## The in-game speed loss is composition, not speed (2026-10-23, agent-run, idle host)
+
+The maintainer asked whether the cluster's code could be optimised to win
+back the 4.6% of in-game NPS the wire check showed. Three reads, all on this
+host with only the app running (10–12% of 32 threads, the floor), say there
+is no speed to win back; the scripts and logs are `nps/` under this leaf's
+artifact directory.
+
+**Raw code cost: none measurable.** `bench 13 5` (best of five), six
+rounds in rotating order, the pre-cascade tune build
+`rarog-d18switch-tune.exe` (`a43b3a5`, before every cascade commit) against
+the new code with every switch at its neutral default
+(`rarog-d16inst2-tune.exe`, `2f17467`); both search the identical tree
+(fingerprint 13,987,223):
+
+| Arm | Median NPS | Spread | Ratio |
+|---|---|---|---|
+| pre-cascade code | 2,545,446 | 2,534,835–2,550,086 | 1.000 |
+| new code, switches off | 2,538,286 | 2,526,593–2,543,593 | 0.997 |
+| new code, the four parts on | 2,312,217 | 2,294,526–2,318,772 | 0.908 |
+
+The −0.3% is inside the samples' spread: the per-node code the cluster
+added (the budget charge, the deeper cap, the quiescence best-score, the
+known-win branch) costs nothing the instrument can see.
+
+**The cluster's −9.2% is the tree, and it is two of the parts.** Same
+binary, four rounds: the known win alone **+9.5%** (18.07 M nodes at depth
+13), the squared window alone **−6.7%** (9.81 M), the budget alone
+**−5.2%** (9.80 M), known win with the window **−7.5%** (10.18 M).
+
+**Position by position the speed is unchanged.** One `bench 13` run each,
+defaults against the cluster, the forty positions bucketed by the score at
+the defaults:
+
+| Bucket | Nodes off → on | Time off → on | NPS on / off |
+|---|---|---|---|
+| \|score\| < 100 | 1.81 M → 1.69 M | 964 → 908 ms | 0.988 |
+| 100–300 | 4.46 M → 3.83 M | 2,000 → 1,753 ms | 0.980 |
+| 300–2000 | 4.82 M → 2.93 M | 1,742 → 1,085 ms | 0.975 |
+| ≥ 2000 or mate | 2.90 M → 0.55 M | 911 → 167 ms | 1.044 |
+| all | 13.99 M → 9.00 M | 5,617 → 3,913 ms | 0.923 |
+
+Within every bucket the per-node speed holds within 1–2.5%. The aggregate
+falls because the cluster removes 82% of the time the defaults spend in
+the large-score positions, where nodes are cheapest (3.18 M a second
+against 1.88 M in the balanced ones): position 11 goes from 2.48 M nodes to
+0.28 M at the same speed. The 30% of nodes that disappear are the cascade's
+re-search revisits and the deeper reduced searches, both TT-hot and fast;
+removing them lowers the average cost of a node by raising the share of
+ordinary nodes. The same reading holds in games: from the wire check's PGN
+(nodes and time a move), the arm's NPS is below the head's in every ply
+bucket, −1.8% in plies 1–20, −2.8% in 21–40, −3.0% in 41–60, −4.1% in
+61–80, −5.0% in 81–100, rising as scores grow and endings arrive, and the
+head's larger share of time in the fast late plies inflates its aggregate;
+a PGO build pair carries ±1.5% besides.
+
+**Disposition.** Nothing to optimise: restoring the NPS would mean putting
+the wasted nodes back. The cluster's visible in-game cost is the time left
+on the clock (5.3% less a move), which is the freeze's and the clock's
+business, and whatever the search parts cost in decisions, which Stage 1
+of RAR-R21 reads. The earlier reading of the −52.5 as partly "slower in
+games" is superseded by this section.
+
+## Calibration and disposition after the decompositions
+
+- Prediction 2's miss (the result far outside ±35) is explained in part:
+  the cluster leaves time on the clock and its in-game speed reads lower,
+  which the section above shows is the tree's composition, not speed; the
+  evaluation half the research blamed first reads even at equal speed. The
+  precise sizing is the maintainer's 2,000-game reads below.
+- **What the fit can and cannot do.** A fit recovers what the constants
+  lose and what the clock leaves unused; it does not turn a decision-quality
+  loss into a gain. The staged plan therefore reads the loss precisely at
+  equal speed before any tune, and the tune runs only if the loss is
+  tunable: see RAR-R21.

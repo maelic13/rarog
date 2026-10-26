@@ -1,0 +1,39 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index d74bd69..72c3f0b 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -20,7 +20,7 @@ checksum = "3e0f1c7c3a72c66fd80abe965175f7523475c0489a87d3ff9d6e8c87d87a9d2d"
+ 
+ [[package]]
+ name = "rarog"
+-version = "2.7.0-dev"
++version = "2.7.0-dev+d16gate3"
+ dependencies = [
+  "cc",
+ ]
+diff --git a/Cargo.toml b/Cargo.toml
+index 920cd40..58b9a9e 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,7 +1,7 @@
+ [package]
+ name = "rarog"
+ authors = ["Miloslav Macurek"]
+-version = "2.7.0-dev"
++version = "2.7.0-dev+d16gate3"
+ edition = "2024"
+ # MSRV = the pinned toolchain (rust-toolchain.toml). Kept in lockstep so a
+ # stale local toolchain fails with a clear cargo message, not a confusing
+diff --git a/src/search/params.rs b/src/search/params.rs
+index 6e6fb80..76e8ef7 100644
+--- a/src/search/params.rs
++++ b/src/search/params.rs
+@@ -431,7 +431,7 @@ search_params! {
+     /// climbing score builds corrections of hundreds of centipawns, and the
+     /// uncapped term then turns reductions negative, so reduced moves are
+     /// searched deeper than nominal, outside the line budget (D.1.6).
+-    lmr_correction_cap = 0, "CoreLmrCorrectionCap", 0..=8192;
++    lmr_correction_cap = 1_024, "CoreLmrCorrectionCap", 0..=8192;
+     lmr_exact = 1_748, "CoreLmrExact", 0..=4096;
+     lmr_tt_score_below_alpha = 526, "CoreLmrTtScoreBelowAlpha", 0..=2048;
+     lmr_tt_shallow = 58, "CoreLmrTtShallow", 0..=2048;

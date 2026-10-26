@@ -215,6 +215,7 @@ impl Searcher {
     fn reset_worker_state_for_new_game(&mut self) {
         self.clear_history();
         self.td.evaluator.clear_pawn_table();
+        self.td.previous_search_score = None;
     }
 
     fn run_worker_job<P: FnMut() -> SearchEvent + ?Sized>(

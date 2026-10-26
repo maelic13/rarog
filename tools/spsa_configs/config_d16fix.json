@@ -1,0 +1,92 @@
+{
+  "AspirationDelta": {
+    "value": 12,
+    "min_value": 1,
+    "max_value": 100,
+    "step": 6
+  },
+  "AspGrowthPct": {
+    "value": 164,
+    "min_value": 100,
+    "max_value": 400,
+    "step": 38
+  },
+  "AspGrowthHighPct": {
+    "value": 165,
+    "min_value": 100,
+    "max_value": 400,
+    "step": 38
+  },
+  "AspGrowthAdd": {
+    "value": 8,
+    "min_value": 0,
+    "max_value": 50,
+    "step": 6
+  },
+  "AspDeltaSquareDiv": {
+    "value": 10193,
+    "min_value": 2000,
+    "max_value": 40000,
+    "step": 4750
+  },
+  "MopupKnownWin": {
+    "value": 6000,
+    "min_value": 500,
+    "max_value": 12000,
+    "step": 1438
+  },
+  "TmDepthFreeze": {
+    "value": 5000,
+    "min_value": 2000,
+    "max_value": 9000,
+    "step": 875
+  },
+  "TmOptScale": {
+    "value": 10000,
+    "min_value": 5000,
+    "max_value": 20000,
+    "step": 938
+  },
+  "CoreLmrPv": {
+    "value": 399,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 256
+  },
+  "CoreLmrPvWindow": {
+    "value": 306,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 256
+  },
+  "CoreLmrCorrection": {
+    "value": 3330,
+    "min_value": 0,
+    "max_value": 8192,
+    "step": 1024
+  },
+  "CoreLmrGivesCheck": {
+    "value": 1030,
+    "min_value": 0,
+    "max_value": 4096,
+    "step": 512
+  },
+  "CoreLmrImprovement": {
+    "value": 333,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 256
+  },
+  "CoreLmrTtPv": {
+    "value": 179,
+    "min_value": 0,
+    "max_value": 2048,
+    "step": 128
+  },
+  "CoreLmrQuietHistory": {
+    "value": 316,
+    "min_value": 0,
+    "max_value": 1024,
+    "step": 128
+  }
+}

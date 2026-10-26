@@ -1,10 +1,26 @@
 # Changelog
 
 All notable changes to Rarog are documented in this file. Each is added under
-`[Unreleased]` when it lands; a release dates that section.
+`[Unreleased]` when it lands; a release dates that section, which becomes the
+release notes. Entries are written for people who use the engine: short,
+plain and to the point.
 
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
+
+## [Unreleased]
+
+### Changed
+
+- **Time management reworked.** The engine stops thinking once it has proved a
+  forced mate, keeps more of its clock in reserve when the clock runs low, and
+  weighs how settled the best move is when deciding how long to think.
+
+### Fixed
+
+- **No more full-time-limit thinks in won endings.** In some won endings
+  the engine could spend its whole time limit on a single move. It now
+  plays the move once the search has run well past its target.
 
 ## [2.6.0] - 2026-10-22
 

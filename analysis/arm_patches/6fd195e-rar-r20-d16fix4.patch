@@ -1,0 +1,75 @@
+Arm 6fd195e  (RAR-R20 gate arm, D.1.6.3: the cascade fix's four parts as the defaults: mopup_known_win 6000, AspDeltaSquareDiv 10193, CoreLmrDeeperBudget 1, TmDepthFreeze 5000 (version 2.7.0-dev+d16fix4))
+Author-date: 2026-10-23 21:48:34 +0200
+Applies to: 097ea5d  (the d1 head with every switch; the commit is on the throwaway branch d16-arm2)
+Command:    git diff <base> <arm>
+
+diff --git a/Cargo.lock b/Cargo.lock
+index d74bd69..8541d32 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -20,7 +20,7 @@ checksum = "3e0f1c7c3a72c66fd80abe965175f7523475c0489a87d3ff9d6e8c87d87a9d2d"
+ 
+ [[package]]
+ name = "rarog"
+-version = "2.7.0-dev"
++version = "2.7.0-dev+d16fix4"
+ dependencies = [
+  "cc",
+ ]
+diff --git a/Cargo.toml b/Cargo.toml
+index 920cd40..36e2116 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,7 +1,7 @@
+ [package]
+ name = "rarog"
+ authors = ["Miloslav Macurek"]
+-version = "2.7.0-dev"
++version = "2.7.0-dev+d16fix4"
+ edition = "2024"
+ # MSRV = the pinned toolchain (rust-toolchain.toml). Kept in lockstep so a
+ # stale local toolchain fails with a clear cargo message, not a confusing
+diff --git a/src/eval/params.rs b/src/eval/params.rs
+index 21621ab..019e3ae 100644
+--- a/src/eval/params.rs
++++ b/src/eval/params.rs
+@@ -283,7 +283,7 @@ macro_rules! eval_params {
+             // (Stockfish 11's `Endgame<KXK>` returns such a value; Rarog's
+             // mop-up leaves the material and a drive). Read with node
+             // budgets only; the frozen evaluation is unchanged at 0.
+-            mopup_known_win: 1 = [0];
++            mopup_known_win: 1 = [6000];
+         }
+     };
+ }
+diff --git a/src/search/params.rs b/src/search/params.rs
+index 61539af..f96381a 100644
+--- a/src/search/params.rs
++++ b/src/search/params.rs
+@@ -206,7 +206,7 @@ search_params! {
+     /// average over 26,394), so a won position's window starts 150–340 wide
+     /// at 1,800 cp where `AspirationDelta` alone gives 12. 0 = off (today);
+     /// at ordinary scores the term is a few centipawns.
+-    asp_delta_square_div = 0, "AspDeltaSquareDiv", 0..=100000;
++    asp_delta_square_div = 10_193, "AspDeltaSquareDiv", 0..=100000;
+ 
+     // ── Qsearch SEE thresholds ───────────────────────────────────────────────
+     // Coordinates so SEE's consumers can be re-tuned with SEE itself: a more
+@@ -314,7 +314,7 @@ search_params! {
+     /// deepening past half its target (`increaseDepth`). The clock then
+     /// meets completed iterations whose cost no longer grows. Off at
+     /// 10000000, a thousand targets, past every maximum.
+-    tm_depth_freeze = 10_000_000, "TmDepthFreeze", 1000..=10000000;  // off
++    tm_depth_freeze = 5_000, "TmDepthFreeze", 1000..=10000000;
+ }
+ 
+ // The selectivity core's own coordinates. Seeds follow the handoff's seed
+@@ -451,7 +451,7 @@ search_params! {
+     /// grows past twice the iteration's depth plus quiescence, which is the
+     /// budget's stated invariant; today (0) they bypass it, and in won rook
+     /// endings lines reach the ply cap at nominal depth 18 (D.1.6.1).
+-    lmr_deeper_budget = 0, "CoreLmrDeeperBudget", 0..=1;
++    lmr_deeper_budget = 1, "CoreLmrDeeperBudget", 0..=1;
+     /// The line budget in eighths of the root depth: the positive extensions
+     /// a line may take from the root sum to at most this share of the
+     /// iteration's depth. 8 = today (a line may reach twice the iteration

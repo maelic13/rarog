@@ -323,17 +323,13 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.2.1 | RESEARCH | R2 | Won-ending time stalls (RAR-R13): rec1's cascade, rec2's missing stop, rec3's overrun |
-| D.1.2.2 | RESEARCH | R2 | The forfeit margin against OS holds |
-| D.1.2.3 | RESEARCH | R2 | The audit and the bound model; one SPRT `[0,3]` for D.1.2 |
-| D.1.2 | RESEARCH | R2 | Closes with D.1.2.3's SPRT, which gates the three addenda together |
 | D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-M74's fallen thread scaling is new evidence for its premise |
 | D.3 | RESEARCH | R2 | Engine lifecycle and protocol robustness |
 | D.4 | RESEARCH | R2 | Tablebase policy |
 
 ## Phase D — Clock, threads, robustness
 
-- **D.1 Time management: audit against the ADR-0065 checklist, soft/hard bounds with node-fraction multiplier, forfeit margin; SPRT `[0,3]` — `R2` investigation, `I2`/`V` sub-steps.** Audit the
+- **D.1 Time management: audit against the ADR-0065 checklist, soft/hard bounds with node-fraction multiplier, forfeit margin; SPRT `[0,3]` — `R2` investigation, `I2`/`V` sub-steps, DONE 2026-10-26.** **Maintainer decision 2026-10-26: closed, the residue accepted.** The stalls are solved for the vast majority and the rest is not harmful: the stop at twice the target ends every probed stall, and `d1`'s game residue is a third of 2.6.0's at `10+0.1` with no measured cost (RAR-R28 and its residue addendum). The single-window fix is held with its retry trigger, a measured cost. Audit the
   current clock (budget, overhead, `smp_reserve`; the root-confidence
   consumers are gone since B.1 and are not rebuilt) against the Reckless
   shape; implement the soft/hard bound model with the
@@ -400,7 +396,8 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
       unchanged. The fix moves to D.1.2, which owns it, with these
       mechanisms and acceptance checks. RAR-R13's trigger pulls it forward
       again if a game record shows a cost.
-    - **D.1.2 Time-management audit and bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier, the forfeit margin, the won-ending stalls (RAR-R13); SPRT `[0,3]` — `R2`.**
+    - **D.1.2 Time-management audit and bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier, the forfeit margin, the won-ending stalls (RAR-R13); SPRT `[0,3]` — `R2`, DONE 2026-10-26.**
+      Closed 2026-10-26 with D.1.2.1, D.1.2.2 and D.1.2.3 done.
       The rest of D.1 as written above, after Phase C, starting from
       Phase C's head (D.1.1 changed nothing). **This step owns the fix of
       D.1.1's three behaviours** (RAR-R13,
@@ -444,28 +441,1089 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
       D.1.2 is carried out in three addenda (added 2026-10-11 by maintainer
       request, so the two GUIDE holds it owns have steps that discharge
-      them), gated together by D.1.2.3's SPRT:
-        - **D.1.2.1 Won-ending time stalls: rec1's cascade, rec2's missing stop after a proved mate, rec3's overrun (RAR-R13) — `R2`.** First
-          in D.1, after Phase C; earlier if RAR-R13's trigger fires (a game
-          record shows a cost). Reproduce each with the timed probe
-          (`tm_rec_probe.py`) on the head D.1 starts from, fix it inside the
-          bound model (an end inside an iteration after a fail-high past the
-          soft target; a stop on a proved, stable mate), and show the probe
-          with no move at the hard maximum and `tm_games.py`'s won and mate
-          shares at ≥ 0.9 × the maximum below their Phase C values (above).
-        - **D.1.2.2 The forfeit margin against OS holds — `R2`.** The
-          three gate time losses since 2026-10-10 (RAR-E29 round 3068,
-          RAR-E32 rounds 1777 and 1855) each came on a short search whose
-          process the OS held for 88.0, 82.4 and 69.4 ms with deadlines of
-          89.2, 69.9 and 75.0 ms. Measure the hold distribution on this host
-          from the gates' own `failed-games` and per-move timing records,
-          then decide the engine's minimum move reserve at low clock (and
-          whether the harness's 20 ms margin should change, a maintainer
-          decision recorded in PROCESS) so that a hold of that size does not
-          forfeit; a deterministic test with an injected delay checks it.
-        - **D.1.2.3 The audit and the bound model: the ADR-0065 checklist, soft and hard bounds with the node-fraction multiplier; one SPRT `[0,3]` for D.1.2 — `R2`, then `V`.** The
-          rest of D.1.2 as written above, with D.1.2.1 and D.1.2.2 inside
-          the one gated change.
+      them), gated together by one SPRT, which D.1.5 now holds.
+      **Research closed 2026-10-22, `READY_FOR_IMPLEMENTATION`** (RAR-R14,
+      `analysis/d12_tm_research_2026-10-22.md`; re-opened in full by the
+      maintainer's request of 2026-10-22; zero games). Read from 11,200 of
+      the C head's games in six runs (RAR-M73–M76) and the formulas:
+      - **The floor.** The budget assumes fifty moves to go at every clock,
+        so at 500 ms it still counts 1,470 ms of future increments; a
+        `3+0.03` game drifts to the clock where the optimum equals the
+        increment, 155 ms. 22–41% of the head's games touch 100 ms and 21%
+        of its moves against RAR-M75's field are played under 200 ms.
+        Stockfish 11, Dragon 1 and Komodo 13.3 never go under 200, 790 and
+        650 ms; Houdini 3 and 6.03 go as low as the head. Current
+        Stockfish's sub-second horizon contraction (`mtg = time_ms / 20`)
+        alone lifts the drift to 400 ms; Reckless's linear bounds sit at
+        510 ms.
+      - **Holds and forfeits.** OS holds of 80 ms or more hit 0.11–0.15%
+        of moves at one thread and 0.4% at four (the move waits for every
+        helper); four time losses in 226,180 games at the 20 ms margin
+        since 2026-10-10, each a 69–129 ms hold at a clock of 70–163 ms in
+        a lost game. No reserve covers a hold longer than the clock; a
+        policy that never holds such a clock does. Elo value here under
+        0.01; the cost is robustness on another harness.
+      - **Spend.** Median 0.78–0.91 of the optimum, 99th percentile 3.7–4.5;
+        21–31% of all head time is past the optimum; the front-loaded shape
+        (44–47% of the game's time in the first forty plies) is shared with
+        Stockfish 11 and Houdini 6, while Dragon and Komodo spread it and
+        leave 1.2–1.6 s unused. No zero-game instrument reads the shape's
+        Elo.
+      - **Stalls.** RAR-R13 reproduces on the C head (won and mate moves at
+        ≥ 0.9 × the maximum 0.30–0.44% and 0.24–0.53% at `3+0.03`, 1.44% and
+        3.40% at `10+0.1`), all in wins bar three draws.
+      - **Donors.** Reckless 0.10.0-dev: linear soft and hard bounds in the
+        main clock, a continuous node-fraction multiplier (×0.55–2.5), pv
+        and eval stability discounts, no mate stop, no in-iteration stop,
+        a 65% vote. Stockfish master 2026-09-30: Rarog's shape plus
+        `originalTimeAdjust` (a per-control scale, 0.76 at `3+0.03`, 1.53 at
+        40/15), the sub-second contraction, a time-disadvantage scale, a
+        stability discount (`timeReduction`), an effort cut that fires only
+        above 90% concentration, a `mate_in(3)` stop, shallower iterations
+        once half the target is spent. RAR-R13's "Stockfish has no clock-mode
+        mate stop" is corrected there; rec2's `mate 5` lies outside its rule.
+      The decision is one clock-only cluster (D.1.3), one fit (D.1.4) and
+      one gate (D.1.5); the addenda's findings:
+        - **D.1.2.1 Won-ending time stalls: rec1's cascade, rec2's missing stop after a proved mate, rec3's overrun (RAR-R13) — `R2`, DONE 2026-10-26.**
+          **Maintainer decision 2026-10-26: closed, the residue accepted.** The stalls are solved for the vast majority and the rest is not harmful: the stop at twice the target ends every probed stall, and `d1`'s game residue is a third of 2.6.0's at `10+0.1` with no measured cost (RAR-R28 and its residue addendum). The single-window fix is held with its retry trigger, a measured cost.
+          Research closed 2026-10-22: the fix is two cluster items, a
+          proved-mate stop (a clock search ends after a completed iteration
+          whose root mate for the side to move has held with the same move
+          and distance for three iterations, or whose score is a loss in at
+          most two plies) and a root fail-high stop past the soft target
+          (a window that fails high once the elapsed time is at or past the
+          soft target ends the search and plays the move that failed high,
+          with its lower bound; that bound exceeds the previous best's
+          exact score, so no best move is discarded and B.5's mid-iteration
+          trigger is not reopened). Ticks when D.1.5's timed probe
+          (`tm_rec_probe.py`, both clocks, idle host) shows no rec move at
+          the hard maximum, rec2 under 2 s, and `tm_profile.py` on the
+          gate's games reads the won and mate shares at ≥ 0.9 × the maximum
+          below 0.2%.
+          **Re-owned 2026-10-23 (maintainer decision; RAR-R18).** rec1's and
+          rec3's cascades are a search property, full-depth re-searches
+          after a root fail-high, and are fixed in the search by **D.1.6**;
+          the root fail-high stop that capped them cost about 15 Elo at
+          `3+0.03` and is retired (off by default, `a0f9755`). rec2's fix stays
+          the proved-mate stop (RAR-P42 saw 2.6.0 still searching past a
+          proved mate at `120+1`). Ticks when D.1.6's probe shows rec1 and
+          rec3 under the hard maximum with no clock stop, and D.1.5's
+          closing read shows rec2 under 2 s and the won and mate shares at
+          ≥ 0.9 × the maximum below 0.2%.
+        - **D.1.2.2 The forfeit margin against OS holds — `R2`, DONE 2026-10-26.**
+          **Ticked 2026-10-26 by RAR-R28:**
+          - no candidate time loss in 5,000 games;
+          - the clock-floor median 429 ms at `3+0.03`;
+          - no game under 100 ms, against the 2.6.0 engine's 680 of
+            2,000.
+          Research closed 2026-10-22: the margin is a horizon question. The
+          cluster contracts the horizon below one second of clock
+          (`mtg = min(50, ⌊clock_s × TmHorizonPerSec⌋)`, seed 50, a fit
+          coordinate); the engine's reserve (`2 × Move Overhead`, +30 ms
+          above one thread) and the harness's 20 ms margin stay, with the
+          arithmetic recorded in the packet. A deterministic test injects a
+          late `go` stamp at a 150 ms clock and checks the reserve holds.
+          Ticks when D.1.5's games show no candidate-arm time loss and
+          `tm_profile.py` reads the candidate's clock-floor median above
+          350 ms at `3+0.03` with under 3% of games touching 100 ms.
+        - **D.1.2.3 The audit against the ADR-0065 checklist and the bound-model decision — `R2`, DONE 2026-10-22.**
+          Ticked in the packet: present are distinct budgets, an immutable
+          maximum rooted at `go` receipt, and completed-iteration
+          adjustment by best-move change, score trend and effort; absent
+          are a stability-over-iterations discount (both donors carry one),
+          ponder credit (ponder is off in CCRL and Colosseum) and a
+          first-iteration guard on the hard stop; different is the helper
+          vote (D.2). The effort term has Stockfish's shape, a cut only for
+          concentrated effort, which is why RAR-S47 read it inert; Reckless's
+          is a continuous extender. The bound model: a clock search may end
+          inside an iteration after a root fail-high past the soft target,
+          and on a proved stable mate; a stability factor is added; the
+          effort band's floor and endpoints become coordinates whose ranges
+          reach both donors' shapes, so the fit decides the shape question.
+          The SPRT moves to D.1.5.
+    - **D.1.3 The clock cluster: RAR-R14's six clock-only mechanisms and the cross-move score trend — `I2`, DONE 2026-10-22.**
+      From `analysis/d12_tm_research_2026-10-22.md`, *Implementation
+      handoff*, in `src/search/time.rs` and the root loop of
+      `src/search/mod.rs`: (1) the sub-second horizon contraction
+      (`TmHorizonPerSec`, seed 50, range 20–100); (2) a stability factor
+      `max(TmStabFloor, TmStabBase − TmStabSlope × k)`, `k` the completed
+      iterations since the best move last changed, seeds 1.2881 / 0.0440 /
+      0.716; (3) the effort band as coordinates, `TmEffortHigh` → `TmEffortLow`
+      as the best move's share of the search's nodes rises from
+      `TmEffortFloor` to 1.0, seeds 0.924 / 0.71 / 0.79, ranges 0.6–2.0 /
+      0.4–1.0 / 0.0–0.95; (4) the proved-mate stop and (5) the root
+      fail-high stop of D.1.2.1; (6) no hard stop before the first
+      iteration completes. Invariants: `bench 13` unchanged (13,987,223 /
+      EBF 2.565, by construction); `bestmove` is the move the last `info`
+      line names and a fail-high stop's line carries `lowerbound`; the
+      maximum is never raised; the DTZ root's `maximum = optimum` and the
+      tablebase extension's box are unchanged; nothing per node changes.
+      Tests: the first-iteration guard, the mate stop at a fixed node budget
+      (fires after three stable mate iterations, not under `go infinite`),
+      the fail-high stop on a constructed window, the horizon at 500 and
+      1,000 ms, the injected late `go` stamp at 150 ms, SMP inertness at one
+      thread. Instrumentation behind `diag`: counters for the two stops and
+      the guard; a per-iteration log of `k`, the effort share and each
+      factor for the activation read. Cheap qualification: the fingerprint;
+      the timed probe (maintainer-run, idle host, about eight minutes).
+      Non-goals: the aspiration loop (RAR-S89, RAR-S17), the thread vote
+      (D.2), ponder, `nodestime`, the `movestogo` branch, the harness
+      margin, Stockfish's `originalTimeAdjust` and time-disadvantage scale
+      and `increaseDepth` (their triggers are in the packet).
+      **Implemented 2026-10-22 on `d1`, `IMPLEMENTED`** (engine commit
+      `5fec0d7`; `d829a8b` before it states the preconditions of two
+      existing tests that the guard and the horizon change, and passes on
+      the unchanged engine; tooling `2811a8a`). At the seeds, in
+      `src/search/time.rs` (`sudden_death_horizon`, `MateWatch`,
+      `soft_stop`) and both root loops of `src/search/mod.rs`. The five
+      coordinates are in `SearchParams` with ranges `TmHorizonPerSec`
+      20–100, `TmStabBase` 0.80–2.00, `TmStabSlope` 0–0.20, `TmStabFloor`
+      0.40–1.00 (the packet set no stability ranges; these are the
+      implementation's), `TmEffortFloor` 0–0.95, and `TmEffortHigh` widened
+      to 0.6–2.0. What the handoff left open:
+      - The two stops are the main thread's decision and end a pool's
+        search directly; every thread's own soft target carries the new
+        factors, and the vote is unchanged. D.1.5's 4T read covers this.
+      - MultiPV takes the mate stop on line 1, not the fail-high stop, which
+        would end a depth before its other lines are searched.
+      - The guard holds the hard stop while the first iteration runs
+        (`root_depth ≤ 1`).
+      - The effort share is the best move's `RootMove.nodes` over the
+        thread's nodes. The per-iteration counters went, with their one
+        root-only store in `negamax`.
+      - A fail-high after a fail-low can have a lower bound under the
+        previous iteration's score. The move is still not a discard: the
+        bound is above every move's bound from that fail-low.
+
+      Verification on the final state, exit status read directly:
+      `cargo fmt --check` 0; `cargo clippy --all-features --all-targets` 0,
+      zero warnings; `cargo test --release` 0, 412 passed; `bench 13` on a
+      fresh no-feature release build **13,987,223 / EBF 2.565**; the search
+      tests under `diag` 0, 116 passed. `cargo test` in debug passed all
+      411 on the same content before a line-ending-only change, then failed
+      2 of 3 times on `first_kpk_search_in_a_fresh_process_costs_what_a_warm_one_does`
+      (19 and 22 ms cold against 2 and 4 ms warm). That is a timing test of
+      a `go depth 4` search the clock never reaches. The unchanged engine
+      fails it at the same rate when `tt_sizing` runs just before it (1 of
+      5 on each tree), and it passes 11 of 11 alone on the cluster: a
+      load flake that predates the cluster. Each new test fails when its own
+      mechanism is disabled (four mutations: fail-high, mate, guard,
+      horizon). Instrumentation: `diag` counters `tm_mate_stop`,
+      `tm_fail_high_stop` and `tm_first_iteration_guard`, and an
+      `info string tm` line per completed iteration, read by
+      `tools/diag/tm_activation.py` over B.5's 300 positions at `3000+30`.
+
+      **Instrument findings for D.1.4 and D.1.5:**
+      1. `TmOptScale`'s range was 0.5–2.0, so the wire check's 0.3 would have
+         been clamped to 0.5 without a word. Colosseum's guard checks option
+         names, not values. The lower bound is now 0.2.
+      2. `tm_profile.py` profiles by PGN name, and a one-binary categorical
+         match names both players alike, so it would pool the arms.
+         `analysis/artifacts/d13-clock-cluster-2026-10-22/tm_wire_read.py`
+         (SHA-256 `23ef9c7bcc360cda…`) relabels each game by arm from
+         `games.jsonl`, checking each game's PGN hash, then runs
+         `tm_profile.py` unchanged. Checked on `b32-cat-both`: 2,000 games,
+         both arms 4.26 s a game.
+      3. `tm_profile.py` and `tm_table.py` transcribe the fifty-move
+         horizon, so they overstate the candidate's maximum on sub-second
+         moves. D.1.5's "≥ 0.9 × the maximum" read must transcribe the
+         contraction first. The probe's 60 s and 180 s clocks are
+         unaffected.
+      4. The registered fallback (mechanisms 1, 4, 5 and 6 without 2 and 3)
+         cannot be set by options alone. Stability is neutral at
+         `TmStabBase` = `TmStabFloor` = 1.0 with `TmStabSlope` 0, but moving
+         the effort share to the whole search is code. The fallback arm
+         needs the per-iteration share back, as a recipe patch.
+
+      **`LOCAL_QUALIFIED` 2026-10-22, DONE.** The maintainer's PGO build,
+      `tools/test_engines/rarog-d13cluster-pext-pgo.exe` (SHA-256
+      `63d49fdcbc0824c6…`), was built from a clean tree at `da2df4e`, which
+      has the same engine inputs as `5fec0d7`; it benches 13,987,223 / EBF
+      2.565. The timed probe,
+      `analysis/artifacts/d13-clock-cluster-2026-10-22/tm_rec_probe_d13.py`
+      (SHA-256 `53a42b924714eea8…`), is the 2026-10-06 method pointed at
+      that build. It ran on an idle host (3.5% CPU over 20 s) and wrote
+      `tm_rec_probe_d13.txt` (SHA-256 `c33fef86716335a9…`). **Verdict PASS:**
+      no rec move reached the maximum, and rec2 finished under 2 s.
+
+      | Clock | rec1 | rec2 | rec3 |
+      |---|---|---|---|
+      | `60000+600` | 4,079 ms, 0.87 × optimum, d18, exact | 5 ms, d10, mate 6 | 2,061 ms, 0.47 ×, d21, lowerbound |
+      | `180000+2000` | 8,585 ms, 0.57 ×, d19, lowerbound | 5 ms, d10, mate 6 | 12,821 ms, 0.90 ×, d21, lowerbound |
+
+      On 2026-10-06 the B.9 head spent 32.3, 31.6 and 10.4 s at the short
+      clock and 104.4, 102.2 and 10.4 s at the long one. Stockfish 19 spent
+      1.5–45.6 s on the same three.
+      - Three of the four non-mate moves ended on the fail-high stop's
+        `lowerbound` line, and every one ended under its optimum.
+      - The packet's "rec1 and rec3 within about 1.5 × their soft target"
+        cannot be read from this output, which prints no soft target. It is
+        D.1.5's to read at the fitted values.
+      - rec2 stopped at depth 10 on a mate in 6 that held three iterations.
+        Stockfish reports mate in 5. The stop plays a proved mate, not the
+        shortest; each later move searches again from a mate at most one
+        move shorter. The packet allowed this (`mate_in(3)`, the donor's
+        rule, would not have stopped rec2 at all).
+
+      This is the cheap qualification at the seeds. D.1.2.1 still ticks on
+      D.1.5's probe at the fitted values and on its profile read.
+      **Addendum 2026-10-22 (maintainer decision): a seventh mechanism, the
+      cross-move score trend** both donors carry (RAR-R15, *Amendment*).
+      Each thread keeps the root score its previous search in the game ended
+      on, cleared by `ucinewgame`, and the falling eval adds `TmFallPrevSlope
+      × (the previous search's score − this iteration's)` inside the same
+      clamps; seed 0.0204 (Stockfish's raw slope, a foreign unit), range
+      0–0.1. Zero-game screen on 1,600 wire-check games: the score moves
+      18 cp at the median across a move pair, and the term lifts the factor
+      off its clamp on 20% of moves. Engine `1f185cb`, clock-only;
+      verification on the final state, exit status read directly:
+      `cargo fmt --check` 0, `cargo clippy --all-features --all-targets` 0 at
+      zero warnings, `cargo test` 0 and `cargo test --release` 0, `bench 13`
+      on a fresh no-feature release build **13,987,223 / EBF 2.565**. Its
+      wire check and the thirteenth coordinate are D.1.4's.
+      **The fail-high stop retired 2026-10-23** (RAR-R18, maintainer
+      decision): off by default (`a0f9755`, after `ec416d4` had moved it to
+      twice the target); the cascades it capped are D.1.6's, in the search,
+      and the spin goes when that fix lands. The other six mechanisms stay
+      at their seeds for D.1.5's closing read.
+    - **D.1.4 The clock fit: a wire check, an activation read, then SPSA blocks over the clock coordinates — `V`, DONE 2026-10-23.**
+      Conditional (PLAN rule 4), with the zero-game sweep replaced by what
+      a clock-only coordinate allows: (a) the wire check, `TmOptScale` at
+      0.3 and each new coordinate at a range end in a 200-game match, each
+      of which must move `tm_profile.py`'s time per game as the formula
+      says (about −60% for the first); (b) the activation read from D.1.3's
+      log on B.5's 300-position `3000+30` replay: a factor at one end on
+      more than 90% of iterations drops its coordinate. Then one registered
+      SPSA block of 60,000 games at `3+0.03`, Colosseum `spsa-tune`, over
+      the twelve clock coordinates (the seven of 2.3.0 and the five new
+      ones), seeded from the values above; the movement stop rule (rule 7c)
+      ends it, and a second block runs only if block 1 moved a coordinate a
+      full step and the rule did not fire. About ten hours a block.
+      **(a) `TmOptScale` played 2026-10-22: the wire is live, but the
+      registered size missed.** Maintainer-run: 200 games at `3+0.03`
+      (`-CategoricalTuneBuild`, seed 20261022), on
+      `tools/test_engines/rarog-d13cluster-tune.exe` (SHA-256
+      `87c92774550c41d3…`, clean tree at `eff17c3`, bench 13,987,223). Arm A
+      set `TmOptScale=3000`; arm B kept the seeds. The run is in
+      `tools/results/d14-wire-optscale03`, with manifest
+      `colosseum_match_d14-wire-optscale03_20261022_181558.manifest.txt`
+      (SHA-256 `882daa78c8db131a…`): 0 faults, recount agrees. Read by
+      `tm_wire_read.py`:
+      - Time per game fell from 3.77 s to 2.92 s, **−22.5%**, against the
+        registered "about −60%".
+      - Time per move fell from 61 to 48 ms, −21%. In plies 0–19, where
+        both arms' clocks are near 2.9 s, it fell from 86 to 39 ms, −55%.
+      - From ply 80 arm A holds about twice the clock (2.3 s against
+        1.1 s) and spends more per move than arm B. It ends draws with
+        2.7 s left against 1.1 s.
+
+      **Calibration:** the miss is in magnitude, through the mechanism. The
+      budget is a share of the remaining clock, so time saved early buys
+      time back later, and the expectation took the clock as fixed. The
+      engine applies the value exactly (target over optimum 0.3000 of the
+      seeds' at depth 1), and the harness and reader report the change move
+      by move. So the instrument does what the check exists to prove. The
+      plies 0–19 figure is a reading, not a pass rule written after the
+      result. The coordinates still to check (each new one at a range end)
+      state, before their games, whether their expectation is per game or
+      per move at equal clock.
+
+      The `−145.1 ± 31.5` Elo of arm A says only that a third of the budget
+      costs a lot. On the arm at its seeds:
+      - its clock floor had a median of 882 ms, p10 248;
+      - no game went under 100 ms, and 16 of 200 went under 200 ms.
+
+      That is a hint for D.1.5's floor prediction, not its read: the
+      opponent was the same build at 0.3, and the sample is 200 games.
+
+      Instrument notes:
+      - `tm_profile.py` labels its 99.9th percentile as a second `p99`.
+      - Its spent-over-optimum and ≥ 0.9 × maximum columns use the head's
+        formula (D.1.3's finding 3).
+      - The manifest's `harness_hold_ms:` reads p999 101 and max 878 ms,
+        with 53 of 24,612 moves over the margin, both arms pooled. At these
+        clocks no game was lost on time.
+
+      **Registered 2026-10-22 as RAR-R15** (`docs/experiments/RAR-R15.md`),
+      before any game of the remaining checks or of the block:
+      - **(a) The five new coordinates' wire checks.** Each has a frozen
+        formula expectation per move at equal clock, and a check is live
+        past twice its SE. Two depart from "each at a range end in 200
+        games", with reasons: `TmStabFloor` is checked at `TmStabSlope` 2000
+        on both arms, because at the seed slope it binds on 5% of
+        iterations and its check would be a null; `TmEffortFloor` plays
+        800 games, because its −6% is 2.5 SE at 200. One batch runs them,
+        `analysis/artifacts/d14-clock-fit-2026-10-22/run_wire_checks.ps1`.
+      - **(b) The activation read, done:** 3,432 iterations, and no factor
+        at one end on more than 90%. The effort factor is at `TmEffortHigh`
+        on 87.5%, falling eval at its lower clamp on 66.9%, stability at
+        k = 0 on 38.1% and never at its floor. All twelve coordinates stay.
+        The rule's mapping from a pinned factor to "its coordinate" is
+        undefined for multi-coordinate factors; it was not needed, and
+        would have gone to the maintainer.
+      - **(c) Block 1 of `d14block1`.** 2,000 × 30 games, seed 20261023;
+        at most two blocks on rule 7c's count. The surface's ranges are
+        the declared ones, except `TmOptScale` at 5000..20000. It runs
+        only after all five wire checks read live.
+
+      **Wire checks played 2026-10-22: four live, the horizon's not by its
+      frozen rule** (RAR-R15, *Result of (a)*). The stability base, slope
+      and floor and the effort floor moved time a move by +39%, −15%, +17%
+      and −9%, each live and inside or past its band. The horizon moved the
+      1000–2000 ms band −19% but the 500–1000 ms band only −2.3%, against
+      "both bands ≥ 5% lower". The engine applies the coordinate exactly
+      there (the optimum at 750 ms is 0.686 of the seed's, the formula's
+      figure), and the clock floor rose (p10 146 → 242 ms, games under
+      200 ms 35 → 11). Near 40 ms a move, time spent stops following the
+      optimum. **Maintainer decision 2026-10-22: `TmHorizonPerSec` stays in
+      the surface;** the miss is a calibration of the check's instrument
+      assumption (a per-band read follows the optimum at every clock), not a
+      pass, recorded in RAR-R15. An independent review the same day
+      (RAR-R15, *Maintainer decision and review*) re-read D.1.3 from
+      source, tests and artifacts and found no defect: the stops, the guard,
+      the factors and the invariants are as recorded above, and the
+      fail-high test fails under both mutations (the stop disabled, and the
+      stop firing before the soft target). The surface stays at twelve: no
+      clock constant outside the handoff becomes a coordinate, no search
+      coordinate joins (an aspiration coordinate would move `bench 13` and
+      D.1.5's attribution), and `TmStabFloor`, gradient-free at the seeds,
+      stays with its noise walk quantified (0.41 steps SD a block) and a
+      reading rule. **Block 1 is prepared, maintainer-run:** RAR-R15's
+      command, dry-run through `colosseum.ps1` (12 coordinates, 2,000 × 30,
+      `r-end` 0.0031, no rail warning, 15 slots, Hash 64, Threads 1,
+      MultiPV 1), about 8–11 hours. The morning read is
+      `python tools/spsa_block_rule.py d14block1 tools/results/d14-spsa-block1`
+      and the manifest's `arm_clamps:` line. **Amended 2026-10-22
+      (maintainer decision), before any game:** the cross-move score trend
+      joins the cluster (D.1.3's addendum) and the surface, thirteen
+      coordinates (`TmFallPrevSlope`, seed 204, range 0..1000, step 63),
+      regenerated and audited; its wire check (`TmFallPrevSlope=1000` against
+      the seeds, 200 games, live if plies 0–19 spend ≥ 5% more a move;
+      formula ×1.36) ran before the block on the new tune build,
+      `tools/test_engines/rarog-d13cluster7-tune.exe` (built clean at `2b9831f`, engine
+      inputs `1f185cb`'s, bench 13,987,223), which the block's `-Engine`
+      and `-ExpectRevision` name: **live, ×1.163 in plies 0–19** (about six
+      SE; RAR-R15, *Result of the cross-move wire check*), 0 time losses.
+      Block 1 at thirteen is dry-run and prepared, maintainer-run.
+      **Block 1 played 2026-10-22/23** (60,000 games in 11 h 40 m, 0
+      faults, no clamp; RAR-R15, *Result of (c)*).
+      - Two of thirteen coordinates moved a full step: `TmOptScale` 10000 →
+        11687 (+1.80 steps, level by iteration 1,500) and `TmStabSlope` 440
+        → 302 (−1.10, still travelling). The rule says **STOP**, so theta is
+        block 1's rounded centres.
+      - Every move past noise is toward spending more time:
+        `TmOptScale × TmEffortHigh` is ×1.233.
+      - The chained launch started block 2 and stopped it after 90 games. A
+        cut block never counts. Resuming it (11.6 h) is the maintainer's
+        call; the agent recommends against.
+
+      **Closed 2026-10-23 on the maintainer's decision.** Theta is block 1's
+      rounded centres, and block 2 is abandoned. Another clock fit is
+      registered only if D.1.5 accepts H1 at +10 Elo or more, from the gated
+      head (RAR-R15, *Maintainer decision 2026-10-23*).
+    - **D.1.5 The clock gate, D.1's closing read after D.1.6: the clock pieces at their seeds against the 2.6.0 engine with the cascade fix; harm reads at `3+0.03` and `10+0.1`, a four-thread read, the probe and the profile — `V`, DONE 2026-10-26.**
+      **Done 2026-10-26 (RAR-R28): no harm.**
+      - `d1`'s head against the 2.6.0 engine read +1.2 ± 8.9 Elo at
+        `3+0.03` and −0.2 ± 7.8 at `10+0.1` (2,000 games each), and
+        −8.0 ± 11.3 at four threads. 0 faults, and 3–5% less time a
+        move.
+      - The probe passes, with rec2 in 5 ms where 2.6.0 runs to the
+        maximum.
+      - D.1's clock work is kept for 2.7.0. D.1.2.2 ticks.
+      - D.1.2.1 misses its won share at ≥ 0.9 × the maximum (0.24%,
+        0.85%; every game won) and returns to research.
+
+      The history follows.
+      Registered as its own ledger entry before any game, with the packet's
+      prediction re-frozen at the fitted values: the fitted cluster against
+      the head, Colosseum `sprt-default`, `[0,3]` nElo, `3+0.03`, one
+      thread, cap 20,000 pairs (about seven hours; a true +6 nElo accepts
+      near 26,000 games); then 1,000 games at `10+0.1` and 1,000 at four
+      threads as direction reads (about 0.6 and 0.8 hours). Acceptance adds
+      D.1.2.1's probe and D.1.2.2's profile and forfeit reads. H1 bakes the
+      fitted values, ticks D.1.2.1, D.1.2.2, D.1.2 and D.1, re-declares the
+      fingerprint (unchanged) and writes the user-facing changelog entry.
+      H0 returns the cluster to research with its estimate; the cap bakes
+      nothing and records "unresolved". **Fallback, registered now:** on
+      H0 or the cap, mechanisms 1, 4, 5 and 6 alone at their seeds are
+      offered under AGENTS' repair case 2 (a 2,000-game read with a harm
+      rule at −13 nElo), each expected near zero and bought for
+      correctness; the maintainer decides whether to run it.
+      **Registered 2026-10-23 as RAR-R16** (`docs/experiments/RAR-R16.md`),
+      before any game:
+      - **The arms.** The candidate is `rarog-d15fit-pext-pgo.exe`, block
+        1's theta baked on the throwaway arm `d15-arm` (`082a780`, recipe
+        `analysis/arm_patches/082a780-rar-r16-d15gate.patch`), version
+        `2.7.0-dev+d15fit`. The head is `rarog-d15head-pext-pgo.exe` at
+        `468ed7b`. Both are clean PGO builds and both bench 13,987,223.
+      - **One batch runs everything,**
+        `analysis/artifacts/d15-clock-gate-2026-10-23/run_d15.ps1`: the
+        SPRT, the two direction reads, the probe, then the profile reads by
+        `tm_profile_d15.py`. That reader is `tm_profile.py` with the
+        candidate's horizon and p99.9 fixed (D.1.3's finding 3), checked
+        against `tm_profile.txt`. All three matches are dry-run clean.
+      - **The four-thread read** carries `--cores-per-game 4`. Without it
+        the runner gave a game one physical core and no check refused it;
+        `colosseum.ps1` refuses that now (`6c3a1a1`).
+      - **The prediction, re-frozen:** +2 ± 4 Elo; H1 0.30, cap 0.50, H0
+        0.20.
+
+      **Before the SPRT, 2026-10-23** (RAR-R16, *Results before the
+      SPRT*):
+      - **The wire rule is corrected.** As registered it compared the
+        candidate's time with the head's, but the fit's change is against
+        the cluster's seeds; it was replaced before any SPRT game (RAR-R16,
+        *Amendment*). The replacement check against a seeds PGO read
+        **live, ×1.21 a move in plies 0–19**.
+      - **Direction reads:** `10+0.1` −6.3 ± 11.7 Elo, four threads −10.4 ±
+        11.6. They decide nothing; at four threads the clock-floor median
+        rose from 151 to 353 ms and games under 100 ms fell from 39 to 0.
+      - **Probe PASS.**
+      - The SPRT is next, maintainer-run.
+
+      **The SPRT is paused at 1,782 pairs (+0.2 ± 6.6 Elo, LLR −0.10,
+      unresolved), and RAR-R17's decomposition has played, 2,000 games
+      each:**
+      - **The cluster at its seeds against the head: −14.9 ± 8.8 Elo.** It
+        spends 7.4% less time a move at every stage and ends games with
+        clock unused. The likeliest source is the fail-high stop cutting
+        the head's overruns.
+      - **The horizon at 100 against 53: −0.9 ± 8.0.** No late-game cost
+        shown, and it keeps all 2,000 games above 100 ms of clock (443 at
+        100 did not).
+      - The fit bought back roughly what the seeds lost.
+      - The research splits the mechanisms next, **the fail-high stop
+        first** (a switch). The registered fallback should not run in its
+        form, which keeps that stop at its seeds.
+      - Maintainer requirement: any fallback shows no harm at `10+0.1` as
+        well.
+
+      **Research 2026-10-23, `MORE_RESEARCH` (RAR-R18,
+      `docs/experiments/RAR-R18.md`).** Every read so far sits on the time
+      rule (2 Elo per 1% of thinking time at `3+0.03`; RAR-S98, RAR-S99):
+      the seeds' −14.9 against −14.8 for their −7.4% of time; the fit's
+      +0.6 (the paused SPRT, 2,345 pairs) against −5.0 for −2.5%; the
+      `10+0.1` and four-thread reads within one SE. Pooled, the cluster
+      changes decision quality by **+1.6 ± 4.2 Elo**: it moves time. A
+      replay on the switch build (`TmFailHighTarget`, engine `f3549ff`, a
+      tune-only spin with play unchanged by default; bench 13 unchanged)
+      shows the fail-high stop ending 29% of first-move searches at a
+      median 1.18 × the target and never past 3 ×, removing about 10% of
+      the spend: single fail-highs, not cascades. At twice the target it
+      fires on under 1% and the spend is the no-stop level. The stability
+      factor adds about 12%. Three 2,000-game categorical reads on that
+      build (`stopoff`, `cascade` at 2 ×, `factorsoff` with the stop off on
+      both arms) and a probe at 2 ×, frozen with the time rule as their
+      null, decide the kept set: the horizon, the mate stop and the guard
+      stay; the stop moves to the threshold the reads choose; the stability
+      factor and the cross-move slope stay only if they decide better than
+      their time. The kept set then reads as one repair (AGENTS' case 2) at
+      `3+0.03` and `10+0.1` before anything lands. The research recommends
+      recording RAR-R16's SPRT as unresolved, and against Reckless's shape
+      or a respending budget now.
+      **RAR-R18 read 2026-10-23** (2,000 games each, probe PASS): removing
+      the stop **+15.5 ± 9.3** against the seeds, the stop at twice the
+      target **+12.2 ± 8.8**, the factors **+6.9 ± 8.7** for keeping them.
+      The stop at the target costs about 15 Elo at `3+0.03` and leaves its
+      saving on the clock; at twice the target the cost is gone and the
+      cascades still end (rec1 at `180000+2000` in 18.9 s against the
+      head's 104 s). The time rule misread the reads: between two arms of
+      one clock the whole-game time is conserved, so the rule saw
+      redistributions as decisions (calibration in RAR-R18). Frozen
+      dispositions: the stop to twice the target (landed on `d1` as
+      `ec416d4`, its test precondition `7a344f5`; bench 13 unchanged); the
+      stability factor and cross-move slope removed as insufficient; the kept set to one repair
+      read at both controls. Additive over the reads the kept set is
+      −9.6 ± 15.2 against the head without the factors and −2.7 ± 12.4
+      with them, so their place in the repair arm is the maintainer's
+      decision, recorded there.
+      **Maintainer decision 2026-10-23: the correct fix, in the search.**
+      The cascade is a search property (full-depth re-searches after a root
+      fail-high) and is fixed there, by **D.1.6**, not capped by the clock:
+      the fail-high stop is retired (off by default, `a0f9755`; the spin stays
+      as D.1.6's control arm and goes with it). The other six mechanisms
+      stay on `d1` at their seeds: the horizon, the mate stop and the guard
+      as clock answers to clock problems; the stability factor, the effort
+      band over the whole search and the cross-move trend on their lean
+      (+6.9 ± 8.7, both donors), the fit's block 1 unused since it was
+      fitted around the retired stop. **This leaf is now D.1's closing
+      read, after D.1.6 lands:** `d1`'s head against the 2.6.0 engine plus
+      the cascade fix, registered then under AGENTS' repair case 2 with no
+      Elo claim: 2,000 games at `3+0.03` and 2,000 at `10+0.1`, harm rule
+      −13 nElo on each; 1,000 games at four threads as a direction read;
+      the probe and the profile reads that tick D.1.2.1 (rec2 under 2 s,
+      the won and mate shares below 0.2%) and D.1.2.2 (no time loss, the
+      clock floor). A pass lands the clock pieces in 2.7.0 as a
+      correctness change; a fail lands none of D.1's clock work. RAR-R16's
+      SPRT ended unresolved at 2,345 pairs (+0.6 ± 5.8 Elo, LLR −0.06):
+      its arm, the fit over the stop at the target, no longer exists.
+      **The clock pieces alone, registered 2026-10-24 as RAR-R24**, before
+      any game:
+      - **Why:** RAR-R22's addendum found that this read had never been
+        run, and that `d1`'s clock reaches the hard maximum in about twice
+        as many `3+0.03` games as 2.6.0's. Every D.1.6 arm carried that
+        clock.
+      - **The arms:** `rarog-d1head-pext-pgo.exe` (`3f4dcf4`, the `d1`
+        defaults, bench 13,987,223) against `rarog-d15head-pext-pgo.exe`
+        (`468ed7b`).
+      - **The reads:** 2,000 games at `3+0.03` and 1,000 at `10+0.1`, harm
+        rules −13 and −18 nElo, and `stall_scan2.py`'s maximum-hitting rate
+        per side.
+      - **Predictions:** 0 ± 14 and −3 ± 16 nElo.
+      - **Command and order:** `run_r24.ps1 -Read stc|ltc|stalls`, dry-run
+        clean. It informs this leaf and does not close it; the closing read
+        above stays. Both arms are fixed binaries, so either order against
+        RAR-R23 attributes cleanly; the maintainer ran this one first.
+      **Read 2026-10-24, no harm at either control** (RAR-R24):
+      - `3+0.03`: +8.0 ± 8.9 Elo (+13.7 ± 15.2 nElo).
+      - `10+0.1`: +14.3 ± 11.2 Elo (+27.3 ± 21.5 nElo).
+      - 0 faults and 0 time losses. d1head spends 3–4% less a move.
+      - **Stalls:** d1head runs to the maximum in 38.0% of `3+0.03` games
+        against 2.6.0's 20.5%, early and at balanced scores. That
+        reproduces RAR-R22's addendum between PGO builds, with no measured
+        cost.
+      - **Disposition:** the clock pieces stay on `d1` at their seeds.
+        RAR-R22's −7.4 is not the clock's. A harm read accepts no gain, so
+        this leaf's closing read after D.1.6 stands.
+      **The closing read, registered 2026-10-26 as RAR-R28**, before any
+      game:
+      - **Arms:** `d1`'s head `rarog-d1head3-pext-pgo.exe` (`6fcfac2`,
+        bench 13,987,223: the clock pieces at their seeds and the stop at
+        twice the target) against the 2.6.0 engine.
+      - **Reads:** 2,000 games at `3+0.03` and 2,000 at `10+0.1` with −13
+        nElo harm rules; 1,000 games at four threads as a direction read;
+        the probe on rec1–rec3; `tm_profile_d15.py` at horizon 50.
+      - **The ticks**, as D.1.2.1 and D.1.2.2 state them.
+      - **Predictions:** +12 ± 14 and +20 ± 16 nElo; four threads −2 ± 15
+        Elo.
+      - **Command:** `run_r28.ps1 -Read probe|stc|ltc|4t|profile`, all
+        three matches dry-run clean; maintainer-run.
+    - **D.1.6 The root fail-high cascade in won endings: researched in the search, capped by the stop at twice the target — `R3` research, `I2`/`V` sub-steps, DONE 2026-10-26.**
+      **Closed 2026-10-26.**
+      - **The stalls end:** the fail-high stop at twice the soft target is
+        `d1`'s default (`a79efe4`). It read no harm against off (RAR-R25:
+        +4.3 ± 8.3 Elo at `3+0.03`, +4.9 ± 9.8 at `10+0.1`), and on the
+        PGO build it ends every probed stall under the maximum (RAR-R27).
+      - **No repair in the search or evaluation lands:** RAR-R22 H0,
+        RAR-R23 harm at `10+0.1`, RAR-R27 H0 at −1.2 ± 3.0.
+      - **The cause is recorded, not fixed:** an uncapped LMR correction
+        term drives the won-ending tree's growth and most deeper searches
+        everywhere (RAR-R26).
+      - **Cleanup:** the research instruments are removed (`42b001f`),
+        and the fingerprint stays 13,987,223.
+      - **Retry trigger:** an LMR refit with the correction slope free.
+
+      The history follows.
+      Rarog re-searches every root fail-high at full depth, so a cascade of
+      k fail-highs costs k full iterations: rec1 ran nine re-searches to the
+      hard maximum (32 s at `60000+600`, 104 s at `180000+2000`; RAR-R13),
+      rec3 to about four times its target. Both donors make the re-searches
+      cheaper instead of stopping them: Stockfish searches each re-search at
+      the root depth less the count of fail-highs so far, and stops
+      deepening once half the target is spent; Reckless re-searches one ply
+      shallower. D.1.3's clock stop capped the symptom and cost about 15 Elo
+      at `3+0.03` at the target (RAR-R18): time spent on fail-highs is well
+      spent here, which is the evidence that makes this a gate, not a
+      probe. This is not the aspiration window's growth, which RAR-S89 and
+      RAR-S17 refused; it is a different device, untested here.
+      Interactions: the aspiration constants were fitted in C.10 around
+      full-depth re-searches and may owe a refit; the clock's factors read
+      iteration completion; the TT carries a shallower re-search's results
+      into the next iteration. It moves `bench 13`, so the fingerprint is
+      re-declared when it lands, and it changes shared search signals in
+      the rated configuration, so its gate is the symmetric `[-5,5]` with
+      its cap (AGENTS' repair case 3; about 12,000 games) on the 2.6.0
+      engine, with no clock stop in either arm. Acceptance adds the probe
+      with no clock stop: rec1 and rec3 under the hard maximum at both
+      clocks. Maintainer decision 2026-10-23: the correct fix is wanted
+      ahead of NNUE, at its price. If the gate refutes it, the fallback is
+      the clock stop at twice the target behind its spin, read as RAR-R18
+      read it.
+      **Where it stands (2026-10-24).** The four-part cluster (RAR-R19,
+      RAR-R20), fitted by RAR-R21 (block 1: the freeze later, the clock's
+      scale up 8%, the squared divisor up 44%, nothing else moved), ends
+      every probed stall (eight of eight rows) but its gate accepted H0:
+      −7.4 ± 7.5 Elo at `3+0.03`, +2.1 ± 11.6 at `10+0.1` (RAR-R22). What
+      is known about the cost: the evaluation half reads even at equal
+      speed at every size; the in-game NPS loss is the tree's composition,
+      not speed; the arm still spends 5.5% less a move after the fit; parts
+      1–3 at equal time read −9.7 ± 8.9. **The level above (2026-10-24,
+      RAR-R22's addendum):** d1's clock runs to the hard maximum in 41% of
+      `3+0.03` games before ply 40, double the 2.6.0 head's 15–18%, so the
+      gate's −7.4 sums the ungated clock pieces (D.1.5) and the cluster;
+      the window term and the budget charge are global changes (32 of 40
+      fresh-process bench positions move), the offset is confined to
+      bare-king trees (13 of 40, all 19 pieces or fewer); a clock stop
+      conditioned on the chosen move (Basilisk's) would fire on 24% of
+      searches here and is rejected. **The re-scoped plan:** the confined
+      cluster {`MopupKnownWin`, a known-win window floor
+      `AspKnownWinWindow` active only when the centre is in the known-win
+      band}. It has no clock piece and no budget charge. Its evidence was
+      to be the probe and a fresh-process differential for correctness, a
+      2,000-game equal-speed harm read on one tune build, and the `10+0.1`
+      read (AGENTS' repair cases 1 and 2). D.1.5's harm read of the clock
+      pieces alone against 2.6.0 is recommended first.
+      **The floor refuted, zero games (2026-10-24, RAR-R23):**
+      - The floor (`3f4dcf4`, tune-only, 0 = off) changes nothing measured:
+        0 of 40 fresh-process bench positions, 0 of 2 won endings, and
+        every probe node count at 1000, 2000 and 3000.
+      - Its premise was a jump of about 5,800 cp as the offset enters the
+        horizon. What rec1 shows instead is a 12 cp window walking a score
+        that climbs from 750 to 3,314 cp, below the band, five to fifteen
+        windows an iteration. Only the global window term shortens that
+        walk.
+      - The offset alone keeps every probe row under the maximum and
+        changes 13 of 40 positions, all with 19 pieces or fewer.
+      - So **the repair registered is the offset alone** (RAR-R23), with
+        the floor at 0. The window walk below the band is a search
+        question outside D.1.6.
+      - D.1.5's harm read of the clock pieces alone is registered as
+        RAR-R24.
+      **Both read 2026-10-24.**
+      - **RAR-R24, no harm:** d1's clock against 2.6.0 read +8.0 ± 8.9 and
+        +14.3 ± 11.2 Elo, so the clock is not RAR-R22's cost.
+      - **RAR-R23 fails:** the offset alone reads −4.4 ± 15.2 nElo at
+        `3+0.03` and **−25.0 ± 21.5 at `10+0.1`**, below the −18 harm
+        threshold, with the wire live and time a move equal. Nothing lands,
+        and the leaf is back in RESEARCH.
+      - **Maintainer decisions 2026-10-25:**
+        - Research the cause rather than close `NO_CHANGE`.
+        - The fallback stop at twice the target is open to re-evaluation if
+          it does not cost strength. It is a separate read, a cap and not a
+          fix; the card below is the fix.
+        - That read is registered as **RAR-R25**: one tune build, the stop
+          at twice the target against off, the probe, 2,000 games at
+          `3+0.03` and 1,000 at `10+0.1`, harm rules −13 and −18 nElo.
+          Both matches dry-ran clean. A pass makes it the default as an
+          interim cap, re-read when the search fix lands.
+        - **RAR-R25 read 2026-10-25: PASS.**
+          - The probe ended rec1 and rec3 at `180000+2000` in 19.7 s and
+            15.7 s, against 43.2 s and the hard maximum off.
+          - `3+0.03` read +4.3 ± 8.3 Elo (+8.0 nElo), and `10+0.1` +4.9 ±
+            9.8 (+10.7 nElo). 0 faults.
+          - The landing is the default `TmFailHighTarget` 20000 in its own
+            engine commit, with the changelog entry, at an unchanged
+            fingerprint. It is not yet made.
+          - D.1.2.1's cascade half is met by the probe; its rec2 half stays
+            with D.1.5's proved-mate stop.
+
+      The fit arm's lesson stands: a refused SPSA step and a 2-second idle
+      window are preflight matters, not results.
+      **Research card (2026-10-25): the won-ending tree, not the window or
+      the clock.**
+      - **Mechanism.** In rec1 Rarog's tree grows far faster per ply than a
+        search that converts the win:
+        - Rarog at 200 M nodes reaches depth 16–20 and proves no mate
+          (RAR-R23's traces).
+        - Basilisk's current head, with its clock stop removed, proves mate
+          in 25 at depth 26 in 73 M nodes. That is 0.56 × its maximum at
+          `60000+600` and 0.20 × at `180000+2000`; its 2026-10-24 probe is
+          in `D:\code\basilisk\tools\results\stall-probe-20261024\`.
+        - Stockfish's search over Rarog's evaluation reaches depth 34 for
+          about the same nodes (RAR-R19).
+        - The window walk RAR-R23 found is the symptom: the root score keeps
+          rising because each deeper tree finds more, and a 12 cp window
+          chases it.
+      - **The measured drivers** (RAR-R19, rec1 at depth 18, 19.1 M nodes
+        and selective depth 89 at the defaults):
+        - with LMR's correction term at 0: 4.1 M nodes, selective depth 39;
+        - with no reduced move searched deeper than its nominal depth:
+          3.2 M and 40;
+        - with at most 2 plies deeper: 2.7 M and 51.
+        - On bench, 443,080 of 4,216,025 reduced searches (10.5%) run
+          deeper than nominal, by 1.7 plies on average, outside the line
+          budget. The cap at 0 halves bench and the cap at 2 takes 21% off
+          it, so the deeper ceiling is a global setting. Neither has been
+          played in games.
+      - **A difference from Basilisk, read in both sources.**
+        - Basilisk caps its LMR correction term at 2,695, about 2.6 plies,
+          "the donor's largest value of the term"
+          (`search_kernel_core.cpp`).
+        - Rarog's term is `lmr_correction * |correction| / 1024` with no
+          cap (`late_move_reduction`, `src/search/node.rs`): about 0.33 ply
+          a 100 cp of correction at the default 3330.
+        - So a large correction turns a reduction negative, and the reduced
+          move is searched up to 4 plies deeper, past the line budget.
+          Basilisk allows 2 plus 1 at a PV node.
+      - **Competing hypotheses.**
+        - **H1:** the uncapped correction term in LMR drives the won-ending
+          explosion. A cap would be confined to nodes with a large
+          correction.
+        - **H2:** the deeper-search ceiling (+4 against Basilisk's +2/+3)
+          drives it, and is a global change.
+        - **H3:** the window walk is a cause of its own. Weakened, because
+          it shrinks wherever the tree does.
+        - **H4:** the evaluation's flatness. Refuted as a net fix by
+          RAR-R23.
+      - **Interactions.**
+        - C.10 fitted the LMR terms and their correction slope around the
+          uncapped term and the +4 ceiling.
+        - Correction history also feeds the singular margins
+          (`sing_double_corr`, `sing_triple_corr`) and the static
+          evaluation.
+        - The line budget's invariant is stated in source and broken by the
+          deeper plies (`CoreLmrDeeperBudget` restores it).
+        - The aspiration constants were fitted around the present tree.
+      - **Invariants.**
+        - A cap leaves every node with a correction under it unchanged,
+          checked by a fresh-process differential.
+        - The fingerprint moves and is re-declared on landing.
+        - No clock change is part of this card.
+      - **Cheapest discriminating tests** (zero games; they need an idle
+        host and wait for Basilisk's runs to finish):
+        1. A diag histogram of the correction term's size at LMR nodes, on
+           bench and on rec1/rec3. It says whether large terms are rare in
+           ordinary positions, so whether a cap is confined.
+        2. A tune-only cap on the term (0 = today), and node traces of rec1
+           and rec3 at 200 M nodes for a few cap values, with and without
+           the deeper ceiling at 2. Does rec1 reach a proved mate, as
+           Basilisk's does?
+        3. A fresh differential over bench for the chosen setting.
+      - **Falsifier and stop rule.**
+        - If no cap value ends rec1 and rec3 under the maximum in the probe
+          without the window term, H1 is false. H2 is then read the same
+          way.
+        - If what ends them changes more than half of the bench positions,
+          it is a global search change. Its read is an equal-speed
+          2,000-game harm read first, and then the `[-5,5]` gate.
+        - The line stops when that read is below −13 nElo or no setting
+          ends the stalls.
+      - **Why it could pay for itself.** If the escape is general, as 10.5%
+        of bench's reduced searches suggests, a fix that keeps lines inside
+        their budget could gain where the stalls themselves cost nothing.
+        Only games can say.
+      - **Read 2026-10-25, zero games** (instruments `c4da889`; evidence in
+        `analysis/artifacts/d16-cascade-2026-10-23/tree-growth-2026-10-25/`,
+        `RESULTS.md` against the frozen `PREDICTIONS.md`):
+        - **The term at reductions.** It takes a ply or more off 19.2% of
+          bench's reductions and 73.5% of rec1's. It drives 56.8% and
+          91.4% of their deeper searches.
+        - **Cap 1024** takes rec1 from depth 20 to 26 and rec3 from 21 to
+          24 inside 200 M nodes. With the term at 0 they reach 35 and 28.
+          Caps of 2048 and 3072 do not help, and neither does the deeper
+          ceiling at 2.
+        - **But cap 1024 changes 24 of 40 bench positions**, 32-piece
+          openings among them (bench 11,480,295).
+        - **No configuration proves a mate in the budget.** Each ends in
+          the window walk as the win resolves, which the stop at twice the
+          target now caps in play.
+        - **Reading:** H1 is supported as the driver, but the term drives
+          ordinary positions too, so the working cap is a global search
+          change. H2 is refuted. Predictions 2 and 3 held; 1 and 4 missed,
+          in mechanism.
+        - **By the stop rule,** the cap is read at equal speed first:
+          **RAR-R26**, registered and dry-run clean.
+      - **RAR-R26 read 2026-10-25: no harm.**
+        - `3+0.03` −1.4 ± 9.0 Elo, `10+0.1` +1.7 ± 11.5, 0 faults. The cap
+          searched 0.09 and 0.24 ply deeper at equal time.
+        - **The timed probe, run before any gate:**
+          - The cap alone ends rec3's single long window at `180000+2000`
+            (5.9 s, against the maximum uncapped). That is the case the
+            stop cannot reach.
+          - But it takes rec1 into the window walk at the win's resolution
+            sooner, and that walk runs to the maximum without a stop.
+          - With the stop at twice the target, every row ends at or under
+            its optimum: rec1 0.78 × and rec3 0.42 × at `180000+2000`,
+            against 1.30 × and 1.10 × for the stop alone.
+        - **So the fix is the pair:** the cap for the tree's growth, the
+          stop for the walk once the win resolves.
+        - **Next:** the gate, a PGO arm with the cap baked against `d1`'s
+          head (which has the stop), `[-5,5]` with its cap, the probe on
+          the pair. Registered before any game; maintainer-run overnight.
+        - **Registered 2026-10-25 as RAR-R27:**
+          - **Arm:** `7703768` on the throwaway branch `d16-gate3`
+            (recipe `analysis/arm_patches/7703768-rar-r27-d16gate3.patch`,
+            `rarog-d16gate3-pext-pgo.exe`, bench 11,480,295).
+          - **Head:** `rarog-d1head2-pext-pgo.exe` at `6253027`, bench
+            13,987,223.
+          - **Reads:** sprt-repair at `3+0.03`, cap 20,000 pairs, seed
+            20261111; 1,000 games at `10+0.1`; the probe on both binaries.
+          - **Prediction:** −1 ± 6 Elo.
+          - **Dispositions:** H1 with the probe passing lands the cap and
+            the cleanup; H0 closes D.1.6 on the stop.
+        - **RAR-R27 read 2026-10-26: H0**, −1.2 ± 3.0 Elo; `10+0.1` +1.7 ±
+          11.4; the probe PASS on both binaries. The cap does not land.
+          D.1.6 closes on the stop at twice the target after D.1.6.2's
+          cleanup. Retry trigger: an LMR refit with the correction slope
+          free.
+        - **D.1.6.1 Research: the cascade's mechanism in Rarog's loop, the donors' devices, the cheapest prototype and its zero-game reads, the registration — `R3`, DONE 2026-10-23.**
+          The research card (mechanism, interactions, invariants, falsifier)
+          per AGENTS, from the diag traces of rec1 and rec3 (RAR-R13's
+          method) and the activation replay (29% of first-move searches
+          fail high past the target). A prototype behind a tune switch (the
+          re-search's depth reduction as a coordinate, 0 = today) is allowed
+          for the zero-game reads: the probe with the clock stop off, the
+          bench and counter differential against the head
+          (`tools/diag/bench_counters.py`, `phase4_differential.py`) and the
+          fail-high rate per iteration. Ends `READY_FOR_IMPLEMENTATION` with
+          the device, its seeds, the gate's registration and frozen
+          prediction, or `NO_CHANGE` with the evidence.
+          **Read 2026-10-23, `MORE_RESEARCH` (RAR-R19,
+          `docs/experiments/RAR-R19.md`).** On the 2.6.0 engine every root
+          fail-high returns exactly its beta, so a cascade's length is set
+          by the window schedule alone (deltas 12, 27, 52, 93, 161, 273,
+          458, 763 …; re-centring on the failing score would save at most
+          one re-search) and each re-search costs more than the last: rec1's
+          depth 19 runs 7 fail-highs and 75 M nodes without completing,
+          rec3's depth 21 five and 18.5 M. The device is one ply off a root
+          window search per fail-high so far in the iteration, the exact
+          window included, floor depth 1, reset each iteration, the nominal
+          depth reported and sampled (`AspFailHighReduce`, tune-only,
+          default 0, engine `027a604`; bench at 0 unchanged). Reads: bench
+          13 at 1 is 8,510,754 (0.61 ×; the fail-high count unchanged, the
+          fail-high nodes −45%, and the exact window after fail-highs,
+          searched k plies shallower, −49%); rec1's depth 19 completes in
+          1 M nodes; the idle-host probe with no clock stop ends rec3 at
+          0.48 × its optimum at both clocks where the 2.6.0 engine runs it to
+          the hard maximum (30.3 s, 97.9 s), rec1 at 0.83 × at `180000+2000`
+          (head 2.51 ×) and 2.70 × at `60000+600` (head 0.91 ×, its cascade
+          completing just past the target); at `3000+30` +0.68 nominal ply
+          for +6.9% first-move spend, fail-highs an iteration unchanged.
+          **The same probe on the PGO arm (`2d013c8`, 1.3 × faster) runs
+          rec3 into the hard maximum at `180000+2000`:** it crosses the
+          target one iteration later and depth 24's cascade costs more than
+          the 90 s left. The frozen stop rule fires and the leaf stays in
+          research. Why: a cascade's window count is the schedule's and
+          unchanged (7, 7, 4, 4); in these endings a ply of depth saves about
+          20% of a window, not the bench's 2.5 × (27 → 21 → 18 → 15 M nodes
+          over four plies); and the next iteration's first window starts at
+          full depth over a TT holding only the shallower result. The
+          depth reduction is the search half of both donors' device; the
+          other half is clock-coupled in both (Stockfish stops deepening at
+          half the target and recovers depth over the next iterations).
+          **Maintainer decision 2026-10-23:** complete the device, then gate
+          it; the gate is not run on the partial device. **Node-indexed
+          reads at 200 M nodes (RAR-R19):** with Stockfish's recovery as a
+          second switch (`AspFailHighRecover`, engine commit named in
+          RAR-R19) the costliest iteration is still over 150 M in both
+          positions; with the window opened after three or four fail-highs
+          (`AspMaxFails` 3, 4, alone and with the reduction) one open window
+          costs 70–190 M. **Every root-loop device is refuted as the fix.**
+          Depth for depth Rarog spends 7–57 × Stockfish 19's nodes on these
+          positions: its root score rises with every ply (rec3 706 → 1149,
+          rec1 799 → 2882) where Stockfish's is flat (484–573), and its
+          lines reach the ply cap (seldepth 89 at depth 18 against 26). The
+          cascade is the loop following a drifting score through a tree that
+          grows to the cap; the cause is upstream of the root loop and is
+          the re-scoped question: the static evaluation along the PV against
+          the search score by depth, the extension and quiescence
+          composition at stride 1, and Stockfish's classical evaluation in
+          Rarog's search on these positions (RAR-O07's instrument). The gate
+          (D.1.6.3) stays held; the research recommends the stop at twice
+          the target (RAR-R18) as the clock's robustness piece meanwhile.
+          **Maintainer decision 2026-10-23: the stop stays off; the
+          research continues.** **Read 2026-10-23 (RAR-R19, zero games):**
+          the oracle (Stockfish's search over Rarog's frozen evaluation)
+          reaches depth 26 on rec1 in 3.1 M nodes with a flat score where
+          Rarog spends 19 M on depth 18 and its score doubles, so the drift
+          and the cost are the search, not the evaluation. In the cascade
+          iteration a third of all reduced moves are searched deeper than
+          their nominal depth (`reduced_depth`'s negative reductions, up to
+          two plies above `new_depth` plus a PV node's two, outside the line
+          budget; diag counters `d428c00`); zeroing the correction-history
+          term alone shrinks rec1's depth 18 from 19 M to 4 M nodes,
+          selective depth 89 to 39, score 1845 to 1184, while every other
+          term moves the tree three to a hundred times at the ply scale.
+          A tune-only cap on the deeper searches (`CoreLmrDeeperCap`, 4 =
+          today, `ddbe1f2`) at 0 shrinks the
+          fixed-depth trees three to six times and halves bench 13
+          (6,639,253), but the explosion returns seven plies deeper when the
+          search proves the win (rec3 depth 27: 100 M nodes). **Read one
+          level further (RAR-R19, maintainer decision to continue):** the
+          Rarog-against-oracle counter differential is 3.4 × on the
+          standard suite and on these endings at depth 14 but 20.6 × at
+          depth 18; the oracle to depth 34 proves rec1's win for the same
+          order of nodes (100 M to score 2880 against Rarog's 154 M) in
+          iterations that grow 1.3 × a ply, where Rarog's jump 26–245 × at
+          the iteration that first resolves the win. A tune-only switch that
+          charges deeper reduced searches to the line budget
+          (`CoreLmrDeeperBudget`, `0366884`) restores the stated invariant
+          (selective depth 127 → 52), reproduces the oracle's depth-18 score
+          on rec1 at 7 × its nodes instead of 51 ×, and costs 30% of bench,
+          but the lump remains: nine to eleven fail-high windows walking the
+          schedule from 888 to 2818 in one iteration, because the root
+          returns exactly beta on every fail-high (fail-hard in effect; the
+          five fail-high interpolations toward beta are cleared, all at 0
+          the root still returns the schedule's beta) where the oracle's
+          fail-soft root and re-centring window climb the same range in one
+          or two windows an iteration over eight iterations. **Read
+          2026-10-23 (RAR-R19, maintainer decision to continue):** the
+          fail-hardness is quiescence returning `alpha` on a fail-low (93%
+          of bench's root fail-highs are exactly beta; ply-2 move-loop
+          cutoffs two-thirds on the edge). Fail-soft quiescence
+          (`QsFailSoft`) and re-centring (`AspRecentre`), the donors' two
+          halves, together still walk eight or nine windows in the
+          resolving iteration (the root's overshoot does not reach it;
+          bench 1.32 ×, fail-soft alone 1.50 ×, re-centring alone 0.74 ×
+          as a faster schedule). The line budget's size
+          (`CoreExtensionBudgetEighths`) at half smooths rec3's score path
+          (steps of 130 cp, largest iteration 86 M) but not rec1's, which
+          finds its win later and still in one iteration (1274 → 7000,
+          thirteen windows, over 180 M), at bench 0.50 ×. **Every
+          single-device read is exhausted:** the stall is a won ending
+          whose conversion is one forced line, seen all at once by the
+          first iteration deep enough, and the window walking that jump in
+          eight to thirteen bound-proofs. Open: a fit of the fail-high
+          schedule under the bounded tree; the per-ply differential of the
+          oracle's gradual score path against Rarog's step; the
+          clock-coupled half. Strength candidates of their own for a
+          `[-5,5]` gate: `CoreLmrDeeperBudget` (an invariant restored,
+          bench 0.70 ×) and fail-soft quiescence (bench 1.50 ×). All
+          switches on `d1` at their neutral defaults. **Read 2026-10-23
+          (RAR-R19, maintainer decision to continue; the connected features
+          against the donors, and the HCE):** the HCE values a won ending
+          flat (K+R+B against K eight pawns; Stockfish 11's classical
+          evaluation 55, a known win), so the search carries the win's value
+          across the horizon and the score climbs only as deep lines reach
+          the promotion or the mate; with Stockfish 11's own evaluation the
+          oracle resolves rec1 at depth 21 for 0.7 M nodes. A known-win
+          offset alone (`mopup_known_win`, an evaluation parameter, 0)
+          makes rec1 worse (cascades of 7–16 windows, bench 1.29 ×) because
+          the first window is 12 wide whatever the score; **with the
+          donors' score-scaled first window** (`AspDeltaSquareDiv`,
+          `ff14793`) **the cascade is gone:** every iteration closes in one
+          or two windows and the score climbs gradually, the oracle's shape,
+          at bench 0.73 ×. What remains is one window's cost at depth 20 and
+          beyond in these endings (rec3's depth 21: a single exact window
+          over 168 M nodes, 100 × the oracle's iteration), the tree's
+          composition (less pruning per node, twice the singular attempts,
+          effective depth twice nominal), a search cluster of its own. The
+          candidate cluster for D.1.6.3: the known-win offset with the
+          score-scaled window and the line budget, after a fit of the
+          aspiration and deeper-search constants around them, gated `[-5,5]`
+          with the probe; the evaluation half needs the maintainer's leave
+          under the freeze. The clock-coupled half stays recommended for
+          D.1.5 meanwhile. **Maintainer decision 2026-10-23: the whole
+          fix, every part, now, verified.** The evaluation half is allowed;
+          the fourth part is Stockfish's deepening freeze past half the
+          target (`TmDepthFreeze`, `097ea5d`). The probe with no clock stop
+          (RAR-R20): parts 1–3 end every probed stall under the maximum
+          (rec3 at `180000+2000` 30.8 s against 98.0 s), all four end every
+          move within its optimum (the PGO arm: rec3 2.5 s and 6.9 s, rec1
+          2.3 s and 8.3 s, against the head's 30.3, 98.0, 4.4 and 37.5 s).
+          **Done 2026-10-23, `READY_FOR_IMPLEMENTATION`:** the cluster, its
+          arm `6fd195e` (bench 8,996,837), its probe, its wire check and its
+          gate are RAR-R20's; the research recommends a fit of the
+          aspiration and reduction constants around the cluster before the
+          gate.
+        - **D.1.6.2 Implementation: the cleanup, the unused D.1.6 instruments removed and the stop at twice the target kept — `I2`, DONE 2026-10-26.**
+          **Done 2026-10-26 (`42b001f`):**
+          - The 13 instrument commits from `027a604` to `c4da889` are
+            reverted, `a79efe4` excepted: 680 lines removed, the stop
+            untouched.
+          - Bench is 13,987,223 / EBF 2.565 as before.
+          - fmt is clean, clippy with all features and targets has 0
+            warnings, and the tests pass (413 debug, 414 release, 0
+            failed; the six removed were the instruments' own).
+          - The `d16fix` SPSA group stays valid: `arms.txt` binds it to
+            its own arm.
+          **Re-scoped 2026-10-26 (RAR-R27, H0):** no repair lands. The step
+          removes the D.1.6 instruments no default uses, as D.1.6.2's
+          register row lists them. A coordinate whose default is today's
+          behaviour returns to its constant, `TmFailHighTarget` stays at
+          twice the target, and the fingerprint stays 13,987,223. It is
+          verified as a behaviour-neutral change by that fingerprint plus
+          the stop's test. The history follows.
+          **Re-scoped 2026-10-24 to the offset alone (RAR-R23).** On its
+          pass the landing on `d1` is:
+          - `MopupKnownWin` 5826 as the default;
+          - the fingerprint re-declared in GUIDE and the PLAN checkpoint:
+            16,175,922 / EBF 2.580 on the tune build, with the landed
+            production build's own bench recorded then;
+          - `TmFailHighTarget` and its test deleted;
+          - the unused instruments removed: `AspFailHighReduce`,
+            `AspFailHighRecover`, `AspRecentre`, `QsFailSoft`,
+            `CoreLmrDeeperCap`, `CoreExtensionBudgetEighths`,
+            `AspDeltaSquareDiv`, `CoreLmrDeeperBudget`, `TmDepthFreeze` and
+            `AspKnownWinWindow`. A coordinate whose default is today's
+            behaviour returns to its constant;
+          - the user-facing changelog entry: a fixed defect, the engine no
+            longer runs a won ending against a bare king into its time
+            limit.
+
+          On a fail nothing lands; RAR-R23's dispositions name the two
+          closes. The history follows.
+          `READY_FOR_IMPLEMENTATION` 2026-10-23. The cluster under gate is
+          the arm `6fd195e` (recipe
+          `analysis/arm_patches/6fd195e-rar-r20-d16fix4.patch`, bench
+          8,996,837): the four switches of RAR-R20 baked on as the defaults
+          (`mopup_known_win` 6000, `AspDeltaSquareDiv` 10193,
+          `CoreLmrDeeperBudget` 1, `TmDepthFreeze` 5000), version
+          `2.7.0-dev+d16fix4`. On H1 the landing on `d1` is: those four
+          defaults (after the fit, if it ran, its values), the fingerprint
+          re-declared in GUIDE and the PLAN checkpoint, `TmFailHighTarget`
+          and its test deleted, the instruments the cluster does not use
+          removed (`AspFailHighReduce`, `AspFailHighRecover`, `AspRecentre`,
+          `QsFailSoft`, `CoreLmrDeeperCap`, `CoreExtensionBudgetEighths`,
+          the arm `2d013c8` and its binary), the MultiPV loop given the same
+          `Aspiration` form, and the user-facing changelog entry (a fixed
+          defect: the engine no longer runs a won ending into its hard
+          maximum). On H0 nothing lands and the fit is the next step.
+        - **D.1.6.3 Gate: the repairs' reads and gates, the probe and the differential — `V`, DONE 2026-10-26.**
+          **RAR-R27 read 2026-10-26: H0.**
+          - The LMR correction cap at one ply against `d1`'s head, both with
+            the stop: −1.2 ± 3.0 Elo (−2.2 ± 5.3 nElo) at 8,334 pairs, LLR
+            −2.99; `10+0.1` +1.7 ± 11.4; 0 faults.
+          - The probe passed on both binaries; on the PGO head the stop
+            alone ends every row (rec1 at `180000+2000` 1.39 × its
+            optimum).
+          - The cap does not land, and D.1.6 closes on the stop after
+            D.1.6.2's cleanup.
+          **Registered 2026-10-24 as RAR-R23**, before any game:
+          - **The read:** the offset alone (`MopupKnownWin=5826`) against
+            the defaults on one tune build, `rarog-d16inst3-tune.exe`
+            (`3f4dcf4`, bench 13,987,223), Colosseum `match
+            -CategoricalTuneBuild`. 2,000 games at `3+0.03` (seed
+            20261071) and 1,000 at `10+0.1` (seed 20261072).
+          - **The harm rules:** −13 nElo at `3+0.03` and −18 nElo at
+            `10+0.1`, AGENTS' repair case 2 with the maintainer's longer
+            control.
+          - **The correctness reads, done:** the probe has no row at the
+            maximum; the differential confines the change to positions of
+            19 pieces or fewer whose trees reach a bare king.
+          - **Predictions:** −2 ± 10 nElo at `3+0.03` and 0 ± 14 at
+            `10+0.1`.
+          - **Command:** `run_r23.ps1 -Read stc|ltc`, dry-run clean.
+          - **Read 2026-10-24, FAIL:** −2.3 ± 7.7 Elo (−4.4 nElo) at
+            `3+0.03` passes; −11.1 ± 9.6 Elo (**−25.0 ± 21.5 nElo**) at
+            `10+0.1` is below −18, which is harm. 0 faults. The `stc` run
+            was interrupted at 79 games and resumed by the same command.
+            Nothing lands.
+
+          The earlier gate's history follows.
+          The first registration (RAR-R19, the reduction arm `2d013c8`,
+          seed 20261040) is withdrawn: its arm was a partial device and its
+          probe reached the maximum. **Registered 2026-10-23 as RAR-R20**,
+          before any game: `rarog-d16fix4-pext-pgo.exe` (`6fd195e`, bench
+          8,996,837, the four parts) against `rarog-d15head-pext-pgo.exe`
+          (`468ed7b`, 13,987,223), Colosseum `sprt-repair`, seed 20261042,
+          run directory `rar-r20-gate`; then `match-fixed-ltc` 1,000 games
+          (seed 20261043) and the probe on both binaries;
+          `run_r20.ps1 -Read wire|probe|gate|ltc`. Prediction, frozen,
+          unfitted: −6 ± 8 Elo, H1 0.30, cap 0.25, H0 0.45; the research
+          recommends the registered fit before the gate. **Verified
+          2026-10-23 (RAR-R20):** the PGO arm ends seven of eight probed
+          moves within its optimum and rec3 at `180000+2000` still reaches
+          the maximum (one window at depth 24, the search-cluster half);
+          the 200-game wire check reads −52.5 ± 23.9 unfitted, while at
+          equal speed every part reads within noise of even and the PGO
+          loss carries 5% less time a move and 5% lower in-game speed.
+          **The road to the gate is RAR-R21, staged:** three 2,000-game
+          equal-speed reads (the four parts, parts 1–3, the freeze alone)
+          decide whether SPSA block 1 over the `d16fix` surface (fifteen
+          coordinates, 60,000 games, the fit arm `217125b`) runs at all;
+          the gate is re-registered on an arm rebuilt with the fitted
+          values. The maintainer's commands are `run_r21.ps1 -Read
+          all4|nofreeze|freeze|fit`.
+          H1 lands it (harm near −5 excluded); H0 refutes it and the
+          fallback is read. The fail-high stop's spin is deleted when the
+          fix lands. **Run 2026-10-24 as RAR-R22** on the arm `584c02d`
+          (the fifteen fitted values and the budget baked, bench
+          9,013,917): the probe eight of eight within the optimum, the
+          wire check faultless, the SPRT **H0 at 1,377 pairs, −7.4 ± 7.5**,
+          the `10+0.1` read +2.1 ± 11.6. Nothing lands; D.1.6 returns to
+          research (above), and this gate is re-registered on the
+          surviving cluster.
 - **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
@@ -652,33 +1710,136 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
   engine by 5 Elo or less, C.13.7's contempt card (form 1, a search draw
   offset) is the registered lever, measured in this gauntlet with and
   without it (`analysis/c137_contempt_card_2026-10-16.md`).
-- **E.3 Release 3.0.0 (E.2 met) or 2.7.0 through the tag-driven flow — `M`/`V`.** Version, changelog, release notes, fmt, debug and
+- **E.3 Release 2.7.0 through the tag-driven flow; 3.0.0 is reserved for the first NNUE release — `M`/`V`.** Version, changelog, release notes, fmt, debug and
   release suites, clippy, feature builds, fingerprint, PGO assets, ISA
   verification, CI matrix, tag and publish on maintainer instruction. Version
-  is 3.0.0 if E.2 is met, else 2.7.0 (2.5.0 was cut at B.10 and 2.6.0 from
-  the C head ahead of E, maintainer decisions 2026-10-03 and 2026-10-22). The release is cut through the
+  is 2.7.0 whatever E.2 reads (maintainer decision 2026-10-22: Rarog 3 is
+  the first NNUE Rarog, F.9; E.2's result is recorded, not a version number;
+  2.5.0 was cut at B.10 and 2.6.0 from the C head ahead of E, maintainer
+  decisions 2026-10-03 and 2026-10-22). Later classical gains (E.4, F.2.1)
+  release as 2.8.0 and onward under Phase F's rule. The release is cut through the
   tag-driven flow of **E.3.1**, which also carries the two workflow checks
   this release owed (tag equals version; one fingerprint asserted across the
   matrix) and may land any time earlier.
+    - **E.3.0 Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — `R2`, then `M`.** A
+      small research step with its implementation. Added 2026-10-23 by
+      maintainer decision. E.3.2 does not cut until it closes. Known
+      evidence (`analysis/originality_review_2.6.0_2026-10-22.md`, on the
+      2.6.0 source):
+      - The code is Rarog's own. Raw shared token runs with Reckless cover
+        0.34% of Rarog, against 96% between two Reckless versions.
+      - The evaluation weights are Rarog's own fits, with no Stockfish 11
+        table exact or scaled.
+      - Two groups of donor material were copied unchanged:
+        - Stockfish's time budget: about 17 constants in
+          `src/search/time.rs`, which RAR-R14 and RAR-R15 kept as
+          "Rarog's Stockfish-shaped budget".
+        - Reckless's move ordering, history, correction and TT-cutoff
+          updates: 37 of the 50 hard-coded search constants of 150 or
+          more, with their control flow, adopted at B.2.
+      - The evaluation design is Stockfish 11's.
+      - Fathom (MIT) does the Syzygy probing and is not named.
+      - The README says only "inspiration", and PROCESS's independence
+        boundary says constants cross as refitted seeds. Both are out of
+        step with the shipped code.
+      - The maintainer's move-similarity screen (`tools/diag/sim_test.py`,
+        2,000 positions at 100 ms, 2026-10-23) puts Rarog at 56.4%
+        against Stockfish 11, 57.7% against Stockfish 10 and 54.2%
+        against Reckless. Its row runs 50.6–57.7 across nine engines.
+        The related controls read Stockfish 10–11 67.0% and Houdini 6–Fire
+        68.8%. Rarog plays like an unrelated engine against both donors.
+      - Venue rules:
+        - CCRL, CEGT and SPCC do not judge originality.
+        - TCEC sanctioned code copied *covertly* (Houdini and Fire, 2020).
+        - ICGA rule 2 (2019) requires every code and data source to be
+          named at registration and voids undeclared derivatives.
+
+      The step:
+      1. Rerun `tools/diag/originality_scan.py`,
+         `originality_constants.py` and `originality_eval.py` on the
+         release candidate's source, plus the screen if search or
+         evaluation changed since 2.6.0, so that the disclosure describes
+         2.7.0, not 2.6.0.
+      2. Settle the licence with the maintainer. Reckless is AGPL-3.0,
+         and the closely ported blocks are where a derivative-work
+         argument could be made. The options:
+         - credit Reckless and ask its authors (the maintainer sends);
+         - relicense Rarog as AGPL-3.0-or-later;
+         - rewrite and refit those blocks.
+
+         The maintainer chooses; it is not legal advice.
+      3. Write the disclosure where each fact belongs:
+         - README's Acknowledgements, short and for users, naming
+           Stockfish 11's evaluation design, Reckless's search, history
+           and move ordering with some constants unchanged, Stockfish's
+           time budget, and Fathom;
+         - PROCESS's independence boundary, saying what crossed unchanged
+           and that unchanged material is disclosed;
+         - the review, updated for the release head, which also serves as
+           the donor list for an ICGA-style registration.
+      4. Ship the GPL text and Fathom's MIT notice with the release
+         binaries (`release.yml` publishes bare executables today), with
+         a `CHANGELOG.md` entry if the assets change.
+
+      Falsifier and stop rule: a rerun that finds no group beyond the two
+      above leaves the disclosure as drafted. A new group is added to it,
+      not removed by tuning here. Refitting the copied constants is out of
+      scope: that is a strength experiment that needs its own registration
+      and gate. Closes when the README, PROCESS, the licence decision, the
+      shipped notices and the updated review have landed.
     - **E.3.1 Tag-driven release flow — `I1`, DONE 2026-10-05.** `release.yml`
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is
       `docs/PROCESS.md` *Release*; the leaf's text is in `docs/archive/PLAN-closed-2026-10-05.md`.
-    - **E.3.2 Release cut: version 3.0.0 (E.2 met) or 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
-      E.3.1 closed (2026-10-05): the version from `X.Y.Z-dev` to 3.0.0 if
-      E.2 is met, otherwise 2.7.0, behaviour-neutral with the fingerprint
+    - **E.3.2 Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
+      E.3.1 closed (2026-10-05): the version from `2.7.0-dev` to 2.7.0,
+      behaviour-neutral with the fingerprint
       held; `CHANGELOG.md`'s `[Unreleased]`, kept as changes landed,
       reviewed and dated; fmt, clippy, debug and release suites, feature
       builds; GUIDE's checkpoint marks the release; the PR to `master`,
       squash-merged once `CI` and `Release` are green; the
       `vX.Y.Z` tag pushed on instruction through E.3.1's workflow, by
       PROCESS *Release*.
+- **E.4 The king-danger index rebuilt in the donor's structure; the classical line's next release if it wins — `R2` card, then `I2`/`V`.** The
+  one hand-crafted lead Phase C left (added 2026-10-22, maintainer
+  decision: classical work resumes only after Phases D and E). Evidence:
+  RAR-E72 read the donor's king signal in the middlegame band as
+  conditioning, +0.28% static over the comparator; RAR-E73 refitted our 23
+  danger coordinates from the donor's seeds and lost held-out loss, closing
+  the lead as the index's structure, not its weights; RAR-E21 put 92% of the
+  king residual in the danger map, its safe checks and weak ring foremost.
+  Independent of Phase F's data, so it runs after E.3's release and before
+  or beside F.0. Research card first: which structural difference carries
+  the signal, the cheapest static falsifier, the unit's handoff. Then the
+  unit in Rarog's own structure, fitted on `hce-v4-tb` by C.3's pipeline and
+  gated by PROCESS's *Evaluation change under a fitted search* (gate 1
+  `[0,3]`, the margin block if flagged, gate 2), with RAR-O07's same-search
+  meter re-read at the close. Prior from Phase C's units: +10 to +25 Elo,
+  frozen with its band at the registration. Accepted, it is released as the
+  classical line's next version through E.3.1's flow and becomes the
+  classical reference of Phase F's rule; `NO_CHANGE` closes the family work
+  and leaves F.2.1 as the classical programme's last experiment.
 ## Phase F — NNUE (own data only)
 
 **Rules.** Own data only, generated by Rarog's classical head and later by its
 NNUE heads. Reckless is the runtime and trainer-pipeline donor; the
 architecture ladder is ours. The classical evaluation stays in the tree as the
 datagen baseline and the fallback until F.9 replaces it in releases.
+
+**The classical evaluator in releases** (maintainer's rule, 2026-10-22; the
+read and the reference are this document's proposal until a release applies
+them): the classical evaluation ships as a selectable evaluator only while it
+is the strongest classical Rarog measured. Each release whose search changed
+reads its classical arm against the strongest classical release in a
+2,000-game STC match; no measured loss keeps the option, a measured gain
+makes that release the classical reference, and a loss whose interval
+excludes zero drops the option from that release, so the classical line ends
+at the last release that carried it, which stays published. The classical
+arm gets no tuning of its own beyond one per-evaluator overlay of the
+scale-sensitive search coordinates (margins, the lazy threshold, correction
+scale, quiescence thresholds), fixed when F.6 refits the search; a search
+change that strands that overlay is expected to end the line. One binary
+with an evaluator option, never two release builds.
 
 - **F.0 Investigation: board events, accumulator ownership, trainer choice, data format, first architecture — `R3`.**
   Board event interface and accumulator ownership (dirty pieces, per-thread
@@ -706,6 +1867,22 @@ datagen baseline and the fallback until F.9 replaces it in releases.
   The generator follows F.0's contract; node-limited play with soft and hard
   caps and inverse-use-count book sampling are the reference forms
   (`analysis/gyatso_read_2026-09-26.md`).
+    - **F.2.1 Classical refit on search-visited data: the frozen HCE's whole surface refitted on F.2's dataset, gated as an evaluation change; the classical line's release if it wins — `V`.** The
+      lever Phase C's review left (`analysis/phase_c_review_2026-10-19.md`,
+      question 3; added 2026-10-22 by maintainer decision): the same-search
+      meter's remaining 99 Elo (RAR-O07) is not in the families, which read
+      at static parity with the donor on played positions (RAR-E70), but in
+      how the evaluation scores the positions the search visits. F.2's data
+      is those positions with deep labels, and `tools/texel` (C.2's
+      protocol) reads it at no new instrument cost. The whole surface, E.4's
+      king unit included, is refitted on F.2's data, screened statically on
+      `hce-v4-tb`'s held-out rows and the frozen test, then gated by
+      PROCESS's *Evaluation change under a fitted search* against the
+      strongest classical release, with RAR-O07's meter re-read at the
+      close. Prediction and band frozen at the registration; a fit that
+      loses the screen or the gate closes `NO_CHANGE` and ends the classical
+      programme, a win is released as the classical line's next version
+      and becomes the reference of this phase's rule.
 - **F.3 Trainer hardening and baseline nets, two seeds per configuration — `I2`, then `V`.** Deterministic
   pipeline, two seeds per configuration, validation selects, frozen test
   reports once.
@@ -722,7 +1899,7 @@ datagen baseline and the fallback until F.9 replaces it in releases.
   Reckless, one axis at a time; each net gated against the previous.
 - **F.8 Data frontier: on-policy refresh, deduplication, hard-position mining — `V`.** On-policy refresh with the strongest net,
   deduplication, hard-position mining; repeat while a cycle accepts.
-- **F.9 NNUE release: beat the classical release at STC, LTC and 4T; platform matrix — `M`/`V`.** Beat the classical release at STC, LTC
+- **F.9 NNUE release, 3.0.0: beat the classical release at STC, LTC and 4T; platform matrix — `M`/`V`.** Beat the classical release at STC, LTC
   and 4T; platform matrix; publish.
 - **F.10 CCRL top-100 gate — `V`.** Submit; the list decides. Shortfall
   measured against the pool and fed back into F.7/F.8.
@@ -767,7 +1944,9 @@ and adjudication never change after games are seen.
 
 - A release ships only from a head whose every accepted cluster has a ledger
   row and whose deficit meters are recorded at the checkpoint before it.
-- 3.0.0 requires the E.2 gate met; 2.4.0 requires at least +40 Elo at STC over
+- 3.0.0 is the first NNUE release (F.9; maintainer decision 2026-10-22,
+  replacing "3.0.0 requires the E.2 gate met": the classical stage releases
+  as 2.7.0 and onward, and E.2's result is recorded, not a version); 2.4.0 requires at least +40 Elo at STC over
   2.3.2 with the lower bound above +25, positive LTC and 4T lower bounds.
 - 2.5.0 adopts 2.4.0's rule against 2.4.0 (maintainer decision 2026-10-04)
   and meets it: STC +272.4 (95% about +245 .. +308, RAR-M64), `10+0.1`

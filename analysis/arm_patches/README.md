@@ -44,10 +44,11 @@ under `refs/tags/arm/*`:
 (proved 2026-10-05 into an empty repository: all six patches apply). A
 prune may drop them from the working repository, so fetch them before
 applying one of those patches. Those arms change the
-2.4.0 search, which B.8 deleted. The last three rows' bases left `dev`
-when it was reset to `master` after the 2.5.0 squash merge;
-`archive/pr2-version-2.5.0` holds them, and `master` will once the next
-merge commit lands.
+2.4.0 search, which B.8 deleted. The RAR-S76, RAR-S82 and RAR-S84 rows'
+bases (`df6308e`, `7ba3a1b`, `f5d16d8`) left `dev` when it was reset to
+`master` after the 2.5.0 squash merge; they are held
+under PR #2 (`refs/pull/2/head`), whose tag `archive/pr2-version-2.5.0`
+was deleted on 2026-10-22.
 
 ## What was deliberately NOT preserved, and why
 

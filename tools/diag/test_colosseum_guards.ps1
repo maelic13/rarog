@@ -126,6 +126,16 @@ try {
 
     Invoke-Case -Name "control: a clean gate resolves" -Expect "" -Arguments $base
 
+    # A multi-thread match must give each game a physical core per thread.
+    $fourThreads = Merge-Arguments $base @{
+        Mode = "match"; Games = 100; Threads = 4; Hash = 512; Concurrency = 3
+        OptionsA = @("Threads=4"); OptionsB = @("Threads=4")
+    } @("MaxPairs")
+    Invoke-Case -Name "four threads on one core a game" -Expect "cores_per_game is 1 for Threads 4" `
+        -Arguments $fourThreads
+    Invoke-Case -Name "control: four threads, four cores" -Expect "" `
+        -Arguments (Merge-Arguments $fourThreads @{ ExtraArgs = @("--cores-per-game", "4") })
+
     $stale = Copy-Arm -Source $EngineA -Name "stale"
     Set-Sidecar -EnginePath $stale -Fields @{ binary_sha256 = ("0" * 64) }
     Invoke-Case -Name "stale sidecar hash" -Expect "PROVENANCE MISMATCH" `
@@ -387,6 +397,62 @@ try {
                 throw "$($row[0]) exit $($row[1]) resolved to $($resolved.Kind)/$($resolved.Verdict)"
             }
         }
+    }.GetNewClosure()
+
+    # The runner's end-of-run results reach the manifest as its own figures
+    # (run-record schema 6), and an older record says it has none.
+    $schema6 = @'
+{"schema_version": 6, "results": {
+ "by_colour": [{"engine": "cand", "as_white": {"wins": 4, "draws": 8, "losses": 2, "games": 14, "score": 0.5714},
+                "as_black": {"wins": 1, "draws": 8, "losses": 5, "games": 14, "score": 0.3571}}],
+ "terminations": {"overall": {"Checkmate": 12, "Threefold": 12}},
+ "faults": {"faults": [{"engine": "cand", "kind": "crash", "phase": "play", "termination": "Crash", "scored_as": "loss", "games": 1}],
+            "time_losses": [{"engine": "cand", "games": 2}, {"engine": "base", "games": 0}], "infrastructure_faults": 0},
+ "telemetry": {"engines": [{"engine": "cand", "annotated_moves": 1644,
+   "depth": {"status": "available", "mean": 15.3966}, "non_mate_depth": {"status": "available", "mean": 13.889, "samples": 1559},
+   "nodes": {"status": "available", "mean": 178234.7}, "elapsed_seconds": {"status": "available", "mean": 0.0719},
+   "nodes_per_second": 2477303.07,
+   "harness_overhead_ms": {"status": "available", "p50": 1.0, "p99": 9.0, "p999": 60.0, "max": 82.0, "over_margin": 4, "moves_with_margin": 1644}}]},
+ "tournament": {"pairs": [{"engine": "cand", "opponent": "Houdini 3", "wins": 248, "draws": 88, "losses": 64, "games": 400,
+                           "elo": 172.78, "elo_lower": 141.49, "elo_upper": 206.92, "pentanomial": [4, 6, 60, 62, 68]}],
+                "standings": [{"rank": 1, "name": "cand", "rating": 3428.82, "error_95": 19.18, "fixed": false, "games": 2400},
+                              {"rank": 2, "name": "Houdini 3", "rating": 3287.0, "error_95": null, "fixed": true, "games": 400}]}}}
+'@ | ConvertFrom-Json
+    $expectedLines = @(
+        "by_colour:        cand: White 4 W / 8 D / 2 L of 14 (57.1%); Black 1 W / 8 D / 5 L of 14 (35.7%)"
+        "terminations:     Checkmate 12, Threefold 12"
+        "time_losses:      cand 2, base 0"
+        "engine_faults:    cand crash in play, Crash, scored loss: 1"
+        "infra_faults:     0"
+        "search:           cand: 1644 moves; depth 15.40 mean; non-mate depth 13.89 over 1559 moves; 178235 nodes a move; 71.9 ms a move; 2477303 nps"
+        "harness_hold_ms:  cand: p50 1, p99 9, p999 60, max 82; 4 of 1644 moves over the margin"
+        "pair:             cand vs Houdini 3: 248 W / 88 D / 64 L of 400, Elo 172.8 [141.5, 206.9]; ptnml [4, 6, 60, 62, 68]"
+        "standing:         1. cand 3428.8 +/- 19.2, 2400 games"
+        "standing:         2. Houdini 3 3287.0 fixed, 400 games"
+    )
+    Invoke-Case -Name "results: schema 6 reaches the manifest" -Expect "" -Check {
+        $got = @(Format-ColosseumResults -Record $schema6)
+        if (($got -join "`n") -ne ($expectedLines -join "`n")) {
+            throw "formatted results differ:`n$($got -join "`n")"
+        }
+    }.GetNewClosure()
+    Invoke-Case -Name "results: a schema 5 record has none" -Expect "" -Check {
+        $got = @(Format-ColosseumResults -Record ([pscustomobject]@{ schema_version = 5 }))
+        if ($got.Count -ne 1 -or $got[0] -notlike "results:*not in this run record (schema 5)") { throw "got: $got" }
+    }.GetNewClosure()
+    Invoke-Case -Name "spsa: rail and clamp warnings recorded" -Expect "" -Check {
+        $rail = Format-ColosseumRailWarnings -Warnings @([pscustomobject]@{
+            name = "CoreRfpCorrection"; seed = 80; c0 = 128.0000776908343; min = 0; max = 2048
+            clamped_at_min = $true; clamped_at_max = $false })
+        if ($rail -ne "rail_warnings:    CoreRfpCorrection seed 80 c_0 128 -> min 0") { throw "rail: $rail" }
+        if ((Format-ColosseumRailWarnings -Warnings @()) -ne "rail_warnings:    none") { throw "an empty list is not 'none'" }
+        $result = '{"schema_version": 4, "tune_audit": {"warnings": [{"kind": "initial-on-lower-rail", "name": "X"},
+            {"kind": "arms-clamped-at-range-end", "name": "Y", "min": 0, "max": 10, "completed_iterations": 50,
+             "clamped_at_min": 7, "clamped_at_max": 0}]}}' | ConvertFrom-Json
+        $clamp = Format-ColosseumClampWarnings -Result $result
+        if ($clamp -ne "arm_clamps:       Y at min on 7, at max on 0 of 50 iterations") { throw "clamp: $clamp" }
+        $old = Format-ColosseumClampWarnings -Result ('{"schema_version": 3, "tune_audit": {"warnings": []}}' | ConvertFrom-Json)
+        if ($old -ne "arm_clamps:       not recorded (result schema 3)") { throw "a schema 3 audit read as: $old" }
     }.GetNewClosure()
 
     # Resuming an existing run directory: its recorded seed is carried over, and

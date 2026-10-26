@@ -1,0 +1,4 @@
+# Surfaces registered on a throwaway arm whose defaults are the cluster
+# under tune: audit_spsa_coverage.ps1 compares their seeds with that commit's
+# src/search/params.rs. One `group<TAB>commit` per line.
+d16fix	217125b  # RAR-R21, the cascade cluster's fit arm (branch d16-fit)
