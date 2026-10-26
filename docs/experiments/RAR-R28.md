@@ -1,4 +1,4 @@
-# RAR-R28 — D.1.5: D.1's closing read, `d1`'s clock against the 2.6.0 engine, harm reads at `3+0.03` and `10+0.1`, a four-thread read, the probe and the profile — REGISTERED 2026-10-26, before any game; READ 2026-10-26: no harm; D.1.2.2 ticks, D.1.2.1 misses its won share
+# RAR-R28 — D.1.5: D.1's closing read, `d1`'s clock against the 2.6.0 engine, harm reads at `3+0.03` and `10+0.1`, a four-thread read, the probe and the profile — REGISTERED 2026-10-26, before any game; READ 2026-10-26: no harm; D.1.2.2 ticks, D.1.2.1 misses its won share, and its residue read finds no cost
 
 Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -171,3 +171,52 @@ The script's FAIL verdict lists the 2.6.0 rows.
 - **D.1.2.1's won share:** missed (0.6). The stop at twice the target
   bounds cascades that fail high, not single long windows, and at
   `10+0.1` those occur in about 1% of won moves.
+
+## Addendum: D.1.2.1's residue read (2026-10-26, agent-run, zero games)
+
+**The question:** does the won-ending residue cost anything? It is read
+from this entry's own PGNs by `residue.py`. Its predictions and decision
+rule were frozen first in `PREDICTIONS.md`; both files are in
+`analysis/artifacts/d121-residue-2026-10-26/`.
+- **What is counted:** each side's moves in a won or mate context at
+  ≥ 0.9 × its own maximum.
+- **The clock formulas:** the head's transcribed at horizon 50, and
+  2.6.0's at fifty moves to go.
+- **Counts:** 23 and 93 head residue moves, matching the profile's won
+  plus mate counts.
+
+| | `3+0.03` head | `3+0.03` 2.6.0 | `10+0.1` head | `10+0.1` 2.6.0 |
+|---|---|---|---|---|
+| Residue moves, of won/mate moves | 23 (0.16%) in 20 games | 33 (0.24%) in 32 | 93 (0.61%) in 75 | **284 (1.97%)** in 223 |
+| Games with one not won | **0** | 0 | **0** | 0 |
+| Ply median; score median | 107; 1,616 cp | 94; 1,918 | 125; 1,657 | 120; 4,556 |
+| At or above the previous own score | 14 / 23 | 30 / 33 | 69 / 93 | 254 / 284 |
+| Lowest own clock after: median; minimum | 265; 129 ms | 105; 76 ms | 279; 163 ms | 222; 159 ms |
+| Later own clock under 100 ms | **0** | 16 | **0** | 0 |
+| Conversion with a residue move against without (plies) | 60 / 53, **1.13** | 47 / 49, 0.96 | 63 / 59, **1.07** | 57 / 53, 1.08 |
+
+**Against the frozen predictions:**
+1. Late and below 3,000 cp: held.
+2. The clock above 200 ms afterwards in 90% of `3+0.03` cases: missed,
+   16 of 23 (70%), though none fell under 100 ms.
+3. Conversion within 20%: held.
+4. A rising score in 70%: held at `10+0.1` (74%), missed at `3+0.03`
+   (61%).
+5. 2.6.0's rate higher at both controls: held.
+
+**Rule applied: no cost found.**
+- No residue move falls in a game not won.
+- No later head move is under 100 ms of clock.
+- Conversion is at most 13% longer.
+
+**By the frozen rule the research recommends closing D.1.2.1.**
+- The residue is a time-use property with no measured cost, and `d1`
+  already cuts it to a third of 2.6.0's at `10+0.1`.
+- The 0.2% bar measured time, not a cost.
+- The fix that would remove the rest is held with its trigger: a stop
+  inside a long window, or the LMR correction cap (RAR-R27, H0).
+- **Accepting the residue is the maintainer's decision.**
+
+**Retry trigger:** a measured cost, meaning a residue move in a draw or a
+loss, a forfeit, or a time-trouble move after one at a longer or
+repeating control.

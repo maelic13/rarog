@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.1.2.1 | RESEARCH | R2 | Won-ending stalls. The probe half is met: no rec move at the maximum and rec2 in 5 ms (RAR-R28). The games half missed in RAR-R28: won moves at ≥ 0.9 × the maximum are 0.24% at `3+0.03` and 0.85% at `10+0.1`, against the 0.2% bar; every such game was won. The likeliest mechanism is the stop's gap, a single long window that never fails high. The question is whether that residue costs anything, or whether the bar was the wrong measure of a defect with no measured cost |
+| D.1.2.1 | RESEARCH | R2 | Won-ending stalls. The probe half is met: no rec move at the maximum and rec2 in 5 ms (RAR-R28). The games half missed in RAR-R28: won moves at ≥ 0.9 × the maximum are 0.24% at `3+0.03` and 0.85% at `10+0.1`, against the 0.2% bar; every such game was won. The likeliest mechanism is the stop's gap, a single long window that never fails high. **Residue read 2026-10-26 (RAR-R28's addendum, zero games): no cost.** No residue move falls in a game not won, no later clock falls under 100 ms, and conversion is at most 13% longer. `d1`'s residue is a third of 2.6.0's at `10+0.1` (0.61% against 1.97%). **The research recommends closing D.1.2.1**: the 0.2% bar measured time, not a cost. The single-window fix is held with its trigger. Awaits the maintainer's decision |
 | D.1.2 | READY_FOR_IMPLEMENTATION | R2 | Research closed 2026-10-22 (RAR-R14); D.1.2.2 and D.1.2.3 done; closes with D.1.2.1 |
 | D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-M74's fallen thread scaling is new evidence for its premise |
 | D.3 | RESEARCH | R2 | Engine lifecycle and protocol robustness |
