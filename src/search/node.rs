@@ -91,29 +91,6 @@ fn tb_verdict(score: i32, bound: Bound, alpha: i32, beta: i32, pv: bool) -> TbVe
     }
 }
 
-/// The return path that produced a node's value, for D.1.6.1's read of where
-/// a fail-high value becomes exactly beta (`Searcher::note_edge`).
-#[cfg(feature = "diag")]
-#[derive(Clone, Copy)]
-enum EdgeKind {
-    Tt,
-    Rfp,
-    Nmp,
-    Probcut,
-    Multicut,
-    Cutoff,
-    End,
-}
-
-/// Record a return at ply 1 or 2 that left the window: see `EdgeKind`.
-/// Nothing without the `diag` feature.
-macro_rules! note_edge {
-    ($searcher:expr, $ply:expr, $kind:ident, $value:expr, $alpha:expr, $beta:expr) => {
-        #[cfg(feature = "diag")]
-        $searcher.note_edge($ply, EdgeKind::$kind, $value, $alpha, $beta);
-    };
-}
-
 /// What a null-move cutoff returns: the null search's score, but never a win
 /// the reduced search did not prove and never less than beta, which the
 /// verification established when the null search ran against a lower bound
@@ -200,12 +177,9 @@ struct LateMoveInputs {
 
 /// The depth a reduced move is searched at: the reduction in whole plies,
 /// never below one ply of main search and never more than two plies above
-/// `new_depth`; a PV node searches its reduced moves two plies deeper. The
-/// whole excess above `new_depth` is capped at `deeper_cap` plies.
-fn reduced_depth(new_depth: i32, reduction: i32, pv: bool, deeper_cap: i32) -> i32 {
-    ((new_depth - reduction / 1024).clamp(1, new_depth + 2) + 2 * i32::from(pv))
-        .min(new_depth + deeper_cap)
-        .max(1)
+/// `new_depth`; a PV node searches its reduced moves two plies deeper.
+fn reduced_depth(new_depth: i32, reduction: i32, pv: bool) -> i32 {
+    (new_depth - reduction / 1024).clamp(1, new_depth + 2) + 2 * i32::from(pv)
 }
 
 /// How much later than the first few moves the move at `move_count` is:
@@ -320,8 +294,7 @@ impl Searcher {
     /// more, so an extension at the edge is truncated, never refused whole.
     #[inline(always)]
     fn within_extension_budget(&mut self, extension: i32, spent: i32) -> i32 {
-        let budget = self.td.root_depth * self.cfg.core.extension_budget_eighths / 8;
-        let granted = extension.min(budget - spent).max(0);
+        let granted = extension.min(self.td.root_depth - spent).max(0);
         if granted < extension {
             crate::diag_count!(singular_extension_truncated);
             #[cfg(test)]
@@ -448,12 +421,7 @@ impl Searcher {
         let mut r = p.lmr_log * i.depth.ilog2().cast_signed();
         r -= (p.lmr_improvement * i.improvement / 128)
             .clamp(p.lmr_improvement_clamp_lo, p.lmr_improvement_clamp_hi);
-        let correction_term = p.lmr_correction * i.corr_abs / 1024;
-        r -= if p.lmr_correction_cap > 0 {
-            correction_term.min(p.lmr_correction_cap)
-        } else {
-            correction_term
-        };
+        r -= p.lmr_correction * i.corr_abs / 1024;
         r += p.lmr_exact * i32::from(i.exact);
         r += p.lmr_tt_score_below_alpha * i32::from(i.tt_score_below_alpha);
         r += p.lmr_tt_shallow * i32::from(i.tt_shallow);
@@ -676,7 +644,6 @@ impl Searcher {
                     ev.depth,
                     ev.bound
                 );
-                note_edge!(self, ply, Tt, score, original_alpha, beta);
                 return score;
             }
         }
@@ -923,7 +890,6 @@ impl Searcher {
                      base {base} beta {beta} returns {score}",
                     threats.is_some()
                 );
-                note_edge!(self, ply, Rfp, score, original_alpha, beta);
                 return score;
             }
         }
@@ -1051,9 +1017,7 @@ impl Searcher {
                 if score >= null_bound && !is_loss(score) {
                     let in_region = self.td.nmp_min_ply > 0;
                     if score >= beta && (depth < self.cfg.proof.nmp_verify_depth || in_region) {
-                        let returned = null_cutoff_score(score, beta);
-                        note_edge!(self, ply, Nmp, returned, original_alpha, beta);
-                        return returned;
+                        return null_cutoff_score(score, beta);
                     }
                     if !in_region {
                         let reduced = if score < beta {
@@ -1098,9 +1062,7 @@ impl Searcher {
                         );
                         if verified >= beta {
                             crate::diag_count!(nmp_verify_pass);
-                            let returned = null_cutoff_score(score, beta);
-                            note_edge!(self, ply, Nmp, returned, original_alpha, beta);
-                            return returned;
+                            return null_cutoff_score(score, beta);
                         }
                         crate::diag_count!(nmp_verify_fail);
                         if min_ply > infra::to_i32(ply) {
@@ -1313,7 +1275,6 @@ impl Searcher {
                         {
                             self.td.probcut_cuts += 1;
                         }
-                        note_edge!(self, ply, Probcut, returned, original_alpha, beta);
                         return returned;
                     }
                 }
@@ -1410,7 +1371,6 @@ impl Searcher {
                     ply,
                     "multicut score {score} beta {beta} returns {cut}"
                 );
-                note_edge!(self, ply, Multicut, cut, original_alpha, beta);
                 return cut;
             } else if score > ev.score && !is_decisive(score) {
                 #[cfg(feature = "diag")]
@@ -1845,19 +1805,7 @@ impl Searcher {
                             self.lmr_singular_term(Some(tt_score - excluded_score))
                         );
                     }
-                    let mut reduced_depth =
-                        reduced_depth(new_depth, reduction, NODE::PV, self.cfg.core.lmr_deeper_cap);
-                    // The plies above the nominal depth are an extension of
-                    // this line and, with the switch on, come out of the same
-                    // budget as the others; the child reads the spent total
-                    // from this ply's stack entry, restored after the search.
-                    let spent_before_lmr = self.td.stack[ply].extension_spent;
-                    if self.cfg.core.lmr_deeper_budget != 0 && reduced_depth > new_depth {
-                        let granted = self
-                            .within_extension_budget(reduced_depth - new_depth, spent_before_lmr);
-                        reduced_depth = new_depth + granted;
-                        self.td.stack[ply].extension_spent = spent_before_lmr + granted;
-                    }
+                    let reduced_depth = reduced_depth(new_depth, reduction, NODE::PV);
                     crate::diag_count!(lmr_applied);
                     #[cfg(test)]
                     {
@@ -1873,27 +1821,6 @@ impl Searcher {
                             reduction_depth_sum,
                             u64::try_from(new_depth - reduced_depth).unwrap_or(0)
                         );
-                        let correction_term = self.cfg.core.lmr_correction * corr_abs / 1024;
-                        match correction_term {
-                            ..512 => crate::diag_count!(lmr_corr_term_lt_half),
-                            512..1024 => crate::diag_count!(lmr_corr_term_lt_one),
-                            1024..2048 => crate::diag_count!(lmr_corr_term_lt_two),
-                            2048..3072 => crate::diag_count!(lmr_corr_term_lt_three),
-                            _ => crate::diag_count!(lmr_corr_term_ge_three),
-                        }
-                        if reduced_depth > new_depth {
-                            crate::diag_count!(lmr_deeper);
-                            crate::diag_add!(
-                                lmr_deeper_plies,
-                                u64::try_from(reduced_depth - new_depth).unwrap_or(0)
-                            );
-                            if NODE::PV {
-                                crate::diag_count!(lmr_deeper_pv);
-                            }
-                            if correction_term >= 1024 {
-                                crate::diag_count!(lmr_deeper_corr_ge_one);
-                            }
-                        }
                     }
                     trace_decision!(
                         self,
@@ -1920,7 +1847,6 @@ impl Searcher {
                         poll,
                     );
                     self.td.stack[ply].reduction = 0;
-                    self.td.stack[ply].extension_spent = spent_before_lmr;
                     if score > alpha {
                         // A reduced move that beat alpha by a wide margin earns
                         // a deeper verification. Not at the root, as the donor
@@ -2100,7 +2026,6 @@ impl Searcher {
                             crate::diag_count!(main_store_lower);
                         }
                     }
-                    note_edge!(self, ply, Cutoff, score, original_alpha, beta);
                     return score;
                 }
             }
@@ -2213,53 +2138,7 @@ impl Searcher {
                 }
             }
         }
-        note_edge!(self, ply, End, best_score, original_alpha, beta);
         best_score
-    }
-
-    /// D.1.6.1's read: at plies 1 and 2, count a value that left the window
-    /// by the path that produced it and whether it sits exactly on the edge
-    /// it crossed. Diagnostic only; see `EdgeKind`.
-    #[cfg(feature = "diag")]
-    fn note_edge(&self, ply: usize, kind: EdgeKind, value: i32, alpha: i32, beta: i32) {
-        let at_edge = if value >= beta {
-            value == beta
-        } else if value <= alpha {
-            value == alpha
-        } else {
-            return;
-        };
-        match (ply, kind, at_edge) {
-            (1, EdgeKind::Tt, true) => crate::diag_count!(p1_at_tt),
-            (1, EdgeKind::Tt, false) => crate::diag_count!(p1_off_tt),
-            (1, EdgeKind::Rfp, true) => crate::diag_count!(p1_at_rfp),
-            (1, EdgeKind::Rfp, false) => crate::diag_count!(p1_off_rfp),
-            (1, EdgeKind::Nmp, true) => crate::diag_count!(p1_at_nmp),
-            (1, EdgeKind::Nmp, false) => crate::diag_count!(p1_off_nmp),
-            (1, EdgeKind::Probcut, true) => crate::diag_count!(p1_at_probcut),
-            (1, EdgeKind::Probcut, false) => crate::diag_count!(p1_off_probcut),
-            (1, EdgeKind::Multicut, true) => crate::diag_count!(p1_at_multicut),
-            (1, EdgeKind::Multicut, false) => crate::diag_count!(p1_off_multicut),
-            (1, EdgeKind::Cutoff, true) => crate::diag_count!(p1_at_cutoff),
-            (1, EdgeKind::Cutoff, false) => crate::diag_count!(p1_off_cutoff),
-            (1, EdgeKind::End, true) => crate::diag_count!(p1_at_end),
-            (1, EdgeKind::End, false) => crate::diag_count!(p1_off_end),
-            (2, EdgeKind::Tt, true) => crate::diag_count!(p2_at_tt),
-            (2, EdgeKind::Tt, false) => crate::diag_count!(p2_off_tt),
-            (2, EdgeKind::Rfp, true) => crate::diag_count!(p2_at_rfp),
-            (2, EdgeKind::Rfp, false) => crate::diag_count!(p2_off_rfp),
-            (2, EdgeKind::Nmp, true) => crate::diag_count!(p2_at_nmp),
-            (2, EdgeKind::Nmp, false) => crate::diag_count!(p2_off_nmp),
-            (2, EdgeKind::Probcut, true) => crate::diag_count!(p2_at_probcut),
-            (2, EdgeKind::Probcut, false) => crate::diag_count!(p2_off_probcut),
-            (2, EdgeKind::Multicut, true) => crate::diag_count!(p2_at_multicut),
-            (2, EdgeKind::Multicut, false) => crate::diag_count!(p2_off_multicut),
-            (2, EdgeKind::Cutoff, true) => crate::diag_count!(p2_at_cutoff),
-            (2, EdgeKind::Cutoff, false) => crate::diag_count!(p2_off_cutoff),
-            (2, EdgeKind::End, true) => crate::diag_count!(p2_at_end),
-            (2, EdgeKind::End, false) => crate::diag_count!(p2_off_end),
-            _ => {}
-        }
     }
 
     pub(super) fn quiescence<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
@@ -2420,13 +2299,6 @@ impl Searcher {
         }
 
         let mut best_move = Move::NULL;
-        // The node's best value so far: the stand pat when not in check, then
-        // the best move; what the fail-soft switch returns and stores.
-        let mut best_score = if stand_pat_for_pruning == VALUE_NONE {
-            -INF_SCORE
-        } else {
-            stand_pat_for_pruning
-        };
         let mut scored = ScoredMoveList::new();
         // Per-node check masks, built lazily as in the main search; a
         // capture-only qnode that never tests for check never builds them.
@@ -2565,7 +2437,6 @@ impl Searcher {
             if in_check {
                 evasion_best = evasion_best.max(score);
             }
-            best_score = best_score.max(score);
             if score >= beta {
                 #[cfg(feature = "diag")]
                 if diag_q_sample {
@@ -2613,24 +2484,17 @@ impl Searcher {
                 Bound::Lower => {}
             }
         }
-        // Fail-hard today: the value that leaves the window is the window's
-        // edge. With the switch, the best value found, as both donors return.
-        let returned = if self.cfg.quiet.qs_fail_soft != 0 {
-            best_score
-        } else {
-            alpha
-        };
         self.shared.tt.store(TtStore {
             key: hash,
             depth: 0,
-            score: returned,
+            score: alpha,
             bound,
             mv: best_move,
             ply,
             static_eval: q_raw_static_eval,
             is_pv: q_store_pv,
         });
-        returned
+        alpha
     }
 }
 
@@ -2642,51 +2506,18 @@ mod tests {
     /// negative reduction extends by at most two plies, and PV nodes add two.
     #[test]
     fn reduced_depth_is_floored_at_one_ply_and_capped_above() {
-        assert_eq!(reduced_depth(8, 3 * 1024, false, 4), 5);
-        assert_eq!(
-            reduced_depth(8, 3 * 1024 + 1023, false, 4),
-            5,
-            "whole plies"
-        );
-        assert_eq!(reduced_depth(3, 10 * 1024, false, 4), 1, "floor");
-        assert_eq!(reduced_depth(1, 1024, false, 4), 1, "floor at depth 1");
-        assert_eq!(reduced_depth(6, -5 * 1024, false, 4), 8, "cap");
-        assert_eq!(
-            reduced_depth(6, -1023, false, 4),
-            6,
-            "truncates toward zero"
-        );
-        assert_eq!(reduced_depth(6, 2 * 1024, true, 4), 6, "PV adds two");
-        assert_eq!(reduced_depth(3, 10 * 1024, true, 4), 3, "PV floor plus two");
-        // The excess above `new_depth`, the PV node's two included, is
-        // capped by `deeper_cap`; a reduction stays a reduction.
-        assert_eq!(reduced_depth(6, -5 * 1024, true, 4), 10, "today's ceiling");
-        assert_eq!(reduced_depth(6, -5 * 1024, true, 2), 8);
-        assert_eq!(
-            reduced_depth(6, -5 * 1024, false, 0),
-            6,
-            "never deeper at 0"
-        );
-        assert_eq!(
-            reduced_depth(6, 0, true, 0),
-            6,
-            "a PV node gains nothing at 0"
-        );
-        assert_eq!(
-            reduced_depth(8, 3 * 1024, true, 0),
-            7,
-            "a reduction keeps the PV node's two plies while it stays below new_depth"
-        );
-        assert_eq!(reduced_depth(1, -1024, true, 0), 1);
+        assert_eq!(reduced_depth(8, 3 * 1024, false), 5);
+        assert_eq!(reduced_depth(8, 3 * 1024 + 1023, false), 5, "whole plies");
+        assert_eq!(reduced_depth(3, 10 * 1024, false), 1, "floor");
+        assert_eq!(reduced_depth(1, 1024, false), 1, "floor at depth 1");
+        assert_eq!(reduced_depth(6, -5 * 1024, false), 8, "cap");
+        assert_eq!(reduced_depth(6, -1023, false), 6, "truncates toward zero");
+        assert_eq!(reduced_depth(6, 2 * 1024, true), 6, "PV adds two");
+        assert_eq!(reduced_depth(3, 10 * 1024, true), 3, "PV floor plus two");
         for new_depth in 1..40 {
             for reduction in (-20_000..20_000).step_by(977) {
-                for cap in 0..=4 {
-                    let d = reduced_depth(new_depth, reduction, false, cap);
-                    assert!(d >= 1);
-                    assert!(d <= new_depth + cap.min(2));
-                    let d_pv = reduced_depth(new_depth, reduction, true, cap);
-                    assert!((1..=new_depth + cap).contains(&d_pv));
-                }
+                assert!(reduced_depth(new_depth, reduction, false) >= 1);
+                assert!(reduced_depth(new_depth, reduction, false) <= new_depth + 2);
             }
         }
     }
@@ -2718,44 +2549,6 @@ mod tests {
             parent_reduction: 0,
             singular_gap: None,
         }
-    }
-
-    /// The correction term is linear in the correction and uncapped by
-    /// default; a cap bounds what it takes off the reduction and leaves a
-    /// smaller term unchanged.
-    #[test]
-    fn the_correction_cap_bounds_the_term_and_is_off_by_default() {
-        let mut searcher = Searcher::default();
-        assert_eq!(searcher.cfg.core.lmr_correction_cap, 0, "off by default");
-        let slope = searcher.cfg.core.lmr_correction;
-        assert!(
-            slope * 2_000 / 1024 > 1_024,
-            "the largest probe exceeds the cap below"
-        );
-        // The parent-reduction rule adds a step once the reduction falls far
-        // enough below the parent's; a parent reduction far below any
-        // reduction keeps it off, so only the correction term moves.
-        let taken = |searcher: &Searcher, corr_abs: i32| {
-            let mut inputs = LateMoveInputs {
-                parent_reduction: -1_000_000,
-                ..quiet_late_move()
-            };
-            let neutral = searcher.late_move_reduction(&inputs);
-            inputs.corr_abs = corr_abs;
-            neutral - searcher.late_move_reduction(&inputs)
-        };
-        for corr_abs in [100, 800, 2_000] {
-            assert_eq!(taken(&searcher, corr_abs), slope * corr_abs / 1024);
-        }
-        searcher.cfg.core.lmr_correction_cap = 1_024;
-        let under = 1_024 * 1024 / slope - 1;
-        assert!(slope * under / 1024 < 1_024);
-        assert_eq!(
-            taken(&searcher, under),
-            slope * under / 1024,
-            "under the cap"
-        );
-        assert_eq!(taken(&searcher, 2_000), 1_024, "at the cap");
     }
 
     /// The improvement term saturates at its coordinates' bounds and the alpha

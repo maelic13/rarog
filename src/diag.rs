@@ -187,47 +187,6 @@ pub mod counters {
         asp_search_nodes,
         asp_fail_low_nodes,
         asp_fail_high_nodes,
-        // Plies a root window was searched short of its iteration's depth
-        // after fail-highs (`AspFailHighReduce`), summed over windows from
-        // depth 4.
-        asp_reduced_plies,
-        // D.1.6.1, EXACT and Rarog-only: root fail-highs whose score is
-        // exactly beta, and the sum of the overshoot above beta of the rest.
-        asp_fail_high_at_beta,
-        asp_fail_high_overshoot,
-        // D.1.6.1, EXACT and Rarog-only: at plies 1 and 2, which return path
-        // produced a value outside the window, and whether it sat exactly on
-        // the edge it crossed (`at`: a fail-low equal to the entry alpha or a
-        // fail-high equal to beta) or beyond it (`off`). The root's fail-high
-        // value is the negation of ply 1's, which is the negation of ply 2's.
-        p1_at_tt,
-        p1_off_tt,
-        p1_at_rfp,
-        p1_off_rfp,
-        p1_at_nmp,
-        p1_off_nmp,
-        p1_at_probcut,
-        p1_off_probcut,
-        p1_at_multicut,
-        p1_off_multicut,
-        p1_at_cutoff,
-        p1_off_cutoff,
-        p1_at_end,
-        p1_off_end,
-        p2_at_tt,
-        p2_off_tt,
-        p2_at_rfp,
-        p2_off_rfp,
-        p2_at_nmp,
-        p2_off_nmp,
-        p2_at_probcut,
-        p2_off_probcut,
-        p2_at_multicut,
-        p2_off_multicut,
-        p2_at_cutoff,
-        p2_off_cutoff,
-        p2_at_end,
-        p2_off_end,
         // A quiet evasion skipped because the side in check already has a
         // line that is not a loss.
         q_evasion_skip,
@@ -356,24 +315,6 @@ pub mod counters {
         best_rank_8_plus,
         prune_shadow_moves,
         reduction_depth_sum,
-        // D.1.6 research, EXACT and Rarog-only: reduced moves searched DEEPER
-        // than `new_depth` (a negative reduction, capped at two plies above
-        // it, plus the PV node's two), how many plies deeper in all, and how
-        // many of them at PV nodes. These extensions lie outside the line
-        // budget, so they are where lines grow past twice the iteration.
-        lmr_deeper,
-        lmr_deeper_plies,
-        lmr_deeper_pv,
-        // D.1.6 research, EXACT: the uncapped correction term of every
-        // reduction, bucketed by the plies it takes off (under half a ply,
-        // under one, under two, under three, three or more), and the deeper
-        // searches whose term alone was a ply or more.
-        lmr_corr_term_lt_half,
-        lmr_corr_term_lt_one,
-        lmr_corr_term_lt_two,
-        lmr_corr_term_lt_three,
-        lmr_corr_term_ge_three,
-        lmr_deeper_corr_ge_one,
         // Correction attribution and hashed-table quality.
         corr_slot_first,
         corr_slot_repeat,

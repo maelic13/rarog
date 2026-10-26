@@ -181,45 +181,6 @@ search_params! {
     /// number of times before opening fully spend far fewer nodes on a
     /// runaway iteration — which is exactly what the tune explores.
     asp_max_fails = 20, "AspMaxFails", 1..=32;
-    /// Plies taken off a root window search for each fail-high so far in the
-    /// iteration, the window that finally holds included, to a floor of
-    /// depth 1. A cascade of k fail-highs then costs k shrinking re-searches
-    /// instead of k full iterations, and the iteration completes, so the
-    /// clock reads it. 0 searches every window at the iteration's depth;
-    /// both donors take one ply.
-    asp_fail_high_reduce = 0, "AspFailHighReduce", 0..=4;
-    /// Switch: after an iteration whose windows failed high k times, the
-    /// next iterations are searched shallower by `(k + 1) / 2 + 2` plies less
-    /// two for each iteration since, so the depth is regained in steps
-    /// instead of one full-depth window over a table that holds only the
-    /// shallower result (Stockfish's `failHighRecovery`). 0 = off.
-    asp_fail_high_recover = 0, "AspFailHighRecover", 0..=1;
-    /// Switch: a failed window re-centres on the failing score (both
-    /// donors) instead of the previous iteration's score. With a fail-hard
-    /// root the failing score is the window's edge and this changes little
-    /// (RAR-S17 read −4.52 on such a root); with `QsFailSoft` the score
-    /// carries how far the window missed. 0 = today.
-    asp_recentre = 0, "AspRecentre", 0..=1;
-    /// The first window's half-width grows with the square of the score it
-    /// centres on, divided by this: both donors open wider on a large score
-    /// (Stockfish's mean squared score over 10,193, Reckless's squared
-    /// average over 26,394), so a won position's window starts 150–340 wide
-    /// at 1,800 cp where `AspirationDelta` alone gives 12. 0 = off (today);
-    /// at ordinary scores the term is a few centipawns.
-    asp_delta_square_div = 0, "AspDeltaSquareDiv", 0..=100000;
-    /// The known-win offset a bare-king ending the winner can mate in is
-    /// given in both phases of the evaluation, pushed into the evaluator at
-    /// every search start (Stockfish 11's classical evaluation returns such
-    /// a value, about 55 pawns; Rarog's mop-up leaves the material and a
-    /// drive). 0 = off (today). With the score-scaled first window it ends
-    /// the root fail-high cascade of a won ending (RAR-R19, RAR-R20).
-    mopup_known_win = 0, "MopupKnownWin", 0..=20000;
-    /// The least half-width of the first window centred in the known-win
-    /// band (a score within 2,000 of `MopupKnownWin` or past it): the jump
-    /// as the offset enters the horizon is some 5,800 cp against a 12 cp
-    /// window, and only that band opens wider, so ordinary scores keep
-    /// `AspirationDelta`. 0 = off (today), and off while the offset is.
-    asp_known_win_window = 0, "AspKnownWinWindow", 0..=5000;
 
     // ── Qsearch SEE thresholds ───────────────────────────────────────────────
     // Coordinates so SEE's consumers can be re-tuned with SEE itself: a more
@@ -320,14 +281,6 @@ search_params! {
     /// `3+0.03`. 10000000, a thousand targets, lies past every maximum and
     /// switches it off.
     tm_fail_high_target = 20_000, "TmFailHighTarget", 10000..=10000000;  // 2.0
-    /// Switch, in ten-thousandths of the soft target: once a completed
-    /// iteration finds this much of the target spent, the following
-    /// iterations no longer deepen; each is searched `3 (n + 1) / 4` plies
-    /// short of its nominal depth, n counting them, as Stockfish stops
-    /// deepening past half its target (`increaseDepth`). The clock then
-    /// meets completed iterations whose cost no longer grows. Off at
-    /// 10000000, a thousand targets, past every maximum.
-    tm_depth_freeze = 10_000_000, "TmDepthFreeze", 1000..=10000000;  // off
 }
 
 // The selectivity core's own coordinates. Seeds follow the handoff's seed
@@ -426,12 +379,6 @@ search_params! {
     lmr_improvement_clamp_lo = -162, "CoreLmrImprovementClampLo", -1024..=0;
     lmr_improvement_clamp_hi = 1_065, "CoreLmrImprovementClampHi", 0..=4096;
     lmr_correction = 3_330, "CoreLmrCorrection", 0..=8192;
-    /// Switch: the most the correction term may take off a reduction, in
-    /// 1024ths of a ply; 0 leaves it uncapped (today). A won ending's
-    /// climbing score builds corrections of hundreds of centipawns, and the
-    /// uncapped term then turns reductions negative, so reduced moves are
-    /// searched deeper than nominal, outside the line budget (D.1.6).
-    lmr_correction_cap = 0, "CoreLmrCorrectionCap", 0..=8192;
     lmr_exact = 1_748, "CoreLmrExact", 0..=4096;
     lmr_tt_score_below_alpha = 526, "CoreLmrTtScoreBelowAlpha", 0..=2048;
     lmr_tt_shallow = 58, "CoreLmrTtShallow", 0..=2048;
@@ -458,24 +405,6 @@ search_params! {
     lmr_child_cutoffs = 1_334, "CoreLmrChildCutoffs", 0..=4096;
     lmr_child_cutoffs_all_node = 253, "CoreLmrChildCutoffsAllNode", 0..=2048;
     lmr_parent = 130, "CoreLmrParent", 0..=1024;
-    /// Plies a reduced move may be searched ABOVE `new_depth` when its
-    /// reduction comes out negative, the PV node's two included: 4 is
-    /// today's ceiling (two from the clamp, two for a PV node), 0 never
-    /// searches a reduced move deeper than its nominal depth. These plies
-    /// lie outside the line budget, and in won rook endings they take lines
-    /// to the ply cap (D.1.6.1).
-    lmr_deeper_cap = 4, "CoreLmrDeeperCap", 0..=4;
-    /// Switch: the plies a reduced move is searched above `new_depth` draw on
-    /// the line's extension budget like a singular extension, so no line
-    /// grows past twice the iteration's depth plus quiescence, which is the
-    /// budget's stated invariant; today (0) they bypass it, and in won rook
-    /// endings lines reach the ply cap at nominal depth 18 (D.1.6.1).
-    lmr_deeper_budget = 0, "CoreLmrDeeperBudget", 0..=1;
-    /// The line budget in eighths of the root depth: the positive extensions
-    /// a line may take from the root sum to at most this share of the
-    /// iteration's depth. 8 = today (a line may reach twice the iteration
-    /// plus quiescence); D.1.6.1 reads 4 and 2.
-    extension_budget_eighths = 8, "CoreExtensionBudgetEighths", 1..=8;
     /// Re-search a reduced move one ply deeper when it beats the best score
     /// by more than this.
     lmr_research_deeper = 43, "CoreLmrResearchDeeper", 0..=200;
@@ -601,14 +530,6 @@ search_params! {
     /// recapture on the previous move's square or promote, while the stand pat
     /// is not a loss.
     qs_count_limit = 3, "QsCountLimit", 2..=8;
-    /// Switch: a quiescence node that raises nothing returns and stores its
-    /// best value (the stand pat or the best capture), as both donors do,
-    /// instead of alpha. Today (0) it returns alpha, so every value that
-    /// leaves a window sits on the window's edge all the way to the root,
-    /// and a root fail-high returns exactly beta (D.1.6.1). The legacy
-    /// engine read fail-soft at −5.96 alone (8.11, 2026-07) with pruning
-    /// fitted around the fail-hard bounds.
-    qs_fail_soft = 0, "QsFailSoft", 0..=1;
     /// A capture is skipped when the stand pat, its victim and this margin
     /// cannot reach alpha; evaluation units over the search's piece scale.
     qs_futility_margin = 257, "QsFutilityMargin", 0..=400;

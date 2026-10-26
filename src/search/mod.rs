@@ -231,12 +231,6 @@ struct ReportedLine {
     pv: Vec<Move>,
 }
 
-/// How far under the known-win offset a window's centre still counts as in
-/// the known-win band. A known-win evaluation is the offset plus a material
-/// lead, so the band starts under the offset itself; 2,000 keeps it far
-/// above the scores of positions the offset does not reach.
-const KNOWN_WIN_BAND_MARGIN: i32 = 2_000;
-
 /// An aspiration window and its widening state for one root search.
 ///
 /// From depth 4 the window centres on `center` unless that is a mate score.
@@ -257,28 +251,7 @@ struct Aspiration {
 impl Aspiration {
     fn new(params: &SearchParams, depth: usize, center: i32) -> Self {
         let use_aspiration = depth >= 4 && center.abs() < MATE_SCORE - infra::to_i32(MAX_PLY);
-        // A large score widens the first window with its square (both
-        // donors), capped well under the open window; off at 0.
-        let square_term = if params.asp_delta_square_div > 0 && use_aspiration {
-            i32::try_from(
-                (i64::from(center) * i64::from(center) / i64::from(params.asp_delta_square_div))
-                    .min(i64::from(INF_SCORE / 2)),
-            )
-            .unwrap_or(INF_SCORE / 2)
-        } else {
-            0
-        };
-        let mut delta = params.aspiration_delta + square_term;
-        // A centre in the known-win band opens at least the band's width, so
-        // the offset entering the horizon is not met by a cascade of narrow
-        // windows; nothing changes outside the band.
-        if use_aspiration
-            && params.asp_known_win_window > 0
-            && params.mopup_known_win > 0
-            && center.abs() >= params.mopup_known_win - KNOWN_WIN_BAND_MARGIN
-        {
-            delta = delta.max(params.asp_known_win_window);
-        }
+        let delta = params.aspiration_delta;
         Self {
             alpha: if use_aspiration {
                 (center - delta).max(-INF_SCORE)
@@ -307,8 +280,6 @@ impl Aspiration {
             || score <= -(MATE_SCORE - infra::to_i32(MAX_PLY))
         {
             -INF_SCORE
-        } else if params.asp_recentre != 0 {
-            (score - self.alpha_delta).max(-INF_SCORE)
         } else {
             (self.center - self.alpha_delta).max(-INF_SCORE)
         };
@@ -325,30 +296,9 @@ impl Aspiration {
             || score >= MATE_SCORE - infra::to_i32(MAX_PLY)
         {
             INF_SCORE
-        } else if params.asp_recentre != 0 {
-            (score + self.beta_delta).min(INF_SCORE)
         } else {
             (self.center + self.beta_delta).min(INF_SCORE)
         };
-    }
-
-    /// The depth the next window of an iteration at `depth` is searched at:
-    /// each fail-high so far takes `asp_fail_high_reduce` plies off, and the
-    /// `recovery` carried from earlier iterations' cascades comes off too, to
-    /// a floor of one. Fail-lows take nothing off.
-    fn search_depth(&self, params: &SearchParams, depth: i32, recovery: i32) -> i32 {
-        (depth - self.fail_highs * params.asp_fail_high_reduce - recovery).max(1)
-    }
-
-    /// The plies the iterations after this one start short by, once this
-    /// one's windows failed high (`asp_fail_high_recover`); zero when they did
-    /// not or the switch is off.
-    fn recovery_after(&self, params: &SearchParams) -> i32 {
-        if params.asp_fail_high_recover == 0 || self.fail_highs == 0 {
-            0
-        } else {
-            (self.fail_highs + 1) / 2 + 2
-        }
     }
 }
 
@@ -735,11 +685,7 @@ impl Searcher {
             .td
             .evaluator
             .set_lazy_margin(engine_options.search_params.lazy_margin);
-        let known_win_changed = self
-            .td
-            .evaluator
-            .set_known_win(engine_options.search_params.mopup_known_win);
-        if (lazy_margin_changed || known_win_changed) && age_tt {
+        if lazy_margin_changed && age_tt {
             self.shared.tt.clear();
         }
 
@@ -925,15 +871,6 @@ impl Searcher {
         // target votes again every iteration and can reach the majority
         // single-handedly — which is the opposite of pooling the decision.
         let mut cast_stop_vote = false;
-        // Plies the iterations after a cascade start short by, regained two
-        // an iteration (see `Aspiration::recovery_after`).
-        let mut fail_high_recovery = 0_i32;
-        // Iterations begun after the deepening froze (`TmDepthFreeze`): each
-        // is searched `3 (n + 1) / 4` plies short, so a clock search past its
-        // target repeats a depth instead of growing an iteration.
-        let depth_freeze = f64::from(self.cfg.params.tm_depth_freeze) / 10_000.0;
-        let mut deepening_frozen = false;
-        let mut frozen_iterations = 0_i32;
 
         for depth in 1..=max_depth {
             // Per iteration, as Stockfish resets `selDepth`: carried across a
@@ -945,11 +882,6 @@ impl Searcher {
             }
             let previous_bestmove = bestmove;
             let mut failed_high_past_target = false;
-            fail_high_recovery = (fail_high_recovery - 2).max(0);
-            if deepening_frozen {
-                frozen_iterations += 1;
-            }
-            let freeze_cut = 3 * (frozen_iterations + 1) / 4;
             // The aspiration window centers on this thread's own last
             // completed score — unless the pool has already proven an Exact
             // root score DEEPER than this thread's progress, in which case it
@@ -967,19 +899,11 @@ impl Searcher {
             let mut window = Aspiration::new(&self.cfg.params, depth, window_center);
 
             loop {
-                // Shallower by the fail-highs so far and by the recovery an
-                // earlier cascade left; the iteration still counts as this
-                // depth, as both donors count it.
-                let searched_depth = window.search_depth(
-                    &self.cfg.params,
-                    infra::to_i32(depth),
-                    fail_high_recovery + freeze_cut,
-                );
                 #[cfg(feature = "diag")]
                 let window_nodes_before = self.td.nodes;
                 let score = self.search_root_window(
                     &mut board,
-                    searched_depth,
+                    infra::to_i32(depth),
                     window.alpha,
                     window.beta,
                     poll,
@@ -992,10 +916,6 @@ impl Searcher {
                 #[cfg(feature = "diag")]
                 if depth >= 4 {
                     crate::diag_add!(asp_search_nodes, window_nodes);
-                    crate::diag_add!(
-                        asp_reduced_plies,
-                        u64::try_from(infra::to_i32(depth) - searched_depth).unwrap_or(0)
-                    );
                 }
                 // Termination guard. The widened window re-centers
                 // on the previous iteration's best_score; with the delta
@@ -1023,15 +943,6 @@ impl Searcher {
                 if score >= window.beta {
                     crate::diag_count!(asp_fail_high);
                     crate::diag_add!(asp_fail_high_nodes, window_nodes);
-                    #[cfg(feature = "diag")]
-                    if score == window.beta {
-                        crate::diag_count!(asp_fail_high_at_beta);
-                    } else {
-                        crate::diag_add!(
-                            asp_fail_high_overshoot,
-                            u64::try_from(score - window.beta).unwrap_or(0)
-                        );
-                    }
                     if emit_info {
                         self.send_bounded_info_line(depth, score, RootBound::Lower, bestmove);
                     }
@@ -1086,11 +997,10 @@ impl Searcher {
                     root_move.last_best_depth = depth;
                 }
                 for root_move in &mut self.td.root_move_records {
-                    if root_move.last_search_depth == infra::to_usize(searched_depth) {
+                    if root_move.last_search_depth == depth {
                         root_move.complete_iteration();
                     }
                 }
-                fail_high_recovery = window.recovery_after(&self.cfg.params);
                 break;
             }
 
@@ -1181,8 +1091,6 @@ impl Searcher {
                 };
                 let soft = time::soft_stop(&self.cfg.params, &self.cfg.limits, signals);
                 soft_target_ms = soft.target_ms;
-                deepening_frozen =
-                    !self.td.pondering && elapsed_ms >= soft.target_ms * depth_freeze;
                 #[cfg(feature = "diag")]
                 if emit_info && self.cfg.limits.optimum_ms.is_finite() {
                     self.log_soft_stop(depth, signals, soft, elapsed_ms);
@@ -2799,197 +2707,6 @@ mod tests {
         let (unswitched, lines) = clock_search(fen, &clock, &never, late, usize::MAX);
         assert_eq!(unswitched.depth, fail_high.depth);
         assert!(lines.last().expect("a line was printed").bound.is_empty());
-    }
-
-    #[test]
-    fn a_fail_high_takes_plies_off_the_next_window_and_a_fail_low_none() {
-        let mut params = SearchParams::default();
-        let mut window = Aspiration::new(&params, 10, 0);
-        assert_eq!(window.search_depth(&params, 10, 0), 10);
-        window.fail_high(&params, window.beta);
-        assert_eq!(
-            window.search_depth(&params, 10, 0),
-            10,
-            "at 0 every window is searched at the iteration's depth"
-        );
-        assert_eq!(
-            window.recovery_after(&params),
-            0,
-            "the recovery is off by default"
-        );
-        params.asp_fail_high_reduce = 1;
-        assert_eq!(window.search_depth(&params, 10, 0), 9);
-        window.fail_low(&params, window.alpha);
-        assert_eq!(window.search_depth(&params, 10, 0), 9);
-        window.fail_high(&params, window.beta);
-        window.fail_high(&params, window.beta);
-        assert_eq!(window.search_depth(&params, 10, 0), 7);
-        assert_eq!(
-            window.search_depth(&params, 2, 0),
-            1,
-            "the depth floors at one"
-        );
-        params.asp_fail_high_reduce = 2;
-        assert_eq!(window.search_depth(&params, 10, 0), 4);
-        // A recovery carried from an earlier cascade comes off as well.
-        params.asp_fail_high_reduce = 1;
-        assert_eq!(window.search_depth(&params, 10, 3), 4);
-    }
-
-    /// The known-win floor widens the first window only for a centre in the
-    /// band, only while both the floor and the offset are on, and never
-    /// narrows a window that is already wider.
-    #[test]
-    fn the_known_win_floor_widens_the_first_window_only_in_the_band() {
-        let half_width = |params: &SearchParams, depth: usize, center: i32| {
-            let window = Aspiration::new(params, depth, center);
-            assert_eq!(window.beta - window.center, window.center - window.alpha);
-            window.beta - window.center
-        };
-        let defaults = SearchParams::default();
-        let ordinary = defaults.aspiration_delta;
-        let mut params = SearchParams {
-            mopup_known_win: 5_826,
-            asp_known_win_window: 2_000,
-            ..SearchParams::default()
-        };
-        let edge = params.mopup_known_win - KNOWN_WIN_BAND_MARGIN;
-        for center in [edge, -edge, 6_400, -9_000] {
-            assert_eq!(half_width(&params, 10, center), 2_000, "centre {center}");
-        }
-        for center in [edge - 1, -(edge - 1), 0, 900, -1_500] {
-            assert_eq!(half_width(&params, 10, center), ordinary, "centre {center}");
-        }
-        let shallow = Aspiration::new(&params, 3, 6_400);
-        assert_eq!(
-            (shallow.alpha, shallow.beta),
-            (-INF_SCORE, INF_SCORE),
-            "below depth 4 the window stays open"
-        );
-
-        params.asp_known_win_window = ordinary - 1;
-        assert_eq!(
-            half_width(&params, 10, 6_400),
-            ordinary,
-            "a floor never narrows"
-        );
-
-        params.asp_known_win_window = 2_000;
-        params.mopup_known_win = 0;
-        assert_eq!(
-            half_width(&params, 10, 6_400),
-            ordinary,
-            "off with the offset"
-        );
-        params.mopup_known_win = 5_826;
-        params.asp_known_win_window = 0;
-        assert_eq!(half_width(&params, 10, 6_400), ordinary, "off at 0");
-        assert_eq!(half_width(&defaults, 10, 6_400), ordinary, "off by default");
-    }
-
-    /// The recovery after a cascade: `(k + 1) / 2 + 2` plies for k fail-highs,
-    /// none without a fail-high, and none with the switch off.
-    #[test]
-    fn a_cascade_leaves_a_recovery_for_the_next_iterations_only_when_switched_on() {
-        let mut params = SearchParams {
-            asp_fail_high_recover: 1,
-            ..SearchParams::default()
-        };
-        let mut window = Aspiration::new(&params, 12, 0);
-        assert_eq!(window.recovery_after(&params), 0);
-        window.fail_low(&params, window.alpha);
-        assert_eq!(window.recovery_after(&params), 0, "a fail-low leaves none");
-        window.fail_high(&params, window.beta);
-        assert_eq!(window.recovery_after(&params), 3);
-        for _ in 0..6 {
-            window.fail_high(&params, window.beta);
-        }
-        assert_eq!(window.recovery_after(&params), 6, "seven fail-highs");
-        params.asp_fail_high_recover = 0;
-        assert_eq!(window.recovery_after(&params), 0);
-    }
-
-    /// With the recovery on, the iteration after a cascade is searched
-    /// shallower and still reports and completes at its nominal depth.
-    #[test]
-    fn a_recovered_iteration_completes_at_its_nominal_depth() {
-        const DEPTH: u32 = 10;
-        let limits = SearchLimits {
-            depth: Some(DEPTH),
-            ..SearchLimits::default()
-        };
-        let mut options = EngineOptions::default();
-        options.search_params.asp_fail_high_reduce = 1;
-        options.search_params.asp_fail_high_recover = 1;
-        let (fen, lines) = FAIL_HIGH_CANDIDATES
-            .iter()
-            .find_map(|&fen| {
-                let (_, lines) = clock_search(fen, &limits, &options, None, usize::MAX);
-                lines
-                    .iter()
-                    .any(|line| line.bound == "lowerbound")
-                    .then_some((fen, lines))
-            })
-            .expect("a candidate fails high at the root with the recovery on");
-        let last = lines.last().expect("a line was printed");
-        assert_eq!((last.bound, last.depth), ("", DEPTH as usize));
-        let board = Board::from_fen(fen).expect("valid fen");
-        let legal = board.generate_legal_moves();
-        let mut searcher = Searcher::default();
-        searcher.reset_search_state(&limits, &options, board.side_to_move(), 0, true);
-        let result = searcher.search_root(board, &legal, false, &mut || SearchEvent::None);
-        assert_eq!(result.depth, DEPTH as usize);
-        assert_eq!(result.bestmove.to_string(), last.first);
-        assert!(
-            searcher
-                .td
-                .root_move_records
-                .iter()
-                .all(|rm| rm.samples == DEPTH),
-            "every root record samples each completed iteration once"
-        );
-    }
-
-    /// With the reduction on, an iteration whose windows failed high still
-    /// completes at its nominal depth, every root record samples that
-    /// iteration once, and `bestmove` is the move the last line names.
-    #[test]
-    fn a_reduced_re_search_completes_the_iteration_at_its_nominal_depth() {
-        const DEPTH: u32 = 10;
-        let limits = SearchLimits {
-            depth: Some(DEPTH),
-            ..SearchLimits::default()
-        };
-        let mut options = EngineOptions::default();
-        options.search_params.asp_fail_high_reduce = 1;
-        let (fen, lines) = FAIL_HIGH_CANDIDATES
-            .iter()
-            .find_map(|&fen| {
-                let (_, lines) = clock_search(fen, &limits, &options, None, usize::MAX);
-                lines
-                    .iter()
-                    .any(|line| line.bound == "lowerbound")
-                    .then_some((fen, lines))
-            })
-            .expect("a candidate fails high at the root with the reduction on");
-        let last = lines.last().expect("a line was printed");
-        assert_eq!((last.bound, last.depth), ("", DEPTH as usize));
-
-        let board = Board::from_fen(fen).expect("valid fen");
-        let legal = board.generate_legal_moves();
-        let mut searcher = Searcher::default();
-        searcher.reset_search_state(&limits, &options, board.side_to_move(), 0, true);
-        let result = searcher.search_root(board, &legal, false, &mut || SearchEvent::None);
-        assert_eq!(result.depth, DEPTH as usize);
-        assert_eq!(result.bestmove.to_string(), last.first);
-        assert!(
-            searcher
-                .td
-                .root_move_records
-                .iter()
-                .all(|rm| rm.samples == DEPTH),
-            "every root record samples each completed iteration once, whatever depth its last window was searched at"
-        );
     }
 
     #[test]
