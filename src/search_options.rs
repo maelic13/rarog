@@ -37,6 +37,8 @@ pub struct EngineOptions {
     pub threads: usize,
     /// Principal variations reported per depth; 1 is the ordinary search.
     pub multi_pv: usize,
+    /// Back the big tables with large pages where Windows grants them.
+    pub large_pages: bool,
     pub syzygy: SyzygyOptions,
     pub search_params: SearchParams,
     /// The selectivity core's coordinates.
@@ -55,6 +57,7 @@ impl Default for EngineOptions {
             ponder: false,
             threads: 1,
             multi_pv: 1,
+            large_pages: true,
             syzygy: SyzygyOptions::default(),
             search_params: SearchParams::default(),
             core_params: CoreParams::default(),
@@ -190,11 +193,12 @@ fn set_family_mask(family: MaskedFamily, value: &str) -> OptionUpdate {
 
 impl SearchOptions {
     pub fn get_uci_options() -> Vec<String> {
-        // `mut` is needed when compiled with --features tune (the extend
-        // below). Stays `allow`, not `expect`: the lint fires under default
-        // features and does NOT under `tune`, so an expectation would be
-        // unfulfilled in one of the two configurations whichever way it is
-        // written. This is the only suppression in the crate with that shape.
+        // `mut` is needed on Windows and when compiled with --features tune
+        // (the pushes below). Stays `allow`, not `expect`: the lint fires
+        // under default features off Windows and does NOT otherwise, so an
+        // expectation would be unfulfilled in one configuration whichever way
+        // it is written. This is the only suppression in the crate with that
+        // shape.
         #[allow(unused_mut)]
         let mut opts = vec![
             String::from("option name Hash type spin default 64 min 1 max 33554432"),
@@ -208,6 +212,11 @@ impl SearchOptions {
             String::from("option name SyzygyProbeLimit type spin default 7 min 0 max 7"),
             String::from("option name Syzygy50MoveRule type check default true"),
         ];
+        // Only Windows has the page allocator the option switches.
+        #[cfg(windows)]
+        opts.push(String::from(
+            "option name LargePages type check default true",
+        ));
         // Tunable search parameters — only exposed when compiled with --features tune.
         // weather-factory sets these via UCI setoption; production builds omit them
         // so they don't pollute the option list shown to GUIs.
@@ -478,6 +487,21 @@ impl SearchOptions {
                 }
                 _ => {
                     crate::info_string!("Invalid Syzygy50MoveRule value.");
+                    OptionUpdate::Engine
+                }
+            },
+            #[cfg(windows)]
+            "largepages" => match value.as_str() {
+                "true" => {
+                    self.engine.large_pages = true;
+                    OptionUpdate::Engine
+                }
+                "false" => {
+                    self.engine.large_pages = false;
+                    OptionUpdate::Engine
+                }
+                _ => {
+                    crate::info_string!("Invalid LargePages value.");
                     OptionUpdate::Engine
                 }
             },

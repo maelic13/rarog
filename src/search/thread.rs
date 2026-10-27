@@ -164,3 +164,13 @@ impl Default for ThreadData {
         }
     }
 }
+
+impl ThreadData {
+    /// This thread's big tables allocated again, empty, so that they take the
+    /// backing the `LargePages` option now asks for.
+    pub(super) fn reallocate_tables(&mut self) {
+        self.hist = HistoryTables::default();
+        self.corr = CorrectionTables::default();
+        self.evaluator.reallocate_pawn_table();
+    }
+}

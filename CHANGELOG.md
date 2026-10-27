@@ -10,6 +10,12 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ## [Unreleased]
 
+### Added
+
+- **`LargePages` option (Windows).** Large pages, on by default where
+  Windows allows them, can now be turned off without changing the account's
+  rights.
+
 ### Changed
 
 - **Time management reworked.** The engine stops thinking once it has proved a

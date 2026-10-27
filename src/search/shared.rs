@@ -49,6 +49,8 @@ pub(super) struct TbRootDecision {
 pub(super) struct SearchShared {
     pub(super) tt: TranspositionTable,
     pub(super) hash_mb: usize,
+    /// The `LargePages` value this searcher's tables were allocated under.
+    pub(super) large_pages: bool,
     pub(super) syzygy: SyzygySettings,
     /// Threads in the current search. At `1` every pool gate is closed, which
     /// is what keeps a single-thread search deterministic.
@@ -61,6 +63,7 @@ impl Default for SearchShared {
         Self {
             tt: TranspositionTable::default(),
             hash_mb: 64,
+            large_pages: true,
             syzygy: SyzygySettings::default(),
             threads: 1,
             context: Arc::new(SharedContext::new(0, 0, 1)),

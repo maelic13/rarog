@@ -89,8 +89,10 @@ right. To grant it:
 
 Without the right, Rarog runs normally with ordinary pages. To check, run
 `bench`: its first line, `Large pages`, reads `on`, `off` (the right is not
-held) or `partial` (Windows could not find enough contiguous memory for every
-table; restarting the engine or the computer often helps).
+held), `partial` (Windows could not find enough contiguous memory for every
+table; restarting the engine or the computer often helps) or `disabled`
+(the `LargePages` option is off). Setting `LargePages` to `false` turns large
+pages off without removing the right.
 
 ---
 
@@ -108,6 +110,7 @@ table; restarting the engine or the computer often helps).
 | `SyzygyProbeDepth` | `1` | Minimum depth at which tablebases are probed. |
 | `SyzygyProbeLimit` | `7` | Largest tablebase to probe. `0` disables probing. |
 | `Syzygy50MoveRule` | `true` | Whether tablebase results respect the fifty-move rule. |
+| `LargePages` | `true` | Windows only. Use large pages when Windows allows them; see [Large pages](#large-pages-windows). |
 
 `SyzygyPath` accepts several folders separated by `;` on Windows or `:`
 elsewhere, and the value `<empty>` means no path at all, which is what a GUI

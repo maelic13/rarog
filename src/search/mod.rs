@@ -38,7 +38,7 @@ use crate::eval::{INF_SCORE, MATE_SCORE};
 use crate::infra;
 use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
 use crate::syzygy::{self, Wdl};
-use crate::tt::{TB_VALUE, TB_WIN_SCORE};
+use crate::tt::{TB_VALUE, TB_WIN_SCORE, TranspositionTable};
 
 use params::CoreParams;
 use params::Param;
@@ -357,6 +357,19 @@ impl Searcher {
     }
 
     pub fn configure(&mut self, options: &EngineOptions) {
+        // The option decides each big table's backing when it is allocated,
+        // so a change allocates them all again: the helpers with their own,
+        // this thread's, and the transposition table, released before its
+        // replacement so that two are never held at once.
+        let backing_changed = options.large_pages != self.shared.large_pages;
+        if backing_changed {
+            crate::large_pages::set_enabled(options.large_pages);
+            self.shared.large_pages = options.large_pages;
+            self.worker_pool.set_helper_count(0);
+            self.td.reallocate_tables();
+            self.shared.tt = TranspositionTable::new(1);
+            self.shared.hash_mb = 1;
+        }
         if options.hash_mb != self.shared.hash_mb {
             if self.shared.tt.resize(options.hash_mb) {
                 self.shared.hash_mb = options.hash_mb;
@@ -397,6 +410,12 @@ impl Searcher {
             self.notice(format_args!(
                 "Unable to restore local transposition table at {} MiB.",
                 self.shared.hash_mb
+            ));
+        }
+        if backing_changed {
+            self.notice(format_args!(
+                "Large pages: {}",
+                crate::large_pages::large_pages()
             ));
         }
     }
@@ -2284,6 +2303,60 @@ mod tests {
             !searcher.shared.tt.is_shared(),
             "Threads = 1 must restore the local table at configure"
         );
+    }
+
+    /// A `LargePages` change allocates the tables again: the transposition
+    /// table comes back empty at the same `Hash` and form, and a notice says
+    /// how they are backed. Any other option change keeps the table.
+    #[test]
+    fn a_large_pages_change_allocates_the_tables_again() {
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        let board = Board::default();
+        let mut options = EngineOptions {
+            hash_mb: 2,
+            threads: 2,
+            ..EngineOptions::default()
+        };
+        searcher.configure(&options);
+        store_static_eval(&mut searcher, &board, 17);
+
+        options.multi_pv = 2;
+        searcher.configure(&options);
+        assert!(
+            searcher.shared.tt.probe(board.hash()).is_some(),
+            "an unrelated option change kept the table"
+        );
+        assert!(lines.lock().unwrap().is_empty());
+
+        options.large_pages = false;
+        searcher.configure(&options);
+        assert!(
+            searcher.shared.tt.probe(board.hash()).is_none(),
+            "the table was allocated again"
+        );
+        assert_eq!(searcher.shared.hash_mb, 2);
+        let mut reference = TranspositionTable::new(2);
+        reference.make_shared(2);
+        assert!(searcher.shared.tt.is_shared());
+        assert_eq!(
+            searcher.shared.tt.capacity_entries(),
+            reference.capacity_entries(),
+            "the shared table at the same Hash"
+        );
+        assert_eq!(
+            lines.lock().unwrap().as_slice(),
+            ["info string Large pages: disabled"]
+        );
+
+        options.large_pages = true;
+        searcher.configure(&options);
+        assert_eq!(
+            lines.lock().unwrap().len(),
+            2,
+            "the change back is reported"
+        );
+        assert!(!lines.lock().unwrap()[1].ends_with("disabled"));
     }
 
     #[test]

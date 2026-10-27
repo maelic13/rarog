@@ -402,3 +402,43 @@ fn the_empty_placeholder_sets_a_string_option_to_nothing() {
     );
     assert_eq!(options.engine.syzygy.path, r"C:\<empty>");
 }
+
+#[cfg(windows)]
+#[test]
+fn large_pages_is_a_check_option_that_defaults_on() {
+    let names = SearchOptions::get_uci_options().join("\n");
+    assert!(names.contains("option name LargePages type check default true"));
+
+    let mut options = SearchOptions::default();
+    assert!(options.engine.large_pages);
+    assert_eq!(
+        options.set_option(&args(&["name", "LargePages", "value", "false"])),
+        OptionUpdate::Engine
+    );
+    assert!(!options.engine.large_pages);
+    assert_eq!(
+        options.set_option(&args(&["name", "LargePages", "value", "maybe"])),
+        OptionUpdate::Engine
+    );
+    assert!(
+        !options.engine.large_pages,
+        "an invalid value keeps the old one"
+    );
+    options.set_option(&args(&["name", "largepages", "value", "TRUE"]));
+    assert!(options.engine.large_pages);
+}
+
+#[cfg(not(windows))]
+#[test]
+fn large_pages_is_not_offered_without_the_page_allocator() {
+    assert!(
+        !SearchOptions::get_uci_options()
+            .join("\n")
+            .contains("LargePages")
+    );
+    let mut options = SearchOptions::default();
+    assert_eq!(
+        options.set_option(&args(&["name", "LargePages", "value", "false"])),
+        OptionUpdate::Unknown
+    );
+}

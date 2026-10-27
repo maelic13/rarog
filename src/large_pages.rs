@@ -7,7 +7,8 @@
 //! allocation of at least [`THRESHOLD`] bytes with 2 MB pages when the user
 //! holds the "Lock pages in memory" right, and with ordinary pages otherwise;
 //! smaller allocations go to the system allocator. The tables, their contents
-//! and the search are unchanged.
+//! and the search are unchanged. The `LargePages` option turns the large pages
+//! off, for a system where locked memory hurts more than page walks do.
 //!
 //! The trait's default `alloc_zeroed` and `realloc` are kept: a page
 //! allocation comes back zeroed from the system already, so the default's
@@ -15,7 +16,7 @@
 //! more `unsafe` site for no speed in play.
 
 use std::fmt;
-use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
 
 /// Allocations of at least this many bytes are page allocations: the
 /// transposition table, the correction and continuation tables, and with the
@@ -30,6 +31,8 @@ pub const THRESHOLD: usize = 512 * 1024;
 pub enum LargePages {
     /// No page allocation has been made, or the allocator is not installed.
     NotUsed,
+    /// The `LargePages` option is off: ordinary pages back the tables.
+    Disabled,
     /// The process may not use large pages: ordinary pages back the tables.
     Off,
     /// Every page allocation so far is in large pages.
@@ -43,6 +46,7 @@ impl fmt::Display for LargePages {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             Self::NotUsed => "not used",
+            Self::Disabled => "disabled",
             Self::Off => "off",
             Self::On => "on",
             Self::Partial => "partial",
@@ -63,9 +67,27 @@ const GRANTED: u8 = 2;
 static RIGHT: AtomicU8 = AtomicU8::new(UNASKED);
 /// Page allocations that asked for large pages and got ordinary ones.
 static FALLBACKS: AtomicUsize = AtomicUsize::new(0);
+/// Whether page allocations ask for large pages: the `LargePages` option,
+/// for the whole process. The engine thread changes it only between searches
+/// and then allocates every table it governs again.
+static ENABLED: AtomicBool = AtomicBool::new(true);
+
+/// Turn large pages on or off for the page allocations that follow; the
+/// tables already allocated keep their backing until they are allocated
+/// again.
+pub fn set_enabled(enabled: bool) {
+    if ENABLED.swap(enabled, Ordering::Relaxed) != enabled {
+        // What `large_pages` reports describes the tables allocated after
+        // the change, not a mix with the ones the change replaces.
+        FALLBACKS.store(0, Ordering::Relaxed);
+    }
+}
 
 /// How the big tables are backed so far.
 pub fn large_pages() -> LargePages {
+    if !ENABLED.load(Ordering::Relaxed) {
+        return LargePages::Disabled;
+    }
     match RIGHT.load(Ordering::Acquire) {
         UNASKED => LargePages::NotUsed,
         DENIED => LargePages::Off,
@@ -83,7 +105,7 @@ mod win {
     use std::alloc::{GlobalAlloc, Layout, System};
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    use super::{DENIED, FALLBACKS, GRANTED, PageAllocator, RIGHT, THRESHOLD, UNASKED};
+    use super::{DENIED, ENABLED, FALLBACKS, GRANTED, PageAllocator, RIGHT, THRESHOLD, UNASKED};
     use crate::win32::{
         AdjustTokenPrivileges, CloseHandle, GetCurrentProcess, GetLargePageMinimum, GetLastError,
         Handle, LookupPrivilegeValueW, Luid, MEM_COMMIT, MEM_LARGE_PAGES, MEM_RELEASE, MEM_RESERVE,
@@ -190,7 +212,9 @@ mod win {
                     return System.alloc(layout);
                 }
                 let size = layout.size();
-                if let Some(page) = large_page_size() {
+                if ENABLED.load(Ordering::Relaxed)
+                    && let Some(page) = large_page_size()
+                {
                     let large = VirtualAlloc(
                         std::ptr::null_mut(),
                         size.div_ceil(page) * page,
