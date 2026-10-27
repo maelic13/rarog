@@ -14,7 +14,8 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
   - B.9 head `tools/test_engines/rarog-b9head-pext-pgo.exe` (`aac92114…01ee`,
     `24aefb4`, 11,171,726 bench nodes, rustc 1.98.1);
   - C head `tools/test_engines/rarog-c11head-pext-pgo.exe` (`9750d3de…7fd2`,
-    `a0146a3`, 13,987,223, rustc 1.99.1).
+    13,987,223, rustc 1.99.1; recipe
+    `analysis/arm_patches/a0146a3-rar-m73-c11head.patch`, as RAR-M73).
 - **Host:** the match host, AMD Ryzen 9 5950X (16 cores, 32 logical CPUs, two
   eight-core CCDs), idle before each read (2–7% CPU, no engine, harness or
   build process).

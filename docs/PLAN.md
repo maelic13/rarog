@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-P46 measured a target: the engine's 4T/1T fell to 3.28 from 3.80, plus a C-only system-level slow state in the games' conditions; next, the large-pages-off arm |
+| D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-P46 measured a target: the engine's 4T/1T fell to 3.28 from 3.80, plus a C-only system-level slow state in the games' conditions, seen only with large pages on (RAR-P47, weak); next, the engine's 2T loss in shared writes, and the in-game `LargePages` read if the maintainer runs it |
 | D.3 | RESEARCH | R2 | Engine lifecycle and protocol robustness |
 | D.4 | RESEARCH | R2 | Tablebase policy |
 
@@ -1569,9 +1569,13 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
   contradiction no longer holds. Its own 4T/1T bench scaling is 3.28 against
   the B.9 head's 3.80, lost already at 2T. Under the games' conditions (three
   concurrent pinned 4T processes, 100 ms searches) it alone enters a
-  system-level slow state, 7–10% under B.9 instead of 23% over. The first read
-  is an arm with large pages off on the same concurrent cell; then the 2T loss
-  in shared writes; the self-relative scaling games come after.
+  system-level slow state, 7–10% under B.9 instead of 23% over. **RAR-P47,
+  2026-10-27:** the `LargePages` option (`2b7bca9`) turns large pages off; the
+  slow state appeared only with them on (2 of 16 passes against 0 of 16), weak
+  evidence for the allocator. Off costs about 1–4% NPS in these cells. The
+  in-game read, RAR-M74's four-thread conditions with the option off against
+  on, is the maintainer's run and settles the default. Next for the agent: the
+  2T loss in shared writes; the self-relative scaling games come after.
 - **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `R2`, then `I1`.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.
