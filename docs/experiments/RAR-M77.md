@@ -37,7 +37,9 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
     older engines in its field. The margin is only the time-loss tolerance.
   - Runner: Colosseum CLI 0.4.0, the pinned one.
   - Driver `analysis/artifacts/d2-largepages-ingame/run_m77.ps1`
-    (`1489d3a0…`), started by `start_when_idle.ps1` (`bc3eeacb…`).
+    (`1489d3a0…`), started by `start_when_idle.ps1` (`7d7192c8…`; first
+    registered as `bc3eeacb…`, before its `-DryRun` pass-through was added,
+    before any game).
   - Dry run 2026-10-27, exit 0, every guard passed (host 1%, runner pin,
     both fingerprints, flavour and compiler, policy). `dry-run.json`
     SHA-256 `07c96769…7cf1`; the run's manifest must repeat its
