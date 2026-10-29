@@ -528,26 +528,31 @@ function Get-HarnessBusyProcess {
 }
 
 function Get-HarnessHostBusyPercent {
-    # Sustained load of everything except this process, from the raw kernel
-    # counters: busy = 1 - idle-ticks / elapsed-ticks over one window. The
-    # formatted counter this replaced was read three times right after the
-    # wrapper's own start-up (PowerShell's JIT, Get-Process over every process,
-    # the CIM provider warming up) and reported that start-up as host load, so a
-    # quiet box read 19%. The window opens only after a settle pause, and the
-    # wrapper's own CPU over the window is subtracted, so the check measures the
-    # host, never itself.
+    # Sustained load of everything except this process, from the kernel's own
+    # counters: GetSystemTimes returns idle, kernel and user time summed over
+    # every logical CPU in one call, and busy = 1 - idle / (kernel + user) over
+    # one window. WMI's raw processor counters are not used: their idle count is
+    # not sampled with their timestamp, and on this host they reported 1.6 to
+    # 2.7 s of idle in a 2 s window, a load of -35% to +23% on a quiet box
+    # (Basilisk, 2026-10-29). The window opens only after a settle pause, and
+    # the wrapper's own CPU over the window is subtracted, so the check measures
+    # the host, never its own start-up.
     param([double]$WindowSeconds = 2.0, [double]$SettleSeconds = 1.0)
 
     if (-not $script:HarnessIsWindows) { return $null }
-    $cpus = [Environment]::ProcessorCount
+    if (-not ('Harness.Kernel32' -as [type])) {
+        Add-Type -Namespace Harness -Name Kernel32 -MemberDefinition @'
+[DllImport("kernel32.dll", SetLastError = true)]
+public static extern bool GetSystemTimes(out long idle, out long kernel, out long user);
+'@
+    }
     $read = {
-        $raw = Get-CimInstance Win32_PerfRawData_PerfOS_Processor -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -eq '_Total' } | Select-Object -First 1
-        if (-not $raw) { return $null }
+        $idle = 0L; $kernel = 0L; $user = 0L
+        if (-not [Harness.Kernel32]::GetSystemTimes([ref]$idle, [ref]$kernel, [ref]$user)) { return $null }
         [pscustomobject]@{
-            Idle = [double]$raw.PercentProcessorTime   # idle time, in 100 ns ticks
-            Time = [double]$raw.Timestamp_Sys100NS
-            Self = (Get-Process -Id $PID).TotalProcessorTime.TotalSeconds
+            Idle  = [double]$idle
+            Total = [double]($kernel + $user)    # kernel time includes idle time
+            Self  = (Get-Process -Id $PID).TotalProcessorTime.TotalSeconds
         }
     }
     Start-Sleep -Milliseconds ([int](1000 * $SettleSeconds))
@@ -555,11 +560,11 @@ function Get-HarnessHostBusyPercent {
     Start-Sleep -Milliseconds ([int](1000 * $WindowSeconds))
     $second = & $read
     if (-not $first -or -not $second) { return $null }
-    $elapsed = $second.Time - $first.Time
-    if ($elapsed -le 0) { return $null }
-    $busy = 100.0 * (1.0 - ($second.Idle - $first.Idle) / $elapsed)
+    $total = $second.Total - $first.Total
+    if ($total -le 0) { return $null }
+    $busy = 100.0 * (1.0 - ($second.Idle - $first.Idle) / $total)
     # This process's share of the whole machine over the same window.
-    $self = 100.0 * ($second.Self - $first.Self) / ($elapsed / 1e7) / $cpus
+    $self = 100.0 * 1e7 * ($second.Self - $first.Self) / $total
     [Math]::Max(0.0, $busy - $self)
 }
 
