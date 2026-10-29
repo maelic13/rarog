@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-P46 measured a target: the engine's 4T/1T fell to 3.28 from 3.80, plus a C-only system-level slow state in the games' conditions, seen only with large pages on (RAR-P47, weak); next, the engine's 2T loss in shared writes, and the in-game `LargePages` read if the maintainer runs it |
+| D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-P46 measured a target: the engine's 4T/1T fell to 3.28 from 3.80; large pages are not the in-game problem (RAR-M77: +2.7% NPS, +10.3 ± 5.9 Elo, default stays on); next, the engine's 2T loss in shared writes, and why RAR-M74's field slowed the head |
 | D.3 | RESEARCH | R2 | Engine lifecycle and protocol robustness |
 | D.4 | RESEARCH | R2 | Tablebase policy |
 
@@ -1572,10 +1572,14 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
   system-level slow state, 7–10% under B.9 instead of 23% over. **RAR-P47,
   2026-10-27:** the `LargePages` option (`2b7bca9`) turns large pages off; the
   slow state appeared only with them on (2 of 16 passes against 0 of 16), weak
-  evidence for the allocator. Off costs about 1–4% NPS in these cells. The
-  in-game read, RAR-M74's four-thread conditions with the option off against
-  on, is the maintainer's run and settles the default. Next for the agent: the
-  2T loss in shared writes; the self-relative scaling games come after.
+  evidence for the allocator. Off costs about 1–4% NPS in these cells.
+  **RAR-M77, 2026-10-28:** in games under RAR-M74's four-thread conditions,
+  large pages on are +2.7% NPS and +10.3 ± 5.9 Elo over off, so the default
+  stays on. The slow state does not show in games: a match keeps its engine
+  processes. The same head reads 8.08 M nps against itself but read 6.47 M
+  against RAR-M74's field, so that −9.2% is a question about the opponents
+  sharing the slot, not about large pages. Next for the agent: the 2T loss in
+  shared writes; the self-relative scaling games come after.
 - **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `R2`, then `I1`.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.

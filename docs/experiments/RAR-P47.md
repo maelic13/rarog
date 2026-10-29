@@ -134,6 +134,16 @@ process held its tables in large pages (working set 6–7 MiB after
 - **Instrument:** too few slow events for the question. A rare event needs
   more passes or the games' own conditions, not a finer NPS figure.
 
+## Superseded for games, 2026-10-29
+
+[RAR-M77](RAR-M77.md) played the in-game read.
+- Under RAR-M74's four-thread conditions, large pages on are +2.7% NPS and
+  +10.3 ± 5.9 Elo over off.
+- The slow state above does not show in games: a match keeps its engine
+  processes, while this read started fresh ones every pass.
+- The zero-game observation stands as recorded. It no longer bears on the
+  option's default.
+
 ## Retry trigger
 
 Either of these, registered first:
