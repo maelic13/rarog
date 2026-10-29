@@ -58,3 +58,6 @@ ffe556d	Reckless head of 2026-10-22 (the connected-feature reading of RAR-R19)
 02df47c54176e937	SHA-256 prefix of the Rarog 2.6.0 binary the originality review hashed
 b74ead5648cfa7a7	SHA-256 prefix of the Reckless binary the originality review hashed
 271b62dce0226789	SHA-256 prefix of the Stockfish 11 binary the originality review hashed
+875ec6e	Basilisk commit (nps_read: several pools and contrasts in one read)
+a575ab8	Basilisk commit (naming the per-tier asset a refused CPU should run)
+d601807	Basilisk commit (release back to per-tier assets after BAS-P20)

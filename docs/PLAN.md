@@ -1940,7 +1940,13 @@ with an evaluator option, never two release builds.
   makes PGO apply **no profile at all**, without an error. It may never be
   done. The triggers that would revive it are recorded in that document, the
   strongest being NNUE in Phase F, which is what makes a wider tier ladder pay
-  (196 of Stockfish's 249 ISA-specific lines are NNUE inference).
+  (196 of Stockfish's 249 ISA-specific lines are NNUE inference). Basilisk
+  built and shipped the same design on 2026-10-29. It found that the relink
+  costs nothing only once every tier function is 64-byte aligned (−0.58%
+  unaligned, from placement alone), that symbols leak across tiers through
+  LTO, and that renaming the kept post-LTO objects of each tier's ordinary
+  PGO build avoids the profile trap. These are recorded as leads in that
+  document's section 9, and they fire no trigger.
 - **G.3 Frontier: larger nets, data scaling, LTC search fit; CCRL top-50 gate — `R3`.** Larger nets, data scaling, search fit at LTC; the
   top-50 gate is the CCRL list again.
 
