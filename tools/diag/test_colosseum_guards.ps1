@@ -179,6 +179,13 @@ try {
     Invoke-Case -Name "categorical waiver with equal options" -Expect "differ by UCI options" `
         -Arguments (Merge-Arguments $categorical @{ OptionsA = @() })
 
+    # The arms' names are the runner's labels; with one executable on both sides
+    # they are all that keeps the two sides' statistics apart.
+    Invoke-Case -Name "two arms with one name" -Expect "need distinct names" `
+        -Arguments (Merge-Arguments $categorical @{ NameB = "ALT" })
+    Invoke-Case -Name "a second label in -ExtraArgs" -Expect "'--a-label <A_LABEL>' cannot be used multiple times" `
+        -Arguments (Merge-Arguments $categorical @{ ExtraArgs = @("--a-label", "impostor") })
+
     # -Nodes: a fixed-node read resolves fixed nodes on both sides and nothing
     # else; the clock run file under -Nodes, or -Nodes outside a match, is
     # refused before any game.

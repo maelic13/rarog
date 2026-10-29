@@ -46,6 +46,12 @@
                  -SeedFrom <run dir> starts a block from a finished tune (PLAN rule 7c).
     gauntlet  -> a rating gauntlet; participants are passed in -ExtraArgs.
 
+.PARAMETER NameA
+    Arm A's name, passed to the runner as its label (--a-label), so it names
+    the side in the PGN, the run record and Colosseum's search statistics.
+    -NameB is arm B's. The two must differ: with one executable on both sides
+    the runner would otherwise merge the two sides' statistics under one name.
+
 .PARAMETER Bracket
     Which SPRT run file: default [0,3], removal [-1.75,0.25], repair [-5,5],
     wide [0,10]. Bounds never change after games are seen.
@@ -241,6 +247,7 @@ $RunFile = (Resolve-Path -LiteralPath $RunFile).Path
 
 $engines = @()
 if ($twoArmModes -contains $Mode) {
+    if ($NameA -eq $NameB) { throw "-NameA and -NameB are both '$NameA'; the arms need distinct names." }
     $engines = @(
         [pscustomobject]@{ Path = $EngineA; Label = $NameA; Options = $OptionsA }
         [pscustomobject]@{ Path = $EngineB; Label = $NameB; Options = $OptionsB }
@@ -432,6 +439,9 @@ switch ($Mode) {
     "spsa"      { $commandArgs += @($engines[0].Path, '--total-games', "$TotalGames") }
 }
 if ($Mode -eq "spsa" -and $SeedFrom) { $commandArgs += @('--seed-from', $SeedFrom) }
+# Without labels the runner names each side after its executable, and a
+# same-binary A/B then merges both sides' search statistics under one name.
+if ($twoArmModes -contains $Mode) { $commandArgs += @('--a-label', $NameA, '--b-label', $NameB) }
 # A side-specific option list on the command line REPLACES the run file's list
 # for that side (Colosseum's command-line-over-run-file rule applies to the
 # whole key), so a bare `-OptionsA CoreX=1` would play arm A without Hash and
@@ -607,8 +617,7 @@ if (-not $processes -or "$($processes.Value)" -ne 'per-slot') {
 }
 if ([int]$resolved.master_seed -ne $Seed) {
     Add-Violation "resolved seed is $($resolved.master_seed), expected $Seed"
-}
-if ($Mode -eq "sprt") {
+}if ($Mode -eq "sprt") {
     if ("$($resolved.design.parameters.model)" -ne "normalized") {
         Add-Violation "SPRT model is '$($resolved.design.parameters.model)', expected normalized"
     }
