@@ -24,7 +24,12 @@ median cycle is disturbed, and three or more mean the read is repeated.
 The host must be idle before step 1 and before `--extend`: no engine,
 harness or build process and at most 15% CPU, read by the harness's own
 measure (`harness_common.ps1`), the one `colosseum.ps1` refuses on.
-`--allow-busy-host` waives it and the waiver is archived with the read.
+Fresh executables are scanned by antivirus, which contaminates a read
+(RAR-M48), so every build first runs one short `bench 8 1` (archived, not
+counted) to set the scan off, and the read then waits until the host has
+stayed quiet (no such process, at most 10% CPU) for `--quiet-seconds`; a
+scan still running holds the wait. `--allow-busy-host` waives both checks
+and the waiver is archived with the read.
 
 Every build is checked against its manifest hash before and after the read,
 every run must print its own pool's fingerprint (from that pool's manifest, so a
@@ -59,6 +64,10 @@ T95 = {2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306, 9: 
        12: 2.179, 14: 2.145, 16: 2.120, 20: 2.086, 30: 2.042}
 HARNESS = Path(__file__).resolve().parent / "harness_common.ps1"
 MAX_BUSY_PERCENT = 15.0  # colosseum.ps1's default ceiling
+WARMUP_DEPTH = 8
+QUIET_CEILING_PERCENT = 10.0
+QUIET_SECONDS = 60
+MAX_QUIET_MINUTES = 30
 
 
 def pool_fingerprint(directory: Path) -> int:
@@ -107,15 +116,31 @@ def parse_option(text: str) -> tuple[str, str]:
     return name.strip(), value.strip()
 
 
-def bench_input(options) -> str:
+def bench_input(options, bench: str = "bench 13 3") -> str:
     """The engine's stdin: each option set, then the bench."""
-    return "".join(f"setoption name {n} value {v}\n" for n, v in options) + "bench 13 3\n"
+    return "".join(f"setoption name {n} value {v}\n" for n, v in options) + bench + "\n"
 
 
 def read(exe: Path, fingerprint: int, options=()) -> list[dict]:
     out = subprocess.run([str(exe)], input=bench_input(options), capture_output=True, text=True,
                          timeout=900).stdout
     return parse_runs(out, str(exe), fingerprint)
+
+
+def warm_up(exe: Path, options=()) -> dict:
+    """One short bench, so a fresh executable's antivirus scan starts before
+    the quiet wait rather than inside a cycle. Its node count is not the
+    fingerprint; every counted reading checks that."""
+    bench = f"bench {WARMUP_DEPTH} 1"
+    out = subprocess.run([str(exe)], input=bench_input(options, bench), capture_output=True, text=True,
+                         timeout=300).stdout
+    # One run prints only the summary, not a `run 1/1` line.
+    runs = re.findall(r"^Nodes searched\s*:\s*(\d+).*?^Total time \(ms\)\s*:\s*(\d+).*?^Nodes/second\s*:\s*(\d+)",
+                      out, re.M | re.S)
+    if len(runs) != 1:
+        raise SystemExit(f"{exe}: `{bench}` printed {len(runs)} summaries, expected one")
+    nodes, ms, nps = runs[0]
+    return {"exe": str(exe), "depth": WARMUP_DEPTH, "nodes": int(nodes), "ms": int(ms), "nps": int(nps)}
 
 
 def check_arms(base_dir: Path, cand_dir: Path, builds: dict, options: dict) -> None:
@@ -180,6 +205,42 @@ def check_host(record: dict, allow_busy: bool) -> None:
         print("WARNING: host not idle, check waived: " + "; ".join(reasons), flush=True)
     else:
         print(f"host idle: {state['busy_percent']}% CPU, no engine, harness or build process", flush=True)
+
+
+def wait_quiet(record: dict, allow_busy: bool, seconds: float, clock=time.monotonic) -> None:
+    """Wait until the host has stayed quiet for `seconds`: no engine, harness or
+    build process and at most QUIET_CEILING_PERCENT CPU at every reading. A
+    single start-of-read check passes in a lull of an antivirus scan; this
+    holds the read until the scan is over. Gives up after MAX_QUIET_MINUTES,
+    refusing unless waived, and archives the wait."""
+    print(f"waiting for {seconds:.0f} s of host load at most {QUIET_CEILING_PERCENT:.0f}% ...", flush=True)
+    started = clock()
+    quiet_since = None
+    readings = []
+    while True:
+        state = host_state()
+        readings.append(state["busy_percent"])
+        quiet = not state["busy_processes"] and (
+            state["busy_percent"] is None or state["busy_percent"] <= QUIET_CEILING_PERCENT)
+        now = clock()
+        if quiet:
+            quiet_since = now if quiet_since is None else quiet_since
+            if now - quiet_since >= seconds:
+                break
+        else:
+            quiet_since = None
+        if now - started > 60 * MAX_QUIET_MINUTES:
+            reasons = idle_refusal(state, QUIET_CEILING_PERCENT) or ["host load never stayed down"]
+            record.setdefault("quiet_waits", []).append(
+                {"seconds": round(now - started, 1), "busy_percent": readings, "quiet": False, "waived": allow_busy})
+            if not allow_busy:
+                raise SystemExit(f"HOST NOT QUIET - {'; '.join(reasons)} for {MAX_QUIET_MINUTES} min; a read needs "
+                                 f"{seconds:.0f} s at most {QUIET_CEILING_PERCENT:.0f}%. Stop the other work and re-run.")
+            print("WARNING: host never quiet, wait waived: " + "; ".join(reasons), flush=True)
+            return
+    record.setdefault("quiet_waits", []).append(
+        {"seconds": round(clock() - started, 1), "busy_percent": readings, "quiet": True, "waived": False})
+    print(f"host quiet after {clock() - started:.0f} s", flush=True)
 
 
 # --- the estimator, on archived readings ------------------------------------
@@ -301,6 +362,8 @@ def main() -> int:
     parser.add_argument("--no-regression", action="store_true")
     parser.add_argument("--allow-busy-host", action="store_true",
                         help="read on a host that is not idle; the waiver is archived")
+    parser.add_argument("--quiet-seconds", type=float, default=QUIET_SECONDS,
+                        help=f"quiet host time before the cycles (default {QUIET_SECONDS})")
     parser.add_argument("--base-option", action="append", default=[], metavar="NAME=VALUE",
                         help="setoption sent to every base run (tune builds)")
     parser.add_argument("--cand-option", action="append", default=[], metavar="NAME=VALUE",
@@ -349,11 +412,10 @@ def main() -> int:
             "cycles": [],
         }
         check_host(record, args.allow_busy_host)
-        for arm in builds:
-            for exe in builds[arm]:
-                read(exe, fingerprints[arm], options[arm])  # warm-up, and the fingerprint check
+        record["warmup"] = [warm_up(exe, options[arm]) for arm in builds for exe in builds[arm]]
         cycles = args.cycles
 
+    wait_quiet(record, args.allow_busy_host, args.quiet_seconds)
     run_cycles(record, out, builds, cycles, fingerprints, options)
     record["cpu_after"] = cpu_load()
     record["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")

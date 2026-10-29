@@ -258,6 +258,56 @@ class HostTests(unittest.TestCase):
         finally:
             nps_read.host_state = saved
 
+    def quiet_wait(self, loads, seconds, allow_busy=False, step=5.0):
+        """wait_quiet over a scripted host: one load per reading, `step`
+        seconds apart, the last repeating; "proc" is a quiet load with an
+        engine running."""
+        saved = nps_read.host_state
+        calls = {"n": 0}
+
+        def state():
+            load = loads[min(calls["n"], len(loads) - 1)]
+            calls["n"] += 1
+            if load == "proc":
+                return {"busy_percent": 2.0, "busy_processes": ["rarog:9"]}
+            return {"busy_percent": load, "busy_processes": []}
+
+        nps_read.host_state = state
+        record = {}
+        try:
+            nps_read.wait_quiet(record, allow_busy, seconds, clock=lambda: step * calls["n"])
+        finally:
+            nps_read.host_state = saved
+        return record, calls["n"]
+
+    def test_the_quiet_wait_ends_once_the_host_has_stayed_quiet_long_enough(self):
+        record, n = self.quiet_wait([3.0], 60)
+        self.assertEqual(n, 13)  # quiet from the first reading, 60 s later at the 13th
+        self.assertTrue(record["quiet_waits"][-1]["quiet"])
+
+    def test_a_burst_or_a_competing_process_restarts_the_quiet_wait(self):
+        _, quiet_throughout = self.quiet_wait([3.0], 60)
+        _, burst = self.quiet_wait([3.0, 3.0, 3.0, 25.0, 3.0], 60)
+        _, process = self.quiet_wait([3.0, 3.0, 3.0, "proc", 3.0], 60)
+        self.assertEqual(burst, quiet_throughout + 4)
+        self.assertEqual(process, quiet_throughout + 4)
+
+    def test_the_quiet_ceiling_is_ten_percent(self):
+        _, at = self.quiet_wait([10.0], 60)
+        _, over = self.quiet_wait([10.1, 3.0], 60)
+        self.assertEqual(over, at + 1)
+
+    def test_a_host_never_quiet_is_refused_unless_waived_and_both_are_archived(self):
+        with self.assertRaises(SystemExit):
+            self.quiet_wait([30.0], 60)
+        record, _ = self.quiet_wait([30.0], 60, allow_busy=True)
+        self.assertFalse(record["quiet_waits"][-1]["quiet"])
+        self.assertTrue(record["quiet_waits"][-1]["waived"])
+
+    def test_the_warm_up_bench_is_short_and_follows_the_options(self):
+        self.assertEqual(nps_read.bench_input([("Hash", "16")], f"bench {nps_read.WARMUP_DEPTH} 1"),
+                         "setoption name Hash value 16\nbench 8 1\n")
+
 
 class UnequalPoolTests(unittest.TestCase):
     def test_three_builds_against_four_use_five_degrees_of_freedom(self):

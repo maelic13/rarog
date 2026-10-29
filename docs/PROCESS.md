@@ -407,7 +407,14 @@ and is not quoted as one; that tool is kept only to compare with earlier rows.
 The read refuses a busy host before step 1 and step 2 by the harness's own
 measure (`--allow-busy-host` waives it, archived), and its per-cycle CPU
 figure is that measure; the one-shot `LoadPercentage` it replaced read its own
-start-up, 12–14% on an idle host. An idle start does not make a read clean:
+start-up, 12–14% on an idle host. That measure is the kernel's
+`GetSystemTimes`: WMI's raw processor counters, used before, read −35% to
++23% on a quiet host when Basilisk's identical reader was checked on
+2026-10-29. Fresh executables are scanned by antivirus (RAR-M48), so a new
+read first runs one short `bench 8 1` per build, which sets the scan off,
+and then step 1 and step 2 both wait for 60 s under 10% load with no
+competing process (`--quiet-seconds`); a scan still running holds the wait,
+and a host never quiet in 30 minutes is refused. An idle start does not make a read clean:
 the host's level wanders by about 3% in half an hour, and two of six reads
 started idle were disturbed and wrong (RAR-P37), so the disturbance rule
 stands and a disturbed read is repeated. Two pools of one source and
