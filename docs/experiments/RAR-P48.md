@@ -1,4 +1,4 @@
-# RAR-P48 — Where the C head's 5 s thread-scaling loss lives: hardware, the shared search, the CCD split or large pages — REGISTERED 2026-10-29, before the read
+# RAR-P48 — Where the C head's 5 s thread-scaling loss lives: hardware, the shared search, the CCD split or large pages — MIXED 2026-10-29: reproduced under pinning, not the CCD split or large pages; split unresolved by two instrument confounds
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -185,3 +185,118 @@ python D:\code\rarog\analysis\artifacts\d2-scaling\split_read.py D:\code\rarog\a
 If it refuses with `HOST NOT IDLE` (the desktop app's bursts can trip the
 2 s window), run it again. The JSON is written only when the read
 completes.
+
+## Result — 2026-10-29, appended after exposure
+
+- **The run.** The maintainer ran the registered read from 14:34 to
+  14:59.
+  - 504 process readings in 1,503 s. Host load 3.4% before and 2.5%
+    after.
+  - Evidence: `analysis/artifacts/d2-scaling/split_read.json`
+    (`c85c36a9…`) and `split_read.log` (`1c0cbf33…`).
+  - Analysis: `p48_analyse.py` (`70a0fd7c…`, ignored) and its output,
+    `p48_analyse.log`.
+- **Integrity.**
+  - Both binary hashes match.
+  - Every cell has its registered count (6 rounds × 2 positions × its
+    processes), and every affinity mask reads back as set.
+  - `c-lp-off` alone printed the large-pages-disabled notice. Its 1T
+    working set was 293 MiB against `c-lp-on`'s 6 MiB.
+- **Registered readings** (medians pooled over both positions, as the
+  instrument prints them):
+
+  | Arm | E 2T | E 4T | E 4T-x | H 4T | Q 4T |
+  |---|---:|---:|---:|---:|---:|
+  | `b9head` | 1.026 | 1.072 | 1.057 | 1.000 | 1.072 |
+  | `c-lp-on` | 0.890 | 0.896 | 0.917 | 0.896 | 1.000 |
+  | `c-lp-off` | 0.928 | 0.930 | 0.944 | 0.947 | 0.983 |
+
+- **Outcome by the frozen rules: Mixed.**
+  - `c-lp-on`'s E is 0.176 below B.9's at `4T` and 0.141 below at `4T-x`.
+    `c-lp-off`'s is 0.142 below at `4T`.
+  - Against B.9 at `4T`, `c-lp-off`'s H is 0.054 lower and its Q 0.089
+    lower.
+  - So neither "hardware" (Q within 0.03) nor "shared search" (H within
+    0.03) holds, and no earlier outcome holds either.
+- **What it does show, whatever the confounds:**
+  - **The loss reproduces under pinning,** one thread per physical core.
+    It is not an artefact of RAR-P46's unpinned placement.
+  - **It is not the CCD split.** No arm's `4T-x` is below its `4T`.
+  - **It is not large pages.**
+    - `c-lp-off` loses nearly as much as `c-lp-on`: 0.142 against 0.176
+      pooled, and 0.089 against 0.094 and 0.114 against 0.140 by
+      position.
+    - With large pages, a lone search is faster (1T 2.275 M against
+      2.197 M), but four concurrent processes lose that advantage
+      (4x1T 2.038 M against 2.080 M).
+- **Secondary predictions.**
+  - B.9's E at 4T was at least 0.93, as predicted (0.85): 1.072 pooled,
+    1.032 and 1.019 by position.
+  - Transient: no concurrent reading fell below 0.75 × its arm's 1T
+    median, as predicted (0.6). The settle held, and the smoke runs'
+    halving did not recur.
+
+## Two instrument confounds, found after exposure
+
+- **The pooled median mixes two positions.**
+  - The two positions' NPS differ by about 12%, so a 12-reading median
+    lands between the two clusters.
+  - It inflates B.9's pooled H and Q: 1.000 and 1.072 pooled, against
+    0.972 and 1.061 at position 0, and 0.977 and 1.043 at position 1.
+  - Per position, as an observation that was not registered, both
+    positions meet the shared-search rule:
+
+    | Position | `c-lp-on` E 4T gap | `c-lp-off` E 4T gap | `c-lp-off` H gap | `c-lp-off` Q gap |
+    |---|---:|---:|---:|---:|
+    | 0 | −0.094 | −0.089 | −0.017 | −0.073 |
+    | 1 | −0.140 | −0.114 | −0.020 | −0.098 |
+
+  - The registration did not say pooled or per position. Choosing the
+    estimator after seeing it would rescue a verdict, so the registered
+    outcome stays Mixed.
+- **The measuring window differs between cells.**
+  - NPS is read from the last `info … nodes` line, which the engine prints
+    when an iteration completes. No line is printed at stop.
+  - 452 of 504 searches ended that line before 4,900 ms (2.3 to 5.0 s).
+  - At position 0, C's 1T median window is about 3.8 s and its 4T window
+    about 4.2 s. B.9's run from 4.3 to 5.0 s.
+  - If NPS drifts over a search, the arms' E and H move by an unknown
+    amount.
+
+## Disposition
+
+- **Recorded unresolved**, by the rule for Mixed.
+- What is settled:
+  - the loss is real under pinning;
+  - it is not the CCD split;
+  - it is not large pages.
+- The split between hardware and shared search is not settled.
+- **Retry trigger, named here:** an instrument that does both of these:
+  - reads every quantity per position;
+  - measures every search over the same window: nodes at a fixed
+    elapsed time, or a fixed node budget timed from `go` to `bestmove`.
+
+  The first read under it is a fresh registration, with one prediction:
+  the per-position split above (shared search) holds.
+- If shared search holds, D.2 goes to the shared-search branch: bisect the
+  speed pass's commits at 1T and 2T on the repaired instrument, the three
+  prefetch sites first.
+
+## Calibration
+
+- **"Not reproduced," 0.40, was wrong in sign.**
+  - Pinning one thread per physical core did not remove the loss. RAR-P46's
+    unpinned placement was not its cause.
+  - "CCD split" (0.15) and "large pages" (0.10) were refuted outright.
+- **The miss was in the instrument.**
+  - The registration fixed the outcome rules on medians without saying
+    over what.
+  - It also assumed the last `info` line closes the search. That was
+    never checked, though the smokes' 300 ms searches could have shown
+    it.
+- **B.9 is superlinear per thread** (E 1.02 to 1.03 at 4T by position),
+  which the prediction did not anticipate. Its Q is above 1: B.9's threads
+  run faster sharing one search than as independent processes. C's are
+  not.
+- That contrast is the clearest lead the read gives, and it belongs to
+  the shared search, not to the hardware.
