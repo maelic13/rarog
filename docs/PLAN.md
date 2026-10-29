@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-P46 measured a target: the engine's 4T/1T fell to 3.28 from 3.80; large pages are not the in-game problem (RAR-M77: +2.7% NPS, +10.3 ± 5.9 Elo, default stays on); next, the engine's 2T loss in shared writes, and why RAR-M74's field slowed the head |
+| D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-P46 measured a target: the engine's 4T/1T fell to 3.28 from 3.80; large pages are not the in-game problem (RAR-M77: +2.7% NPS, +10.3 ± 5.9 Elo, default stays on); next, the engine's 2T loss in shared writes, and why RAR-M74's field slowed the head; RAR-P48 registered to locate the 5 s loss (hardware, shared search, CCD split or large pages), the maintainer's run |
 | D.3 | RESEARCH | R2 | Engine lifecycle and protocol robustness |
 | D.4 | RESEARCH | R2 | Tablebase policy |
 
@@ -1580,6 +1580,12 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
   against RAR-M74's field, so that −9.2% is a question about the opponents
   sharing the slot, not about large pages. Next for the agent: the 2T loss in
   shared writes; the self-relative scaling games come after.
+  **RAR-P48 registered 2026-10-29.** A static read finds nothing threads
+  share that changed since B.9; the speed pass that made C's nodes 22%
+  cheaper was measured at one thread only. The read separates the loss
+  into hardware (independent 1T processes on the same cores), the shared
+  search, a search split across the two CCDs, and large pages, at 5 s
+  with one thread per physical core. Its outcome picks D.2's next step.
 - **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `R2`, then `I1`.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.
