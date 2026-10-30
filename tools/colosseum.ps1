@@ -52,6 +52,12 @@
     -NameB is arm B's. The two must differ: with one executable on both sides
     the runner would otherwise merge the two sides' statistics under one name.
 
+.PARAMETER ThreadsB
+    Arm B's thread count, when it differs from arm A's (-Threads): a
+    self-relative scaling match plays one engine at four threads against
+    itself at one. A sprt or match only. Each game slot needs a physical core
+    per thread of the larger side (--cores-per-game).
+
 .PARAMETER Bracket
     Which SPRT run file: default [0,3], removal [-1.75,0.25], repair [-5,5],
     wide [0,10]. Bounds never change after games are seen.
@@ -120,6 +126,7 @@ param(
     [string[]]$OptionsB = @(),
     [int]$Hash = 64,
     [int]$Threads = 1,
+    [ValidateRange(1, 64)][int]$ThreadsB = 0,
     [int]$BaseMs = 3000,
     [int]$IncrementMs = 30,
     [int]$MarginMs = 20,
@@ -178,6 +185,7 @@ $modeIgnores = switch ($Mode) {
                      Iterations = "-Iterations is a tune horizon" } }
     "calibrate" { @{ MaxPairs = "-MaxPairs caps an SPRT; a null pair is sized by -Games"
                      Bracket = "-Bracket selects SPRT bounds; a null pair has none"
+                     ThreadsB = "-ThreadsB gives arm B its own thread count; a null pair's arms are identical"
                      TotalGames = "-TotalGames is a tune budget"
                      ConfigGroup = "-ConfigGroup names a tune surface"
                      SeedFrom = "-SeedFrom seeds a tune from a finished one"
@@ -186,7 +194,8 @@ $modeIgnores = switch ($Mode) {
                      Games = "-Games sizes a fixed match; a tune is sized by -TotalGames"
                      Bracket = "-Bracket selects SPRT bounds; a tune has none"
                      EngineA = "a tune has one engine: pass -Engine"
-                     EngineB = "a tune has one engine: pass -Engine" } }
+                     EngineB = "a tune has one engine: pass -Engine"
+                     ThreadsB = "-ThreadsB gives arm B its own thread count; a tune has one engine" } }
     "gauntlet"  { @{ MaxPairs = "-MaxPairs caps an SPRT"
                      Bracket = "-Bracket selects SPRT bounds"
                      TotalGames = "-TotalGames is a tune budget"
@@ -194,7 +203,8 @@ $modeIgnores = switch ($Mode) {
                      SeedFrom = "-SeedFrom seeds a tune from a finished one"
                      Iterations = "-Iterations is a tune horizon"
                      EngineA = "gauntlet participants are passed in -ExtraArgs"
-                     EngineB = "gauntlet participants are passed in -ExtraArgs" } }
+                     EngineB = "gauntlet participants are passed in -ExtraArgs"
+                     ThreadsB = "-ThreadsB gives arm B its own thread count; gauntlet participants carry their own" } }
 }
 $ignored = @($modeIgnores.Keys | Where-Object { $PSBoundParameters.ContainsKey($_) })
 if ($ignored.Count -gt 0) {
@@ -205,6 +215,8 @@ if ($ignored.Count -gt 0) {
 
 # ─── Mode-specific requirements ───────────────────────────────────────────
 $twoArmModes = @("sprt", "match", "calibrate")
+# Arm B plays at -ThreadsB when it is given, otherwise at arm A's count.
+$threadsB = if ($ThreadsB -gt 0) { $ThreadsB } else { $Threads }
 if ($twoArmModes -contains $Mode) {
     if (-not $EngineA -or -not $EngineB) { throw "-Mode $Mode needs -EngineA and -EngineB." }
 }
@@ -315,21 +327,23 @@ if ($twoArmModes -contains $Mode) {
         # One binary on both sides is legitimate when the arms differ by UCI
         # options: it removes the ~0.36% per-build PGO offset. Refuse only when
         # binary AND options match, because then the test is a null in disguise.
-        if (($OptionsA -join '|') -eq ($OptionsB -join '|')) {
+        if (($OptionsA -join '|') -eq ($OptionsB -join '|') -and $threadsB -eq $Threads) {
             throw ("Identical binaries AND options require -Mode calibrate; an SPRT " +
                    "centred on zero is not a valid null calibration.")
         }
-        Write-Host "  NOTE: one binary on both sides, differing only by UCI options." -ForegroundColor Yellow
+        Write-Host "  NOTE: one binary on both sides, differing only by UCI options or threads." -ForegroundColor Yellow
     }
 }
 
 # ─── Guard 7: every requested option is advertised ────────────────────────
 $advertised = @{}
-foreach ($arm in $engines) {
+for ($i = 0; $i -lt $engines.Count; $i++) {
+    $arm = $engines[$i]
     $details = @(Get-EngineUciOptions -Path $arm.Path -Detailed)
     $advertised[$arm.Label] = $details
     Assert-AdvertisedOptions -Advertised $details -Wanted $arm.Options -Label $arm.Label
-    Assert-AdvertisedOptions -Advertised $details -Wanted @("Hash=$Hash", "Threads=$Threads") -Label $arm.Label
+    $armThreads = if ($i -eq 1) { $threadsB } else { $Threads }
+    Assert-AdvertisedOptions -Advertised $details -Wanted @("Hash=$Hash", "Threads=$armThreads") -Label $arm.Label
 }
 
 # ─── Guard 8: the tune surface belongs to this binary and this horizon ────
@@ -447,14 +461,17 @@ if ($twoArmModes -contains $Mode) { $commandArgs += @('--a-label', $NameA, '--b-
 # whole key), so a bare `-OptionsA CoreX=1` would play arm A without Hash and
 # Threads. The shared options are therefore restated ahead of the arm's own,
 # unless the arm sets them itself; the policy check reads the result.
-$sharedOptions = @("Hash=$Hash", "Threads=$Threads")
-function Get-SideOptions { param([string[]]$Own)
+# Arms at different thread counts always state their own lists, since the run
+# file's would give both sides one count.
+function Get-SideOptions { param([string[]]$Own, [int]$SideThreads)
+    $shared = @("Hash=$Hash", "Threads=$SideThreads")
     $names = @($Own | ForEach-Object { ($_ -split '=', 2)[0].Trim().ToLowerInvariant() })
-    @($sharedOptions | Where-Object { $names -notcontains ($_ -split '=', 2)[0].ToLowerInvariant() }) + @($Own)
+    @($shared | Where-Object { $names -notcontains ($_ -split '=', 2)[0].ToLowerInvariant() }) + @($Own)
 }
 if ($Mode -ne "spsa" -and $Mode -ne "gauntlet") {
-    if ($OptionsA.Count -gt 0) { foreach ($option in (Get-SideOptions $OptionsA)) { $commandArgs += @('--a-option', $option) } }
-    if ($OptionsB.Count -gt 0) { foreach ($option in (Get-SideOptions $OptionsB)) { $commandArgs += @('--b-option', $option) } }
+    $ownLists = $threadsB -ne $Threads
+    if ($OptionsA.Count -gt 0 -or $ownLists) { foreach ($option in (Get-SideOptions $OptionsA $Threads)) { $commandArgs += @('--a-option', $option) } }
+    if ($OptionsB.Count -gt 0 -or $ownLists) { foreach ($option in (Get-SideOptions $OptionsB $threadsB)) { $commandArgs += @('--b-option', $option) } }
 }
 if ($Concurrency -gt 0) { $commandArgs += @('--concurrency', "$Concurrency") }
 if ($Nodes -gt 0) { $commandArgs += @('--a-nodes', "$Nodes", '--b-nodes', "$Nodes") }
@@ -541,7 +558,8 @@ foreach ($field in @('engine_a', 'engine_b', 'engine')) {
 foreach ($pair in $optionSets) {
     $name = $pair[0]; $options = $pair[1]
     if ([int]$options.Hash.value -ne $Hash) { Add-Violation "$name Hash is $($options.Hash.value), expected $Hash" }
-    if ([int]$options.Threads.value -ne $Threads) { Add-Violation "$name Threads is $($options.Threads.value), expected $Threads" }
+    $expectedThreads = if ($name -eq 'engine_b') { $threadsB } else { $Threads }
+    if ([int]$options.Threads.value -ne $expectedThreads) { Add-Violation "$name Threads is $($options.Threads.value), expected $expectedThreads" }
 }
 # Tablebases: a side that probes must probe the same tables as the other, and
 # the tables must be there, or the two sides play different games without a
@@ -599,9 +617,10 @@ if ([int]$resolved.execution.concurrency -ne $expectedConcurrency) {
 # four-thread engines on one core, and nothing refused it (RAR-M76 passed
 # `--cores-per-game 4` by hand).
 $coresPerGame = [int]$resolved.execution.allocation.cores_per_game
-if ($Threads -gt 1 -and $coresPerGame -lt $Threads) {
-    Add-Violation ("cores_per_game is $coresPerGame for Threads $Threads, so the engines' threads share " +
-        "fewer physical cores than they run; pass -ExtraArgs @('--cores-per-game', '$Threads')")
+$maxThreads = [Math]::Max($Threads, $threadsB)
+if ($maxThreads -gt 1 -and $coresPerGame -lt $maxThreads) {
+    Add-Violation ("cores_per_game is $coresPerGame for Threads $maxThreads, so the engines' threads share " +
+        "fewer physical cores than they run; pass -ExtraArgs @('--cores-per-game', '$maxThreads')")
 }
 if ("$($resolved.execution.placement_policy.mode)" -ne "auto") {
     Add-Violation "placement is '$($resolved.execution.placement_policy.mode)', expected auto (RAR-M48: unpinned games carry a hidden per-run offset)"
@@ -723,7 +742,7 @@ $lines.Add("opening_seed:     $Seed")
 $lines.Add("time_control:     $(if ($Nodes -gt 0) { "$Nodes nodes a move (fixed nodes; no clock, no time management)" } else { "${BaseMs}ms + ${IncrementMs}ms" }); margin ${MarginMs}ms")
 $lines.Add("adjudication:     none (games play to a rules result)")
 $lines.Add("hash_mb:          $Hash")
-$lines.Add("threads:          $Threads")
+$lines.Add("threads:          $(if ($threadsB -ne $Threads) { "A $Threads, B $threadsB" } else { $Threads })")
 $lines.Add("concurrency:      $($resolved.execution.concurrency)")
 $lines.Add("placement:        $($resolved.execution.placement_policy.mode), headroom $($resolved.execution.placement_policy.headroom_physical_cores) physical core(s)")
 $lines.Add("slot_cpus:        $($slotCpus -join ',')")
@@ -757,7 +776,7 @@ if ($Mode -eq "sprt") {
     Write-Host "  H0: nElo<=$($design.elo0)   H1: nElo>=$($design.elo1)   alpha=$($design.alpha)  beta=$($design.beta)"
     Write-Host "  Cap: $($resolved.design.max_pairs) pairs; no boundary at the cap is unresolved, not an acceptance"
 }
-Write-Host "  TC: $(if ($Nodes -gt 0) { "$Nodes nodes/move (fixed; speed and time management removed)" } else { "${BaseMs}+${IncrementMs}ms" })  Margin: ${MarginMs}ms  Hash: ${Hash}  Threads: $Threads  Conc: $($resolved.execution.concurrency)"
+Write-Host "  TC: $(if ($Nodes -gt 0) { "$Nodes nodes/move (fixed; speed and time management removed)" } else { "${BaseMs}+${IncrementMs}ms" })  Margin: ${MarginMs}ms  Hash: ${Hash}  Threads: $(if ($threadsB -ne $Threads) { "A $Threads, B $threadsB" } else { $Threads })  Conc: $($resolved.execution.concurrency)"
 Write-Host "  Adjudication: none    Book: $(Split-Path $Book -Leaf) (random, seed $Seed)"
 Write-Host "  Runner: $($cli.Version), sha256 $($cli.Sha256.Substring(0,8))..., pinned at $($cli.Pin.revision.Substring(0,7))"
 Write-Host "  Manifest: $manifestPath"

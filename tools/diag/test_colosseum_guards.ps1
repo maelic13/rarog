@@ -136,6 +136,20 @@ try {
     Invoke-Case -Name "control: four threads, four cores" -Expect "" `
         -Arguments (Merge-Arguments $fourThreads @{ ExtraArgs = @("--cores-per-game", "4") })
 
+    # A self-relative scaling match: one engine at one thread against itself at
+    # four. The larger side sets the cores a game needs.
+    $scaling = Merge-Arguments $base @{
+        Mode = "match"; Games = 100; Threads = 1; ThreadsB = 4; Hash = 512; Concurrency = 3
+        EngineB = $armA; NameB = "armA4t"
+    } @("MaxPairs")
+    Invoke-Case -Name "arm B's four threads on one core" -Expect "cores_per_game is 1 for Threads 4" `
+        -Arguments $scaling
+    Invoke-Case -Name "control: one binary, 1T against 4T" -Expect "" `
+        -Arguments (Merge-Arguments $scaling @{ ExtraArgs = @("--cores-per-game", "4") })
+    Invoke-Case -Name "-ThreadsB in a null pair" -Expect "-Mode calibrate ignores: ThreadsB" `
+        -Arguments @{ Mode = "calibrate"; EngineA = $armA; EngineB = $armA; NameA = "a"; NameB = "b"; ThreadsB = 4
+                      Dir = (Join-Path $scratch "null"); DryRun = $true; AllowBusyHost = $true }
+
     $stale = Copy-Arm -Source $EngineA -Name "stale"
     Set-Sidecar -EnginePath $stale -Fields @{ binary_sha256 = ("0" * 64) }
     Invoke-Case -Name "stale sidecar hash" -Expect "PROVENANCE MISMATCH" `
