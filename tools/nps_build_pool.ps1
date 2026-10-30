@@ -22,6 +22,16 @@
 # copies carry no build luck, but each is read in its own processes, and one
 # plain binary's processes differ by up to 6% here (RAR-P38), so a plain arm
 # is read as a pool like any other.
+#
+# -Native builds the tier with `target-cpu=native` (xtask `--native`); the
+# files and manifest keep the tier's name, so `nps_read.py` reads a native
+# pool against its portable tier directly. -Toolchain and -Target build with
+# another rustup toolchain and triple (`cargo +<toolchain> xtask build
+# --target <triple>`), for a toolchain comparison such as the GNU
+# (MinGW-linked) build against the MSVC one; PGO needs the triple to be that
+# toolchain's host. A linker or C compiler the caller set through cargo's
+# `CARGO_TARGET_<TRIPLE>_LINKER` or `CC_<triple>` is recorded in the
+# manifest with the toolchain's `rustc -vV`.
 
 param(
     [Parameter(Mandatory = $true)][ValidateSet("base", "x86-64", "avx2", "pext")][string]$Arch,
@@ -36,6 +46,11 @@ param(
     [int]$Depth = 13,
     # Cargo features for a candidate arm compiled behind a flag.
     [string]$Features = "",
+    # `target-cpu=native` instead of the tier's portable baseline; see the header.
+    [switch]$Native,
+    # Another rustup toolchain and its triple; see the header.
+    [string]$Toolchain = "",
+    [string]$Target = "",
     # Local experimentation only. A pool built from an unidentifiable tree must
     # never back a recorded result; `sprt.ps1` carries the same escape hatch.
     [switch]$AllowDirty
@@ -94,6 +109,17 @@ function Get-PeContentHash {
     ([BitConverter]::ToString($sha.ComputeHash($b))).Replace("-", "")
 }
 
+if ($Toolchain -and -not $Target) {
+    throw "-Toolchain needs -Target: xtask picks the MSVC triple on Windows whatever the toolchain"
+}
+$toolchainArgs = if ($Toolchain) { @("+$Toolchain") } else { @() }
+$nativeArgs = if ($Native) { @("--native") } else { @() }
+$targetArgs = if ($Target) { @("--target", $Target) } else { @() }
+$rustcVersion = (& rustc @toolchainArgs -vV) -join "; "
+if ($LASTEXITCODE -ne 0) { throw "rustc $toolchainArgs -vV failed (exit $LASTEXITCODE)" }
+$linkerEnv = @(Get-ChildItem Env: | Where-Object { $_.Name -match '^(CARGO_TARGET_\w+_LINKER|CC_\w+|AR_\w+)$' } |
+    ForEach-Object { "$($_.Name)=$($_.Value)" })
+
 $benchIn = Join-Path $env:TEMP "nps_pool_bench_in.txt"
 Set-Content -LiteralPath $benchIn -Value "bench $Depth" -Encoding ascii
 
@@ -106,7 +132,7 @@ for ($i = 1; $i -le $Builds; $i++) {
     # A plain build of an unchanged tree is cargo's no-op; the touch makes
     # the determinism check compare two real compiles.
     if ($NoPgo -and $i -gt 1) { (Get-Item src/lib.rs).LastWriteTime = Get-Date }
-    & cargo xtask build --arch $Arch @pgoArgs @featureArgs *> $log
+    & cargo @toolchainArgs xtask build --arch $Arch @nativeArgs @targetArgs @pgoArgs @featureArgs *> $log
     if ($LASTEXITCODE -ne 0) { throw "build $i failed (exit $LASTEXITCODE); see $log" }
 
     # Take the artifact path from xtask itself rather than reconstructing the
@@ -166,6 +192,11 @@ $manifest = Join-Path $OutDir "manifest-$Arch.txt"
 @(
     "arch          : $Arch"
     "features      : $(if ($Features) { $Features } else { '(default)' })"
+    "native        : $(if ($Native) { 'yes (target-cpu=native)' } else { 'no' })"
+    "toolchain     : $(if ($Toolchain) { $Toolchain } else { '(rust-toolchain.toml)' })"
+    "target        : $(if ($Target) { $Target } else { '(xtask default)' })"
+    "rustc         : $rustcVersion"
+    "linker env    : $(if ($linkerEnv) { $linkerEnv -join '; ' } else { '(none)' })"
     "source        : $sha $sourceState"
     "builds        : $Builds"
     $(if ($NoPgo) { "pgo           : no (all builds identical but for link stamps, content $($content[0].Substring(0, 16)))" } else { "pgo           : yes" })
