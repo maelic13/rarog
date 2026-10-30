@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-P46 measured a target: the engine's 4T/1T fell to 3.28 from 3.80; large pages are not the in-game problem (RAR-M77: +2.7% NPS, +10.3 ± 5.9 Elo, default stays on); next, the engine's 2T loss in shared writes, and why RAR-M74's field slowed the head; RAR-P48 (Mixed): the loss is real under pinning and is neither the CCD split nor large pages. RAR-P49 (shared search): C's whole 4T loss is in the shared search, none in the hardware. RAR-P50 (Mixed): no single change holds the loss; it is shared by C's evaluation rebuilds and the speed pass, both kept gains, so the bisect stops; D.2 goes on to the self-relative scaling games |
+| D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-P46 measured a target: the engine's 4T/1T fell to 3.28 from 3.80; large pages are not the in-game problem (RAR-M77: +2.7% NPS, +10.3 ± 5.9 Elo, default stays on); next, the engine's 2T loss in shared writes, and why RAR-M74's field slowed the head; RAR-P48 (Mixed): the loss is real under pinning and is neither the CCD split nor large pages. RAR-P49 (shared search): C's whole 4T loss is in the shared search, none in the hardware. RAR-P50 (Mixed): no single change holds the loss; it is shared by C's evaluation rebuilds and the speed pass, both kept gains, so the bisect stops; RAR-M78 registered: the self-relative scaling games, with time-odds legs, the maintainer's night |
 | D.3 | RESEARCH | R2 | Engine lifecycle and protocol robustness |
 | D.4 | RESEARCH | R2 | Tablebase policy |
 
@@ -1624,6 +1624,15 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
   about 6–7% per thread at 4T in searches of seconds, unseen in any
   match. Next for D.2: the self-relative scaling games, the maintainer's
   run.
+  **RAR-M78 registered 2026-10-30.** Rarog, Reckless 0.9.0 and Stockfish 18
+  each play themselves at four threads against one and, on one thread, at
+  `20+0.2` against `10+0.1`. A raw four-thread gain favours a weaker
+  engine, which gains more from any extra search. So each gain is divided
+  by the engine's own Elo per doubling of time, giving an effective speedup
+  comparable across engines (maintainer decision 2026-10-30). Rarog
+  deficient opens a four-thread SMP research card; otherwise D.2's
+  four-thread target stays closed and scaling beyond four threads stays
+  with G.1.
 - **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `R2`, then `I1`.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.
