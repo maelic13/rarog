@@ -151,6 +151,10 @@ try {
         Mode = "match"; Games = 100; EngineB = $armA; NameB = "armA2x"; BaseMsB = 6000; IncrementMsB = 60
     } @("MaxPairs")
     Invoke-Case -Name "control: one binary, 1x against 2x" -Expect "" -Arguments $odds
+    # -Hash with no side options must still reach both engines; the policy
+    # check reads each side's resolved Hash.
+    Invoke-Case -Name "control: -Hash alone reaches both sides" -Expect "" `
+        -Arguments (Merge-Arguments $odds @{ Hash = 256 })
     Invoke-Case -Name "time odds on a fixed-node read" -Expect "a fixed-node read (-Nodes) has none" `
         -Arguments (Merge-Arguments $odds @{ Nodes = 5000 })
     Invoke-Case -Name "-BaseMsB in a null pair" -Expect "-Mode calibrate ignores: BaseMsB" `

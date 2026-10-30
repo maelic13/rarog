@@ -480,17 +480,17 @@ if ($twoArmModes -contains $Mode) { $commandArgs += @('--a-label', $NameA, '--b-
 # whole key), so a bare `-OptionsA CoreX=1` would play arm A without Hash and
 # Threads. The shared options are therefore restated ahead of the arm's own,
 # unless the arm sets them itself; the policy check reads the result.
-# Arms at different thread counts always state their own lists, since the run
-# file's would give both sides one count.
+# Every side states its own list, always: the run file's lists carry the run
+# file's Hash and Threads, so -Hash alone would otherwise never reach the
+# engines (a time-odds leg at -Hash 256 resolved to the run file's 64).
 function Get-SideOptions { param([string[]]$Own, [int]$SideThreads)
     $shared = @("Hash=$Hash", "Threads=$SideThreads")
     $names = @($Own | ForEach-Object { ($_ -split '=', 2)[0].Trim().ToLowerInvariant() })
     @($shared | Where-Object { $names -notcontains ($_ -split '=', 2)[0].ToLowerInvariant() }) + @($Own)
 }
 if ($Mode -ne "spsa" -and $Mode -ne "gauntlet") {
-    $ownLists = $threadsB -ne $Threads
-    if ($OptionsA.Count -gt 0 -or $ownLists) { foreach ($option in (Get-SideOptions $OptionsA $Threads)) { $commandArgs += @('--a-option', $option) } }
-    if ($OptionsB.Count -gt 0 -or $ownLists) { foreach ($option in (Get-SideOptions $OptionsB $threadsB)) { $commandArgs += @('--b-option', $option) } }
+    foreach ($option in (Get-SideOptions $OptionsA $Threads)) { $commandArgs += @('--a-option', $option) }
+    foreach ($option in (Get-SideOptions $OptionsB $threadsB)) { $commandArgs += @('--b-option', $option) }
 }
 if ($Concurrency -gt 0) { $commandArgs += @('--concurrency', "$Concurrency") }
 if ($Nodes -gt 0) { $commandArgs += @('--a-nodes', "$Nodes", '--b-nodes', "$Nodes") }
