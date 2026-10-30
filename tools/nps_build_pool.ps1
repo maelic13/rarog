@@ -112,9 +112,11 @@ function Get-PeContentHash {
 if ($Toolchain -and -not $Target) {
     throw "-Toolchain needs -Target: xtask picks the MSVC triple on Windows whatever the toolchain"
 }
-$toolchainArgs = if ($Toolchain) { @("+$Toolchain") } else { @() }
-$nativeArgs = if ($Native) { @("--native") } else { @() }
-$targetArgs = if ($Target) { @("--target", $Target) } else { @() }
+# Typed arrays: an `if` yielding one element unrolls to a bare string, and
+# splatting a string hands cargo its characters one by one.
+[string[]]$toolchainArgs = if ($Toolchain) { @("+$Toolchain") } else { @() }
+[string[]]$nativeArgs = if ($Native) { @("--native") } else { @() }
+[string[]]$targetArgs = if ($Target) { @("--target", $Target) } else { @() }
 $rustcVersion = (& rustc @toolchainArgs -vV) -join "; "
 if ($LASTEXITCODE -ne 0) { throw "rustc $toolchainArgs -vV failed (exit $LASTEXITCODE)" }
 $linkerEnv = @(Get-ChildItem Env: | Where-Object { $_.Name -match '^(CARGO_TARGET_\w+_LINKER|CC_\w+|AR_\w+)$' } |
@@ -127,8 +129,8 @@ $rows = @()
 for ($i = 1; $i -le $Builds; $i++) {
     Write-Host "== $Arch build $i/$Builds =="
     $log = Join-Path $OutDir "build-$Arch-$i.log"
-    $featureArgs = if ($Features) { @("--features", $Features) } else { @() }
-    $pgoArgs = if ($NoPgo) { @() } else { @("--pgo") }
+    [string[]]$featureArgs = if ($Features) { @("--features", $Features) } else { @() }
+    [string[]]$pgoArgs = if ($NoPgo) { @() } else { @("--pgo") }
     # A plain build of an unchanged tree is cargo's no-op; the touch makes
     # the determinism check compare two real compiles.
     if ($NoPgo -and $i -gt 1) { (Get-Item src/lib.rs).LastWriteTime = Get-Date }
