@@ -1,4 +1,4 @@
-# RAR-P49 — The C head's thread-scaling loss, hardware or shared search, read per position over one fixed window — REGISTERED 2026-10-29, before the read
+# RAR-P49 — The C head's thread-scaling loss, hardware or shared search, read per position over one fixed window — SHARED SEARCH 2026-10-30: the whole loss is in the shared search, none in the hardware
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -180,3 +180,87 @@ python D:\code\rarog\analysis\artifacts\d2-scaling\split_read2.py D:\code\rarog\
 
 If it refuses with `HOST NOT IDLE`, run it again. The JSON is written only
 when the read completes, and the summary ends with an `OUTCOME:` line.
+
+## Result — 2026-10-30, appended after exposure
+
+- **The run.** The maintainer ran the registered read.
+  - 216 process readings in 1,351 s, host load 1.8% before and 0.2% after.
+  - Evidence: `analysis/artifacts/d2-scaling/split_read2.json`
+    (`98e61523…`) and `split_read2.log` (`12900eaf…`).
+  - Analysis: `p49_analyse.py` (`4757b27a…`, ignored) and its output,
+    `p49_analyse.log`.
+- **Integrity.**
+  - Both binary hashes match.
+  - Every cell has its registered count, and every mask reads back as set.
+  - Only `c-lp-off` printed the large-pages-disabled notice.
+  - No reading is missing (0 of 216). The info lines either side of
+    5,000 ms are 845 ms apart at the median and 2,802 ms at most.
+  - Recomputing every reading's interpolation from its raw lines agrees
+    with the instrument's, and so does the judgement.
+- **Readings at `4T`:**
+
+  | Position | Arm | E | H | Q |
+  |---|---|---:|---:|---:|
+  | 0 | `b9head` | 1.015 | 0.956 | 1.062 |
+  | 0 | `c-lp-off` | 0.937 | 0.956 | 0.981 |
+  | 1 | `b9head` | 0.956 | 0.960 | 0.996 |
+  | 1 | `c-lp-off` | 0.902 | 0.959 | 0.940 |
+
+- **Outcome: shared search, at both positions.**
+
+  | Position | ΔE | ΔH | ΔQ | Share | Verdict |
+  |---|---:|---:|---:|---:|---|
+  | 0 | −0.080 | −0.000 | −0.079 | 1.00 | shared search |
+  | 1 | −0.058 | −0.000 | −0.058 | 0.99 | shared search |
+
+  - The two heads lose exactly the same to the shared hardware: H 0.956
+    against 0.956 at position 0, and 0.959 against 0.960 at position 1.
+  - Everything C loses beyond B.9 is in Q.
+  - At `2T`, which is not judged, the same holds: shares 1.05 and 1.05.
+- **Robustness** (not registered, reported for the reader):
+  - Every one of the 12 round-and-position readings has C's E below B.9's,
+    with shares from 0.71 to 1.39.
+  - A bootstrap over whole rounds puts the share's 90% interval at
+    [0.83, 1.12] at position 0 and [0.74, 1.07] at position 1. It is at or
+    above 2/3 in 100% and 98.9% of resamples.
+  - 1T medians drift by at most 0.3% between the first and the last three
+    rounds.
+- **Secondary predictions.**
+  - No reading missing (0.8): held.
+  - B.9's Q at `4T` above 1.00 at both positions (0.6): missed. It was
+    1.062 at position 0 but 0.996 at position 1.
+
+## Disposition
+
+- **Shared search**, by the registered rule. The cost is in how C's
+  threads share the search, not in the cores, caches or memory they share.
+  - RAR-P48's per-position H gaps of −0.017 and −0.020 were its window
+    confound. Measured at one fixed time, they vanish.
+- **Next: locate the commit.** Register a bisect on this instrument, at 1T
+  and 4T, read on Q.
+  - The first read halves the space between B.9 and C. Does the speed
+    pass's own parent already show the loss? The speed pass's recorded
+    reads (`analysis/c12_speed_pass_2026-10-17.md`, e1 to e8) give its
+    internal boundaries.
+  - The prefetch sites are read first if the speed pass holds the loss.
+    These are e6's child-TT-line prefetch, `1aaa39e` and `65f490e`, and
+    the singular search's three sites.
+  - C also changed the search and the evaluation outside the speed pass,
+    so the speed pass is a suspect, not the established cause.
+- Nothing about strength follows from this read. Q is a speed ratio, and
+  RAR-M74's field and the self-relative scaling games decide what it costs
+  in games.
+
+## Calibration
+
+- **The registered outcome hit.** "Shared search" was given 0.55.
+- **The magnitude was sharper than predicted.** The share is 1.0, not the
+  0.8 that RAR-P48's confounded window suggested. The hardware term is
+  exactly zero, which no outcome probability anticipated as a point.
+- **The secondary prediction on B.9's Q missed at position 1.** B.9's
+  above-one Q in RAR-P48 was partly its window: at a fixed 5 s it reads
+  1.062 at one position and 0.996 at the other. "B.9's threads are faster
+  sharing a search" holds at position 0 only.
+- **The instrument repair was what mattered.** Pooling and the moving
+  window had invented a small hardware share and hidden that H is
+  identical between the heads.
