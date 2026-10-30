@@ -197,3 +197,22 @@ Both reads closed in step 1, with no disturbed cycle and host CPU at 0.4% to
   measured, and the recorded results are not revised.
 - Replacing them in future pools with the published pext assets, which are
   built without `--native`, is the maintainer's decision.
+- **Replaced, 2026-10-30, by maintainer decision.** No native builds are
+  made for this host any more.
+  - The four native binaries were deleted from `D:\chess\engines\rarog\`:
+    2.3.2 `0d31f3d6…`, 2.4.0 `8f312c13…`, 2.5.0 `af529f9e…`, 2.6.0
+    `02df47c5…`. The ledger rows above still cite them. They went to the
+    Recycle Bin, and once it is emptied they are gone: a PGO build cannot be
+    rebuilt byte for byte.
+  - Their place is taken by the published Windows pext assets of each tag,
+    downloaded from the GitHub releases and checked against GitHub's
+    digests. They are PGO builds by the release workflow, which drops
+    `-pgo` from the published name. They are kept as
+    `rarog-v<version>-windows-pext-pgo.exe`: 2.3.2 `b6c4bd19…`, 2.4.0
+    `fdecf86b…`, 2.5.0 `1f584523…`, 2.6.0 `274eab97…`.
+  - Each benches the same `bench 13` as the native build it replaces:
+    6,519,711, 7,601,220, 11,171,726 and 13,987,223.
+  - Colosseum's engine library (`%APPDATA%\Colosseum\config\engines.json`,
+    backup `engines.json.bak-2026-10-30`) now points the four Rarog entries
+    at these files. Only the paths changed. The 2.6.0 entry had pointed at
+    a missing `rarog-v2.6.0-windows-pext.exe`.
