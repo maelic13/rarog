@@ -27,5 +27,11 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
 - **Disposition: the release rule passes on all three.** STC +153.4 with its lower bound +142.7 (rule: at least +40, lower bound above +25); LTC lower bound +134.2 and 4T lower bound +135.0 (rule: above 0). The C head qualifies as 2.6.0 against 2.5.0 by the rule 2.5.0 itself met; whether to release is the maintainer's decision.
 - **PREDICTION CALIBRATION (appended after exposure):** STC predicted +150 in [+115, +185]: hit (+153.4). LTC +135 in [+95, +175]: hit (+149.3); the longer control did not narrow the gap. 4T +95 in [+55, +135]: **a miss, 55 high** (+149.7). The assumption that failed is that the pool's 4T difference (+94, RAR-M74 against RAR-M66) would carry head to head. It does not: against its own predecessor the C head leads as much at four threads as at one. RAR-M74 already showed the same thing against Rarog 2.4.0 (+370 at 4T against +363 at 1T); its 4T shortfall came against the foreign engines, which gain more from four threads than Rarog does. So the fallen thread scaling (held for D.2) is real against other engines and invisible against another Rarog. Overall probability that the rule passes (0.97): yes.
 - **Conditional lesson:** a release read against the previous Rarog does not see a thread-scaling loss that both versions share; the pool at 4T does. Read both before a release that claims multi-thread strength.
+  - **Superseded premise (appended 2026-10-30):** the loss is not shared. The 2.5.0 release benches
+    11,171,726, the B.9 head's fingerprint, and the B.9 head scales well where the C head does not
+    (RAR-P46). The loss appears only in searches of seconds: RAR-P46's 100 ms cells scale alike, and
+    RAR-P49's 5 s window puts the whole loss in the shared search. This read's 4T leg, at `3+0.03`,
+    played in the regime where the C head has no NPS loss, so its null says nothing about a long-search
+    scaling loss. The measured numbers above stand.
 - **Retry trigger:** `closed`; the release itself is the maintainer's.
 - **Artifacts:** `analysis/artifacts/rel260/` (drivers, wrapper, dry-run logs); results `tools/results/rel260-{stc,ltc,4t}/`.
