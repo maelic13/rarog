@@ -262,7 +262,7 @@ Examples:
   cargo xtask build                              # portable x86-64
   cargo xtask build --arch avx2
   cargo xtask build --arch pext --pgo            # the shipped pext asset
-  cargo xtask build --arch pext --native --pgo   # fastest build for this box
+  cargo xtask build --arch pext --native --pgo   # tuned for this CPU; slower on Zen 3
   cargo xtask build --arch base --native         # native on a pre-BMI2 CPU
   cargo xtask build --arch arm64 --target aarch64-apple-darwin
   cargo xtask verify-isa --arch base             # prove the baseline asset is baseline
