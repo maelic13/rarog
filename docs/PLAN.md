@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-P46 measured a target: the engine's 4T/1T fell to 3.28 from 3.80; large pages are not the in-game problem (RAR-M77: +2.7% NPS, +10.3 ± 5.9 Elo, default stays on); next, the engine's 2T loss in shared writes, and why RAR-M74's field slowed the head; RAR-P48 (Mixed): the loss is real under pinning and is neither the CCD split nor large pages. RAR-P49 (shared search): C's whole 4T loss is in the shared search, none in the hardware. RAR-P50 registered: a bisect from B.9 to C over five revisions, read on Q, the maintainer's run |
+| D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-P46 measured a target: the engine's 4T/1T fell to 3.28 from 3.80; large pages are not the in-game problem (RAR-M77: +2.7% NPS, +10.3 ± 5.9 Elo, default stays on); next, the engine's 2T loss in shared writes, and why RAR-M74's field slowed the head; RAR-P48 (Mixed): the loss is real under pinning and is neither the CCD split nor large pages. RAR-P49 (shared search): C's whole 4T loss is in the shared search, none in the hardware. RAR-P50 (Mixed): no single change holds the loss; it is shared by C's evaluation rebuilds and the speed pass, both kept gains, so the bisect stops; D.2 goes on to the self-relative scaling games |
 | D.3 | RESEARCH | R2 | Engine lifecycle and protocol robustness |
 | D.4 | RESEARCH | R2 | Tablebase policy |
 
@@ -1614,6 +1614,16 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
   see it would take days. The bisect reads five revisions, B.9,
   `52cc6de`, `6ade0e6`, `138d867` and the C head, each built with rustc
   1.99.1, and names the interval that holds at least half the loss in Q.
+  **RAR-P50 read 2026-10-30: Mixed.** At the tightly measured position
+  the loss splits between C's evaluation rebuilds (about 0.05 in ln Q)
+  and the speed-pass squash (about 0.03). At the noisier one it
+  accumulates over every step. No single change holds it, and both
+  holders bought large gains, so the bisect stops; a mechanism study by
+  shared-table counters waits for a hypothesis that predicts which rate
+  differs. The engine target RAR-P46 named stays recorded and unfixed:
+  about 6–7% per thread at 4T in searches of seconds, unseen in any
+  match. Next for D.2: the self-relative scaling games, the maintainer's
+  run.
 - **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `R2`, then `I1`.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.

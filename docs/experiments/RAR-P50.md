@@ -1,4 +1,4 @@
-# RAR-P50 — Which change from the B.9 head to the C head holds the shared-search loss at four threads: a bisect read on Q — REGISTERED 2026-10-30, before the read
+# RAR-P50 — Which change from the B.9 head to the C head holds the shared-search loss at four threads: a bisect read on Q — MIXED 2026-10-30: no single change holds it; the bisect stops
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -169,3 +169,97 @@ python D:\code\rarog\analysis\artifacts\d2-scaling\split_read3.py D:\code\rarog\
 
 If it refuses with `HOST NOT IDLE`, run it again. The summary ends with an
 `OUTCOME:` line.
+
+## Result — 2026-10-30, appended after exposure
+
+- **The run.** The maintainer ran the registered read on an idle host.
+  - 360 process readings in 2,142 s, host load 0.7% before and 0.6% after.
+  - Evidence: `analysis/artifacts/d2-scaling/split_read3.json`
+    (`d772bd0d…`) and `split_read3.log` (`1bebc75c…`).
+  - Analysis: `p50_analyse.py` (`5f5787bd…`, ignored) and its output,
+    `p50_analyse.log`.
+- **Integrity.**
+  - Every hash matches its registration.
+  - Every cell has its registered count, and every mask reads back as set.
+  - No reading is missing (0 of 360).
+  - Large pages showed exactly from `e6a` on: 1T working set 6 MiB against
+    294.
+  - Recomputing every interpolation and the judgement from the raw records
+    agrees with the instrument.
+- **Readings at `4T`:** L = ln(Q / Q_b9).
+
+  | Arm | Q, position 0 | L, position 0 | Q, position 1 | L, position 1 |
+  |---|---:|---:|---:|---:|
+  | `b9` | 1.051 | 0 | 0.997 | 0 |
+  | `e52` | 0.997 | −0.053 | 0.984 | −0.012 |
+  | `e6a` | 0.970 | −0.080 | 0.963 | −0.035 |
+  | `e138` | 0.973 | −0.077 | 0.939 | −0.060 |
+  | `c` | 0.987 | −0.063 | 0.928 | −0.072 |
+
+- **Outcome by the frozen rules: Mixed.**
+  - Position 0 names I1, the evaluation rebuilds, with a share of 0.84.
+    I2 holds 0.44, I3 −0.05 and I4 −0.23.
+  - Position 1 is spread: I1 0.17, I2 0.31, I3 0.35, I4 0.17.
+- **How firm each increment is** (a bootstrap over whole rounds, 90%; not
+  registered):
+
+  | Interval | Position 0 | Position 1 |
+  |---|---|---|
+  | I1, evaluation rebuilds | −0.061 to −0.037 | −0.052 to +0.002 |
+  | I2, `6ade0e6` | −0.045 to −0.016 | −0.031 to +0.016 |
+  | I3, search fit | −0.004 to +0.013 | −0.142 to −0.005 |
+  | I4, time management and the option | +0.000 to +0.022 | −0.029 to +0.076 |
+
+  - **Position 0 is measured tightly.** Its loss is in two steps, the
+    evaluation rebuilds (about 0.05) and `6ade0e6` (about 0.03). The search
+    fit and the last step cost nothing, and the last may recover a little.
+  - **Position 1 is noisy.** Its rounds scatter far more, and one `e138`
+    reading in round 5 is at −0.281. Its loss grows step by step, and no
+    interval is resolved from zero except I3, barely.
+  - The C head's total agrees with RAR-P49's: L(`c`) −0.063 and −0.072
+    here with large pages on, ΔQ −0.079 and −0.058 there with them off.
+
+## Disposition
+
+- **Recorded unresolved**, by the rule for Mixed.
+- What the read does settle is that **no single change holds the loss.**
+  - Where it is measured tightly, it is shared between C's evaluation
+    rebuilds and the speed-pass squash.
+  - Where it is noisy, it accumulates over all four steps.
+  - Both bought large gains: the evaluation rebuilds about 150 Elo with
+    the rest of C, and the speed pass +22% NPS at one thread. Neither is a
+    candidate for reverting.
+  - So a further commit bisect would be chasing two or more partial
+    causes inside changes that will stay.
+- **The bisect stops.** The cheaper remaining question is mechanism, not
+  commit: why a costlier, differently shaped search shares worse between
+  threads. That is RAR-P50's own "spread" branch, a per-node count of
+  shared-table reads, writes and hits on `b9` and `c` by diag counters.
+- **Retry trigger, named here:** a mechanism hypothesis that predicts which
+  per-node shared-table rate differs between `b9` and `c`, and by how much,
+  registered with its counters before the read.
+- **I recommend against pursuing it now.**
+  - The loss is about 6–7% per thread at 4T, in searches of seconds, and
+    it is the price of two kept gains.
+  - No match has shown it in Elo, and one that could would take days
+    (RAR-M76's note).
+  - D.2 has other leaves, the self-relative scaling games among them, that
+    measure what matters more directly.
+- Nothing about strength follows from this read.
+
+## Calibration
+
+- **"I2" (0.45) was wrong.** The speed-pass squash holds about a third of
+  the loss at the tightly measured position, not most of it.
+- **I1 (0.10) was the largest single step at position 0.** The registration
+  reasoned that evaluation rebuilds make nodes dearer, not more shared. The
+  read says the shared search's efficiency does depend on what the nodes
+  cost or how the tree is shaped, which the reasoning did not allow for.
+- **"Mixed" (0.10) is the registered result.** It came from the two
+  positions disagreeing, as that branch anticipated.
+- **The miss was in mechanism.** The prediction assumed one change carried
+  the loss. Two did, at least, and the noisier position could not separate
+  them.
+- **Instrument:** six rounds resolve a step of about 0.03 at position 0 and
+  not at position 1, whose rounds scatter about twice as far. A finer
+  bisect would need more rounds there, which the stop above makes moot.
