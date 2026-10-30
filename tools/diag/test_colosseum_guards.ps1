@@ -258,8 +258,10 @@ try {
         -Arguments (Merge-Arguments $base @{ OptionsA = @("SyzygyPath=$emptyTables")
                                               OptionsB = @("SyzygyPath=$emptyTables") })
 
-    Invoke-Case -Name "conditions off Rarog's policy" -Expect "not Rarog's policy" `
-        -Arguments (Merge-Arguments $base @{ Hash = 128 })
+    # A runner argument the wrapper did not ask for moves the resolved
+    # configuration off what it was told; the policy check reads the result.
+    Invoke-Case -Name "conditions off Rarog's policy" -Expect "engine_b_time_control base is 4000 ms, expected 3000" `
+        -Arguments (Merge-Arguments $base @{ ExtraArgs = @("--b-base-ms", "4000") })
 
     # The runner pin, checked by pointing the wrapper at a pin file whose hash is
     # not the staged binary's.
