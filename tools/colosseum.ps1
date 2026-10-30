@@ -58,6 +58,12 @@
     itself at one. A sprt or match only. Each game slot needs a physical core
     per thread of the larger side (--cores-per-game).
 
+.PARAMETER BaseMsB
+    Arm B's clock base, when it differs from arm A's (-BaseMs): a time-odds
+    match plays one engine at twice the time against itself. -IncrementMsB is
+    arm B's increment; each defaults to arm A's when not given. A sprt or
+    match on a clock only.
+
 .PARAMETER Bracket
     Which SPRT run file: default [0,3], removal [-1.75,0.25], repair [-5,5],
     wide [0,10]. Bounds never change after games are seen.
@@ -127,6 +133,8 @@ param(
     [int]$Hash = 64,
     [int]$Threads = 1,
     [ValidateRange(1, 64)][int]$ThreadsB = 0,
+    [ValidateRange(1, 3600000)][int]$BaseMsB = 0,
+    [ValidateRange(0, 60000)][int]$IncrementMsB = 0,
     [int]$BaseMs = 3000,
     [int]$IncrementMs = 30,
     [int]$MarginMs = 20,
@@ -186,6 +194,8 @@ $modeIgnores = switch ($Mode) {
     "calibrate" { @{ MaxPairs = "-MaxPairs caps an SPRT; a null pair is sized by -Games"
                      Bracket = "-Bracket selects SPRT bounds; a null pair has none"
                      ThreadsB = "-ThreadsB gives arm B its own thread count; a null pair's arms are identical"
+                     BaseMsB = "-BaseMsB gives arm B its own clock; a null pair's arms are identical"
+                     IncrementMsB = "-IncrementMsB gives arm B its own clock; a null pair's arms are identical"
                      TotalGames = "-TotalGames is a tune budget"
                      ConfigGroup = "-ConfigGroup names a tune surface"
                      SeedFrom = "-SeedFrom seeds a tune from a finished one"
@@ -195,7 +205,9 @@ $modeIgnores = switch ($Mode) {
                      Bracket = "-Bracket selects SPRT bounds; a tune has none"
                      EngineA = "a tune has one engine: pass -Engine"
                      EngineB = "a tune has one engine: pass -Engine"
-                     ThreadsB = "-ThreadsB gives arm B its own thread count; a tune has one engine" } }
+                     ThreadsB = "-ThreadsB gives arm B its own thread count; a tune has one engine"
+                     BaseMsB = "-BaseMsB gives arm B its own clock; a tune has one engine"
+                     IncrementMsB = "-IncrementMsB gives arm B its own clock; a tune has one engine" } }
     "gauntlet"  { @{ MaxPairs = "-MaxPairs caps an SPRT"
                      Bracket = "-Bracket selects SPRT bounds"
                      TotalGames = "-TotalGames is a tune budget"
@@ -204,7 +216,9 @@ $modeIgnores = switch ($Mode) {
                      Iterations = "-Iterations is a tune horizon"
                      EngineA = "gauntlet participants are passed in -ExtraArgs"
                      EngineB = "gauntlet participants are passed in -ExtraArgs"
-                     ThreadsB = "-ThreadsB gives arm B its own thread count; gauntlet participants carry their own" } }
+                     ThreadsB = "-ThreadsB gives arm B its own thread count; gauntlet participants carry their own"
+                     BaseMsB = "-BaseMsB gives arm B its own clock; a gauntlet has one clock"
+                     IncrementMsB = "-IncrementMsB gives arm B its own clock; a gauntlet has one clock" } }
 }
 $ignored = @($modeIgnores.Keys | Where-Object { $PSBoundParameters.ContainsKey($_) })
 if ($ignored.Count -gt 0) {
@@ -215,8 +229,13 @@ if ($ignored.Count -gt 0) {
 
 # ─── Mode-specific requirements ───────────────────────────────────────────
 $twoArmModes = @("sprt", "match", "calibrate")
-# Arm B plays at -ThreadsB when it is given, otherwise at arm A's count.
+# Arm B plays at -ThreadsB and on -BaseMsB/-IncrementMsB when they are given,
+# otherwise at arm A's count and on arm A's clock.
 $threadsB = if ($ThreadsB -gt 0) { $ThreadsB } else { $Threads }
+$baseMsB = if ($PSBoundParameters.ContainsKey('BaseMsB')) { $BaseMsB } else { $BaseMs }
+$incrementMsB = if ($PSBoundParameters.ContainsKey('IncrementMsB')) { $IncrementMsB } else { $IncrementMs }
+$clockOdds = $baseMsB -ne $BaseMs -or $incrementMsB -ne $IncrementMs
+if ($clockOdds -and $Nodes -gt 0) { throw "-BaseMsB and -IncrementMsB set a clock; a fixed-node read (-Nodes) has none." }
 if ($twoArmModes -contains $Mode) {
     if (-not $EngineA -or -not $EngineB) { throw "-Mode $Mode needs -EngineA and -EngineB." }
 }
@@ -327,11 +346,11 @@ if ($twoArmModes -contains $Mode) {
         # One binary on both sides is legitimate when the arms differ by UCI
         # options: it removes the ~0.36% per-build PGO offset. Refuse only when
         # binary AND options match, because then the test is a null in disguise.
-        if (($OptionsA -join '|') -eq ($OptionsB -join '|') -and $threadsB -eq $Threads) {
+        if (($OptionsA -join '|') -eq ($OptionsB -join '|') -and $threadsB -eq $Threads -and -not $clockOdds) {
             throw ("Identical binaries AND options require -Mode calibrate; an SPRT " +
                    "centred on zero is not a valid null calibration.")
         }
-        Write-Host "  NOTE: one binary on both sides, differing only by UCI options or threads." -ForegroundColor Yellow
+        Write-Host "  NOTE: one binary on both sides, differing only by UCI options, threads or clock." -ForegroundColor Yellow
     }
 }
 
@@ -475,6 +494,7 @@ if ($Mode -ne "spsa" -and $Mode -ne "gauntlet") {
 }
 if ($Concurrency -gt 0) { $commandArgs += @('--concurrency', "$Concurrency") }
 if ($Nodes -gt 0) { $commandArgs += @('--a-nodes', "$Nodes", '--b-nodes', "$Nodes") }
+if ($clockOdds) { $commandArgs += @('--b-base-ms', "$baseMsB", '--b-increment-ms', "$incrementMsB") }
 $commandArgs += @('--seed', "$Seed", '--dir', $Dir)
 if ($ExtraArgs.Count -gt 0) { $commandArgs += $ExtraArgs }
 
@@ -536,14 +556,16 @@ foreach ($pair in $controls) {
             Add-Violation "$name is $($control.control.Nodes.nodes) nodes a move, expected $Nodes"
         }
     } else {
+        $expectedBase = if ($name -eq 'engine_b_time_control') { $baseMsB } else { $BaseMs }
+        $expectedIncrement = if ($name -eq 'engine_b_time_control') { $incrementMsB } else { $IncrementMs }
         if ($kind -ne 'Increment') {
-            Add-Violation "$name is a '$kind' control, expected the clock ${BaseMs}+${IncrementMs} ms (pass -Nodes for a fixed-node read)"
+            Add-Violation "$name is a '$kind' control, expected the clock ${expectedBase}+${expectedIncrement} ms (pass -Nodes for a fixed-node read)"
         } else {
-            if ([int]$control.control.Increment.base_ms -ne $BaseMs) {
-                Add-Violation "$name base is $($control.control.Increment.base_ms) ms, expected $BaseMs"
+            if ([int]$control.control.Increment.base_ms -ne $expectedBase) {
+                Add-Violation "$name base is $($control.control.Increment.base_ms) ms, expected $expectedBase"
             }
-            if ([int]$control.control.Increment.inc_ms -ne $IncrementMs) {
-                Add-Violation "$name increment is $($control.control.Increment.inc_ms) ms, expected $IncrementMs"
+            if ([int]$control.control.Increment.inc_ms -ne $expectedIncrement) {
+                Add-Violation "$name increment is $($control.control.Increment.inc_ms) ms, expected $expectedIncrement"
             }
         }
     }
@@ -739,7 +761,10 @@ $lines.Add("book:             $Book")
 $lines.Add("book_sha256:      $(Get-HarnessSha256 $Book)")
 $lines.Add("opening_order:    $($resolved.openings.order)")
 $lines.Add("opening_seed:     $Seed")
-$lines.Add("time_control:     $(if ($Nodes -gt 0) { "$Nodes nodes a move (fixed nodes; no clock, no time management)" } else { "${BaseMs}ms + ${IncrementMs}ms" }); margin ${MarginMs}ms")
+$clockText = if ($Nodes -gt 0) { "$Nodes nodes a move (fixed nodes; no clock, no time management)" }
+             elseif ($clockOdds) { "A ${BaseMs}ms + ${IncrementMs}ms, B ${baseMsB}ms + ${incrementMsB}ms" }
+             else { "${BaseMs}ms + ${IncrementMs}ms" }
+$lines.Add("time_control:     $clockText; margin ${MarginMs}ms")
 $lines.Add("adjudication:     none (games play to a rules result)")
 $lines.Add("hash_mb:          $Hash")
 $lines.Add("threads:          $(if ($threadsB -ne $Threads) { "A $Threads, B $threadsB" } else { $Threads })")
@@ -776,7 +801,7 @@ if ($Mode -eq "sprt") {
     Write-Host "  H0: nElo<=$($design.elo0)   H1: nElo>=$($design.elo1)   alpha=$($design.alpha)  beta=$($design.beta)"
     Write-Host "  Cap: $($resolved.design.max_pairs) pairs; no boundary at the cap is unresolved, not an acceptance"
 }
-Write-Host "  TC: $(if ($Nodes -gt 0) { "$Nodes nodes/move (fixed; speed and time management removed)" } else { "${BaseMs}+${IncrementMs}ms" })  Margin: ${MarginMs}ms  Hash: ${Hash}  Threads: $(if ($threadsB -ne $Threads) { "A $Threads, B $threadsB" } else { $Threads })  Conc: $($resolved.execution.concurrency)"
+Write-Host "  TC: $(if ($Nodes -gt 0) { "$Nodes nodes/move (fixed; speed and time management removed)" } elseif ($clockOdds) { "A ${BaseMs}+${IncrementMs}ms, B ${baseMsB}+${incrementMsB}ms" } else { "${BaseMs}+${IncrementMs}ms" })  Margin: ${MarginMs}ms  Hash: ${Hash}  Threads: $(if ($threadsB -ne $Threads) { "A $Threads, B $threadsB" } else { $Threads })  Conc: $($resolved.execution.concurrency)"
 Write-Host "  Adjudication: none    Book: $(Split-Path $Book -Leaf) (random, seed $Seed)"
 Write-Host "  Runner: $($cli.Version), sha256 $($cli.Sha256.Substring(0,8))..., pinned at $($cli.Pin.revision.Substring(0,7))"
 Write-Host "  Manifest: $manifestPath"

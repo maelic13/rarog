@@ -146,6 +146,16 @@ try {
         -Arguments $scaling
     Invoke-Case -Name "control: one binary, 1T against 4T" -Expect "" `
         -Arguments (Merge-Arguments $scaling @{ ExtraArgs = @("--cores-per-game", "4") })
+    # A time-odds match: one engine at twice the time against itself.
+    $odds = Merge-Arguments $base @{
+        Mode = "match"; Games = 100; EngineB = $armA; NameB = "armA2x"; BaseMsB = 6000; IncrementMsB = 60
+    } @("MaxPairs")
+    Invoke-Case -Name "control: one binary, 1x against 2x" -Expect "" -Arguments $odds
+    Invoke-Case -Name "time odds on a fixed-node read" -Expect "a fixed-node read (-Nodes) has none" `
+        -Arguments (Merge-Arguments $odds @{ Nodes = 5000 })
+    Invoke-Case -Name "-BaseMsB in a null pair" -Expect "-Mode calibrate ignores: BaseMsB" `
+        -Arguments @{ Mode = "calibrate"; EngineA = $armA; EngineB = $armA; NameA = "a"; NameB = "b"; BaseMsB = 6000
+                      Dir = (Join-Path $scratch "null"); DryRun = $true; AllowBusyHost = $true }
     Invoke-Case -Name "-ThreadsB in a null pair" -Expect "-Mode calibrate ignores: ThreadsB" `
         -Arguments @{ Mode = "calibrate"; EngineA = $armA; EngineB = $armA; NameA = "a"; NameB = "b"; ThreadsB = 4
                       Dir = (Join-Path $scratch "null"); DryRun = $true; AllowBusyHost = $true }
