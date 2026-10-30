@@ -1,4 +1,4 @@
-# RAR-P51 — Two build choices read for speed on the match host: Rarog linked in MSYS2's clang64 environment against the MSVC build, and `--native` against the pext tier — REGISTERED 2026-10-30, before the read
+# RAR-P51 — Two build choices read for speed on the match host: Rarog linked in MSYS2's clang64 environment against the MSVC build, and `--native` against the pext tier — REGISTERED 2026-10-30, before the read; READ 2026-10-30: both NO_CHANGE, clang64 −0.94%, native −3.81%
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -130,3 +130,70 @@ cd D:\code\rarog; $A = "analysis\artifacts\toolchain-native-2026-10-30"; python 
 Each read ends with a `verdict:` line. If one says "between", run its step
 2, for example
 `python tools\nps_read.py --extend analysis\artifacts\toolchain-native-2026-10-30\read-native`.
+
+## Result
+
+Read by the maintainer on 2026-10-30, finishing at 10:05 and 10:10 local.
+Both reads closed in step 1, with no disturbed cycle and host CPU at 0.4% to
+1.0% around every cycle.
+- **Archives:** `read-clang64/raw.json` (`111462e7…`) and
+  `read-native/raw.json` (`df7017a5…`) under the pools' directory.
+  `--report` recomputes each printed `read.txt` exactly.
+- Every run printed 13,987,223.
+
+| Read | Base level | Candidate level | Delta | 95% t-interval | Verdict |
+|---|---:|---:|---:|---|---|
+| `clang64` over `pext` | 3,029,350 | 3,000,912 | **−0.94%** | [−1.13%, −0.75%] | NO_CHANGE by step 1 |
+| `native` over `pext` | 3,029,100 | 2,913,643 | **−3.81%** | [−4.17%, −3.46%] | NO_CHANGE by step 1 |
+
+- The `pext` pool read the same level in both reads (within 0.01%).
+- Every `native` build (2.904M to 2.923M) is below every `pext` build
+  (3.023M to 3.032M), and every `clang64` build (2.998M to 3.006M) is
+  below every `pext` build too.
+
+## Decision (the registered rules)
+
+- **`clang64` NO_CHANGE:** MSVC stays the toolchain for test, match and
+  release binaries. The clang64 build is slower, not neutral.
+- **`native` NO_CHANGE, estimate below −0.5%:**
+  - The README no longer recommends `--native` and says that it is
+    slower on Zen 3.
+  - Local pool and match binaries are built without `-Native`.
+  - `build_test.ps1` and `cargo xtask --help` stop calling the native
+    build the fast one.
+
+## Calibration
+
+- **`clang64`:** inside the interval, at its lower edge (−0.94%
+  against 0.0% [−1.0%, +1.0%]). The miss is in magnitude: a
+  same-compiler build was taken to differ only by layout noise, and it reads
+  a clear loss.
+  - The mechanism is not identified. Candidates are the larger `.text` and
+    LLD's layout, and UCRT `memcpy`/`memset` in place of VCRUNTIME140's.
+  - No decision depends on it, so it is not chased.
+- **`native`:** a miss in magnitude, sign right (−3.81% against
+  −0.8% [−1.8%, +0.2%]). Two assumptions failed:
+  - that being memory-latency bound would blunt a scheduling-model effect;
+  - that Basilisk's −1.04% sets the scale. It is the same LLVM major
+    on the same CPU, yet the Rust engine loses almost four times as much.
+  - The static check located the difference, the `znver3` model's
+    instruction choice, but not its size. Whether the 81 `bextr` sites or
+    the scheduling model carries the loss is not split; no arm here
+    separates them. No decision depends on the split, so no follow-up
+    read is registered.
+
+## Confound reported
+
+- **The field's Rarog binaries are native builds.** The copies in
+  `D:\chess\engines\rarog\` for 2.3.2, 2.4.0, 2.5.0 and 2.6.0 are
+  `-pext-native-pgo`, and RAR-M57, RAR-M63, RAR-M64, RAR-M65 and RAR-M76
+  played such builds.
+- Those binaries were built by earlier compilers, and their own native
+  penalty is not measured. This read measures the current source on
+  rustc 1.99.1 only.
+- If a penalty of this size held for them, those Rarogs played several
+  percent slow. By PROCESS's measured constant (about 2 Elo per 1% at
+  `3+0.03`) that is several Elo at short time controls. This is not
+  measured, and the recorded results are not revised.
+- Replacing them in future pools with the published pext assets, which are
+  built without `--native`, is the maintainer's decision.

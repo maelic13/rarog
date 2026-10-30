@@ -159,10 +159,10 @@ build and writes the finished engine to `target/dist`.
    ```
 
 3. In the repository folder, build the engine. For most modern x86-64 CPUs
-   this is the fastest build for the computer you are on:
+   this is the fastest build:
 
    ```bash
-   cargo xtask build --arch pext --native --pgo
+   cargo xtask build --arch pext --pgo
    ```
 
    On an AMD Zen 1, Zen 2 or Excavator CPU use `--arch avx2` instead of
@@ -183,10 +183,11 @@ measure how it runs on `bench`, then again using what it measured.
 | `--native` | Also tunes the build for the exact CPU you are building on. |
 | `--pgo` | Profile-guided optimization, as used for every published build. |
 
-`--arch` and `--native` combine freely. A `--native` build is usually a little
-faster on the computer that built it but may not run on any other, so its
-file name ends in `-native`. Leave `--native` out to build an engine that runs
-on every CPU its `--arch` supports, like the published ones:
+`--arch` and `--native` combine freely. On the AMD Zen 3 it was measured on,
+a `--native` build is clearly slower than the same build without it. It also
+may not run on any other computer, so its file name ends in `-native`.
+Leave `--native` out to build an engine that runs on every CPU its `--arch`
+supports, like the published ones:
 
 ```bash
 cargo xtask build --arch pext --pgo

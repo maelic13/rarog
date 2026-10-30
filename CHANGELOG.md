@@ -21,6 +21,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 - **Time management reworked.** The engine stops thinking once it has proved a
   forced mate, keeps more of its clock in reserve when the clock runs low, and
   weighs how settled the best move is when deciding how long to think.
+- **Building from source: leave out `--native`.** The build instructions no
+  longer recommend it: on AMD Zen 3 it makes a slower engine than the same
+  build without it.
 
 ### Fixed
 
