@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.2 | RESEARCH | R2 | Lazy SMP at four threads. **RAR-M78 read 2026-11-01: Rarog deficient** (effective speedup 1.65 against 2.30 and 2.48; in games 2.28× the nodes for 1.9 plies less depth, 28% of moves held over the margin): the four-thread card is open. Reads in order: the PGO coverage of the multi-thread kernel copies (one build on RAR-P50's instrument, prediction frozen in the leaf), time-to-depth 4T against 1T, the holds between the clock's end and `bestmove`, the shared backend's cost (F16), then helper depth, shared-table use and root diversity. Earlier: RAR-P46 to P50 located a 6–7% per-thread shared-search NPS loss since B.9 spread over kept gains; RAR-M77 keeps large pages on |
+| D.2 | RESEARCH | R2 | Lazy SMP at four threads. **RAR-M78 read 2026-11-01: Rarog deficient** (effective speedup 1.65 against 2.30 and 2.48; in games 2.28× the nodes for 1.9 plies less depth, 28% of moves held over the margin): the four-thread card is open. Reads in order: the PGO coverage of the multi-thread kernel copies (one build on RAR-P50's instrument, prediction frozen in the leaf), time-to-depth 4T against 1T, the holds between the clock's end and `bestmove`, the shared backend's cost (F16), then helper depth, shared-table use and root diversity. **Card written 2026-11-01:** six hypotheses; the first four reads are registered (RAR-P52, RAR-R29, RAR-R30, RAR-P53) and are the maintainer's, about 50 minutes, no games; `e057d84` (one trained kernel copy, behaviour-neutral) is RAR-P52's candidate; the holds are inside the clock, and the depth deficit is not them. Earlier: RAR-P46 to P50 located a 6–7% per-thread shared-search NPS loss since B.9 spread over kept gains; RAR-M77 keeps large pages on |
 | D.3 | READY_FOR_IMPLEMENTATION | I1 | Eight shell defects confirmed by the 2026-11-01 review (four replayed live), each with a `uci_process` test first, before the 2.7.0 cut; the score-normalisation card and the `src/uci/` (planned) move stay research |
 | D.4 | READY_FOR_IMPLEMENTATION | I1 | Eighteen behaviour-neutral repairs from the review, the table handle and the helper lifecycle first; exact fingerprint, pooled NPS where hot |
 | D.5 | RESEARCH | R2 | Fourteen gated candidates from the review; castling's classification and quiet queen promotions in quiescence first; nothing implemented before its screen |
@@ -1759,9 +1759,95 @@ depth, shared-table use and root diversity, with the donor divergences of item
 before exposure; a repair that moves no fingerprint closes on the four-thread
 NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
 `[0,5]`, whose premise this read restores.
+  **The four-thread card, 2026-11-01** (research, zero games so far). The
+  deficit is RAR-M78's: four threads are worth 0.72 doublings of Rarog's own
+  time against 1.20 for Reckless and 1.31 for Stockfish, a gap of 0.48 to
+  0.59 doublings. A speed-only mechanism is bounded: a gain of s in ln NPS is
+  worth s / ln 2 doublings, so 7% buys 0.10. Established today, by file reads
+  and builds:
+  - **The kernel copies.** The head's PGO profile holds 17 kernel
+    instantiations, the 11 multi-thread ones with all-zero counts, as the
+    review found. `e057d84` takes the poll as a trait object: 6
+    instantiations, all trained, `bench 13` exact. The table's shared-form
+    branches inside the kernel stay untrained under any one-thread training.
+  - **The holds are inside the clock.** `h=` is Colosseum's overhead after
+    the last `info` line and lies within the charged time (RAR-R30), so
+    RAR-M78's "outside its own clock" is corrected: no forfeit risk, but 9.0%
+    of the four-thread time (1.2% at one thread) goes to search that is never
+    reported. The code accounts for it: in a pool the soft stop is a vote, and
+    the main thread past its target keeps iterating until three of four
+    agree.
+  - **The depth deficit is not the holds.** On moves held 20 ms or less the
+    four-thread side still reports 15.25 plies against 17.30. Its main thread
+    searched about a quarter of 1,392,558 nodes a move against the one-thread
+    side's 622,252; at EBF 2.565 that costs 0.62 plies, not 1.87. About 1.25
+    plies are unexplained by node count.
+
+  Competing hypotheses, each with the shared signals it touches, its test and
+  its falsifier:
+  1. **H1, untrained kernel copies** raise every thread's node cost. Signals:
+     none (code layout). Test: RAR-P52, Q at four threads. Falsifier: mean
+     L(Q) under 0.02.
+  2. **H2, the shared backend** (F16) costs each node, its branches cold in
+     the shipped build. Signals: the table's geometry (six-way against
+     three-way) and replacement. Test: RAR-P53, one binary, both backends,
+     with and without PGO. Falsifier: R at 0.97 or above.
+  3. **H3, the helpers slow the main thread's progress to depth.** Every
+     thread searches the same depths (no skip; the old tables were inert,
+     RAR-R10), same-depth helpers overwrite the main thread's entries, and the
+     RAR-R03 bundle reorders and re-centres the main thread's root from the
+     pool (`apply_shared_root_scores`, pooled root scores, window
+     re-centring). Signals: table entries and replacement, root order,
+     aspiration windows, and the best-move changes the clock reads. Test:
+     RAR-R29's level X_ctl. Falsifier: X_ctl at 1.8 or above.
+  4. **H4, the soft-stop vote** spends about 9% of four-thread time in a main
+     iteration that never finishes. Signals: the soft target, the votes, the
+     stop. Test: RAR-R30's timed read. Falsifier: NOT REPRODUCED, or JOIN
+     (then a clock-side defect under D.1's rules).
+  5. **H5, result selection.** The weighted vote (`+14` with a floor,
+     decisive results by vote) can choose a helper's move, and the reported
+     depth is then that helper's. Signals: the vote, the reported line, the
+     ponder move. Test, not yet registered: the share of four-thread searches
+     whose move differs from the main thread's, and their depths, counted in
+     an instrument build. Falsifier: under 5% of moves differ.
+  6. **H6, the table fills faster** at 2.28× the nodes. Signals: replacement.
+     Test: RAR-R29's harness at Hash 1024, only if H3 survives. Falsifier: no
+     change in X.
+
+  **Interactions.** H1 and H2 multiply into per-thread NPS and share the cold
+  shared branches, which a Threads-2 training run would cure together. H3 acts
+  on depth per node and hides behind any NPS gain, so RAR-R29 reads levels as
+  well as differences. H4 and H5 act on time and on the decision and are
+  invisible to `go depth`. H2's answer, one atomic backend, would move the
+  fingerprint and every table measurement H3 relies on, so it comes last.
+
+  **The cheapest discriminating tests** are the four registered reads, about
+  50 minutes of the maintainer's machine and no games: RAR-P52, RAR-R29,
+  RAR-R30, RAR-P53. Then, by their outcome, H5's count and H3's ablations of
+  the RAR-R03 members on RAR-R29's harness (tune-only switches), before any
+  game.
+
+  **Stop rule.** Each hypothesis stops at its falsifier. If H1 to H4 all fall
+  and X_ctl is 1.8 or above, no zero-game read has found the deficit: the
+  card registers H5's count and, if that falls too, closes `NO_CHANGE` with
+  the deficit handed to G.1 rather than a 4T SPRT spent without a candidate.
+  A repair that moves no fingerprint closes on the four-thread NPS and
+  time-to-depth reads; anything else takes the leaf's 4T SPRT `[0,5]`, or a
+  removal bracket for a RAR-R03 member.
+
+  **Readiness: not `READY_FOR_IMPLEMENTATION`** for any playing change. The
+  one change made, `e057d84`, is behaviour-neutral and stands or falls on
+  RAR-P52. **Next:** the maintainer's four reads, in the order above.
 - **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `I1` for the eight review-confirmed defects (2026-11-01), then `R2` for the cards.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.
+  **Found 2026-11-01 in D.2's checks:** in a full `cargo test` run,
+  debug or release, 1 to 5 of `tests/uci_process.rs`'s 28 tests time out
+  with no engine output at all (`seen: []`), a different set each run; on
+  the unchanged head too (4 of 28, release). They pass 28 of 28 when the file
+  runs alone. Cause unread; the start-up of a fresh process under the suite's
+  load is the first candidate. A test that only fails under load is still a
+  failure: D.3 owns it.
   **Done out of band, 2026-10-01:**
   - `97ea52d`: the last `info` line now always describes `bestmove`. An
     iteration stopped after a window failed high or low on an unconfirmed
