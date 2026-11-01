@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.2 | RESEARCH | R2 | Lazy SMP at 4T/8T; RAR-P46 measured a target: the engine's 4T/1T fell to 3.28 from 3.80; large pages are not the in-game problem (RAR-M77: +2.7% NPS, +10.3 ± 5.9 Elo, default stays on); next, the engine's 2T loss in shared writes, and why RAR-M74's field slowed the head; RAR-P48 (Mixed): the loss is real under pinning and is neither the CCD split nor large pages. RAR-P49 (shared search): C's whole 4T loss is in the shared search, none in the hardware. RAR-P50 (Mixed): no single change holds the loss; it is shared by C's evaluation rebuilds and the speed pass, both kept gains, so the bisect stops; RAR-M78 registered: the self-relative scaling games, with time-odds legs, the maintainer's night; **engine review 2026-11-01** (`analysis/engine_review_2026-11-01.md`): the static read of what threads share is complete and clears everything but the table; next read the PGO coverage of the multi-thread kernel copies (one build on RAR-P50's instrument, prediction frozen in the leaf), then the shared backend's cost (F16) |
+| D.2 | RESEARCH | R2 | Lazy SMP at four threads. **RAR-M78 read 2026-11-01: Rarog deficient** (effective speedup 1.65 against 2.30 and 2.48; in games 2.28× the nodes for 1.9 plies less depth, 28% of moves held over the margin): the four-thread card is open. Reads in order: the PGO coverage of the multi-thread kernel copies (one build on RAR-P50's instrument, prediction frozen in the leaf), time-to-depth 4T against 1T, the holds between the clock's end and `bestmove`, the shared backend's cost (F16), then helper depth, shared-table use and root diversity. Earlier: RAR-P46 to P50 located a 6–7% per-thread shared-search NPS loss since B.9 spread over kept gains; RAR-M77 keeps large pages on |
 | D.3 | READY_FOR_IMPLEMENTATION | I1 | Eight shell defects confirmed by the 2026-11-01 review (four replayed live), each with a `uci_process` test first, before the 2.7.0 cut; the score-normalisation card and the `src/uci/` (planned) move stay research |
 | D.4 | READY_FOR_IMPLEMENTATION | I1 | Eighteen behaviour-neutral repairs from the review, the table handle and the helper lifecycle first; exact fingerprint, pooled NPS where hot |
 | D.5 | RESEARCH | R2 | Fourteen gated candidates from the review; castling's classification and quiet queen promotions in quiescence first; nothing implemented before its screen |
@@ -1532,7 +1532,7 @@ map).
           the `10+0.1` read +2.1 ± 11.6. Nothing lands; D.1.6 returns to
           research (above), and this gate is re-registered on the
           surviving cluster.
-- **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — `R2` investigation, `I2`/`V` sub-steps.** 4T and
+- **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; RAR-M78 read Rarog deficient at four threads (effective speedup 1.65 against Reckless 2.30 and Stockfish 2.48) — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
   helper depth-skip policy is designed fresh from the donor; B.1 deleted the
@@ -1732,6 +1732,33 @@ map).
      per thread where the donor shares it; each is priced, if at all, with
      RAR-M78's instrument under this leaf or G.1. The `Clone` derive and the
      helper handle the 2026-10-06 audit asked for are D.4's.
+**RAR-M78 read 2026-11-01: Rarog deficient**, by the registered rule. Four
+threads are worth 0.72 of a doubling of Rarog's own time (G4 +73.7 ± 11.5 over
+G2 +101.8 ± 11.5 at `10+0.1`, effective speedup 1.65), against 1.20 (2.30) for
+Reckless 0.9.0 and 1.31 (2.48) for Stockfish 18; Rarog's D minus theirs is
+-0.48 ± 0.22 and -0.59 ± 0.23, both below zero. The runner's own statistics
+say where to look: Rarog's four-thread side reached a lower mean depth than
+its one-thread side (15.41 against 17.28) at 2.28× the nodes per second (the
+bench read 3.28), where Reckless gained 1.3 plies at 3.45× and Stockfish 2.8
+at 3.47×; and 28% of Rarog's four-thread moves were held over the 20 ms margin
+outside its own clock (p99 175 ms) against 2% at one thread and under 1% for
+the other engines. RAR-P50's recommendation against pursuing the four-thread
+loss is withdrawn. **The four-thread SMP research card is open; its reads in
+order:** (1) the PGO coverage of the multi-thread kernel copies, item 1 above,
+one build (at four threads the main thread itself runs an untrained copy,
+which a depth loss at higher NPS is consistent with); (2) time-to-depth four
+threads against one on RAR-R10's harness, item 3 above; (3) the holds: where
+the four-thread process spends the time between the clock's end and `bestmove`
+(the join of every helper, `threads.rs:363–371`, the 1 ms wait loops, the
+`info` and vote path), read from the games' `h=` comments and a timed `go
+movetime` at Threads 1 and 4, then repaired as a clock-side defect under D.1's
+rules; (4) the shared backend's cost, item 2 above; (5) the card's own
+questions from the registration, what the helpers' nodes are worth: helper
+depth, shared-table use and root diversity, with the donor divergences of item
+4 priced on this instrument. Each read is registered with its prediction
+before exposure; a repair that moves no fingerprint closes on the four-thread
+NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
+`[0,5]`, whose premise this read restores.
 - **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `I1` for the eight review-confirmed defects (2026-11-01), then `R2` for the cards.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.

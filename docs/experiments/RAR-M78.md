@@ -1,4 +1,4 @@
-# RAR-M78 — Self-relative scaling: Rarog, Reckless and Stockfish, each against itself at four threads and at twice the time — REGISTERED 2026-10-30, before any game
+# RAR-M78 — Self-relative scaling: Rarog, Reckless and Stockfish, each against itself at four threads and at twice the time — RAROG DEFICIENT 2026-11-01: effective speedup 1.65 against Reckless 2.30 and Stockfish 2.48
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -162,3 +162,92 @@ pwsh -File D:\code\rarog\analysis\artifacts\selfscale\run.ps1
 
 It prints every idle check and Colosseum's progress, and resumes after an
 interruption with the same command.
+
+## Result — 2026-11-01, appended after exposure
+
+- **The run.** The maintainer ran `run.ps1` overnight from 2026-10-31 23:17 to
+  2026-11-01 07:53; the Stockfish threads leg was interrupted at 680 games
+  (10:02) and resumed by the same command at 15:56, finishing at 16:56, as the
+  stop rule allows. Six legs of 1,000 games, every pentanomial recounted from
+  `games.pgn` by the wrapper, zero time losses, zero engine faults, zero
+  infrastructure faults. Hashes as registered (Rarog `EBBBC917…`, Reckless
+  `B74EAD56…`, Stockfish `BF2D8BF6…`); Hash 256 and the registered clocks and
+  threads on every side
+  (`tools/results/colosseum_match_selfscale-*.manifest.txt`; run directories
+  `tools/results/selfscale-*/`).
+- **Colosseum's results** (arm A's Elo; the gain is arm B over A):
+
+  | Leg | Elo (A) | nElo | Pentanomial | W/D/L (A) |
+  |---|---|---|---|---|
+  | Rarog `10+0.1` against `20+0.2` | −101.8 ± 11.5 | −201.1 ± 21.5 | 33, 246, 194, 27, 0 | 109/497/394 |
+  | Rarog 1T against 4T | −73.7 ± 11.5 | −142.0 ± 21.5 | 16, 231, 199, 54, 0 | 124/543/333 |
+  | Reckless `10+0.1` against `20+0.2` | −86.2 ± 9.8 | −197.4 ± 21.5 | 2, 266, 205, 27, 0 | 128/501/371 |
+  | Reckless 1T against 4T | −103.7 ± 9.2 | −256.9 ± 21.5 | 1, 303, 181, 15, 0 | 91/528/381 |
+  | Stockfish `10+0.1` against `20+0.2` | −86.9 ± 9.9 | −197.9 ± 21.5 | 2, 269, 201, 28, 0 | 131/493/376 |
+  | Stockfish 1T against 4T | −114.1 ± 9.3 | −282.5 ± 21.5 | 6, 317, 165, 12, 0 | 99/485/416 |
+
+- **Readings** (delta method, σ from the 95% half-widths):
+
+  | Engine | G2 (Elo) | G4 (Elo) | D = G4/G2, 95% | X = 2^D |
+  |---|---|---|---|---|
+  | Rarog | +101.8 ± 11.5 | +73.7 ± 11.5 | 0.72 [0.58, 0.86] | 1.65 |
+  | Reckless | +86.2 ± 9.8 | +103.7 ± 9.2 | 1.20 [1.03, 1.38] | 2.30 |
+  | Stockfish | +86.9 ± 9.9 | +114.1 ± 9.3 | 1.31 [1.13, 1.50] | 2.48 |
+
+- **Outcome: Rarog deficient**, by the registered rule. Rarog's D minus
+  Reckless's is -0.48 ± 0.22 (upper bound -0.26) and minus Stockfish's -0.59 ±
+  0.23 (upper bound -0.36): both intervals lie below zero.
+- Four threads are worth 0.72 of a doubling of time to Rarog and 1.2 to 1.3 to
+  the other two: Rarog gains from four threads what the others gain from about
+  1.6 times the time, where they gain what 2.3 to 2.5 times the time buys.
+- **What the runner's own search statistics add** (the manifests' `search` and
+  `harness_hold_ms` lines; observations, not registered readings). Rarog's
+  four-thread side reached a *lower* mean depth than its one-thread side,
+  15.41 against 17.28 (non-mate 15.84 against 16.87), at 6.29 M against 2.76 M
+  nps (2.28× in games, against 3.28 in RAR-P46's bench cells); Reckless went
+  20.01 → 21.33 at 3.45× nps and Stockfish 26.37 → 29.13 at 3.47×. Rarog's
+  four-thread process was also held outside its own clock far more than anyone
+  else's: 18,171 of 64,486 moves over the 20 ms margin (28%), p50 4 ms, p99
+  175 ms, against 2% and p99 53 ms at one thread, and p99 4 ms (Reckless) and
+  1 ms (Stockfish) at four. Reckless's and Stockfish's `20+0.2` arms gained
+  3.1 and 4.2 plies over `10+0.1`; Rarog's gained 0.9.
+
+## Disposition
+
+- **Rarog deficient:** D.2's four-thread SMP target is open, and D.2 opens the
+  research card the registration named, on what the extra threads' nodes are
+  worth. The depth and hold figures above order its first hypotheses: (1) the
+  PGO profile covers only the single-thread copy of the kernel, so at four
+  threads the main thread itself runs untrained code
+  (`analysis/engine_review_2026-11-01.md` §3.3, RUST-1 / DRIVER-3 / DRIVER-4;
+  one build decides it); (2) time-to-depth at four threads against one on
+  RAR-R10's harness, since in-game NPS scaled 2.28× while depth fell; (3) the
+  four-thread process's holds outside its clock (the join of helpers and the
+  bestmove path, `analysis/engine_review_2026-11-01.md` DRIVER-14 and
+  DRIVER-15), which cost thinking time the budget never sees; (4) the shared
+  backend's per-operation cost (F16); then the card's own questions, helper
+  depth, shared-table use and root diversity.
+- Scaling beyond four threads stays with G.1. Nothing about a default or a
+  gate follows from this read; a fix is gated on its own.
+
+## Calibration
+
+- **The registered outcome missed.** "Rarog deficient" was given 0.25 and
+  happened; the miss is in sign of the comparison and in magnitude.
+- **Where the levels were wrong.** Rarog's G2 (+101.8) sits inside its band
+  [+80, +140]; its G4 (+73.7) sits below the band [+100, +180], so the miss is
+  entirely in Rarog's four-thread gain. Reckless's and Stockfish's four
+  readings all fell inside their bands (G4 +103.7 and +114.1 against [+70,
+  +150] and [+60, +140]; G2 +86.2 and +86.9 against [+50, +110] and [+40,
+  +100]).
+- **The mechanism assumed was wrong.** The registration reasoned from a bench
+  NPS speedup of 3.6 to 3.8 that the four-thread gain would be near the
+  others'. In games the speedup was 2.28× and the depth fell, so the NPS proxy
+  did not carry: the lazy SMP's defect is in what the nodes buy and in how the
+  process behaves under the harness, not only in the count of nodes. RAR-P50's
+  recommendation against pursuing the four-thread loss is withdrawn by this
+  read.
+- **Instrument.** The design worked as intended: each engine was its own
+  control, the time-odds leg priced the threads in the engine's own doublings,
+  and the Stockfish threads leg's interruption and resumption left the
+  registered 1,000 games intact.
