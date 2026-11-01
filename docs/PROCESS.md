@@ -174,7 +174,10 @@ presented as mature.
 ### The independence boundary
 
 Donors: **Reckless** for search, threading, time management and NNUE;
-**Stockfish 11** for the classical evaluation; **Stockfish 19** for NNUE and
+**Stockfish 11** for the classical evaluation (tag `sf_11`; the king-safety and
+threat fixtures, and the forms fitted from them, follow `9587eeeb` of
+2020-07-30: `analysis/engine_review_2026-11-01.md`, EVAL-4); **Stockfish 19**
+for NNUE and
 SMP details where Reckless is silent (maintainer decision 2026-09-09; PLAN
 rule 1 points here).
 

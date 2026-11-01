@@ -56,9 +56,35 @@ leaf continues here, this is the mapping; everything else is history.
 | Phase 5, 6, 7 (NNUE runway, baseline, frontier) | F | |
 | Phase 8 (scaling) | G | |
 | Phase 9 (classical fallback) | dropped | the classical evaluation stays as datagen baseline and fallback by construction |
+| D.4 (tablebase policy, numbered so until 2026-11-01) | D.7 | renumbered when D.4, D.5 and D.6 were added from `analysis/engine_review_2026-11-01.md`; a record from before that date that names D.4 means the tablebase leaf |
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-11-01 — Engine review (`analysis/engine_review_2026-11-01.md`), the
+  input to Phase D's new leaves.** Eight parallel reviews of the board, the
+  kernel, the driver and lazy SMP, the table and caches, the evaluation, the
+  shell, a Rust census and the architecture, each verified against the source
+  and the donors (Reckless `aec5cb2e`, Stockfish `sf_11` and `9587eeeb`), with
+  the reports archived under `analysis/artifacts/engine-review-2026-11-01/`.
+  No memory-safety defect, no search-state corruption, no board defect against
+  python-chess (60,000 positions, 62 M move triples); the release assembly has
+  no `memcpy` on the node path. Found: four shell defects reproduced live (a
+  zero or negative clock searches without limit, `setoption` during a search
+  wedges stdin, EOF never ends an infinite search, a non-UTF-8 line exits
+  silently); the PGO profile covering only the single-thread copy of the
+  kernel, so every multi-thread search runs untrained code; six unrecorded
+  kernel and board deviations with strength potential (castling neither quiet
+  nor noisy, quiet queen promotions invisible to quiescence, null-move and
+  ProbCut children typed cut nodes, a fail-low node storing its least-bad
+  move, the exclusion search on the refined estimate, captures generated
+  before the TT move); the endgame scale on the whole tapered score; and the
+  architecture counts repeated from B.2.0 (29,190 lines, tests 23%,
+  instrumentation 10%, two cycles). PLAN: D.2 gains the PGO and shared-backend
+  reads, D.3 the eight defects (`READY_FOR_IMPLEMENTATION`), new D.4 (neutral
+  repairs), D.5 (gated candidates) and D.6 (simplification); the tablebase
+  leaf D.4 became D.7; E.1 and E.4 take their inputs; PROCESS names both
+  Stockfish commits. No engine source changed; fingerprint 13,987,223 / EBF
+  2.565 unchanged.
 - **2026-10-22 — Rarog 2.6.0 released (maintainer decision), from the C head
   ahead of Phase E.** The evaluation programme's work reached `master` in
   `138d867` (PR #10, "Fit search to evaluation") after PRs #7–#9; the release

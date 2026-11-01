@@ -62,3 +62,4 @@ b74ead5648cfa7a7	SHA-256 prefix of the Reckless binary the originality review ha
 875ec6e	Basilisk commit (nps_read: several pools and contrasts in one read)
 a575ab8	Basilisk commit (naming the per-tier asset a refused CPU should run)
 d601807	Basilisk commit (release back to per-tier assets after BAS-P20)
+aec5cb2e	Reckless commit (the 2026-11-01 engine review's donor head)
