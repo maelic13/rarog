@@ -218,10 +218,10 @@ impl Searcher {
         self.td.previous_search_score = None;
     }
 
-    fn run_worker_job<P: FnMut() -> SearchEvent + ?Sized>(
+    fn run_worker_job(
         &mut self,
         job: WorkerJob,
-        poll: &mut P,
+        poll: &mut dyn FnMut() -> SearchEvent,
     ) -> SearchResult {
         self.shared.tt = job.tt;
         self.shared.hash_mb = job.hash_mb;
@@ -274,7 +274,7 @@ impl Searcher {
 
     #[cold]
     #[inline(never)]
-    pub(super) fn search_parallel<P: FnMut() -> SearchEvent + ?Sized>(
+    pub(super) fn search_parallel(
         &mut self,
         root: Board,
         root_moves: &[Move],
@@ -282,7 +282,7 @@ impl Searcher {
         engine_options: EngineOptions,
         threads: usize,
         emit_info: bool,
-        poll: &mut P,
+        poll: &mut dyn FnMut() -> SearchEvent,
     ) -> SearchResult {
         // Reset BEFORE any helper exists, so nothing already counted
         // gets wiped by a late-starting thread.
@@ -355,10 +355,11 @@ impl Searcher {
                 SearchEvent::None => SearchEvent::None,
             },
         };
+        let main_poll: &mut dyn FnMut() -> SearchEvent = &mut main_poll;
         let main_result = if lines > 1 {
-            self.search_root_multipv(root, root_moves, lines, emit_info, &mut main_poll)
+            self.search_root_multipv(root, root_moves, lines, emit_info, main_poll)
         } else {
-            self.search_root(root, root_moves, emit_info, &mut main_poll)
+            self.search_root(root, root_moves, emit_info, main_poll)
         };
         shared_state.request_stop();
 

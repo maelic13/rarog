@@ -448,16 +448,20 @@ impl Searcher {
         emit_info: bool,
         mut poll: impl FnMut() -> SearchEvent,
     ) -> SearchResult {
-        self.search_impl::<true, _>(root, &options.limits, &options.engine, emit_info, &mut poll)
+        self.search_impl::<true>(root, &options.limits, &options.engine, emit_info, &mut poll)
     }
 
-    fn search_impl<const ALLOW_PARALLEL: bool, P: FnMut() -> SearchEvent + ?Sized>(
+    // The poll is a trait object from here down, and the main thread's and
+    // the helpers' polls are too, so the kernel exists once for every thread:
+    // a copy per closure type left the multi-thread copies outside the PGO
+    // profile, which trains at one thread. It is called once per 2,048 nodes.
+    fn search_impl<const ALLOW_PARALLEL: bool>(
         &mut self,
         mut root: Board,
         limits: &SearchLimits,
         engine_options: &EngineOptions,
         emit_info: bool,
-        poll: &mut P,
+        poll: &mut dyn FnMut() -> SearchEvent,
     ) -> SearchResult {
         if ALLOW_PARALLEL
             && engine_options.threads <= 1
