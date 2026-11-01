@@ -117,10 +117,11 @@ from its registration cannot be tuned by accident.
 `colosseum.pin.json` names the source revision and the SHA-256. Only the hash
 can be enforced — a stripped release executable does not carry its revision —
 so `setup_tools.ps1` and every wrapper run compare hashes and refuse a
-mismatch rather than substituting a build. Since 2026-10-22 the pin is the
-published release `cli-v0.4.0` (`9c72539`; before it `cli-v0.3.0` at
-`cb12cd3` from 2026-10-14, `cli-v0.2.0` at `ca05dfa2` from 2026-09-25, and
-`cli-v0.1.0` at `40a15b1b` from 2026-09-22):
+mismatch rather than substituting a build. Since 2026-11-01 the pin is the
+published release `cli-v0.5.0` (`8fa63cc`; before it `cli-v0.4.0` at
+`9c72539` from 2026-10-22, `cli-v0.3.0` at `cb12cd3` from 2026-10-14,
+`cli-v0.2.0` at `ca05dfa2` from 2026-09-25, and `cli-v0.1.0` at `40a15b1b`
+from 2026-09-22):
 its `archive` entry carries the
 asset URL and the digest GitHub serves for it, checked on download, and the
 top-level `sha256` is checked on the extracted executable. Re-pinning to a
@@ -173,6 +174,23 @@ through the wrapper, and a `datagen.ps1` run. No null pair was played: a
 re-pin owes none. No fastchess cross-check was run either: a release that
 changes reporting only owes none (maintainer decisions 2026-10-22;
 PROCESS, *Harness*).
+
+0.5.0 also changes reporting only. Every count is in games: an SPRT's
+progress, cap, post-terminal evidence and the game at which a boundary was
+reached, and `--progress-every`, now 20 games by default, the old 10 pairs.
+The console keeps each command's short report and names `results.txt` in the
+run directory, which holds the colour split, terminations, faults and
+search as text; `run-record.json` and every JSON interface are unchanged.
+The wrapper adds `results_file:` and the file's hash to the manifest, prints
+its path at the end and states the cap and the pairs in games. Two sides of
+one name, which the wrapper never plays because the arms' names must differ,
+are reported as `name (A)` and `name (B)` with one search line each; under
+0.4.0 they shared one. The re-pin was qualified as before: both digests
+through `setup_tools.ps1`, `test_colosseum_guards.ps1` 69/69, a fixed-node
+`match` and a capped `sprt` through the wrapper (each recount of
+`games.pgn` agreeing), an unlabelled one-binary `match` whose recount and
+manifest lines keep the two sides apart, and a `datagen.ps1` run. No null
+pair or fastchess cross-check was owed.
 
 ## The backup path
 

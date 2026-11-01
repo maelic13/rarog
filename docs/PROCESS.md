@@ -280,15 +280,25 @@ quotes what that version reports at the end of a run:
   and, at launch, the coordinates whose first arms already leave the range
   (`rail_warnings:`). Both are warnings, not refusals; RAR-S104 named them.
 
+CLI 0.5.0, pinned 2026-11-01, changes how these are delivered, not what
+they are: the console keeps the command's short report and names
+`results.txt` in the run directory, which holds the lines above as text,
+and every count is in games, an SPRT's cap and terminal point included.
+The manifest still quotes the figures from `run-record.json` and hashes
+`results.txt` beside the other artifacts. Each side's search is its own line
+even when both sides carry one name.
+
 A hand parser of `games.pgn` is not written for any of these. A one-off
 PGN regex skipped 16% of move comments and corrupted four ledger rows'
-in-game NPS. Still computed from the run directory, and named as gaps:
-conversion after a persistent advantage (`tools/diag/conversion_audit.py`),
-and per-arm search and time a game in a one-binary categorical match, whose
-PGN names both sides alike (D.1.3's `tm_wire_read.py` relabels by arm from
-`games.jsonl`). `tools/diag/colosseum_recount.py` stays as the cross-check
-of a reporter change. It runs inside every wrapper run and agreed on the
-0.4.0 re-pin's smoke match; it is not run again per row.
+in-game NPS. Still computed from the run directory, and named as a gap:
+conversion after a persistent advantage (`tools/diag/conversion_audit.py`).
+Per-arm search in a one-binary categorical match is no longer one: the
+wrapper names each arm by its label (since 2026-10-29), and 0.5.0 keeps
+two sides of one name apart as `name (A)` and `name (B)`, so D.1.3's
+`tm_wire_read.py` relabelling from `games.jsonl` is not needed for a new
+run. `tools/diag/colosseum_recount.py` stays as the cross-check of a
+reporter change. It runs inside every wrapper run and agreed on the 0.5.0
+re-pin's smoke runs; it is not run again per row.
 
 **Faults, stops and estimates** (rule added 2026-10-11 from RAR-E29 and
 RAR-E32). A registration adopts the runner's fault policy by reference

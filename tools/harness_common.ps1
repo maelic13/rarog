@@ -1009,8 +1009,9 @@ function Format-ColosseumResults {
     # counted games ended, faults and time losses by engine, each engine's
     # search, and a tournament's pairs and standings. The manifest quotes them,
     # so a ledger row cites the runner's own figures and nobody re-derives them
-    # from games.pgn. Two sides with one name (a categorical match) share one
-    # search line, because the PGN names them alike.
+    # from games.pgn. Since CLI 0.5.0 each side's search is its own line even
+    # when both carry one name, which the runner then reports as `name (A)`
+    # and `name (B)`; under 0.4.0 such sides shared one line.
     param([Parameter(Mandatory)][object]$Record)
 
     $results = $Record.results

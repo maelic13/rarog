@@ -473,7 +473,8 @@ switch ($Mode) {
 }
 if ($Mode -eq "spsa" -and $SeedFrom) { $commandArgs += @('--seed-from', $SeedFrom) }
 # Without labels the runner names each side after its executable, and a
-# same-binary A/B then merges both sides' search statistics under one name.
+# same-binary A/B becomes `name (A)` and `name (B)`; the labels give every
+# report and the PGN the arms' registered names instead.
 if ($twoArmModes -contains $Mode) { $commandArgs += @('--a-label', $NameA, '--b-label', $NameB) }
 # A side-specific option list on the command line REPLACES the run file's list
 # for that side (Colosseum's command-line-over-run-file rule applies to the
@@ -774,7 +775,7 @@ $lines.Add("slot_cpus:        $($slotCpus -join ',')")
 if ($Mode -eq "sprt") {
     $design = $resolved.design.parameters
     $lines.Add("test_design:      SPRT elo0=$($design.elo0) elo1=$($design.elo1) alpha=$($design.alpha) beta=$($design.beta) model=$($design.model)")
-    $lines.Add("game_budget:      $($resolved.design.max_pairs) pairs = $([int]$resolved.design.max_pairs * 2) games")
+    $lines.Add("game_budget:      $([int]$resolved.design.max_pairs * 2) games ($($resolved.design.max_pairs) colour-reversed pairs)")
 }
 if ($Mode -eq "spsa") {
     $lines.Add("tune_surface:     $ConfigGroup, $($resolved.tune.parameters.Count) coordinates")
@@ -799,7 +800,7 @@ Write-Host "  Colosseum $Mode$(if ($Mode -eq 'sprt') { " [$Bracket]" }): $(($eng
 if ($Mode -eq "sprt") {
     $design = $resolved.design.parameters
     Write-Host "  H0: nElo<=$($design.elo0)   H1: nElo>=$($design.elo1)   alpha=$($design.alpha)  beta=$($design.beta)"
-    Write-Host "  Cap: $($resolved.design.max_pairs) pairs; no boundary at the cap is unresolved, not an acceptance"
+    Write-Host "  Cap: $([int]$resolved.design.max_pairs * 2) games; no boundary at the cap is unresolved, not an acceptance"
 }
 Write-Host "  TC: $(if ($Nodes -gt 0) { "$Nodes nodes/move (fixed; speed and time management removed)" } elseif ($clockOdds) { "A ${BaseMs}+${IncrementMs}ms, B ${baseMsB}+${incrementMsB}ms" } else { "${BaseMs}+${IncrementMs}ms" })  Margin: ${MarginMs}ms  Hash: ${Hash}  Threads: $(if ($threadsB -ne $Threads) { "A $Threads, B $threadsB" } else { $Threads })  Conc: $($resolved.execution.concurrency)"
 Write-Host "  Adjudication: none    Book: $(Split-Path $Book -Leaf) (random, seed $Seed)"
@@ -884,7 +885,7 @@ $exit = Resolve-ColosseumExit -Mode $Mode -ExitCode $runExit
 $completion.Add("exit_code:        $runExit ($(if ($exit.Verdict) { $exit.Verdict } else { $exit.Kind }))")
 $completion.Add("run_status:       $($record.status)")
 $completion.Add("scored_games:     $scored")
-$completion.Add("completed_pairs:  $($record.official_sample.completed_pairs)")
+$completion.Add("completed_pairs:  $($record.official_sample.completed_pairs) ($([int]$record.official_sample.completed_pairs * 2) paired games)")
 $completion.Add("pentanomial:      $pentanomial")
 $completion.Add("faults:           $faults")
 if ($Mode -eq 'spsa') {
@@ -894,7 +895,11 @@ if ($Mode -eq 'spsa') {
 } else {
     foreach ($line in (Format-ColosseumResults -Record $record)) { $completion.Add($line) }
 }
-foreach ($artifact in @('result.json', 'run-record.json', 'games.pgn', 'resolved-config.json')) {
+# The runner writes its end-of-run results to results.txt rather than the
+# console; the manifest quotes the same figures from the run record above.
+$resultsText = Join-Path $Dir "results.txt"
+if (Test-Path -LiteralPath $resultsText) { $completion.Add("results_file:     $resultsText") }
+foreach ($artifact in @('result.json', 'results.txt', 'run-record.json', 'games.pgn', 'resolved-config.json')) {
     $path = Join-Path $Dir $artifact
     if (Test-Path -LiteralPath $path) { $completion.Add("$($artifact)_sha256: $(Get-HarnessSha256 $path)") }
 }
@@ -926,6 +931,7 @@ Write-Host ""
 Write-Host "Run finished: status '$($record.status)', outcome '$($exit.Verdict)', $scored scored games."
 Write-Host "  Manifest: $manifestPath"
 Write-Host "  Log:      $logPath"
+if (Test-Path -LiteralPath $resultsText) { Write-Host "  Results:  $resultsText" }
 Write-Host "  Evidence: $Dir"
 if ($Mode -eq "sprt") {
     Write-Host "  Only an H1 boundary promotes the candidate; a cap stop is unresolved and must be parked or reverted."
