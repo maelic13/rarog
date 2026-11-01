@@ -212,6 +212,15 @@ interruption with the same command.
   1 ms (Stockfish) at four. Reckless's and Stockfish's `20+0.2` arms gained
   3.1 and 4.2 plies over `10+0.1`; Rarog's gained 0.9.
 
+- **Confound, found 2026-11-01 at 17:40 and reported here:** a review
+  subagent's stray `python -I -` process (a line-counting script fed through a
+  malformed heredoc) ran on one logical CPU from 13:49 until it was killed, so
+  the Stockfish threads leg's resumed games (15:56 to 16:56, 320 of its 1,000)
+  played beside one busy core of 32. `run.ps1`'s idle check allows 10% load
+  and passed. The interim read at 680 games, −110.1 ± 11.4, agrees with the
+  final −114.1 ± 9.3, and the other five legs ran before 13:49, so the outcome
+  is unchanged; the leg is recorded as not fully idle.
+
 ## Disposition
 
 - **Rarog deficient:** D.2's four-thread SMP target is open, and D.2 opens the
