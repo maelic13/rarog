@@ -66,9 +66,23 @@ way.
   (2.28 on charged time), depth four threads less one −1.87. RAR-R31's replay
   alone: 3.78.
 - The runner's self-test on 2026-11-02 met a busy host (a maintainer's
-  Basilisk tune) and waited, as designed; it was stopped there. The dry run
-  of the four legs is made before the read, when the host is free, and
-  appended here.
+  Basilisk tune) and waited, as designed; it was stopped there.
+
+## Preparation, 2026-11-02 at 16:23, before any game
+
+- Host idle (2.1% CPU, no engine, harness or build process).
+- The runner's self-test (`selftest.log`): the wait, the stream and the stop
+  on a failing step all held.
+- **Dry run** (`dryrun.log`, `<leg>.log.dryrun`): all four legs resolve as
+  designed: `10000+100`, margin 20 ms, Hash 256, one thread against four,
+  the UHO book in random order with seed 81, no adjudication; slots CPUs
+  2–9, 16–23 and 24–31 (`solo`: 2–9 alone); `off` passes `LargePages=false`
+  to both sides; `b9` runs the B.9 binary. A first dry run was refused at the
+  `b9` leg by a Basilisk process that appeared for a few seconds; the second
+  passed whole.
+- **The switch is live** (`wire_largepages.log`): after `setoption name
+  LargePages value false` the head reports `Large pages: disabled`, and `on`
+  with the default; the node count is the same either way.
 
 ## Prediction, frozen before any game
 

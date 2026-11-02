@@ -48,8 +48,19 @@ Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md
 
 ## Exposure before registration
 
-None: the build, its checks and the smoke are made before the read, when
-the host is free, and appended here.
+None.
+
+## Preparation, 2026-11-02 at 16:22, before the read
+
+- `build.sh` (`build.log`): `rarog-d2diag-pext.exe`, SHA-256 `08a7587c…`,
+  from the clean worktree at `e057d84`; `bench 13` reads **13,987,223**; a
+  one-thread and a four-thread search each print `main_tt_probes` and
+  `main_tt_hits` once. The read script then pinned the hash
+  (`mainhit_read.py`, `510ece68…` after pinning).
+- Smoke (`smoke.log`): one pair a position at depth D − 6, 8 of 8 pairs with
+  both counters and a depth line; it prints no reading.
+- The judgement's self-test on synthetic pairs (`judge_selftest.py`,
+  `judge_selftest.log`).
 
 ## Prediction, frozen before the read
 
