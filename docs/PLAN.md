@@ -323,7 +323,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.2 | RESEARCH | R2 | Lazy SMP at four threads. **RAR-M78 read 2026-11-01: Rarog deficient** (effective speedup 1.65 against 2.30 and 2.48; in games 2.28× the nodes for 1.9 plies less depth, 28% of moves held over the margin): the four-thread card is open. Reads in order: the PGO coverage of the multi-thread kernel copies (one build on RAR-P50's instrument, prediction frozen in the leaf), time-to-depth 4T against 1T, the holds between the clock's end and `bestmove`, the shared backend's cost (F16), then helper depth, shared-table use and root diversity. **Card written 2026-11-01; four reads 2026-11-02:** `e057d84` kept (four-thread NPS +2.4%, RAR-P52); the shared backend refuted (RAR-P53); the holds are the soft-stop vote (RAR-R30); four threads reach a fixed depth more slowly than one, at B.9 too (RAR-R29, X 0.87), so the helpers buy the main thread no depth. Next: what the helpers do to the main thread, and why the games' depth deficit is far larger than the reads'. **Registered 2026-11-02:** RAR-R31 (the games replayed, alone and under their conditions; in play four threads ran at 2.28× one thread's NPS against 3.6 alone) and RAR-R32 (the RAR-R03 members switched off on RAR-R29's harness), about two hours of the maintainer's machine, no games. Earlier: RAR-P46 to P50 located a 6–7% per-thread shared-search NPS loss since B.9 spread over kept gains; RAR-M77 keeps large pages on |
+| D.2 | RESEARCH | R2 | Lazy SMP at four threads. **RAR-M78 read 2026-11-01: Rarog deficient** (effective speedup 1.65 against 2.30 and 2.48; in games 2.28× the nodes for 1.9 plies less depth, 28% of moves held over the margin): the four-thread card is open. Reads in order: the PGO coverage of the multi-thread kernel copies (one build on RAR-P50's instrument, prediction frozen in the leaf), time-to-depth 4T against 1T, the holds between the clock's end and `bestmove`, the shared backend's cost (F16), then helper depth, shared-table use and root diversity. **Card written 2026-11-01; four reads 2026-11-02:** `e057d84` kept (four-thread NPS +2.4%, RAR-P52); the shared backend refuted (RAR-P53); the holds are the soft-stop vote (RAR-R30); four threads reach a fixed depth more slowly than one, at B.9 too (RAR-R29, X 0.87), so the helpers buy the main thread no depth. Next: what the helpers do to the main thread, and why the games' depth deficit is far larger than the reads'. **Read 2026-11-02:** RAR-R31, the games replayed alone: four threads report the same depth as one at 3.78× its NPS, where the games ran them at about 60% of that speed; the games' conditions carry the deficit (H7, now the lead). RAR-R32: no RAR-R03 member holds the main thread back. Next: locate the condition, the games' own binary in the replay first, then a short Colosseum match read for per-side NPS. Earlier: RAR-P46 to P50 located a 6–7% per-thread shared-search NPS loss since B.9 spread over kept gains; RAR-M77 keeps large pages on |
 | D.3 | READY_FOR_IMPLEMENTATION | I1 | Eight shell defects confirmed by the 2026-11-01 review (four replayed live), each with a `uci_process` test first, before the 2.7.0 cut; the score-normalisation card and the `src/uci/` (planned) move stay research |
 | D.4 | READY_FOR_IMPLEMENTATION | I1 | Eighteen behaviour-neutral repairs from the review, the table handle and the helper lifecycle first; exact fingerprint, pooled NPS where hot |
 | D.5 | RESEARCH | R2 | Fourteen gated candidates from the review; castling's classification and quiet queen promotions in quiescence first; nothing implemented before its screen |
@@ -1881,6 +1881,29 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
   - **RAR-R32,** H3's screen: the pool's root order, the window centre, the
     helpers' rotation and the jitter offset switched off one at a time and
     together, on RAR-R29's harness.
+
+  **Read 2026-11-02:**
+  - **RAR-R31, NOT REPRODUCED.** Alone, with the games' positions, clocks
+    and kept tables, four threads report the same depth as one (+0.08
+    plies) at 3.78 times its NPS. On the same moves the games ran the
+    four-thread side at about 60% of that speed and 1.38 plies shallower,
+    the one-thread side at 91%. The slot's eight logical CPUs and three
+    processes at once cost under 6%; H6 is refuted; H5 is active (+5.6
+    points of closing lines) and held.
+  - **RAR-R32, nothing resolves:** none of the four RAR-R03 members, nor all
+    four together, holds the main thread back at about ±10%.
+
+  **H7 leads the card: a condition of RAR-M78's games costs Rarog's
+  four-thread search about 40% of its speed,** and Reckless far less.
+  RAR-M78's deficit stands as measured under it. H3 stays a fact about this
+  Lazy SMP (four threads buy width, not depth) and no longer explains the
+  deficit; H4 and H5 wait for the speed loss to be located. The conditions
+  the replay did not rebuild, cheapest first: the games' own binary
+  (`ebbbc917…`) in the replay; a short Colosseum match of the head, four
+  threads against one, read for per-side NPS; then, within that match, the
+  opponent's process sharing the slot, three games against one, `LargePages`
+  and the B.9 binary. Each is a zero-game or short read, registered before
+  exposure. No engine change is in scope until the condition is located.
 - **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `I1` for the eight review-confirmed defects (2026-11-01), then `R2` for the cards.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.

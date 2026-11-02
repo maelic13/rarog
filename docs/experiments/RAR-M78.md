@@ -260,3 +260,14 @@ interruption with the same command.
   control, the time-odds leg priced the threads in the engine's own doublings,
   and the Stockfish threads leg's interruption and resumption left the
   registered 1,000 games intact.
+
+## Later reads
+
+- **2026-11-02, [RAR-R31](RAR-R31.md):** twelve of this leg's games replayed
+  position by position with their clocks and kept tables, alone: four
+  threads report the same depth as one (+0.08 plies) at 3.78 times its NPS.
+  In the games the four-thread side ran at 2.28 times and, on the same
+  moves, at about 60% of its speed alone, reporting 1.38 plies less. The
+  deficit this experiment measured is real under its conditions, and the
+  conditions carry it: they cost Rarog's four-thread search about 40% of its
+  speed and Reckless's far less. Its cause is D.2's H7, open.

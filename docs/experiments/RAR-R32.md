@@ -1,4 +1,4 @@
-# RAR-R32 — Which member of the RAR-R03 parallel-search bundle holds the main thread back: four switches on RAR-R29's time-to-depth harness — REGISTERED 2026-11-02, before the read
+# RAR-R32 — Which member of the RAR-R03 parallel-search bundle holds the main thread back: four switches on RAR-R29's time-to-depth harness — REGISTERED 2026-11-02, before the read; READ 2026-11-02
 
 Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -130,3 +130,46 @@ python D:\code\rarog\analysis\artifacts\d2-ablate\ablate_read.py D:\code\rarog\a
 
 If it refuses with `HOST NOT IDLE`, run it again. The summary ends with an
 `OUTCOME:` line.
+
+## Result — 2026-11-02, appended after exposure
+
+Run by the maintainer on 2026-11-02 from about 11:05 to 11:50, host busy
+0.5% before and after; 576 of 576 pairs with a depth-D line; the switch
+reports held in all 48 processes, the window centre consulted in all 48
+(`ablate_read.log`; `ablate_read.json` `518fab64…`).
+
+| Arm | X | Per position | ln X − ln X_none (90%) | Verdict |
+|---|---:|---|---|---|
+| `none` | 0.814 | 0.57 1.13 0.91 0.52 0.99 0.78 0.84 1.00 | — | — |
+| `order` | 0.897 | 0.61 1.11 1.10 0.42 1.21 0.86 0.99 1.31 | +0.098 (−0.031 to +0.168) | NO RESOLVED EFFECT |
+| `center` | 0.928 | 0.75 1.10 1.03 0.51 1.17 0.81 0.89 1.51 | +0.131 (−0.013 to +0.195) | NO RESOLVED EFFECT |
+| `rotate` | 0.878 | 0.87 0.85 0.94 0.42 1.12 0.88 0.91 1.36 | +0.077 (−0.043 to +0.148) | NO RESOLVED EFFECT |
+| `jitter` | 0.868 | 0.63 1.22 0.89 0.42 1.19 0.91 1.03 1.01 | +0.065 (−0.022 to +0.167) | NO RESOLVED EFFECT |
+| `all` | 0.847 | 0.67 0.82 0.94 0.48 1.08 0.93 0.86 1.22 | +0.040 (−0.069 to +0.122) | NO RESOLVED EFFECT |
+
+- **Outcome:** every member and the four together, **NO RESOLVED EFFECT**.
+- X_none 0.814 against RAR-R29's X_dyn 0.897 for the same source: the read's
+  own run-to-run spread is of the size of the effects it looks for.
+- Every single member reads above `none` and the four together read least,
+  which is not how independent effects add: the pattern is noise around a
+  low `none`, not four small harms.
+
+## Disposition
+
+- **Nothing resolves:** the RAR-R03 members do not hold the main thread
+  back at the read's resolution (about ±10% in X). They keep their place.
+- The rule's next question for H3, what the helpers store and how the main
+  thread reads it, is **not opened now**: [RAR-R31](RAR-R31.md) shows the
+  games' depth deficit is not the engine's own, so H3 no longer explains the
+  four-thread deficit, and it waits behind H7.
+
+## Calibration
+
+- Predicted HOLDS DEPTH BACK: `rotate` 0.45, `order` 0.25, `center` 0.10,
+  `jitter` 0.10, `all` 0.55; none came. The reasoning that helpers starting
+  elsewhere in the root list deny the main thread usable entries is not
+  supported at this resolution: a miss in mechanism, or an effect under 10%.
+- X_none, predicted 0.90 (0.80 to 1.00): 0.814, inside at the low end;
+  X_all, predicted 1.1 (0.85 to 1.6): 0.847, just below.
+- Instrument: twelve pairs resolve about ±0.1 in ln X here; a smaller effect
+  needs a larger read, and nothing now asks for one.
