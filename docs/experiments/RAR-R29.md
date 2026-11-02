@@ -1,4 +1,4 @@
-# RAR-R29 — Time-to-depth at four threads against one: the B.9 head, the d2 head and RAR-P52's candidate, on RAR-R10's paired harness — REGISTERED 2026-11-01, before the read
+# RAR-R29 — Time-to-depth at four threads against one: the B.9 head, the d2 head and RAR-P52's candidate, on RAR-R10's paired harness — REGISTERED 2026-11-01, before the read; READ 2026-11-02
 
 Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -108,3 +108,58 @@ python D:\code\rarog\analysis\artifacts\d2-ttd\ttd_read.py D:\code\rarog\analysi
 
 If it refuses with `HOST NOT IDLE`, run it again. The summary ends with an
 `OUTCOME:` line.
+
+## Result — 2026-11-02, appended after exposure
+
+Run from 2026-11-01 23:53 to 2026-11-02 00:08, host busy 0.5% before and
+0.3% after; 192 of 192 pairs with a depth-D line (`ttd_read.log`;
+`ttd_read.json` `b4e33496…`).
+
+| Arm | X | Per position | 4T nodes to depth / 1T | 4T NPS / 1T |
+|---|---:|---|---:|---:|
+| `b9` | 0.962 | 0.75 1.14 1.21 0.93 1.06 0.71 1.17 0.86 | 3.95 | 3.79 |
+| `ctl` | **0.871** | 0.75 0.97 1.00 0.54 1.48 0.70 0.92 0.90 | 4.09 | 3.57 |
+| `dyn` | 0.897 | 0.80 1.00 0.94 0.41 1.41 0.89 0.88 1.25 | 4.09 | 3.66 |
+
+The last two columns are geometric means over positions of per-position
+medians, computed from the JSON after the read; they are not the registered
+reading.
+
+- d = ln X_ctl − ln X_b9 **−0.099** (90% bootstrap −0.235 to +0.014):
+  **WASTE** by the registered rule, with an interval that reaches zero.
+- ln X_dyn − ln X_ctl +0.030 (90% −0.076 to +0.138).
+- Four-thread times scatter widely within a position (position 7, `ctl`:
+  683 to 3,575 ms over eight pairs); one-thread times agree within 1%.
+
+## Disposition
+
+- **Four threads reach a fixed depth more slowly than one, in every arm.**
+  They search about four times one thread's nodes to get there, so the main
+  thread's own tree is no smaller than when it searches alone: the helpers'
+  work buys it no depth. B.9 shares this (3.95), so it is not the C head's
+  regression; the head adds a lower NPS ratio. d splits about 0.06 to the
+  NPS ratio (ln 3.57/3.79) and 0.035 to the nodes.
+- **By the rule for X_ctl under 1.2**, the card's next read is what the
+  helpers do to the main thread: helper depth, table use, root diversity,
+  the RAR-R03 bundle's members. By WASTE the store items stay in scope; the
+  backend left with [RAR-P53](RAR-P53.md).
+- [RAR-P52](RAR-P52.md) closes on +0.030.
+- **Not Elo.** The helpers' nodes may still widen the search usefully; only
+  games price that.
+- **The games' depth deficit is not reproduced.** At equal time X 0.87 costs
+  about 0.15 plies at EBF 2.565, against 2.05 on the games' unheld moves
+  ([RAR-R30](RAR-R30.md)). This read searched depths 20 to 22 for about 2 s
+  from a cleared table; the games search depths 15 to 17 in about 200 ms with
+  the table kept across moves.
+
+## Calibration
+
+- WASTE, predicted 0.40: a hit by the rule, though the interval leaves SAME
+  open.
+- The levels missed. X_ctl 0.871 lies below its 80% interval (0.9 to 1.6)
+  and X_b9 0.962 below its (1.0 to 1.7); four threads slower to depth than
+  one had 0.25. A miss in the level's sign, in mechanism: the prediction
+  assumed the helpers shorten the main thread's tree through the shared
+  table, as in engines that scale, and here they do not, at B.9 or now.
+- The candidate, predicted +0.03 to +0.10: +0.030, at the edge and
+  unresolved.

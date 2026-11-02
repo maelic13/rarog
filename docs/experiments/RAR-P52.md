@@ -1,4 +1,4 @@
-# RAR-P52 — The PGO profile's coverage of the multi-thread kernel: the poll as a trait object, read on Q at four threads — REGISTERED 2026-11-01, before the read
+# RAR-P52 — The PGO profile's coverage of the multi-thread kernel: the poll as a trait object, read on Q at four threads — REGISTERED 2026-11-01, before the read; READ 2026-11-02
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -141,3 +141,48 @@ python D:\code\rarog\analysis\artifacts\d2-pgo\q_read.py D:\code\rarog\analysis\
 
 If it refuses with `HOST NOT IDLE`, run it again. The summary ends with an
 `OUTCOME:` line.
+
+## Result — 2026-11-02, appended after exposure
+
+Run by the maintainer on 2026-11-01 from 23:39 to 23:53, host busy 1.1%
+before and 0.3% after; 144 of 144 readings (`q_read.log`; `q_read.json`
+`7625cca5…`).
+
+| Position | Arm | 1T | 4x1T | 4T | S | H | Q |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 0 | `ctl` | 2.510M | 2.359M | 9.192M | 3.66 | 0.940 | 0.974 |
+| 0 | `dyn` | 2.486M | 2.342M | 9.414M | 3.79 | 0.942 | 1.005 |
+| 1 | `ctl` | 2.172M | 2.043M | 7.576M | 3.49 | 0.940 | 0.927 |
+| 1 | `dyn` | 2.156M | 2.029M | 7.758M | 3.60 | 0.941 | 0.956 |
+
+- L(Q) **+0.031** at both positions, mean +0.031: **CONFIRMED IN BAND**, at
+  the band's lower edge.
+- Four-thread NPS **+2.4%** at both positions (ln +0.0238).
+- The 1T cell is 0.99% and 0.76% slower, 4x1T 0.74% and 0.69%: inside the
+  registered 1%, so no 1T CELL MOVED, but at its edge at position 0 and
+  beyond one build's ±0.4% of luck.
+- The close's time-to-depth check ([RAR-R29](RAR-R29.md)): ln X_dyn −
+  ln X_ctl **+0.030** (90% −0.076 to +0.138), not lower than −0.02.
+
+## Disposition
+
+- **`e057d84` stays and closes**, behaviour-neutral, on this read's
+  four-thread NPS and RAR-R29's time-to-depth. The untrained copies held
+  about 2.4 points of the 6–7% per-thread loss RAR-P50 located; the rest
+  lies elsewhere.
+- **Flagged, not reversed:** the one-thread cell reads about 0.9% slower,
+  inside the rule. If real it is worth about 2 Elo at `3+0.03`; only the
+  pooled read at eight builds an arm (±0.5%) would resolve it, and the
+  registered rule does not ask for one.
+- **Cure (b) is not registered:** [RAR-P53](RAR-P53.md) reads R(pgo) /
+  R(nopgo) 1.004.
+
+## Calibration
+
+- In band, predicted 0.45: a hit, at the edge (0.031 against 0.03). The
+  magnitude is the band's low end: the missing inlining holds about a third
+  of the per-thread loss, not most of it.
+- The 1T cell, predicted under 1% as luck or layout: a hit by 0.01 points at
+  position 0. The layout change seems to cost the serial copy close to 1%,
+  more than the prediction implied; one build an arm cannot separate that
+  from luck (instrument).

@@ -1,4 +1,4 @@
-# RAR-P53 — The shared table backend's cost to a one-thread search, against the local one, in one binary (F16) — REGISTERED 2026-11-01, before the read
+# RAR-P53 — The shared table backend's cost to a one-thread search, against the local one, in one binary (F16) — REGISTERED 2026-11-01, before the read; READ 2026-11-02
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -111,3 +111,35 @@ python D:\code\rarog\analysis\artifacts\d2-backend\backend_read.py D:\code\rarog
 
 If it refuses with `HOST NOT IDLE`, run it again. The summary ends with an
 `OUTCOME:` line.
+
+## Result — 2026-11-02, appended after exposure
+
+Run on 2026-11-02 from 00:09 to 00:13, host busy 0.3% before and 0.1%
+after; 48 of 48 runs at the wire's node counts (`backend_read.log`;
+`backend_read.json` `0e911431…`).
+
+| Build | NPS off | NPS on | R | W | Spread off / on |
+|---|---:|---:|---:|---:|---|
+| PGO pext | 3.003M | 2.933M | **0.977** | 1.056 | 0.3% / 0.4% |
+| pext, no PGO | 2.717M | 2.645M | 0.973 | 1.060 | 0.4% / 0.4% |
+
+- **REFUTED:** R 0.977, at or above 0.97.
+- R(pgo) / R(nopgo) **1.004**: the cold shared branches cost the shipped
+  build nothing measurable.
+
+## Disposition
+
+- **F16 leaves the four-thread card.** The shared backend costs a node about
+  2.3%, a quarter of what the review's band implied.
+- **Cure (b) is not registered** (1.004, above 0.98).
+- W 1.056 adds the six-way geometry's larger tree to the node cost; it bears
+  only on a one-thread shared table, which nothing proposes.
+
+## Calibration
+
+- REFUTED, predicted 0.20. R without PGO 0.973, inside the predicted 0.92 to
+  0.98; the ratio's even chance of falling under 0.98 did not come. A miss
+  in magnitude: the review's band fitted RAR-P50's medians to a per-node cost
+  and so charged the backend with everything that differs between four
+  threads and one, as this registration's reasoning said; the prediction
+  still gave the band 0.40 of its weight (in or above it).

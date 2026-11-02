@@ -1,4 +1,4 @@
-# RAR-R30 — The four-thread holds: where Rarog spends the time between its last `info` line and `bestmove`, from RAR-M78's games and a timed read at one and four threads — REGISTERED 2026-11-01, before the timed read
+# RAR-R30 — The four-thread holds: where Rarog spends the time between its last `info` line and `bestmove`, from RAR-M78's games and a timed read at one and four threads — REGISTERED 2026-11-01, before the timed read; READ 2026-11-02
 
 Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -119,3 +119,38 @@ python D:\code\rarog\analysis\artifacts\d2-holds\hold_read.py D:\code\rarog\anal
 
 If it refuses with `HOST NOT IDLE`, run it again. The summary ends with an
 `OUTCOME:` line.
+
+## Result — 2026-11-02, appended after exposure
+
+Run on 2026-11-02 at 00:09, host busy 0.3% before and 0.1% after; 128
+searches, 32 a cell (`hold_read.log`; `hold_read.json` `c6ca6e01…`).
+
+| Cell | t mean ms | Lag p50 / p90 / p99 ms | Lag / t | Over 20 ms | Overshoot p90 ms |
+|---|---:|---|---:|---:|---:|
+| `movetime-1T` | 235 | 13.9 / 76.5 / 130.9 | 0.101 | 0.34 | 0.5 |
+| `movetime-4T` | 235 | 32.5 / 60.6 / 77.2 | 0.127 | 0.66 | 1.0 |
+| `clock-1T` | 292 | 0.0 / 0.0 / 625.4 | 0.072 | 0.06 | — |
+| `clock-4T` | 314 | 6.8 / 53.3 / 117.0 | 0.054 | 0.25 | — |
+
+- **VOTE:** `clock-4T` lag p90 53 ms, the stop path fast (`movetime-4T`
+  overshoot p90 1.0 ms), `clock-1T` lag p90 0.
+- `clock-1T`'s lag over time is one search: the second pass of position 14
+  ran to 1,203 ms and answered 625 ms after its last info line (the first
+  pass held 49 ms at the same time), an unfinished last iteration under the
+  limit. Without it one thread holds 0.6% of its time, against 5.4% for four.
+- Under `go movetime` both thread counts end inside an unfinished
+  iteration by design, so those cells show only that the stop is fast.
+
+## Disposition
+
+- The hold is the soft-stop vote's extension of the main thread, a designed
+  behaviour and not a clock-side defect: no D.1 repair. H4 stays in the card
+  as 5 to 9% of four-thread time spent in an iteration never reported,
+  priced only by games under the leaf's 4T gate, after the zero-game reads.
+
+## Calibration
+
+- VOTE, predicted 0.70: a hit. `clock-4T` lag over time 0.054, inside the
+  predicted 0.05 to 0.15 at its low edge and below the games' 0.090 (16
+  positions, a fast clock, no opponent). `movetime-4T` overshoot p90 1.0 ms,
+  under the predicted 5 ms.
