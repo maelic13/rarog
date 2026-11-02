@@ -403,6 +403,10 @@ the per-build medians.
   change is accepted; at +0.1% or less it closes `NO_CHANGE`.
 - **Step 2, only in between: four more cycles, six in all, about 8 more
   minutes (±0.3%).** Accepted at +0.5% or more with the lower bound above 0.
+  On a change that moves code, an accept below +1% is recorded as
+  possibly code layout, because builds of one source can share a
+  placement (Basilisk's BAS-P20 read −0.58% with identical hot code,
+  gone with 64-byte function alignment; maintainer decision 2026-11-02).
 - **A no-regression check** on a neutral change uses the same steps against
   −0.5%: step 1 passes at −0.1% or above and fails at −0.9% or below.
 - **Disturbance:** load moves whole cycles by 2% to 4%. In step 1 the two
@@ -694,7 +698,16 @@ Before any SPSA:
    coordinate's step inside its range.
 9. Theta is the last completed block's rounded final centres, without
    post-hoc checkpoint selection; bake it into a fresh clean PGO binary
-   and run a paired SPRT, then LTC/4T where appropriate.
+   and run a paired SPRT, then LTC/4T where appropriate. Before the
+   bake, `python tools/spsa_theta_audit.py <run dir> <config>` (with
+   `--movement-config` naming the b43 steps when the run's were scaled)
+   lists the coordinates that moved a full step, finished at or near a
+   range end, or turned against their finish by a full step. The tune's
+   analysis gives each a line on what it shows: a term tuned toward
+   off, two terms moving to cancel, a margin compensating for a
+   mis-scaled input, a rail hiding a wanted value. The analysis never
+   changes theta; a finding becomes a registration of its own
+   (maintainer decision 2026-11-02).
 
 ### Branches and pull requests
 

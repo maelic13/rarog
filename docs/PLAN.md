@@ -166,7 +166,7 @@ gating. The rules below decide order and acceptance in this roadmap.
    gradient estimate grows with the perturbation and a restarted schedule
    only re-inflates the random walk near an optimum; the registration
    derives the resolution it buys. The b43 step stays the unit of "a full
-   step" in every reading (`pilot_reaudit.py --movement-config`), and a run
+   step" in every reading (`tools/spsa_theta_audit.py --movement-config`), and a run
    cut short is still not theta.
 
 8. **State the measurement layer.** Theory truth, move quality, conversion,
@@ -214,7 +214,12 @@ gating. The rules below decide order and acceptance in this roadmap.
      1x, 1.5x and 2x, with `bench 13` and WAC at 100k per point. The
      classification is frozen before the first point, as in
      `analysis/b223_sweep_2026-09-15.md`. Flat or monotone on all five skips
-     the cluster's SPSA.
+     the cluster's SPSA. Flat means inside the sweep's noise floor, read
+     before the next sweep from the same readings at the seed and one
+     unit either side of it on each registered coordinate, where no real
+     curvature can show: any change moves the tree, so without a floor
+     no line reads flat (Basilisk's three sweeps: 0 of 15; maintainer
+     decision 2026-11-02).
 9. **Freeze the prediction before exposure, append the calibration after.**
    A miss is recorded as sign, magnitude, mechanism, interaction, confidence
    or instrument. `NO_CHANGE`, refuted and too-sparse are successful outcomes.
@@ -325,7 +330,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 |---|---|---|---|
 | D.2 | RESEARCH | R2 | Lazy SMP at four threads. **RAR-M78 read 2026-11-01: Rarog deficient** (effective speedup 1.65 against 2.30 and 2.48; in games 2.28× the nodes for 1.9 plies less depth, 28% of moves held over the margin): the four-thread card is open. Reads in order: the PGO coverage of the multi-thread kernel copies (one build on RAR-P50's instrument, prediction frozen in the leaf), time-to-depth 4T against 1T, the holds between the clock's end and `bestmove`, the shared backend's cost (F16), then helper depth, shared-table use and root diversity. **Card written 2026-11-01; four reads 2026-11-02:** `e057d84` kept (four-thread NPS +2.4%, RAR-P52); the shared backend refuted (RAR-P53); the holds are the soft-stop vote (RAR-R30); four threads reach a fixed depth more slowly than one, at B.9 too (RAR-R29, X 0.87), so the helpers buy the main thread no depth. Next: what the helpers do to the main thread, and why the games' depth deficit is far larger than the reads'. **Read 2026-11-02:** RAR-R31, the games replayed alone: four threads report the same depth as one at 3.78× its NPS, where the games ran them at about 60% of that speed; the games' conditions carry the deficit (H7, now the lead). RAR-R32: no RAR-R03 member holds the main thread back. Next: locate the condition. **Read 2026-11-02:** RAR-M79 ABSENT: in RAR-M78's configuration four threads now run at 3.44× one thread (RAR-M78's 2.48 was its sessions' host state; its threads leg is confounded and Rarog's scaling is measured again); large pages and B.9 carry no loss; one game at a time reads 2.69, the four-thread side 23% slower on the same openings, which is the next read. RAR-R33 HITS WITHOUT SAVINGS: the helpers' entries reach the main thread (+5.6 points of hits) without shrinking its tree (M 1.09). **Registered 2026-11-02:** RAR-M80 (one game at a time against three, Rarog and Reckless on one host state; per-side in-game NPS), about 80 minutes. Earlier: RAR-P46 to P50 located a 6–7% per-thread shared-search NPS loss since B.9 spread over kept gains; RAR-M77 keeps large pages on |
 | D.3 | READY_FOR_IMPLEMENTATION | I1 | Eight shell defects confirmed by the 2026-11-01 review (four replayed live), each with a `uci_process` test first, before the 2.7.0 cut; the score-normalisation card and the `src/uci/` (planned) move stay research |
-| D.4 | READY_FOR_IMPLEMENTATION | I1 | Eighteen behaviour-neutral repairs from the review, the table handle and the helper lifecycle first; then the Basilisk cross-check's four (the verdicts' truth test, CI hygiene, the behaviour-test sweep, the method proposals awaiting the maintainer); exact fingerprint, pooled NPS where hot |
+| D.4 | READY_FOR_IMPLEMENTATION | I1 | Eighteen behaviour-neutral repairs from the review, the table handle and the helper lifecycle first; then the Basilisk cross-check's four (the verdicts' truth test, CI hygiene, the behaviour-test sweep; the method proposals were decided 2026-11-02); exact fingerprint, pooled NPS where hot |
 | D.5 | RESEARCH | R2 | Fourteen gated candidates from the review and six from the Basilisk cross-check; item 15 (the correction added to draw verdicts) is a correctness repair and goes first, before the 2.7.0 cut; then castling's classification and quiet queen promotions in quiescence; nothing implemented before its screen |
 | D.6 | READY_FOR_IMPLEMENTATION | I1 | The simplification programme; P0, P1, P2 and P19's census can start now, P11 and P13 after D.2 closes, P12 inside D.3 |
 | D.7 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
@@ -2329,28 +2334,23 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       133/300 on 2026-07-19 and has no upper bound); fixtures that assert
       the score at a stated budget, not only the move (Basilisk's promotion
       fixture passed on a 4-cp tie held by root order).
-  22. **Measurement and gating methods from Basilisk** (H38–H45): each
-      changes AGENTS or PROCESS and needs the maintainer's decision before
-      it lands; the tools follow in their own commits. A repair gate sized
-      by its measured exposure (Basilisk burned 4,000-pair caps on changes
-      touching 1% of games; about 1,500 pairs once exposure is under 2%);
-      a written analysis of the fitted constants before a bake (rails,
-      full-step movers, reversals; Basilisk's found IIR tuned off and a
-      constant firing only on bound echoes); the zero-game curvature rule
-      given a measured noise floor (in Basilisk's three sweeps 0 of 15
-      lines read flat and the shared seed point moved 249 → 237 between
-      unit commits); `nps_read.py` warning when the arms' fingerprints
-      differ (different trees are not a speed read: BAS-S41 −11.1% on
-      bench against −2.4% in games); the bench pinned to one physical
-      core off CPU 0 at high priority, adopted only if a pinned/unpinned
-      null pair narrows the interval; a pooled read between 0.3% and 1%
-      on a code-moving change treated as possibly layout (BAS-P20: four
-      builds shared one placement, −0.58% with identical hot code;
-      64-byte function alignment removed it); a correct repair that loses
-      Elo reworked with its neighbours refitted rather than reverted
-      (Basilisk's maintainer decision 2026-10-26); several pools and named
-      contrasts in one NPS read, and an ordered night-queue launcher that
-      refuses a run whose predecessors have no final record.
+  22. **Measurement and gating methods from Basilisk** (H38–H45; decided
+      by the maintainer 2026-11-02). Adopted: a repair's registration
+      states its measured exposure (AGENTS, *Gating*); a written analysis
+      of the fitted constants before a bake, from
+      `tools/spsa_theta_audit.py` (PROCESS, *SPSA go/no-go procedure*,
+      step 9); the curvature sweep's noise floor (rule 8); `nps_read.py`
+      warning when its arms search different trees; a second-step NPS
+      accept below +1% on a change that moves code recorded as possibly
+      layout (PROCESS, *Toolchain and harness notes*); a correct repair that fails its
+      harm rule reverted by the gate with its defect left open and a
+      rework registered (AGENTS, *Gating*). Declined for now, each with
+      its retry trigger: the pinned bench, because the builds and not the
+      cycles set the interval (retry when the disturbance rule repeats
+      more than about one read in three); several pools in one read
+      (retry at the first speed study with three or more arms); an
+      ordered night-queue launcher (retry at the first chained run that
+      started on a failed predecessor).
   Not in this leaf: anything that moves the fingerprint (D.5), the
   simplification programme (D.6), the shell defects (D.3), the tablebase path
   (D.7).

@@ -317,6 +317,18 @@ per-slot processes and the CPU advisory.
 | H44 | A correct repair that loses Elo is reworked, not reverted | AGENTS *Gating* silent | D.4 item 22 (decision) |
 | H45 | Multi-pool NPS read; ordered night-queue launcher | — | D.4 item 22 (decision) |
 
+**Decisions on H38–H45 (maintainer, 2026-11-02).** Adopted: H38 as a
+field in a repair's registration (its exposure), with no new sizing
+rule, since Rarog's static-differential case already spares confined
+repairs a gate; H39 through `tools/spsa_theta_audit.py`, which replaces
+C.10's untracked pilot re-audit and reproduces its stored report on the
+C.10 long tune; H40; H41 as a warning, not a refusal, because release
+baselines are read against the head on purpose; H43 as a recorded
+caution; H44 reconciled with AGENTS' ban on rescuing a candidate through
+its neighbours: the gate's revert stands, the defect stays open and the
+rework is a new registration. Declined for now with retry triggers: H42
+and both halves of H45 (PLAN D.4 item 22).
+
 **Recorded only, no PLAN item.** These reads are null in Basilisk and have
 no Rarog counterpart: B3ProbCutTt +0.9, B3SingTtDepth −1.0, B3SingNegative
 0.0, CoreHistoryFills −0.5.

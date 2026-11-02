@@ -334,6 +334,16 @@ never by eyeballing, and never by assuming a tool did what its name says.**
      configuration, or could be large either way, keeps the symmetric
      `[-5,5]` with its cap (RAR-S62; about 12,000 games), which excludes
      harm near −5.
+- A repair's registration states its measured exposure: the share of
+  recent gate games that reach the repair's domain, from Colosseum's
+  database, so its cap and harm rule are read against how often it can
+  matter (maintainer decision 2026-11-02).
+- A correct repair that fails its harm rule leaves `master` by the gate,
+  but the revert never closes its defect: the defect stays open in its
+  owner leaf, and a rework is registered as a new experiment, the repair
+  with the named constants that were tuned around the defect refitted.
+  That is a new registration, not a rescue inside the failed one
+  (maintainer decision 2026-11-02).
 - Both harnesses run the pentanomial GSPRT (`model=normalized`); the gap to
   fishtest is bounds and budget, not the test. A registered experiment names
   its runner and never changes it mid-way.
