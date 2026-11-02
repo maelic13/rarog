@@ -329,7 +329,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | D.5 | RESEARCH | R2 | Fourteen gated candidates from the review; castling's classification and quiet queen promotions in quiescence first; nothing implemented before its screen |
 | D.6 | READY_FOR_IMPLEMENTATION | I1 | The simplification programme; P0, P1 and P2 can start now, P11 and P13 after D.2 closes, P12 inside D.3 |
 | D.7 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) |
-| D.8 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS superpages exist on Intel only, which Rarog does not ship: recorded with their trigger); designed after D.2's RAR-M79 says whether Windows large pages carry the four-thread speed loss; exact fingerprint, a Linux NPS read |
+| D.8 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); designed after D.2's RAR-M79 says whether Windows large pages carry the four-thread speed loss; exact fingerprint, a Linux NPS read |
 
 ## Phase D — Clock, threads, robustness
 
@@ -2519,7 +2519,7 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
   tablebase-band scores skip the rule-50 downgrade mates get (TT-11); a
   non-ASCII `SyzygyPath` cannot load on Windows (PROTO-24). The dead
   `probe_root` and its `unsafe` site go in D.4.
-- **D.8 Large pages beyond Windows: Linux transparent huge pages, and macOS superpages where they exist — `I1`, then `V`.**
+- **D.8 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
   Added 2026-11-02 from the comparison with Reckless in D.2. `PageAllocator`
   (`src/large_pages.rs`) backs every allocation of at least `THRESHOLD`
   (512 KB) with 2 MB pages on Windows only: the transposition table and each
@@ -2546,21 +2546,13 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
     four-thread speed loss in games, the scope (the shared table alone, or
     every big table) is decided there first; transparent huge pages lock
     nothing, so the Windows finding does not transfer to Linux unread.
-  - **macOS, recorded 2026-11-02.** The equivalent exists on Intel Macs
-    only: 2 MB superpages, asked for by passing
-    `VM_FLAGS_SUPERPAGE_SIZE_2MB` as the file-descriptor argument of an
-    anonymous `mmap` (or as a flag to `mach_vm_allocate`). On Apple silicon
-    the request fails, and the evidence is that no userspace superpage API
-    exists there; its base page is already 16 KB, four times x86's.
-    That evidence is a report on Apple's developer forums that the request always fails
-    on an M1, and OpenJDK's and MySQL's macOS large-page notes and code, not
-    an Apple document. Rarog ships macOS for
-    `aarch64-apple-darwin` alone (`release.yml`, `ci.yml`), so this part has
-    nothing to serve today. **Trigger:** an x86-64 macOS build enters the
-    release; then the same allocations take superpages behind `LargePages`,
-    falling back to ordinary pages when the request fails, read by the same
-    method on an Intel Mac. On Apple silicon `large_pages()` reports
-    `not available` and nothing else changes.
+  - **macOS: not pursued.** Rarog ships macOS for Apple silicon only
+    (maintainer decision 2026-11-02: no Intel macOS build, universal or
+    separate). Apple silicon has no userspace superpage request (it fails
+    on an M1, by a report on Apple's developer forums and OpenJDK's and
+    MySQL's macOS notes; not an Apple document), and its base page is
+    already 16 KB. The 2 MB superpages macOS offers exist on Intel Macs
+    alone. On macOS `large_pages()` stays as it is.
 
 ## Phase E — Classical checkpoint and release
 
