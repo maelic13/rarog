@@ -329,9 +329,9 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.2 | RESEARCH | R2 | Lazy SMP at four threads. **RAR-M78 read 2026-11-01: Rarog deficient** (effective speedup 1.65 against 2.30 and 2.48; in games 2.28× the nodes for 1.9 plies less depth, 28% of moves held over the margin): the four-thread card is open. Reads in order: the PGO coverage of the multi-thread kernel copies (one build on RAR-P50's instrument, prediction frozen in the leaf), time-to-depth 4T against 1T, the holds between the clock's end and `bestmove`, the shared backend's cost (F16), then helper depth, shared-table use and root diversity. **Card written 2026-11-01; four reads 2026-11-02:** `e057d84` kept (four-thread NPS +2.4%, RAR-P52); the shared backend refuted (RAR-P53); the holds are the soft-stop vote (RAR-R30); four threads reach a fixed depth more slowly than one, at B.9 too (RAR-R29, X 0.87), so the helpers buy the main thread no depth. Next: what the helpers do to the main thread, and why the games' depth deficit is far larger than the reads'. **Read 2026-11-02:** RAR-R31, the games replayed alone: four threads report the same depth as one at 3.78× its NPS, where the games ran them at about 60% of that speed; the games' conditions carry the deficit (H7, now the lead). RAR-R32: no RAR-R03 member holds the main thread back. Next: locate the condition. **Read 2026-11-02:** RAR-M79 ABSENT: in RAR-M78's configuration four threads now run at 3.44× one thread (RAR-M78's 2.48 was its sessions' host state; its threads leg is confounded and Rarog's scaling is measured again); large pages and B.9 carry no loss; one game at a time reads 2.69, the four-thread side 23% slower on the same openings, which is the next read. RAR-R33 HITS WITHOUT SAVINGS: the helpers' entries reach the main thread (+5.6 points of hits) without shrinking its tree (M 1.09). **Registered 2026-11-02:** RAR-M80 (one game at a time against three, Rarog and Reckless on one host state; per-side in-game NPS), about 80 minutes. Earlier: RAR-P46 to P50 located a 6–7% per-thread shared-search NPS loss since B.9 spread over kept gains; RAR-M77 keeps large pages on. **Audit 2026-11-02** (`analysis/d2_audit_2026-11-02.md`): the runner's depth figures include mate-score moves and are withdrawn (without them the four-thread side is 0.25 plies shallower at R 3.44, which X 0.87 explains); the deficit verdict falls with RAR-M78's confounded leg (a clean rerun predicted G4 +122 ± 12, X 2.3); the blocker is an unidentified host state in which four-thread processes lose a third of their speed. Next: RAR-M80 with a passive `typeperf` sampler beside it, then RAR-M81 (Rarog's and Reckless's threads legs again, one night) decides whether D.2 has a target. Both registered 2026-11-02 (RAR-M80 amended, RAR-M81) and prepared as one night command. Held on that night; D.5 item 15, D.4 item 19 and D.3 run meanwhile |
-| D.5 | RESEARCH | R2 | Fourteen gated candidates from the review and six from the Basilisk cross-check; item 15 (the correction added to draw verdicts) is a correctness repair and its probe goes first, now, while D.2 waits on the maintainer's night (minutes of CPU, due before the 2.7.0 cut); the other cards' screens after D.3 and D.4, their gates queued behind D.2's night read, castling's classification and quiet queen promotions in quiescence first; nothing implemented before its screen |
+| D.5 | RESEARCH | R2 | Fourteen gated candidates from the review and six from the Basilisk cross-check, and two from D.4 item 19's read (items 21, 22); item 15 (the correction added to draw verdicts) is a correctness repair: **probe read 2026-11-02, the corrected value leaves 0** at nearly every verdict leaf and Basilisk's fixtures misread from cleared tables; its repair card is `READY_FOR_IMPLEMENTATION` with its prediction frozen (gate case 1, due before the 2.7.0 cut); the other cards' screens after D.3 and D.4, their gates queued behind D.2's night read, castling's classification and quiet queen promotions in quiescence first; nothing implemented before its screen |
 | D.3 | READY_FOR_IMPLEMENTATION | I1 | Eight shell defects confirmed by the 2026-11-01 review (four replayed live), each with a `uci_process` test first, before the 2.7.0 cut; the score-normalisation card and the `src/uci/` (planned) move stay research |
-| D.4 | READY_FOR_IMPLEMENTATION | I1 | Item 19 (the KPK evaluation and every hard draw verdict against Syzygy) runs beside D.5 item 15, now; the eighteen behaviour-neutral repairs from the review follow D.3, the table handle and the helper lifecycle first; then the rest of the Basilisk cross-check's (CI hygiene, the behaviour-test sweep; the method proposals were decided 2026-11-02); exact fingerprint, pooled NPS where hot |
+| D.4 | READY_FOR_IMPLEMENTATION | I1 | Item 19 **read 2026-11-02**: the KPK verdicts agree with Syzygy in all 662,704 positions and land as a test; 88 won KPK read at or below 0 and 1,137 of `krpkr_scale`'s zeros are wins (D.5 items 21, 22); its KQKP, KRPKB and KBPK zeros stay unread; the eighteen behaviour-neutral repairs from the review follow D.3, the table handle and the helper lifecycle first; then the rest of the Basilisk cross-check's (CI hygiene, the behaviour-test sweep; the method proposals were decided 2026-11-02); exact fingerprint, pooled NPS where hot |
 | D.8 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.6 | READY_FOR_IMPLEMENTATION | I1 | The simplification programme; P0, P1, P2 and P19's census can start now, P11 and P13 after D.2 closes, P12 inside D.3 |
 | D.7 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
@@ -2367,6 +2367,18 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       failure: the test lands here, case 1. Failures: a repair card in
       D.5 with Basilisk's evidence (cost in games about zero, a leaf
       error the search overrides from the root) as its prior.
+      **Read 2026-11-02** (`analysis/draw_verdicts_2026-11-02.md`, §2–3).
+      KPK: 662,704 legal positions; every drawn one reads exactly 0 and the
+      bitbase agrees with Syzygy on all of them, so the verdicts land as a
+      test (`tests/kpk_syzygy.rs`, case 1; `KPvK.rtbw` added to the
+      fixture). 88 won positions read at or below 0 for the winner, from
+      the generic evaluation (a pawn on its 2nd to 4th rank beside the lone
+      king; Basilisk found 2,022): D.5 item 21, its acceptance test
+      committed `#[ignore]`d. `krpkr_scale`: over 2,000,000 quiet random
+      KRPKR positions its five zeros fired 65,865 times, 1,137 (1.7%) on
+      wins for the pawn side, 1,128 of them at sites 1 and 5: D.5 item 22.
+      The KQKP fortress, `krpkb_scale` and the wrong-corner KBPK zeros stay
+      unread (4- and 5-man tables, minutes each).
   20. **CI hygiene** (A5): no job in `ci.yml` or `release.yml` has
       `timeout-minutes`, so a wedged child process burns the runner's
       six hours; check which mnemonics `xtask`'s ISA verifier forbids at
@@ -2607,6 +2619,48 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       differential takes a fresh process per FEN. BAS-S44 read +7.4 ± 6.9
       (1,271 pairs); Basilisk also keeps a producer guard (no exclusion
       training at a raw 0), the alternative form.
+      **Probe read 2026-11-02** (`analysis/draw_verdicts_2026-11-02.md`,
+      §1; diag patch `analysis/d5_item15_verdict_probe.patch`): **the
+      corrected value leaves 0.** In `bench 13` (fingerprint unchanged
+      under the probe) 703 of 712 verdict leaves carry a correction, 434 by
+      50 or more; in Basilisk's fixtures 98–99% do, by 77 to 117 on
+      average, and the fixtures misread: 28 of 28 beyond ±75 from cleared
+      tables (+123 to +252), 24 of 28 primed, the organic position −110 at
+      depth 14 (0 at 8–13). Rarog needs no priming: the cold arm's first
+      search, in a fresh process, read +123. **Repair card,
+      `READY_FOR_IMPLEMENTATION` (`I1`).** *Mechanism:* a verdict is a
+      classification; the search takes it as the static evaluation, 0,
+      with no correction, at both static-evaluation sites (main search and
+      quiescence), recognised by the verdict and never by `raw == 0`.
+      *Interactions:* the table refinement of the static evaluation by a
+      stored bound is search evidence and stays; the correction's training
+      at a verdict node is unchanged (Basilisk's producer guard is a
+      separate candidate, not this repair); a raw value read from the table
+      is not re-evaluated, so the node recognises the verdict itself, only
+      when the raw value is 0 and a recogniser can apply (five men or
+      fewer, or a bare king; the probe's `draw_verdict_kind` is that
+      test), one comparison elsewhere, and an NPS read by PROCESS's method
+      only if a profile shows it. *Invariants and tests, failing today:* a
+      verdict's corrected static evaluation is exactly 0 with trained
+      tables; Basilisk's four fixtures read within ±75 at depths 8–14
+      from cleared tables and primed (the cold `7k/8/6KP/8/8/8/8/5B2 w` at
+      depth 8 reads +123 today). *Gate:* case 1 (AGENTS, *Gating*): the
+      fingerprint moves, so its correctness read is a static differential
+      with a fresh process per bench FEN (bench shares its tables across
+      positions): every FEN whose baseline search reaches no verdict leaf
+      (the probe's counters, per FEN) reproduces its node count exactly,
+      and only FENs that reach one may move; the registration states its
+      exposure from Colosseum's database. *Prediction, frozen 2026-11-02
+      before any implementation:* no verdict leaf with a moved value in any
+      arm (0.98); the cold fixtures all within ±75 (0.70), the primed all
+      (0.65), the organic depth 14 (0.75); the per-FEN differential moves
+      only FENs with a verdict leaf (0.85); in games about zero.
+      *Falsifier and stop:* if 7 or more of the 28 cold fixtures still read
+      beyond ±75 with no verdict value moved, the verdicts are not the
+      fixtures' cause: the repair stays if its differential is clean (it is
+      a correctness repair), and the fixtures' misread returns to
+      `RESEARCH` (the training producer, H17's shared keys) as its own
+      card.
   16. **Quiescence prunes by gain against a decisive material edge** (A2;
       Basilisk `d8d30e9`): futility (`node.rs:2355-2362`) and the SEE
       threshold (`node.rs:2392-2396`) read a capture's gain as the piece
@@ -2666,6 +2720,37 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       rate by score band, the table carried). `R2` zero-game read;
       `NO_CHANGE` under 0.5% of searches. Long controls only; the hard
       maximum still bounds it.
+  21. **Won KPK positions read at or below 0** (D.4 item 19's read,
+      2026-11-02; Basilisk's A3): 88 of 445,128 won KPK positions read at
+      or below 0 for the winner, 78 of the wrong sign and 10 exactly 0,
+      all where the bitbase correctly passes a win to the generic
+      evaluation: the pawn on its 2nd (68), 3rd (16) or 4th rank (4), the
+      lone king beside it, the pawn side to move in 86
+      (`analysis/draw_verdicts_2026-11-02.md`, §2). Prior (Basilisk, 2,022
+      such): cost in games about zero, a leaf error the search overrides
+      from the root. Screen: whether a one- or two-ply search already reads
+      the 88 above 0; if it does, `NO_CHANGE` and the ignored test's
+      reason says so. Otherwise the repair scores a bitbase win itself (by
+      the pawn's rank, above a floor) and un-ignores
+      `every_won_kpk_reads_above_zero_for_the_winner` in
+      `tests/kpk_syzygy.rs`; gate case 1 by a static differential over KPK
+      positions. `R2` read, minutes.
+  22. **`krpkr_scale`'s hard zeros on won positions** (D.4 item 19's read,
+      2026-11-02; Basilisk's BAS-E54 found 18 of 3,000): over 2,000,000
+      quiet random KRPKR positions the five `Some(0)` sites fired 65,865
+      times, 97.6% on Syzygy draws; 1,137 (1.7%) are wins for the pawn
+      side, 926 at site 1 (the third-rank defence, whose relaxation for a
+      pawn on its 2nd or 3rd rank lets the defending rook stand anywhere)
+      and 202 at site 5 (the king's blockade)
+      (`analysis/draw_verdicts_2026-11-02.md`, §3). A zero on a defender's
+      win (462) errs toward the truth. Repair form (D.4 item 19): discount
+      instead of zeroing where the rule is approximate. Screen: per site,
+      a scale that keeps the drawn positions near 0 and the wins above it,
+      read on the same sample. KRPKR reaches about 10% of real games
+      (`krpkr_scale`'s note) and the zero sites far fewer, so the
+      registration states its measured exposure and the gate case follows
+      (a static differential confines it, case 1; a refitted scale is a
+      value change, case 2's fixed read). `R2` card.
   Evidence for items already here (H18–H21, H25): item 4 (NODE-2), the
   donor form read +3.3 ± 9.1 in Basilisk (2,000 games) and each of its
   consumers alone (IIR, the no-TT-move LMR term) threw a promotion fixture

@@ -1,0 +1,118 @@
+diff --git a/src/eval/endgame/mod.rs b/src/eval/endgame/mod.rs
+index 5506d53..a5515a8 100644
+--- a/src/eval/endgame/mod.rs
++++ b/src/eval/endgame/mod.rs
+@@ -432,6 +432,7 @@ fn krpkb_scale(board: &Board) -> Option<i32> {
+ /// not the reference's, so an untested amplifier interacts with a fitted
+ /// evaluation in a way the drawn cohort cannot measure. Only the draw
+ /// detection is taken, which is what the measured defect calls for.
++static KRPKR_SITE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+ fn krpkr_scale(board: &Board) -> Option<i32> {
+     for strong in [Color::White, Color::Black] {
+         let weak = !strong;
+@@ -478,6 +479,7 @@ fn krpkr_scale(board: &Board) -> Option<i32> {
+             && wk <= 39
+             && (rank(br) == 5 || (r <= 2 && rank(wr) != 5))
+         {
++            KRPKR_SITE.store(1, std::sync::atomic::Ordering::Relaxed);
+             return Some(0);
+         }
+         // Checking from behind once the pawn reaches the 6th.
+@@ -486,9 +488,11 @@ fn krpkr_scale(board: &Board) -> Option<i32> {
+             && i32::from(rank(wk)) + tempo <= 5
+             && (rank(br) == 0 || (tempo == 0 && file_dist(br, wp) >= 3))
+         {
++            KRPKR_SITE.store(2, std::sync::atomic::Ordering::Relaxed);
+             return Some(0);
+         }
+         if r >= 5 && bk == queening && rank(br) == 0 && (tempo == 0 || dist(wk, wp) >= 2) {
++            KRPKR_SITE.store(3, std::sync::atomic::Ordering::Relaxed);
+             return Some(0);
+         }
+         // Pawn a7, rook a8, defending king boxed on g7/h7 with its rook behind.
+@@ -498,10 +502,12 @@ fn krpkr_scale(board: &Board) -> Option<i32> {
+             && file(br) == 0
+             && (rank(br) <= 2 || file(wk) >= 3 || rank(wk) <= 4)
+         {
++            KRPKR_SITE.store(4, std::sync::atomic::Ordering::Relaxed);
+             return Some(0);
+         }
+         // Defending king blockades the pawn and the attacking king is far.
+         if r <= 4 && bk == wp + 8 && dist(wk, wp) - tempo >= 2 && dist(wk, br) - tempo >= 2 {
++            KRPKR_SITE.store(5, std::sync::atomic::Ordering::Relaxed);
+             return Some(0);
+         }
+         // Not a forced draw, but drawish: the defending king sits in the
+@@ -986,3 +992,72 @@ mod endgame_311c_tests {
+         );
+     }
+ }
++
++#[cfg(test)]
++mod scratch_krpkr {
++    use super::*;
++    use crate::syzygy::{self, Wdl};
++    use std::sync::atomic::Ordering;
++
++    #[test]
++    #[ignore]
++    fn sample() {
++        let path = std::env::var("RAROG_SYZYGY_PATH").expect("path");
++        assert!(syzygy::initialize(&path) >= 5);
++        let mut state: u64 = 0x9E37_79B9_7F4A_7C15;
++        let mut next = move || {
++            state ^= state >> 12;
++            state ^= state << 25;
++            state ^= state >> 27;
++            state.wrapping_mul(0x2545_F491_4F6C_DD1D)
++        };
++        let samples: usize = std::env::var("KRPKR_SAMPLES").ok().and_then(|s| s.parse().ok()).unwrap_or(2_000_000);
++        let mut legal = 0usize;
++        let mut decisive_for_strong = 0usize;
++        let mut per_site = [[0usize; 4]; 6]; // [site][draw, strong wins, weak wins, cursed/blessed]
++        let mut examples: Vec<String> = Vec::new();
++        while legal < samples {
++            let strong_white = next() & 1 == 0;
++            let white_to_move = next() & 2 == 0;
++            let sq: Vec<usize> = (0..5).map(|_| (next() >> 20) as usize % 64).collect();
++            let (sk, wk2, sr, wr2, pawn) = (sq[0], sq[1], sq[2], sq[3], sq[4]);
++            let mut seen = [false; 64];
++            if sq.iter().any(|&s| std::mem::replace(&mut seen[s], true)) { continue; }
++            if pawn < 8 || pawn >= 56 { continue; }
++            let mut board_sq = ['.'; 64];
++            let (k, kk, r, rr, pp) = if strong_white { ('K', 'k', 'R', 'r', 'P') } else { ('k', 'K', 'r', 'R', 'p') };
++            board_sq[sk] = k; board_sq[wk2] = kk; board_sq[sr] = r; board_sq[wr2] = rr; board_sq[pawn] = pp;
++            let mut s = String::new();
++            for rank in (0..8).rev() { let mut e = 0; for f in 0..8 { let c = board_sq[rank*8+f]; if c == '.' { e += 1; continue; } if e > 0 { s.push_str(&e.to_string()); e = 0; } s.push(c); } if e > 0 { s.push_str(&e.to_string()); } if rank > 0 { s.push('/'); } }
++            let fen = format!("{s} {} - - 0 1", if white_to_move { 'w' } else { 'b' });
++            let Ok(board) = Board::from_fen(&fen) else { continue };
++            if board.is_in_check() || board.generate_legal_moves().iter().any(|m| m.is_capture() || m.promotion().is_some()) { continue; }
++            legal += 1;
++            KRPKR_SITE.store(0, Ordering::Relaxed);
++            let scale = krpkr_scale(&board);
++            let site = KRPKR_SITE.load(Ordering::Relaxed);
++            let wdl = syzygy::probe_wdl(&board, false).expect("KRPvKR answers");
++            let strong_to_move = (board.side_to_move() == Color::White) == strong_white;
++            let class = match (wdl, strong_to_move) {
++                (Wdl::Draw, _) => 0,
++                (Wdl::Win, true) | (Wdl::Loss, false) => 1,
++                (Wdl::Win, false) | (Wdl::Loss, true) => 2,
++                _ => 3,
++            };
++            if class == 1 { decisive_for_strong += 1; }
++            if scale == Some(0) {
++                assert!(site >= 1, "a zero with no site tag: {fen}");
++                per_site[site][class] += 1;
++                if class != 0 && examples.len() < 40 { examples.push(format!("site {site} {fen} {wdl:?}")); }
++            } else {
++                assert_eq!(site, 0);
++            }
++        }
++        eprintln!("{legal} quiet legal random KRPKR positions; strong side wins {decisive_for_strong}");
++        for site in 1..=5 {
++            let [d, w, l, c] = per_site[site];
++            eprintln!("site {site}: zeros {} : WDL draw {d}, strong side wins {w}, weak side wins {l}, cursed/blessed {c}", d + w + l + c);
++        }
++        for e in &examples { eprintln!("  {e}"); }
++    }
++}
