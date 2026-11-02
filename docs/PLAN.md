@@ -325,10 +325,10 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 |---|---|---|---|
 | D.2 | RESEARCH | R2 | Lazy SMP at four threads. **RAR-M78 read 2026-11-01: Rarog deficient** (effective speedup 1.65 against 2.30 and 2.48; in games 2.28× the nodes for 1.9 plies less depth, 28% of moves held over the margin): the four-thread card is open. Reads in order: the PGO coverage of the multi-thread kernel copies (one build on RAR-P50's instrument, prediction frozen in the leaf), time-to-depth 4T against 1T, the holds between the clock's end and `bestmove`, the shared backend's cost (F16), then helper depth, shared-table use and root diversity. **Card written 2026-11-01; four reads 2026-11-02:** `e057d84` kept (four-thread NPS +2.4%, RAR-P52); the shared backend refuted (RAR-P53); the holds are the soft-stop vote (RAR-R30); four threads reach a fixed depth more slowly than one, at B.9 too (RAR-R29, X 0.87), so the helpers buy the main thread no depth. Next: what the helpers do to the main thread, and why the games' depth deficit is far larger than the reads'. **Read 2026-11-02:** RAR-R31, the games replayed alone: four threads report the same depth as one at 3.78× its NPS, where the games ran them at about 60% of that speed; the games' conditions carry the deficit (H7, now the lead). RAR-R32: no RAR-R03 member holds the main thread back. Next: locate the condition. **Registered 2026-11-02:** RAR-M79 (short matches with large pages on and off for every process, one game at a time, and B.9; per-side in-game NPS) and RAR-R33 (does the helpers' work reach the main thread's table), about 80 minutes, no Elo read. Earlier: RAR-P46 to P50 located a 6–7% per-thread shared-search NPS loss since B.9 spread over kept gains; RAR-M77 keeps large pages on |
 | D.3 | READY_FOR_IMPLEMENTATION | I1 | Eight shell defects confirmed by the 2026-11-01 review (four replayed live), each with a `uci_process` test first, before the 2.7.0 cut; the score-normalisation card and the `src/uci/` (planned) move stay research |
-| D.4 | READY_FOR_IMPLEMENTATION | I1 | Eighteen behaviour-neutral repairs from the review, the table handle and the helper lifecycle first; exact fingerprint, pooled NPS where hot |
-| D.5 | RESEARCH | R2 | Fourteen gated candidates from the review; castling's classification and quiet queen promotions in quiescence first; nothing implemented before its screen |
-| D.6 | READY_FOR_IMPLEMENTATION | I1 | The simplification programme; P0, P1 and P2 can start now, P11 and P13 after D.2 closes, P12 inside D.3 |
-| D.7 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) |
+| D.4 | READY_FOR_IMPLEMENTATION | I1 | Eighteen behaviour-neutral repairs from the review, the table handle and the helper lifecycle first; then the Basilisk cross-check's three (the KPK truth test, CI hygiene, the behaviour-test sweep); exact fingerprint, pooled NPS where hot |
+| D.5 | RESEARCH | R2 | Fourteen gated candidates from the review and four from the Basilisk cross-check; item 15 (the correction added to draw verdicts) is a correctness repair and goes first, before the 2.7.0 cut; then castling's classification and quiet queen promotions in quiescence; nothing implemented before its screen |
+| D.6 | READY_FOR_IMPLEMENTATION | I1 | The simplification programme; P0, P1, P2 and P19's census can start now, P11 and P13 after D.2 closes, P12 inside D.3 |
+| D.7 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.8 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); designed after D.2's RAR-M79 says whether Windows large pages carry the four-thread speed loss; exact fingerprint, a Linux NPS read |
 
 ## Phase D — Clock, threads, robustness
@@ -2214,6 +2214,36 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       Correct the sentence, pin the behaviour with a test, keep the retry
       trigger; a `plies_from_null` bound is a registered unit of its own, not
       bundled here.
+  Added 2026-11-02 from the Basilisk cross-check (`analysis/basilisk_crosscheck_2026-11-02.md`,
+  read against Basilisk's work since its 2026-10-06 review):
+  19. **The KPK evaluation against Syzygy** (A3): a won KPK falls through
+      to the generic evaluation (`eval/endgame/mod.rs:150-157`) and nothing
+      tests its sign; `kpk.rs` holds four unit tests. Basilisk found 2,022
+      of 662,704 positions where a Syzygy win reached its scalers at or
+      below 0 for the pawn side (a second-rank pawn, the lone king
+      adjacent). Read: every legal KPK position, both colours, both sides
+      to move, the static evaluation's sign against the WDL verdict, and
+      no win at or below 0; a bundled `KPvK` fixture makes it a test. No
+      failure: the test lands here, case 1. Failures: a repair card in
+      D.5 with Basilisk's evidence (cost in games about zero, a leaf
+      error the search overrides from the root) as its prior.
+  20. **CI hygiene** (A5): no job in `ci.yml` or `release.yml` has
+      `timeout-minutes`, so a wedged child process burns the runner's
+      six hours; check which mnemonics `xtask`'s ISA verifier forbids at
+      the baseline tier (Basilisk's portable set missed SSE4.1, AVX1 and
+      BMI1's `andn` and `tzcnt`); check whether the macOS toolchain
+      major is pinned (an image update otherwise changes codegen and NPS
+      with no failing check). Tooling commits.
+  21. **Basilisk's behaviour tests run against Rarog** (§D of the
+      cross-check; about 20, among them shortest mate rather than the
+      first mate, an injected illegal TT move never searched, every
+      shipped FEN strictly legal, bare-king material monotone with the
+      promotion order, a rook promotion only where the queen stalemates,
+      a won ending that does not run the clock to the maximum, `Hash`
+      setup finished before `readyok`, the ponder races, two positions
+      from game incidents). One scratch run against the current binary
+      first; a test that passes lands here as a regression anchor, one
+      that fails becomes an item in the leaf that owns its mechanism.
   Not in this leaf: anything that moves the fingerprint (D.5), the
   simplification programme (D.6), the shell defects (D.3), the tablebase path
   (D.7).
@@ -2226,8 +2256,10 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
   implementation before its screen; one candidate per gate; rule 6 stops the
   leaf after two rejections in a row; a screen that reads nothing closes the
   item `NO_CHANGE`. The fingerprint moves with every one, so none rides in D.4
-  or D.6. The first two are classification repairs with the cheapest reads and
-  go first; items 3 and 4 are screened together and gated apart.
+  or D.6. Item 15 is a correctness repair, not a donor deviation, and goes
+  first, before the 2.7.0 cut. Then the first two, classification repairs
+  with the cheapest reads; items 3 and 4 are screened together and gated
+  apart.
   1. **Castling is neither quiet nor noisy** (NODE-3, BOARD-1):
      `is_quiet_move` is `flags <= DOUBLE_PUSH` while castling has flags 2 and
      3, and `is_noisy` is capture or promotion, so in the move loop castling
@@ -2360,6 +2392,60 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       rewards); quiet history captured at list generation rather than per move
       (NODE-12: nothing unless item 6 lands); the non-pawn correction key
       without kings and a fifty-move bucket in the TT key (BOARD-9: R2 only).
+  Added 2026-11-02 from the Basilisk cross-check (`analysis/basilisk_crosscheck_2026-11-02.md`):
+  15. **The correction is added to the evaluator's draw verdicts** (A1;
+      Basilisk's B.14, accepted as BAS-S44 on 2026-11-01). The evaluator
+      returns exactly 0 for the drawn KPK, the wrong-corner KBP-K,
+      KK/KNK/KBK and minor against minor, and KNNK
+      (`eval/endgame/mod.rs:52-58`, `148-209`); `corrected_eval_parts`
+      adds the correction to every raw value (`search/correction.rs:173-188`),
+      and the node-end training runs inside exclusion searches and on
+      decisive scores (`search/node.rs:2087-2096`), the configuration in
+      which Basilisk's shared structure keys moved its wrong-bishop draws
+      off 0. A verdict is a classification with no error to correct.
+      Screen: a debug probe of raw against corrected evaluation at those
+      leaves after `bench 13` and after searches from Basilisk's
+      wrong-bishop fixtures. If the corrected value leaves 0: the
+      evaluator reports the verdict and the search adds no correction to
+      it, with a test that fails on today's code; gate case 1 by a static
+      differential (only nodes whose evaluation is a verdict change). If
+      it never leaves 0, `NO_CHANGE` with the test kept.
+  16. **Quiescence prunes by gain against a decisive material edge** (A2;
+      Basilisk `d8d30e9`): futility (`node.rs:2355-2362`) and the SEE
+      threshold (`node.rs:2392-2396`) read a capture's gain as the piece
+      taken, which is false when the capture removes the opponent's
+      mating material (Kxh8 in KBB-K is a dead draw); delta pruning is off
+      at eight men or fewer and is not involved. Rarog has no known-win
+      band, so the guard's definition is the research question. Screen:
+      Basilisk's fixture, and a `diag` count of skipped captures that
+      leave the opponent without mating material on the conversion
+      families. `R2` card first.
+  17. **Underpromotions and Saavedra's study** (an investigation): Basilisk
+      lost Saavedra's `c8=R` when it pruned underpromotions below the root,
+      and its search picked a rook promotion over the queen in 59 of 228
+      gate positions where a rook line merely transposed (BAS-S33,
+      BAS-S34; a root rule now judges a rook or bishop promotion against
+      the queen by more than 200 of exact score). Rarog generates every
+      promotion and prunes none by piece, and has no record of either
+      case. Read, zero games: Saavedra after 5...Rd4
+      (`8/2P5/8/8/3r4/8/2K5/k7 w - - 0 6`, `c7c8r` with a mate score), the
+      stalemate escape (`8/5P1k/5K2/8/8/8/8/8 w - - 0 1`), Basilisk's
+      transposing rook position, and the rook and bishop promotions Rarog
+      played in the archived games where a queen would not have
+      stalemated, each checked against Syzygy or Stockfish. All correct:
+      `NO_CHANGE` with the positions kept as tests. A wrong pick: a card
+      with Basilisk's rule and its gates as the prior.
+  18. **Stockfish 19 mechanisms Basilisk adopted that Rarog lacks** (§C of
+      the cross-check): upcoming-repetition detection (cuckoo; Basilisk
+      found it must act as a cutoff at the draw window, not a draw score);
+      seekMate (with a root score of 2000 or more from depth 16, RFP is
+      capped at depth 6 and singular extensions are off); quiet pruning
+      and IIR gated on the previous PV; the TT bound-mismatch penalty.
+      Basilisk's donor is Stockfish 19 and Rarog's is Reckless, so its
+      result is a prior only. Research cards, low priority; none crosses
+      `READY_FOR_IMPLEMENTATION` without its mechanism shown active here.
+      Basilisk also measured its check extension at −22 Elo at `3+0.03`;
+      Rarog has none.
   Evidence layer: counters and node counts choose and never accept; only the
   registered gate does (AGENTS, *Gating*).
 - **D.6 Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — `I1`, `R2` for the root driver.**
@@ -2459,6 +2545,14 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       splitting), stop under 0.5% NPS; a two-field `Copy` node-kind struct for
       the bool, `Move`, bool argument run; cold blocks outlined
       `#[inline(never)]`.
+  20. **P19** Evaluation terms computed for a constant (added 2026-11-02
+      from the Basilisk cross-check, §E): Basilisk stopped computing
+      terms whose every weight was 0 for +2.35% NPS (BAS-P25). A census
+      of Rarog's production terms whose fitted weight is 0 or folds to a
+      constant (EVAL-11 names `hanging_rook` and `hanging_queen` at 1 and
+      trapped bishops at 0.04% of rows) first, by reading; then the
+      removals with the exact fingerprint, the `texel` reconstruction
+      test and one pooled-NPS read. Terms E.4 or F.2.1 would refit stay.
   Held, with the reason: a stage split of `negamax` (R2 only if P5 and P6
   leave it unreadable); a unified legal move generator (about 300 lines, the
   highest NPS risk, no defect behind it); the table's local backend (D.2,
@@ -2519,6 +2613,15 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
   tablebase-band scores skip the rule-50 downgrade mates get (TT-11); a
   non-ASCII `SyzygyPath` cannot load on Windows (PROTO-24). The dead
   `probe_root` and its `unsafe` site go in D.4.
+  **Basilisk cross-check input, 2026-11-02** (`analysis/basilisk_crosscheck_2026-11-02.md` A4):
+  `syzygy::initialize` returns early on an unchanged path (`syzygy.rs:157`)
+  and caches a path whenever `tb_init` succeeds, also when it finds no
+  files (`:191`), so re-sending the same `SyzygyPath` after the files are
+  put in place loads nothing until the text changes. Cache only a path
+  that loaded tables; a `uci_process` case with an empty directory and
+  then a 3-man file; `I1`, fingerprint exact. Basilisk's in-search
+  probe reorder (NODE-11 here) read +0.3 ± 3.2 at `10+0.1` with tables
+  (8,000 games), a neutral repair.
 - **D.8 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
   Added 2026-11-02 from the comparison with Reckless in D.2. `PageAllocator`
   (`src/large_pages.rs`) backs every allocation of at least `THRESHOLD`
@@ -2765,6 +2868,15 @@ with an evaluator option, never two release builds.
       loses the screen or the gate closes `NO_CHANGE` and ends the classical
       programme, a win is released as the classical line's next version
       and becomes the reference of this phase's rule.
+      Before the fit (added 2026-11-02, `analysis/basilisk_crosscheck_2026-11-02.md` §E):
+      `tools/texel-tuner` was ported from Basilisk, whose audit found five
+      tuner defects; check each here by reading: Adam with no convergence
+      criterion (travel bounded by learning rate × epochs); a bake that
+      writes every differing slot with no provenance or completeness
+      check (a stale dump reverted 42 members in Basilisk's dry run);
+      hidden clamps outside any manifest; a linear stage that can break
+      `safety_table`'s monotonicity, after which a later `clamp` has
+      `lo > hi`; a coverage audit that credits a dead term.
 - **F.3 Trainer hardening and baseline nets, two seeds per configuration — `I2`, then `V`.** Deterministic
   pipeline, two seeds per configuration, validation selects, frozen test
   reports once.
