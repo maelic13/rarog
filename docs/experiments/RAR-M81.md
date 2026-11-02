@@ -137,3 +137,104 @@ pwsh -File D:\code\rarog\analysis\artifacts\d2-night\run.ps1
 
 It waits for an idle host before each step, resumes after an interruption
 with the same command, and ends with `ALL DONE`.
+
+## Preparation, 2026-11-02, before any game
+
+- **Scripts** (`analysis/artifacts/d2-night/`, SHA-256):
+
+  | Script | SHA-256 | Role |
+  |---|---|---|
+  | `run.ps1` | `bd8ac1f9…` | the night driver |
+  | `leg.ps1` | `388c89dc…` | one leg through `tools/colosseum.ps1` |
+  | `sampler.ps1` | `03b6e9d3…` | the host sampler |
+  | `m81_read.py` | `1f40d6aa…` | the reading |
+  | `sampler_smoke.ps1`, `sampler_smoke.py` | `0a6af48f…`, `bc8e9e68…` | the sampler's smoke |
+
+  `run.ps1` checks both engines, RAR-M80's three scripts and the three
+  above against their hashes before anything runs, then starts the sampler
+  and waits for its first CSV row (a dead wire stops the night before any
+  game), dry-runs this card's legs, and runs RAR-M80's `run.ps1`, the
+  Rarog leg, the Reckless leg and the reading, each after the harness's idle
+  wait, its output appended to `<step>.log` beside it. A step that exits 0
+  (a leg only with its `result.json`) leaves `<step>.done` and is skipped on
+  a rerun; a half-played leg resumes at its seed.
+- **Seeds.** The Design table lists "101, 102, 103" on both rows, the form of
+  RAR-M78's column, which gave one seed per engine (Rarog 61, Reckless 62,
+  Stockfish 63). Read the same way: Rarog's leg plays seed 101, Reckless's
+  102, and 103 is Stockfish's if its leg is played again (the split-verdict
+  branch). A Colosseum match takes one seed; the legs play different
+  openings, as RAR-M78's did.
+- **Outputs.** Run directories `tools/results/night-rarog-threads` and
+  `night-reckless-threads`; the sampler's CSVs and `sampler.log` in
+  `tools/results/d2-night-sampler-<stamp>/`, beside the manifests.
+- **The sampler as built.** `typeperf` expands an instance wildcard once, when
+  it starts, and drops a pattern with no instance without a word: started
+  before the engine, `\Thread(rarog*)` yields no column. So the four
+  processor counters run in one collector for the night (`cpu-NNN.csv`), and
+  the thread counters (`% Processor Time`, with `ID Process` and `ID Thread`
+  to tell the six same-named engine processes apart) in a collector restarted
+  into a new segment (`threads-NNN.csv`) whenever the engines' thread set
+  changes, checked every 2 s. Colosseum keeps engine processes per slot
+  (`engine_processes: per-slot`), so that happens at a leg's start and end.
+  `sampler.log` times every change. The sampler stops on a stop file, or by
+  itself when the driver is gone.
+- **Sampler smoke** (`sampler_smoke.log`,
+  `tools/results/d2-night-smoke-20261102_222448/`): every counter resolves,
+  the processor ones over 34 instances (32 logical CPUs and two totals), the
+  thread ones over both engines' threads (8 OS threads for Rarog at
+  Threads 4, 9 for Reckless). A four-thread search pinned to slot 0's CPUs
+  2–9, as Colosseum places it, moves the slot from 6.9% to 54–55% and the
+  process's thread columns to 399%, for both engines, at 4,000 and 2,000 ms;
+  the thread set does not change between searches. Cost with both
+  collectors running: 1.52 CPU seconds in 60.1 s, 0.079% of the machine.
+  Under it the harness's idle check sees no busy process and a host 1.66%
+  busy. Three earlier smoke runs failed on the smoke's own faults (two
+  script bugs, then a one-second sample straddling a 2-second search's end,
+  34.9% against 35%); the check now counts only samples whose whole second
+  lies inside the search, its threshold unchanged.
+- **Self-test** (`selftest.log`): the idle wait; live output; a finished step
+  skipped on a rerun; a failing step (exit 3) stops the sequence and leaves
+  no marker; a leg that exits 0 without `result.json` is not marked done;
+  the sampler starts, writes, stops and leaves no `typeperf` behind. An
+  uncaught failure exits 1.
+- **Dry run** (`dryrun.log`, exit 0): hashes; the sampler live and stopped;
+  RAR-M80's four legs through its own `run.ps1 -DryRun`; this card's two
+  legs. Their resolved configurations, read field by field from the dry-run
+  JSON: 1,000 games, seeds 101 and 102, three at a time, four cores a slot
+  (CPUs 2–9, 16–23, 24–31), `10+0.1` with margin 20 on both sides, Hash 256,
+  Threads 1 and 4, Reckless `MoveOverhead` 10 on both sides, the UHO book in
+  random order, no adjudication; identical to RAR-M78's Reckless leg but for
+  the seed. Runner `colosseum-cli 0.5.0` (`8fa63cc6…`, executable
+  `81EA6CBA…`).
+- **Reading self-test** (`m81_read_selftest.log`, exit 0). Games are read in
+  completion order from `games.jsonl`, each game's text checked against its
+  recorded SHA-256. On RAR-M78: R 2.48, 3.46, 3.47; D 0.72 [0.58, 0.86], 1.20
+  [1.03, 1.38], 1.31; without the validity rule DEFICIENT with upper bounds
+  −0.26 and −0.36, as recorded; under this card's rule UNRESOLVED (Rarog's
+  leg SLOW STATE). Non-mate depth equals the runner's own non-mate figure to
+  the move for Rarog and Reckless (Rarog 16.87 over 60,037 and 15.84 over
+  59,438); on Stockfish's resumed leg the 0.4.0 runner counts fewer
+  mate-score moves than the PGN holds, cause unread, and Stockfish's depth is
+  not read here. On RAR-M79: R and move counts equal `harness_read.log`'s
+  for all four legs. The judgement reaches every outcome. Printed outcome
+  lines: `DEFICIENT`, `NOT DEFICIENT`, `UNRESOLVED (split)`,
+  `UNRESOLVED (SLOW STATE: <legs>)`, and `NOT JUDGED (<legs> over 0.5% time
+  losses)` for the time-loss rule, which the card states as "reported as
+  such and not judged".
+- **Exposure found in preparation; nothing registered changes.** Read by
+  fifths, RAR-M79's legs, played in one sequence from 16:51 to 18:02 on
+  2026-11-02, move between two speeds inside a leg: `on` 3.94, 3.50, 4.04,
+  3.06, 2.72; `off` 2.84, 2.82, 4.05, 4.03, 4.09; `b9` 4.09, 3.92, 2.78,
+  2.72, 2.86; `solo` 2.58 to 2.81 throughout (20 games a fifth, `solo` 8).
+  RAR-M78's legs are flat over hours (Rarog 2.47 to 2.49, Reckless 3.44 to
+  3.47). The healthy state reads near 4.0 and the slow one near 2.8, in
+  episodes from minutes to hours, and this card's rule marks every RAR-M79
+  leg SLOW STATE, where the registration took their whole-leg 3.44 to 3.53
+  as healthy. The thresholds and the frozen prediction (a SLOW STATE leg
+  0.30) stand; this is recorded before any game so that the calibration
+  reads it. On this evidence UNRESOLVED is likelier than its frozen 0.25,
+  and the reading prints each fifth's clock window so that a slow fifth's
+  mechanism is read from the sampler's CSVs.
+- **Expected runtime:** RAR-M80 about 80 minutes; RAR-M78's Rarog and
+  Reckless threads legs took 2 h 41 min and 3 h 02 min; with the idle waits
+  and dry runs about 7 to 7.5 hours.

@@ -122,3 +122,23 @@ and ends with `ALL DONE`.
 - The run is the first step of RAR-M81's night command
   (`analysis/artifacts/d2-night/run.ps1`), which calls this run's `run.ps1`;
   the standalone command above still works.
+
+## Preparation, 2026-11-02, before any game
+
+- The night driver (`analysis/artifacts/d2-night/run.ps1`, `bd8ac1f9…`)
+  checks this run's `run.ps1`, `leg.ps1` and `solo_read.py` against the
+  hashes above (all three match) and runs it unchanged as its first step,
+  with the sampler beside it; RAR-M81's *Preparation* records the sampler,
+  its smoke, the self-test and the dry run.
+- **The dry run this card lacked** ran through this run's own `run.ps1
+  -DryRun` inside the night's dry run (`d2-night/dryrun.log`,
+  `d2-night/rar-m80.log.dryrun`, exit 0): all four legs resolved, seed 81,
+  one and three games at a time.
+- **Exposure found in preparation; nothing registered changes.** By fifths
+  (RAR-M81's reading), RAR-M79's legs moved between a state near R 4.0 and
+  one near R 2.8 within a leg, in episodes of minutes; its `solo` leg ran
+  wholly in the slow one, and `b9`, the leg before it, had entered it 11
+  minutes earlier. So RAR-M79's 23% may be an episode rather than the
+  one-game condition, and this run's `x1` and `x3` legs, 20 minutes apart,
+  can fall in different episodes. The judgement and prediction stand; the
+  sampler's CSVs over each leg's window are where an episode would show.
