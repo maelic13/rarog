@@ -163,3 +163,13 @@ reading.
   table, as in engines that scale, and here they do not, at B.9 or now.
 - The candidate, predicted +0.03 to +0.10: +0.030, at the edge and
   unresolved.
+
+## Audit 2026-11-02
+
+- The games' deficit this read set out to reproduce (1.9 plies, 2.05 on
+  unheld moves) averaged mate-score moves in; over the other moves it is
+  1.05 plies at RAR-M78's R 2.48 and 0.25 at RAR-M79's R 3.44, and the 0.25 is
+  this read's X 0.87 (0.15 plies) plus the four-thread side's shorter own
+  time (0.12). The level and the rule's reading stand; the disposition's
+  "not reproduced" was a comparison with a contaminated figure
+  (`analysis/d2_audit_2026-11-02.md`).

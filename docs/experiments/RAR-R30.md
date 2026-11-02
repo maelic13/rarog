@@ -154,3 +154,13 @@ searches, 32 a cell (`hold_read.log`; `hold_read.json` `c6ca6e01…`).
   predicted 0.05 to 0.15 at its low edge and below the games' 0.090 (16
   positions, a fast clock, no opponent). `movetime-4T` overshoot p90 1.0 ms,
   under the predicted 5 ms.
+
+## Audit 2026-11-02
+
+- The table's depth columns (15.25 against 17.30 on moves held 20 ms or
+  less) average mate-score moves in, where the four-thread side reports 7 to
+  10 plies and the one-thread side 23 to 27; over the other moves the
+  four-thread side of RAR-M78's leg is 1.05 plies shallower, of which the
+  leg's R 2.48 and this read's hold explain most. "The holds do not explain
+  the depth deficit" compared against the contaminated figure; the VOTE
+  reading and the hold accounting stand (`analysis/d2_audit_2026-11-02.md`).

@@ -286,3 +286,16 @@ before and 0.3% after; 20,656 searches, none without an info line
   the shortest searches' gap in the games came with the condition, not the
   kept table. LOAD (0.30), TIME MANAGEMENT (0.25), H6 (0.05) did not fire; H5
   (0.50) did.
+
+## Audit 2026-11-02
+
+- The question's 1.87 and 2.05 plies average mate-score moves in (1.05 over
+  the other moves), so the replay was asked to reproduce a figure that was
+  largely a reporting artefact. Its registered readings stand.
+- The fidelity on the four-thread side's own moves, +1.38, is +1.33 over the
+  non-mate moves (every record joined to its move comment, 0 mismatches in
+  depth or nodes; `analysis/artifacts/d2-audit/replay_fidelity_nonmate.log`):
+  in RAR-M78's slow state the games' four-thread side was about 0.7 plies
+  shallower than its 60% speed alone explains. That points at a state that
+  does not slow every thread alike, a clue for the sampler D.2 now runs
+  beside every four-thread leg (`analysis/d2_audit_2026-11-02.md`).

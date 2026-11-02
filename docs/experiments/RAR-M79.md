@@ -221,3 +221,17 @@ The reading (`harness_read.log`, `dc919baa…`):
   3.6) read 3.53, inside; R_solo 2.7 (2.3 to 3.5) read 2.69, inside but by
   the opposite mechanism to the one predicted; R_b9 3.0 (2.4 to 3.7) read
   3.28, inside.
+
+## Audit 2026-11-02
+
+- The `off` leg ran in a session where the four-thread speed loss was absent
+  (R_on 3.44), so it shows that large pages cost nothing in the healthy
+  state; it cannot clear them for the slow one, which no leg of this run
+  reproduced at three games at a time. "Large pages carry no loss" above is
+  read in that light, and D.8's order paragraph is corrected.
+- The depth column (4T − 1T) averages mate-score moves in, where the head's
+  four-thread side reports 7 to 10 plies and its one-thread side 24 to 28,
+  while B.9 reports 41 to 45 on both sides. Over the other moves: `on` −0.25,
+  `off` −0.15, `b9` −0.51, `solo` −0.93 (`analysis/d2_audit_2026-11-02.md`).
+  At R 3.44 the 0.25 is RAR-R29's X 0.87 plus the four-thread side's shorter
+  own time; in `solo` it is about twice what R 2.69 predicts.

@@ -279,3 +279,20 @@ interruption with the same command.
   not as Rarog's scaling, which is measured again. The comparison with
   Reckless and Stockfish waits on that. One game at a time, the same day,
   read 2.69.
+
+## Audit 2026-11-02
+
+- The depth figures above (15.41 against 17.28, non-mate 15.84 against 16.87
+  by the runner's own rule, Reckless 20.01 → 21.33, Stockfish 26.37 → 29.13)
+  average mate-score moves in, where Rarog's four-thread side reports 7 to
+  10 plies and its one-thread side 23 to 27, Reckless about 62 and Stockfish
+  about 125 on both sides. Over the moves whose score was not a mate, Rarog's
+  four-thread side is 1.05 plies shallower than its one-thread side (15.92
+  against 16.97), Reckless's 0.72 deeper (18.37 against 17.65) and
+  Stockfish's 1.6 deeper (23.01 against 21.41)
+  (`analysis/d2_audit_2026-11-02.md`, `analysis/artifacts/d2-audit/`).
+- With the threads leg confounded, **"Rarog deficient" is not established**;
+  the odds leg stands. A clean rerun at R about 3.4 is predicted G4 +122 ± 12
+  (D 1.2, X 2.3), by the 0.47 doublings between R 2.48 and 3.44 at this leg's
+  101.8 Elo a doubling; G4 at about +85 or below reads deficient against
+  Reckless again.

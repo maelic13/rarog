@@ -328,13 +328,13 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.2 | RESEARCH | R2 | Lazy SMP at four threads. **RAR-M78 read 2026-11-01: Rarog deficient** (effective speedup 1.65 against 2.30 and 2.48; in games 2.28× the nodes for 1.9 plies less depth, 28% of moves held over the margin): the four-thread card is open. Reads in order: the PGO coverage of the multi-thread kernel copies (one build on RAR-P50's instrument, prediction frozen in the leaf), time-to-depth 4T against 1T, the holds between the clock's end and `bestmove`, the shared backend's cost (F16), then helper depth, shared-table use and root diversity. **Card written 2026-11-01; four reads 2026-11-02:** `e057d84` kept (four-thread NPS +2.4%, RAR-P52); the shared backend refuted (RAR-P53); the holds are the soft-stop vote (RAR-R30); four threads reach a fixed depth more slowly than one, at B.9 too (RAR-R29, X 0.87), so the helpers buy the main thread no depth. Next: what the helpers do to the main thread, and why the games' depth deficit is far larger than the reads'. **Read 2026-11-02:** RAR-R31, the games replayed alone: four threads report the same depth as one at 3.78× its NPS, where the games ran them at about 60% of that speed; the games' conditions carry the deficit (H7, now the lead). RAR-R32: no RAR-R03 member holds the main thread back. Next: locate the condition. **Read 2026-11-02:** RAR-M79 ABSENT: in RAR-M78's configuration four threads now run at 3.44× one thread (RAR-M78's 2.48 was its sessions' host state; its threads leg is confounded and Rarog's scaling is measured again); large pages and B.9 carry no loss; one game at a time reads 2.69, the four-thread side 23% slower on the same openings, which is the next read. RAR-R33 HITS WITHOUT SAVINGS: the helpers' entries reach the main thread (+5.6 points of hits) without shrinking its tree (M 1.09). **Registered 2026-11-02:** RAR-M80 (one game at a time against three, Rarog and Reckless on one host state; per-side in-game NPS), about 80 minutes. Earlier: RAR-P46 to P50 located a 6–7% per-thread shared-search NPS loss since B.9 spread over kept gains; RAR-M77 keeps large pages on |
+| D.2 | RESEARCH | R2 | Lazy SMP at four threads. **RAR-M78 read 2026-11-01: Rarog deficient** (effective speedup 1.65 against 2.30 and 2.48; in games 2.28× the nodes for 1.9 plies less depth, 28% of moves held over the margin): the four-thread card is open. Reads in order: the PGO coverage of the multi-thread kernel copies (one build on RAR-P50's instrument, prediction frozen in the leaf), time-to-depth 4T against 1T, the holds between the clock's end and `bestmove`, the shared backend's cost (F16), then helper depth, shared-table use and root diversity. **Card written 2026-11-01; four reads 2026-11-02:** `e057d84` kept (four-thread NPS +2.4%, RAR-P52); the shared backend refuted (RAR-P53); the holds are the soft-stop vote (RAR-R30); four threads reach a fixed depth more slowly than one, at B.9 too (RAR-R29, X 0.87), so the helpers buy the main thread no depth. Next: what the helpers do to the main thread, and why the games' depth deficit is far larger than the reads'. **Read 2026-11-02:** RAR-R31, the games replayed alone: four threads report the same depth as one at 3.78× its NPS, where the games ran them at about 60% of that speed; the games' conditions carry the deficit (H7, now the lead). RAR-R32: no RAR-R03 member holds the main thread back. Next: locate the condition. **Read 2026-11-02:** RAR-M79 ABSENT: in RAR-M78's configuration four threads now run at 3.44× one thread (RAR-M78's 2.48 was its sessions' host state; its threads leg is confounded and Rarog's scaling is measured again); large pages and B.9 carry no loss; one game at a time reads 2.69, the four-thread side 23% slower on the same openings, which is the next read. RAR-R33 HITS WITHOUT SAVINGS: the helpers' entries reach the main thread (+5.6 points of hits) without shrinking its tree (M 1.09). **Registered 2026-11-02:** RAR-M80 (one game at a time against three, Rarog and Reckless on one host state; per-side in-game NPS), about 80 minutes. Earlier: RAR-P46 to P50 located a 6–7% per-thread shared-search NPS loss since B.9 spread over kept gains; RAR-M77 keeps large pages on. **Audit 2026-11-02** (`analysis/d2_audit_2026-11-02.md`): the runner's depth figures include mate-score moves and are withdrawn (without them the four-thread side is 0.25 plies shallower at R 3.44, which X 0.87 explains); the deficit verdict falls with RAR-M78's confounded leg (a clean rerun predicted G4 +122 ± 12, X 2.3); the blocker is an unidentified host state in which four-thread processes lose a third of their speed. Next: RAR-M80 with a passive `typeperf` sampler beside it, then RAR-M81 (the threads legs in alternating Rarog and Reckless blocks, one night) decides whether D.2 has a target. Held on that night; D.5 item 15, D.4 item 19 and D.3 run meanwhile |
+| D.5 | RESEARCH | R2 | Fourteen gated candidates from the review and six from the Basilisk cross-check; item 15 (the correction added to draw verdicts) is a correctness repair and its probe goes first, now, while D.2 waits on the maintainer's night (minutes of CPU, due before the 2.7.0 cut); the other cards' screens after D.3 and D.4, their gates queued behind D.2's night read, castling's classification and quiet queen promotions in quiescence first; nothing implemented before its screen |
 | D.3 | READY_FOR_IMPLEMENTATION | I1 | Eight shell defects confirmed by the 2026-11-01 review (four replayed live), each with a `uci_process` test first, before the 2.7.0 cut; the score-normalisation card and the `src/uci/` (planned) move stay research |
-| D.4 | READY_FOR_IMPLEMENTATION | I1 | Eighteen behaviour-neutral repairs from the review, the table handle and the helper lifecycle first; then the Basilisk cross-check's four (the verdicts' truth test, CI hygiene, the behaviour-test sweep; the method proposals were decided 2026-11-02); exact fingerprint, pooled NPS where hot |
-| D.5 | RESEARCH | R2 | Fourteen gated candidates from the review and six from the Basilisk cross-check; item 15 (the correction added to draw verdicts) is a correctness repair and goes first, before the 2.7.0 cut; then castling's classification and quiet queen promotions in quiescence; nothing implemented before its screen |
+| D.4 | READY_FOR_IMPLEMENTATION | I1 | Item 19 (the KPK evaluation and every hard draw verdict against Syzygy) runs beside D.5 item 15, now; the eighteen behaviour-neutral repairs from the review follow D.3, the table handle and the helper lifecycle first; then the rest of the Basilisk cross-check's (CI hygiene, the behaviour-test sweep; the method proposals were decided 2026-11-02); exact fingerprint, pooled NPS where hot |
+| D.8 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.6 | READY_FOR_IMPLEMENTATION | I1 | The simplification programme; P0, P1, P2 and P19's census can start now, P11 and P13 after D.2 closes, P12 inside D.3 |
 | D.7 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
-| D.8 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); RAR-M79 (2026-11-02) found Windows large pages carry no four-thread speed loss, so the design stands; exact fingerprint, a Linux NPS read |
 
 ## Phase D — Clock, threads, robustness
 
@@ -1964,6 +1964,74 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
   If a coherent table reopens (TT-9), Basilisk's costs at one thread are
   the prior: a `key16 ^ fold16` tag −3.91%, one packed 64-bit word with the
   move apart −1.22% [−1.72, −0.76] (BAS-C05).
+  **Audit 2026-11-02** (`analysis/d2_audit_2026-11-02.md`, a re-read of
+  every record and artifact above; nothing built, no game):
+  - **The depth figures that steered the card are contaminated.** Every
+    mean depth quoted from the runner (1.9 plies less at four threads,
+    2.05 on unheld moves, Reckless +1.3, Stockfish +2.8, B.9 +0.30)
+    averages mate-score moves in, where the head's four-thread side
+    reports 7 to 10 plies and its one-thread side 23 to 27 (B.9 41 to 45
+    on both sides, Reckless 62, Stockfish 125): a reporting difference in
+    decided positions. Without them the four-thread side is 1.05 plies
+    shallower in RAR-M78's games, 0.25 in RAR-M79's `on` leg (R 3.44),
+    0.15 in `off`, 0.93 in `solo`, and B.9's is 0.51 shallower, not
+    deeper; Reckless's is 0.72 deeper and Stockfish's 1.6. At R 3.44 the
+    0.25 is RAR-R29's X 0.87 (0.15 plies) plus the shorter own time
+    (0.12): on a healthy host no in-game depth deficit is unexplained.
+    RAR-R30's "the holds do not explain the depth deficit", RAR-R31's
+    premise and H5's motivation rest on the contaminated figure; each
+    record carries its correction.
+  - **RAR-M78's threads leg is confounded, as RAR-M79 found, and the
+    deficit verdict falls with it:** "Rarog deficient" is not
+    established, and the card's question is open again, not answered.
+    Frozen prediction for a clean rerun at R about 3.4: G4 +122 ± 12
+    (0.47 doublings more than at R 2.48, by the odds leg's 101.8 Elo a
+    doubling), D 1.2, X 2.3, level with Reckless; G4 at about +85 or
+    below reads deficient against Reckless again and makes the lead
+    below the engine's own target.
+  - **The host state is the blocker, and it is unidentified.**
+    Four-thread processes alone lose a third of their speed, flat for
+    hours, the head's so far and never a one-thread side: RAR-M74
+    (2.60), RAR-P46 (5 of 12 passes), RAR-M78 (a whole leg), RAR-M79
+    `solo` (2.69), against 3.44 to 3.8 when healthy. RAR-M79's `off` leg
+    ran in the healthy state, so it cannot clear large pages for the
+    slow one (D.8 corrected). In the slow state the main thread loses
+    about twice the depth its NPS loss predicts (RAR-M78 1.05 plies
+    against 0.6 expected, `solo` 0.93 against 0.5; RAR-R31's fidelity is
+    +1.33 on non-mate moves), so the loss is not a uniform slowdown of
+    every thread. Candidates that predict R near 2.5: two threads a
+    physical core (the slot's eight logical CPUs, a parked core) and a
+    parked or down-clocked core; the host runs a custom power plan with
+    its parking settings at their defaults. The instrument is passive
+    and costs nothing: `typeperf` at one second over the slot's logical
+    CPUs (`% Processor Time`, `Parking Status`, `% of Maximum
+    Frequency`, `Processor Frequency`) and `\Thread(rarog*)\% Processor
+    Time`, beside every four-thread leg from now on, so the next slow
+    episode names its mechanism; and each leg's per-side in-game R
+    recorded as its validity check (a four-thread Rarog block under 3.0
+    is not read).
+  - **What stands as the engine-side lead:** four threads reach a depth
+    with four times one thread's nodes and the helpers' entries do not
+    cut the main thread's tree (RAR-R29, RAR-R33), where Reckless's and
+    Stockfish's four-thread sides in games reach one thread's depth at
+    1.3 to 1.6 times its nodes. It predates C (B.9 0.96) and is priced
+    only by the rerun.
+  - **Next, in order.** (1) RAR-M80 as registered, with the sampler
+    beside it (an added observation; its legs do not change). (2)
+    RAR-M81, the maintainer's night: Rarog's and Reckless's threads legs
+    of RAR-M78 played again in alternating blocks of 250 games (three
+    games at a time, the same binaries, Hash 256, `10+0.1`, the odds
+    legs reused), the sampler running, each block's per-side R its
+    validity check, read as RAR-M78 with the prediction above. (3) By
+    its outcome: not deficient closes D.2's four-thread target
+    `NO_CHANGE` with the host-state note carried to E.2's four-thread
+    arm and every rated four-thread read; deficient makes RAR-R33's next
+    read (the depth and bound of the main thread's hits against what its
+    node needs) the card's first engine question, with helper depth
+    staggering and the shared histories (H27) as the competing
+    mechanisms. No engine change is in scope before (2). Until the night
+    read is in, D.2 is held and the agent works D.5 item 15, D.4 item 19
+    and D.3, in the register's order.
 - **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `I1` for the eight review-confirmed defects (2026-11-01), then `R2` for the cards.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.
@@ -2807,11 +2875,12 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
     recorded (WSL2 on the match host is the host available; its mode is part
     of the record), and a four-thread cell. A behaviour-neutral speed change
     closes on that read.
-  - **Order.** After D.2's RAR-M79, read 2026-11-02: large pages carry no
-    four-thread speed loss in games (off 2.7% higher in R, inside noise),
-    so the scope stays every allocation the Windows path takes.
-    Transparent huge pages lock nothing, so the Linux read stands on its
-    own.
+  - **Order.** On its own. RAR-M79 (2026-11-02) read large pages off 2.7%
+    higher in R than on, inside noise, in a session where the four-thread
+    speed loss was absent; whether they take part in the slow host state
+    is unread (`analysis/d2_audit_2026-11-02.md`). Transparent huge pages
+    lock nothing, so the Linux read stands whatever that answer is, and
+    the scope stays every allocation the Windows path takes.
   - **macOS: not pursued.** Rarog ships macOS for Apple silicon only
     (maintainer decision 2026-11-02: no Intel macOS build, universal or
     separate). Apple silicon has no userspace superpage request (it fails
