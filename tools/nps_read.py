@@ -40,6 +40,10 @@ LazyMargin=2000`, sent as `setoption` before the bench). Then one pool may serve
 both arms, which cancels each build's PGO offset (the unpaired interval below is
 conservative for that design), the options must differ, and an option that
 changes the search names that arm's fingerprint (`--cand-fingerprint`).
+
+Arms at different fingerprints search different trees, so their NPS is not a
+speed read (PLAN rule 8: a tree-shape change reads time-to-depth). The read
+still runs, and its report and console carry a warning saying so.
 """
 from __future__ import annotations
 
@@ -310,6 +314,15 @@ def decide(est: dict, no_regression: bool) -> str:
     return "accepted" if delta >= 0.5 and low > 0 else "closed NO_CHANGE"
 
 
+def tree_warning(fingerprints: dict) -> str | None:
+    """The warning a read carries when its arms search different trees."""
+    base, cand = fingerprints.get("base"), fingerprints.get("cand")
+    if base is None or cand is None or base == cand:
+        return None
+    return (f"WARNING: the arms search different trees (bench 13 {base:,} against {cand:,}); "
+            "their NPS is not a speed read: read time-to-depth (PLAN rule 8)")
+
+
 def report(record: dict, no_regression: bool) -> str:
     est = estimate(record)
     verdict = decide(est, no_regression)
@@ -327,6 +340,9 @@ def report(record: dict, no_regression: bool) -> str:
         f"disturbed cycles: {est['disturbed'] or 'none'}",
         f"verdict: {verdict}",
     ]
+    warning = tree_warning({arm: record["arms"][arm].get("fingerprint") for arm in ("base", "cand")})
+    if warning:
+        lines.append(warning)
     return "\n".join(lines)
 
 
@@ -404,6 +420,9 @@ def main() -> int:
         options = {"base": [parse_option(o) for o in args.base_option],
                    "cand": [parse_option(o) for o in args.cand_option]}
         check_arms(args.base, args.cand, builds, options)
+        warning = tree_warning(fingerprints)
+        if warning:
+            print(warning, flush=True)
         record = {
             "label": args.label, "started": time.strftime("%Y-%m-%dT%H:%M:%S"), "no_regression": args.no_regression,
             "arms": {arm: {"pool": str(path), "builds": [str(e) for e in builds[arm]],

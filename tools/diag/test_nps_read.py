@@ -177,6 +177,28 @@ class WireTests(unittest.TestCase):
         self.assertEqual(rec["cycles"][0]["readings"]["base"]["1"][0]["nodes"], 7_601_220)
 
 
+class TreeWarningTests(unittest.TestCase):
+    def test_equal_fingerprints_carry_no_warning(self):
+        self.assertIsNone(nps_read.tree_warning({"base": HEAD, "cand": HEAD}))
+        rec = record([[BENCH, BENCH]] * 2, [[BENCH, BENCH]] * 2)
+        for arm in ("base", "cand"):
+            rec["arms"][arm]["fingerprint"] = HEAD
+        self.assertNotIn("WARNING", nps_read.report(rec, False))
+
+    def test_different_trees_are_named_in_the_report(self):
+        warning = nps_read.tree_warning({"base": 7_601_220, "cand": HEAD})
+        self.assertIn("different trees", warning)
+        self.assertIn("time-to-depth", warning)
+        rec = record([[BENCH, BENCH]] * 2, [[BENCH, BENCH]] * 2)
+        rec["arms"]["base"]["fingerprint"] = 7_601_220
+        rec["arms"]["cand"]["fingerprint"] = HEAD
+        self.assertEqual(nps_read.report(rec, False).splitlines()[-1], warning)
+
+    def test_an_archive_without_fingerprints_is_not_warned_about(self):
+        rec = record([[BENCH, BENCH]] * 2, [[BENCH, BENCH]] * 2)
+        self.assertNotIn("WARNING", nps_read.report(rec, False))
+
+
 class OptionArmTests(unittest.TestCase):
     """Arms that differ by UCI options on one tune build."""
 
