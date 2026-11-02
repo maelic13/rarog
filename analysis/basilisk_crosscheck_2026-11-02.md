@@ -119,7 +119,7 @@ them a second time.
 | Pawnless default factor / KQ against two minors (D1) | EVAL-6, D.5. Rarog's pawnless rule covers minors only, so KQ-v-minors is never scaled | Syzygy class rates: KQ-KBN 82.5% won, KQ-KBB 71.0%, KQ-KNN 73.5%; test `pawnless_scale_truth_table` |
 | PV array read past `MAX_PLY` (F3) | Not applicable: Rust checks bounds (NODE-8 owns the cap) | — |
 | Histories indexed without colour (S2) | Not applicable: tables are by coloured piece (`history.rs:72-80`) | — |
-| Root never reduced (S4) | Not applicable: Rarog reduces at the root (`lmr_at_root`, `node.rs:1812`) | — |
+| Root never reduced (S4) | **Corrected in the second sweep:** Rarog does not reduce at the root or in check either (`node.rs:1759`, pinned by `lmr_never_reduces_at_the_root_or_in_check`; the `lmr_at_root` counter sits inside the gated branch). Deliberate, but the two cases were read only bundled (RAR-S74(e), −3.8 ± 9.6) | D.5 item 19 (H23) |
 | Bare-king tiers / KR-K rule-50 drift / KQ-v-minors 1/16 | Not applicable as such: no tiers; damping is proportional (`correction.rs:181-184`) | Run `bare_king_material_is_monotone` anyway (§D) |
 | Root equal-score tie rule | Rarog has none | — |
 | Nodes counted twice at frontier/razoring | Owned: D.5 item 8 (DRIVER-11), a depth-0 entry counted at both the `negamax` and the `quiescence` entry | Basilisk's repair is in `6e66c5d` |
@@ -241,3 +241,92 @@ The "Rarog equivalent" column comes from a keyword search of `tests/` and
 | Zero-weight term census | D.6 item 20 (P19) | — |
 | Texel tuner T1–T5 | F.2.1, before the fit | Before F.2.1 |
 | Saavedra and underpromotions | D.5 item 17 | — |
+
+## H. Second sweep (2026-11-02): the rest of Basilisk
+
+At the maintainer's request the whole of Basilisk's recent work was read, not
+only its correctness repairs. Four read-only agents covered it in parallel:
+- the archived Phase A (`docs/archive/PLAN-closed-2026-10-30.md`, all of it),
+  the delivery and instrument commits (`336df38`, `a4f9944`) and the PROCESS
+  diff since `fac5064`;
+- the current Phase B with its October analyses and BAS-S21–S44;
+- PLAN §1–§3 and Phases C–G, `release_tiers.md`, DESIGN and the CHANGELOG;
+- the experiment entries, every test file and the tooling diff.
+
+Each agent checked its candidates against Rarog's source and PLAN. The
+coordinator re-checked every medium- or high-value claim against the files:
+`krpkr_scale`'s five zeros, `nps_read.py`'s unpinned bench, CI running no
+document checks, the PGO use step, `fit_k`'s bounds, the harness's fault
+rule, the seven ledger IDs in `src`, `format_score`, the `collect` job, the
+WAC floor, the root LMR gate, the stop's placement and the effort-share
+reader.
+
+**Coverage.** Most of Basilisk's evaluation, release and process work either
+came from Rarog or was already measured and decided here: the one-flank,
+lone-queen and pawn-count scalers (RAR-E21/E22), the space term (RAR-E18),
+the rear doubled passer (RAR-E44), the imbalance cache, the endgame king
+danger, the truth veto, the two-rejection stop, the patch-release
+procedure, game-history-aware tablebase ranking, the host-load measure, the
+per-slot processes and the CPU advisory.
+
+| ID | Item (Basilisk evidence) | Rarog proof | PLAN |
+|---|---|---|---|
+| H1 | CI aggregator that fails unless every gathered job succeeded (GitHub counts a skipped job as passing) | `release.yml` `collect` without `if: always()`; no aggregator in `ci.yml` | D.4 item 20 |
+| H2 | A documents CI job (guide, citations, tool tests); ledger disposition agreement | `ci.yml` runs none of them | D.4 item 20 |
+| H3 | PGO fails on unprofiled code | `xtask/src/main.rs:1080` passes `profile-use` only | D.4 item 20 |
+| H4 | Linux glibc floor and pinned runner labels; static asset | `release.yml:117-136` dynamic, `-latest` | D.4 item 20, G.2 |
+| H5 | Sanitiser job (Miri for Rust) | none | D.4 item 20 |
+| H6 | Dev build names its commit (`a4f9944`) | `uci_protocol.rs:110-114` package version only | D.4 item 20 |
+| H7 | Every hard draw verdict against Syzygy (BAS-E54: 18 of 3,000 won KRPKR called dead draws by the reference rules) | `eval/endgame/mod.rs:481-505` five `Some(0)` | D.4 item 19 |
+| H8 | Picker contract fuzz (random-walk positions, random histories, foreign TT move) | `movepick.rs:793-835` six FENs, zeroed histories | D.4 item 21 |
+| H9 | Liveness test per search parameter | `tools/audit_spsa_coverage.ps1` static only | D.4 item 21 |
+| H10 | Floors with ceilings and staleness bounds | `tests/wac.rs:48` FLOOR 122, no upper bound | D.4 item 21 |
+| H11 | Fixtures assert the score, not only the move | — | D.4 item 21 |
+| H12 | Census of ledger IDs and step numbers in comments | 7 `RAR-` IDs in `src`; `mop_up.rs:129` | D.4 item 16 |
+| H13 | Ordinary scores clamped below the tablebase display band | `search/mod.rs:334-345` | D.3 |
+| H14 | Helper-thread panic tested in a release-profile process | `crash_report.rs:167` in-process, main thread | D.3 |
+| H15 | Terminal root under `go infinite` reports once | `uci_process.rs:680-707` depth 5, presence only | D.3 |
+| H16 | Castling rights not matching the rooks | `board.rs:2348-2357` rejects; process exits | D.3 (PROTO-6) |
+| H17 | Priming recipe for the draw-verdict probe; BAS-S44 +7.4 ± 6.9 | — | D.5 item 15 |
+| H18 | NODE-2 donor form +3.3 ± 9.1; consumers throw fixtures via IIR | `node.rs:665-689` | D.5 item 4 |
+| H19 | Null move cut-only +5.0 ± 9.0 at `10+0.1` | `node.rs:929-945` | D.5 item 3 |
+| H20 | Bench position 11's tree is its conversion band | same FEN | D.5 item 7 |
+| H21 | Node double count: the time manager also reads it; +4.3 ± 5.9 bundled | `time.rs:337` | D.5 item 8 |
+| H22 | Stockfish 19 mechanisms' reads (cuckoo 0.0 ± 9.3, PV pruning, seekMate depth, check extension at LTC); shuffling gate, history fills | absent | D.5 item 18 |
+| H23 | Root and in-check LMR never read apart | `node.rs:1759` | D.5 item 19 |
+| H24 | The fail-high stop's hole and its give-up form | `search/mod.rs:977-978` | D.5 item 20 |
+| H25 | Deep-iteration cost screen with a watchdog | none in `tools/diag` | D.5 rules |
+| H26 | Root's first move from the shared table | `node.rs:650-662` | D.2 |
+| H27 | Stockfish 19's shared continuation, pawn and correction histories | per thread, `history.rs:72-80` | D.2 |
+| H28 | Coherent table costs (BAS-C05) | RAR-P53 consistent | D.2 |
+| H29 | TB probe after the cutoff: reads −70%, 2,285/2,286 wins converted | `node.rs:544` | D.7 |
+| H30 | A release read with tables loaded | E.1 has no tables arm | E.1 |
+| H31 | Foreign engines' faults tolerated up to 1% | `harness_common.ps1:960-1000` voids on any | E.2 |
+| H32 | Phase shares in simplified endings | `material.rs:15` | E.4 |
+| H33 | Corpus sized by a learning curve | F.2 fixes 30–60M | F.2 |
+| H34 | `fit_k` silent at its bounds | `tools/texel-tuner/src/main.rs:1046-1060` | F.2.1 |
+| H35 | Collinear passer rank coordinates | `pawns.rs:224-241`, `passers.rs:85-117` | F.2.1 |
+| H36 | Speed priors against (BAS-P26) | — | F.5 |
+| H37 | SSE4.1-POPCNT tier, SDE tier check | — | G.2 |
+| H38 | Repair gates sized by exposure | AGENTS *Gating* fixed sizes | D.4 item 22 (decision) |
+| H39 | Fitted-constant analysis before a bake | PROCESS SPSA step 9 | D.4 item 22 (decision) |
+| H40 | Noise floor for the curvature rule | PLAN rule 8; `analysis/b33_sweep_2026-09-24.md:166` | D.4 item 22 (decision) |
+| H41 | Different trees are not a speed read | `nps_read.py` accepts differing fingerprints | D.4 item 22 (decision) |
+| H42 | Pinned bench in the NPS read | `nps_read.py:124-127` | D.4 item 22 (decision) |
+| H43 | Link layout is not averaged by build pools (BAS-P20/P21) | — | D.4 item 22 (decision) |
+| H44 | A correct repair that loses Elo is reworked, not reverted | AGENTS *Gating* silent | D.4 item 22 (decision) |
+| H45 | Multi-pool NPS read; ordered night-queue launcher | — | D.4 item 22 (decision) |
+
+**Recorded only, no PLAN item.** These reads are null in Basilisk and have
+no Rarog counterpart: B3ProbCutTt +0.9, B3SingTtDepth −1.0, B3SingNegative
+0.0, CoreHistoryFills −0.5.
+
+**Not verified:**
+- the GitHub branch-protection settings;
+- the Linux asset's glibc floor;
+- today's WAC count;
+- whether Rust honours the function-alignment flag;
+- whether pinning narrows Rarog's NPS intervals;
+- whether bench position 11's seldepth 127 is the conversion band.
+
+All of these are reads for after the running measurement.
