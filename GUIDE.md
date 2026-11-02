@@ -50,7 +50,7 @@ field, about 3,475 on CCRL's Blitz scale.
 - [ ] **D.5** Strength candidates from the engine review: kernel and evaluation deviations from the donor, each behind a zero-game screen and a registered gate — **RESEARCH / R2**
 - [ ] **D.6** Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — **READY_FOR_IMPLEMENTATION / I1**
 - [ ] **D.7** Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — **RESEARCH / R2**
-- [ ] **D.8** Large pages on Linux: transparent huge pages for the big tables — **READY_FOR_IMPLEMENTATION / I1**
+- [ ] **D.8** Large pages beyond Windows: Linux transparent huge pages, and macOS superpages where they exist — **READY_FOR_IMPLEMENTATION / I1**
 
 ## Phase E — Classical checkpoint and release
 
