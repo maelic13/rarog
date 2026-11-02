@@ -271,3 +271,11 @@ interruption with the same command.
   deficit this experiment measured is real under its conditions, and the
   conditions carry it: they cost Rarog's four-thread search about 40% of its
   speed and Reckless's far less. Its cause is D.2's H7, open.
+- **2026-11-02, [RAR-M79](RAR-M79.md): ABSENT; this leg is confounded.**
+  The same configuration (three games at once, `10+0.1`, Hash 256) on the
+  head with `e057d84` (worth 2.4% at four threads) ran four threads at 3.44
+  times one thread's NPS against this leg's 2.48. The threads leg's result,
+  effective speedup 1.65, stands as measured in its sessions' host state,
+  not as Rarog's scaling, which is measured again. The comparison with
+  Reckless and Stockfish waits on that. One game at a time, the same day,
+  read 2.69.

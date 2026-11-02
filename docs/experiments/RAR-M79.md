@@ -1,4 +1,4 @@
-# RAR-M79 — Where the games' four-thread speed goes: short matches of Rarog against itself, one thread against four, with large pages on and off, one game at a time, and the B.9 head — REGISTERED 2026-11-02, before any game
+# RAR-M79 — Where the games' four-thread speed goes: short matches of Rarog against itself, one thread against four, with large pages on and off, one game at a time, and the B.9 head — REGISTERED 2026-11-02, before any game; READ 2026-11-02: ABSENT, and one game at a time costs the four-thread side
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -134,3 +134,90 @@ pwsh -File D:\code\rarog\analysis\artifacts\d2-harness\run.ps1
 
 It waits for an idle host before each step, resumes after an interruption,
 and ends with `ALL DONE`.
+
+## Result — 2026-11-02, appended after exposure
+
+Run by the maintainer with `run.ps1` on 2026-11-02 from 16:51 to 18:02.
+Every leg completed with no fault and no time loss, and no idle waiver; the
+host was 0.2% busy at `on`'s start, 6.8% at `off`'s, 1.1% at `b9`'s and 1.1%
+at `solo`'s. The `b9` leg was stopped after 50 games and resumed at 17:34 at
+its seed (`resuming: 50 of 100 games complete`, host 5.3% busy); the other
+legs ran in one piece. Colosseum's manifests:
+
+- `on`: 100 games, pentanomial 4, 30, 15, 1, 0, `games.pgn` `E587C474…`;
+- `off`: 100 games, 2, 28, 18, 2, 0, `CB33DC28…`;
+- `b9`: 100 games, 3, 31, 14, 2, 0, `AAF69DE9…`;
+- `solo`: 40 games, 2, 8, 7, 3, 0, `CD353C4A…`.
+
+The reading (`harness_read.log`, `dc919baa…`):
+
+| Leg | 1T NPS | 4T NPS | R | R on charged time | Depth 4T − 1T |
+|---|---:|---:|---:|---:|---:|
+| `on` | 2.74M | 9.41M | **3.44** | 3.17 | −1.82 |
+| `off` | 2.72M | 9.60M | 3.53 | 3.26 | −1.35 |
+| `b9` | 2.15M | 7.07M | 3.28 | 2.90 | +0.30 |
+| `solo` | 2.89M | 7.77M | 2.69 | 2.48 | −2.23 |
+| RAR-M78's leg (anchor) | 2.79M | 6.91M | 2.48 | 2.28 | −1.87 |
+
+- ln(R_off / R_on) +0.027, ln(R_solo / R_on) −0.247, ln(R_b9 / R_on)
+  −0.047: no condition lifts R by 15%.
+- **Outcome line:** `ABSENT: the head's four threads run at 3.4 times one
+  thread or more in games; no condition lifts R by 15%`. R_on is 0.04 over
+  the line.
+- No Elo is read, as registered.
+
+**Read after the result, from the same files, not registered readings:**
+
+- **The binary does not carry the anchor's gap.** RAR-M78 played
+  `ebbbc917…`, the d2 head before `e057d84`; this leg plays the head with
+  it, which [RAR-P52](RAR-P52.md) read 2.4% faster at four threads. That is
+  ln 0.024 of the ln 0.33 between 2.48 and 3.44.
+- **One game at a time costs the four-thread side**
+  (`solo_same_openings.py`, `solo_same_openings.log`). From the same 20
+  openings, `on`'s 40 games ran the four-thread side at 10.15M and the
+  one-thread side at 2.73M (R 3.71); `solo`'s ran them at 7.77M and 2.89M
+  (R 2.69). With its game alone on the host the one-thread side is 6%
+  faster and the four-thread side 23% slower. The registered tags looked for
+  a lift only, so this is not a registered reading. RAR-R31's replay, one
+  process searching move after move alone in the slot, kept 3.78; in the
+  `solo` games the two engines take turns, so each four-thread search
+  starts after the opponent's move with the rest of the host idle.
+
+## Disposition
+
+- **ABSENT, by the rule:** RAR-M78's 2.48 was its sessions' host state, not
+  a fixed condition of the games. Its threads leg is recorded as confounded
+  (RAR-M78, *Later reads*), and Rarog's four-thread scaling is measured again
+  before D.2 reads anything from its effective speedup. What that state was
+  is not known: RAR-M78's two sessions (2026-10-30 and 2026-11-01) both ran
+  low and flat ([RAR-R31](RAR-R31.md)'s `pgn_drift.log`), and the same
+  configuration today does not.
+- **Large pages carry no loss:** off reads 2.7% higher in R, far from 15%.
+  D.8 is designed as written and the Windows default stays.
+- **B.9 scales no better in games here:** 3.28 against the head's 3.44;
+  RAR-M74's 3.72 for B.9 was another day's host.
+- **H7 changes shape.** How much speed four threads keep in games depends on
+  the host's state, by up to a third: three games at once 3.44 (3.71 on
+  `solo`'s openings), one game alone 2.69, RAR-M78's sessions 2.48. Reckless's
+  3.44 in RAR-M78 was another session's host, so "Rarog sensitive, Reckless
+  not" is no longer established. One game alone is the nearest of these to a
+  rating list that plays one game a machine, so the solo loss is the next
+  read: one game at a time against three, Rarog and Reckless on one host
+  state, registered before any game.
+
+## Calibration
+
+- REPRODUCED was predicted 0.80 and ABSENT 0.08: a miss in the instrument.
+  The prediction took RAR-M78's anchor as a property of the configuration;
+  its own reasoning named "unless the host has changed" and priced it at
+  0.08.
+- NEIGHBOURS was predicted to lift R (0.30); one game at a time lowered it
+  by 28% on the same openings (ln −0.32): a miss in sign. The prediction
+  assumed other games only take shared resources from the four-thread side;
+  alone on the host it keeps less of its speed than beside two other games.
+- LARGE PAGES (0.40) and B.9 SCALES (0.50) did not fire: LARGE PAGES matches
+  the more likely reading, B.9 SCALES a coin flip.
+- Levels: R_on 2.5 (80% 2.2 to 3.0) read 3.44, outside; R_off 2.8 (2.3 to
+  3.6) read 3.53, inside; R_solo 2.7 (2.3 to 3.5) read 2.69, inside but by
+  the opposite mechanism to the one predicted; R_b9 3.0 (2.4 to 3.7) read
+  3.28, inside.

@@ -323,13 +323,13 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.2 | RESEARCH | R2 | Lazy SMP at four threads. **RAR-M78 read 2026-11-01: Rarog deficient** (effective speedup 1.65 against 2.30 and 2.48; in games 2.28× the nodes for 1.9 plies less depth, 28% of moves held over the margin): the four-thread card is open. Reads in order: the PGO coverage of the multi-thread kernel copies (one build on RAR-P50's instrument, prediction frozen in the leaf), time-to-depth 4T against 1T, the holds between the clock's end and `bestmove`, the shared backend's cost (F16), then helper depth, shared-table use and root diversity. **Card written 2026-11-01; four reads 2026-11-02:** `e057d84` kept (four-thread NPS +2.4%, RAR-P52); the shared backend refuted (RAR-P53); the holds are the soft-stop vote (RAR-R30); four threads reach a fixed depth more slowly than one, at B.9 too (RAR-R29, X 0.87), so the helpers buy the main thread no depth. Next: what the helpers do to the main thread, and why the games' depth deficit is far larger than the reads'. **Read 2026-11-02:** RAR-R31, the games replayed alone: four threads report the same depth as one at 3.78× its NPS, where the games ran them at about 60% of that speed; the games' conditions carry the deficit (H7, now the lead). RAR-R32: no RAR-R03 member holds the main thread back. Next: locate the condition. **Registered 2026-11-02:** RAR-M79 (short matches with large pages on and off for every process, one game at a time, and B.9; per-side in-game NPS) and RAR-R33 (does the helpers' work reach the main thread's table), about 80 minutes, no Elo read. Earlier: RAR-P46 to P50 located a 6–7% per-thread shared-search NPS loss since B.9 spread over kept gains; RAR-M77 keeps large pages on |
+| D.2 | RESEARCH | R2 | Lazy SMP at four threads. **RAR-M78 read 2026-11-01: Rarog deficient** (effective speedup 1.65 against 2.30 and 2.48; in games 2.28× the nodes for 1.9 plies less depth, 28% of moves held over the margin): the four-thread card is open. Reads in order: the PGO coverage of the multi-thread kernel copies (one build on RAR-P50's instrument, prediction frozen in the leaf), time-to-depth 4T against 1T, the holds between the clock's end and `bestmove`, the shared backend's cost (F16), then helper depth, shared-table use and root diversity. **Card written 2026-11-01; four reads 2026-11-02:** `e057d84` kept (four-thread NPS +2.4%, RAR-P52); the shared backend refuted (RAR-P53); the holds are the soft-stop vote (RAR-R30); four threads reach a fixed depth more slowly than one, at B.9 too (RAR-R29, X 0.87), so the helpers buy the main thread no depth. Next: what the helpers do to the main thread, and why the games' depth deficit is far larger than the reads'. **Read 2026-11-02:** RAR-R31, the games replayed alone: four threads report the same depth as one at 3.78× its NPS, where the games ran them at about 60% of that speed; the games' conditions carry the deficit (H7, now the lead). RAR-R32: no RAR-R03 member holds the main thread back. Next: locate the condition. **Read 2026-11-02:** RAR-M79 ABSENT: in RAR-M78's configuration four threads now run at 3.44× one thread (RAR-M78's 2.48 was its sessions' host state; its threads leg is confounded and Rarog's scaling is measured again); large pages and B.9 carry no loss; one game at a time reads 2.69, the four-thread side 23% slower on the same openings, which is the next read. RAR-R33 HITS WITHOUT SAVINGS: the helpers' entries reach the main thread (+5.6 points of hits) without shrinking its tree (M 1.09). Earlier: RAR-P46 to P50 located a 6–7% per-thread shared-search NPS loss since B.9 spread over kept gains; RAR-M77 keeps large pages on |
 | D.3 | READY_FOR_IMPLEMENTATION | I1 | Eight shell defects confirmed by the 2026-11-01 review (four replayed live), each with a `uci_process` test first, before the 2.7.0 cut; the score-normalisation card and the `src/uci/` (planned) move stay research |
 | D.4 | READY_FOR_IMPLEMENTATION | I1 | Eighteen behaviour-neutral repairs from the review, the table handle and the helper lifecycle first; then the Basilisk cross-check's four (the verdicts' truth test, CI hygiene, the behaviour-test sweep, the method proposals awaiting the maintainer); exact fingerprint, pooled NPS where hot |
 | D.5 | RESEARCH | R2 | Fourteen gated candidates from the review and six from the Basilisk cross-check; item 15 (the correction added to draw verdicts) is a correctness repair and goes first, before the 2.7.0 cut; then castling's classification and quiet queen promotions in quiescence; nothing implemented before its screen |
 | D.6 | READY_FOR_IMPLEMENTATION | I1 | The simplification programme; P0, P1, P2 and P19's census can start now, P11 and P13 after D.2 closes, P12 inside D.3 |
 | D.7 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
-| D.8 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); designed after D.2's RAR-M79 says whether Windows large pages carry the four-thread speed loss; exact fingerprint, a Linux NPS read |
+| D.8 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); RAR-M79 (2026-11-02) found Windows large pages carry no four-thread speed loss, so the design stands; exact fingerprint, a Linux NPS read |
 
 ## Phase D — Clock, threads, robustness
 
@@ -1907,27 +1907,35 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
   Windows and asks for transparent huge pages only on Linux. Rarog asks for
   none on Linux: D.8.
 
-  **Registered 2026-11-02, the maintainer's, about 80 minutes:**
-  - **RAR-M79** (H7): short matches of Rarog against itself, one thread
-    against four at `10+0.1`, with large pages on and off for every process
-    (RAR-M77 had one process of each kind in every slot, so a cost large
-    pages put on the whole host hit both arms), one game at a time, and the
-    B.9 head; per-side in-game NPS, no Elo read.
-  - **RAR-R33** (H3): the main thread's own table probes and hits at one
-    thread and four, to the same depth, from the diagnostic build's exact
-    counters: do the helpers' entries reach it, and does its tree shrink?
+  **Read 2026-11-02 (the maintainer's run, 16:51 to 18:06):**
+  - **RAR-M79, ABSENT:** in RAR-M78's own configuration (three games at
+    once) the head's four threads ran at 3.44 times one thread in games,
+    against RAR-M78's 2.48; `e057d84` covers 2.4% of that. Large pages off
+    (3.53) and the B.9 head (3.28) carry no loss. **One game at a time**
+    reads 2.69: on the same openings the four-thread side is 23% slower than
+    with three games at once and the one-thread side 6% faster (an
+    unregistered reading).
+  - **RAR-R33, HITS WITHOUT SAVINGS:** at four threads the main thread's hit
+    rate rises 5.6 points (90% +5.1 to +6.0) and its own probes do not fall
+    (M 1.09, 90% 0.98 to 1.21): the helpers' entries reach it without
+    cutting its tree. The next H3 read is the depth and bound of those hits
+    against what the node needs.
 
-  **H7 leads the card: a condition of RAR-M78's games costs Rarog's
-  four-thread search about 40% of its speed,** and Reckless far less.
-  RAR-M78's deficit stands as measured under it. H3 stays a fact about this
-  Lazy SMP (four threads buy width, not depth) and no longer explains the
-  deficit; H4 and H5 wait for the speed loss to be located. The conditions
-  the replay did not rebuild, cheapest first: the games' own binary
-  (`ebbbc917…`) in the replay; a short Colosseum match of the head, four
-  threads against one, read for per-side NPS; then, within that match, the
-  opponent's process sharing the slot, three games against one, `LargePages`
-  and the B.9 binary. Each is a zero-game or short read, registered before
-  exposure. No engine change is in scope until the condition is located.
+  **H7, rewritten 2026-11-02 after RAR-M79.** RAR-M78's 2.48 was its
+  sessions' host state, not a fixed condition of the games: the same
+  configuration now reads 3.44. RAR-M78's threads leg is recorded as
+  confounded and its effective speedup (1.65) is measured again before D.2
+  reads anything from it. What stands is that the speed four threads keep in
+  games depends on the host's state by up to a third, and that one game
+  alone on the host, the nearest condition to a rating list that plays one
+  game a machine, costs the four-thread side most. Whether Reckless loses
+  the same way was never measured on one host state: its 3.44 in RAR-M78 was
+  another session's. Next, each registered before exposure: one game at a
+  time against three, Rarog and Reckless side by side, per-side in-game NPS;
+  then Rarog's four-thread scaling measured again in the condition that read
+  chooses. No engine change is in scope until then. RAR-R31's framing (40%
+  lost in games, Reckless far less) stands as measured in RAR-M78's
+  sessions.
   **Basilisk cross-check input, 2026-11-02** (`analysis/basilisk_crosscheck_2026-11-02.md` §H, H26–H28), for H3
   and H5 once the condition is located: the root's first move is the shared
   table's (`node.rs:650-662`, as in Reckless; Stockfish 19 takes the
@@ -2793,10 +2801,11 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
     recorded (WSL2 on the match host is the host available; its mode is part
     of the record), and a four-thread cell. A behaviour-neutral speed change
     closes on that read.
-  - **Order.** After D.2's RAR-M79. If Windows large pages carry the
-    four-thread speed loss in games, the scope (the shared table alone, or
-    every big table) is decided there first; transparent huge pages lock
-    nothing, so the Windows finding does not transfer to Linux unread.
+  - **Order.** After D.2's RAR-M79, read 2026-11-02: large pages carry no
+    four-thread speed loss in games (off 2.7% higher in R, inside noise),
+    so the scope stays every allocation the Windows path takes.
+    Transparent huge pages lock nothing, so the Linux read stands on its
+    own.
   - **macOS: not pursued.** Rarog ships macOS for Apple silicon only
     (maintainer decision 2026-11-02: no Intel macOS build, universal or
     separate). Apple silicon has no userspace superpage request (it fails

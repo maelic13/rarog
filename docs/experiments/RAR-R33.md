@@ -1,4 +1,4 @@
-# RAR-R33 — Does the helpers' work reach the main thread: its own table probes and hits at one thread and at four, to the same depth — REGISTERED 2026-11-02, before the read
+# RAR-R33 — Does the helpers' work reach the main thread: its own table probes and hits at one thread and at four, to the same depth — REGISTERED 2026-11-02, before the read; READ 2026-11-02: HITS WITHOUT SAVINGS
 
 Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -100,3 +100,52 @@ It runs as the last step of RAR-M79's command:
 ```powershell
 pwsh -File D:\code\rarog\analysis\artifacts\d2-harness\run.ps1
 ```
+
+## Result — 2026-11-02, appended after exposure
+
+Run by `run.ps1` after RAR-M79's legs on 2026-11-02, ending at 18:06, in
+263 s; host 0.2% busy before and 0.8% after; 48 of 48 pairs with both
+counters and a depth line (`mainhit_read.log`; `mainhit_read.json`
+`1c309922…`). The one-thread searches repeat exactly: each position's six
+one-thread searches give the same probes and hits. The four-thread ones
+vary, from 0.55 to 2.86 times the one-thread probes in single pairs.
+
+| Position | Depth | Main probes 1T | Main probes 4T | M | Main hit rate 1T | 4T | All nodes 4T / 1T |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 20 | 3,109,364 | 3,438,598 | 1.11 | 0.518 | 0.587 | 4.34 |
+| 1 | 20 | 3,010,529 | 2,950,279 | 0.98 | 0.359 | 0.414 | 3.81 |
+| 2 | 22 | 2,798,565 | 2,990,558 | 1.07 | 0.550 | 0.556 | 4.28 |
+| 3 | 21 | 3,049,247 | 5,710,774 | 1.87 | 0.414 | 0.421 | 7.53 |
+| 4 | 20 | 3,056,139 | 2,863,326 | 0.94 | 0.414 | 0.497 | 3.78 |
+| 5 | 20 | 2,897,428 | 3,375,642 | 1.17 | 0.426 | 0.510 | 4.67 |
+| 6 | 22 | 3,056,243 | 2,855,172 | 0.93 | 0.477 | 0.539 | 3.77 |
+| 7 | 22 | 4,148,099 | 3,852,052 | 0.93 | 0.637 | 0.720 | 3.64 |
+
+(Medians over the six pairs.)
+
+- M **1.094** (90% 0.975 to 1.209); main hit rate four threads less one
+  **+5.61 points** (90% +5.09 to +5.96).
+- **Outcome line:** `HITS WITHOUT SAVINGS: the main thread hits more but its
+  tree does not shrink`.
+
+## Disposition
+
+- **By the rule:** the helpers' entries reach the main thread, whose hit
+  rate rises at every position (+0.6 to +8.4 points), but its tree does not
+  shrink: it probes 9% more at four threads, and 87% more at position 3. The
+  next H3 read is the depth and bound of the main thread's hits against what
+  its node needs.
+- Consistent with [RAR-R29](RAR-R29.md)'s node accounting (four threads at
+  4.09 times one thread's nodes): here 3.64 to 7.53 by position.
+- Not a change. H3 waits beside H7, which [RAR-M79](RAR-M79.md) reshaped:
+  the in-game speed loss is the host's state, and one game alone costs the
+  four-thread side most.
+
+## Calibration
+
+- HITS WITHOUT SAVINGS was predicted 0.50: a hit.
+- M 1.0 (80% 0.85 to 1.15) read 1.094, inside. Δh +3 points (−1 to +8) read
+  +5.6, inside and above the point: the helpers' entries reach the main
+  thread more than predicted and still do not cut its tree. Position 3's
+  1.87 widens the interval on M; the prediction did not foresee one position
+  where four threads search a far larger tree.
