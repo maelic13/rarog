@@ -110,3 +110,15 @@ pwsh -File D:\code\rarog\analysis\artifacts\d2-solo\run.ps1
 
 It waits for an idle host before each step, resumes after an interruption,
 and ends with `ALL DONE`.
+
+## Registration amended 2026-11-02, before any game (the D.2 audit)
+
+- The passive host sampler registered in [RAR-M81](RAR-M81.md) (`typeperf` at
+  one second over the logical CPUs' utilisation, parking status and
+  frequency, and the engines' per-thread CPU time) runs beside all four legs,
+  started before the first game and stopped after the last, as an added
+  observation: a slow episode under it names its mechanism, which no R
+  reading can. The legs, games, seed, reading and thresholds are unchanged.
+- The run is the first step of RAR-M81's night command
+  (`analysis/artifacts/d2-night/run.ps1`), which calls this run's `run.ps1`;
+  the standalone command above still works.
