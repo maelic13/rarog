@@ -365,3 +365,80 @@ fn kbnk_drives_to_the_bishops_corner() {
          centre(light={light_centre}, dark={dark_centre})"
     );
 }
+
+/// Wrong-bishop KBP-K draws: the bishop cannot cover the queening corner
+/// that the defending king holds (Basilisk's fixtures, with the a-file, the
+/// colours reversed and a position whose false line ends near stalemate).
+const WRONG_BISHOP_DRAWS: [&str; 4] = [
+    "7k/8/6KP/8/8/8/8/5B2 w - - 0 1",
+    "k7/8/PK6/8/8/8/8/2B5 w - - 0 1",
+    "5b2/8/8/8/8/6kp/8/7K b - - 0 1",
+    "7k/7P/6K1/8/8/3B4/8/8 w - - 0 1",
+];
+/// Lost positions of the same pawn structure, searched first so that the
+/// correction tables are trained on the draws' keys.
+const WRONG_BISHOP_PRIMING: [&str; 2] = [
+    "8/8/5K1P/8/8/8/k7/5B2 b - - 0 1",
+    "8/8/6KP/8/8/8/8/k4B2 b - - 0 1",
+];
+/// A drawn root whose only drawing move, Kg8, reaches the recogniser.
+const ONE_DRAWING_MOVE: &str = "5k2/8/6KP/8/8/8/8/5B2 b - - 0 1";
+const DRAW_TOLERANCE: i32 = 75;
+
+/// One search with a small table and a node cap, through `searcher`'s
+/// tables as they stand.
+fn search_draw(searcher: &mut Searcher, fen: &str, depth: u32, nodes: u64) -> i32 {
+    let board = Board::from_fen(fen).unwrap_or_else(|e| panic!("bad FEN {fen}: {e}"));
+    let mut options = SearchOptions {
+        board: board.clone(),
+        ..SearchOptions::default()
+    };
+    options.engine.hash_mb = 8;
+    options.engine.threads = 1;
+    options.limits.depth = Some(depth);
+    options.limits.nodes = nodes;
+    searcher.configure(&options.engine);
+    searcher
+        .search(board, &options, false, || SearchEvent::None)
+        .score
+}
+
+/// Dead draws must read as draws at every depth, from cleared tables and
+/// after the lost positions have trained them. The correction no longer
+/// moves the recogniser's verdict, which took most of these to won scores;
+/// some still misread through leaves the recogniser does not cover.
+#[test]
+#[ignore = "D.5.23: after D.5.15, 7 of 28 cleared and 9 of 28 trained searches still read beyond +-75"]
+fn wrong_bishop_draws_read_as_draws_with_cleared_and_trained_tables() {
+    let mut failures = Vec::new();
+    let mut check = |arm: &str, fen: &str, depth: u32, score: i32| {
+        if score.abs() > DRAW_TOLERANCE {
+            failures.push(format!("{arm} {fen} depth {depth}: {score}"));
+        }
+    };
+    for fen in WRONG_BISHOP_DRAWS {
+        for depth in 8..=14 {
+            let score = search_draw(&mut Searcher::default(), fen, depth, 200_000);
+            check("cleared", fen, depth, score);
+        }
+    }
+    for depth in 8..=14 {
+        let score = search_draw(&mut Searcher::default(), ONE_DRAWING_MOVE, depth, 200_000);
+        check("cleared", ONE_DRAWING_MOVE, depth, score);
+    }
+    let mut searcher = Searcher::default();
+    for fen in WRONG_BISHOP_PRIMING {
+        search_draw(&mut searcher, fen, 12, 0);
+    }
+    for fen in WRONG_BISHOP_DRAWS {
+        for depth in 8..=14 {
+            let score = search_draw(&mut searcher, fen, depth, 200_000);
+            check("trained", fen, depth, score);
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "{} of 63 draws misread: {failures:#?}",
+        failures.len()
+    );
+}

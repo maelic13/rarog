@@ -645,6 +645,29 @@ pub(super) fn has_only_knights(board: &Board, color: Color, count: u32) -> bool 
         && board.pieces(color, Piece::Knight).count() == count
 }
 
+/// True when `scale_endgame` returns a draw verdict for `board`: a
+/// recogniser's zero scale or the KNNK draw, an exact 0 whatever the tapered
+/// score. It follows `scale_endgame`'s own order, so it is true exactly where
+/// that function returns a verdict.
+pub(crate) fn is_draw_verdict(board: &Board) -> bool {
+    if board.occupied_count() > 5
+        && !has_only_king(board, Color::White)
+        && !has_only_king(board, Color::Black)
+    {
+        return false;
+    }
+    if knnkp_adjustment(board).is_some() {
+        return false;
+    }
+    match specialized_endgame_scale(board) {
+        Some(scale) => scale == 0,
+        None => {
+            (has_only_king(board, Color::White) && has_only_knights(board, Color::Black, 2))
+                || (has_only_king(board, Color::Black) && has_only_knights(board, Color::White, 2))
+        }
+    }
+}
+
 #[cfg(test)]
 mod endgame_311c_tests {
     use super::*;
@@ -984,5 +1007,34 @@ mod endgame_311c_tests {
             opposite_bishop_scale(&board("r3k3/p7/8/3b4/8/8/PP6/2B1K2R w - - 0 1")),
             Some(44) // rooks on: 32 + 3*4
         );
+    }
+
+    /// `is_draw_verdict` is true exactly where `scale_endgame` returns 0
+    /// whatever the score it is given, for every verdict family and for the
+    /// near misses beside them.
+    #[test]
+    fn draw_verdicts_are_exactly_scale_endgames_zeros() {
+        let cases = [
+            ("8/8/4k3/8/8/4K3/8/8 w - - 0 1", true),      // KK
+            ("8/8/4k3/8/8/4K3/8/5N2 w - - 0 1", true),    // KNK
+            ("8/8/4k3/8/3n4/4K3/8/5B2 w - - 0 1", true),  // minor against minor
+            ("8/8/4k3/8/8/4K3/8/4NN2 w - - 0 1", true),   // KNNK
+            ("7k/8/6KP/8/8/8/8/5B2 w - - 0 1", true),     // wrong-corner KBP
+            ("7k/8/8/8/8/8/7P/7K w - - 0 1", true),       // drawn KPK
+            ("8/1rk5/8/8/8/8/3P1K1R/8 w - - 0 1", true),  // a KRPKR zero scale
+            ("4k3/8/4K3/4P3/8/8/8/8 w - - 0 1", false),   // won KPK
+            ("8/8/8/4k3/8/8/8/2B1KN2 w - - 0 1", false),  // KBNK, a win
+            ("k7/4p3/4K3/8/2N5/N7/8/8 w - - 0 1", false), // KNN-KP's adjustment
+            (
+                "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+                false,
+            ),
+        ];
+        for (fen, verdict) in cases {
+            let position = board(fen);
+            let zero = scale_endgame(&position, 977) == 0 && scale_endgame(&position, -613) == 0;
+            assert_eq!(zero, verdict, "{fen}: scale_endgame's zero");
+            assert_eq!(is_draw_verdict(&position), verdict, "{fen}");
+        }
     }
 }

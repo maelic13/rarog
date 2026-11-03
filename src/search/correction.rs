@@ -167,10 +167,19 @@ impl Searcher {
     /// The corrected eval and the correction it includes. The raw eval is
     /// scaled by the material on the board (a coordinate neutral at zero) and
     /// damped toward the fifty-move horizon with the current clock, then
-    /// corrected and kept out of the tablebase-win band. The damping lives
+    /// corrected and kept out of the tablebase-win band; a draw verdict passes
+    /// through as 0 with no correction. The damping lives
     /// here, not in the evaluator, because the raw eval is stored in the
     /// transposition table without the clock.
     pub(super) fn corrected_eval_parts(&self, board: &Board, raw: i32, ply: usize) -> (i32, i32) {
+        // A draw verdict is a classification, not an estimate, so there is no
+        // error for the correction to remove; the correction read here was
+        // trained on the same structure keys by ordinary positions, and added
+        // to the verdict it turns a dead draw into a won score. A verdict's raw
+        // value is exactly 0, which keeps the recognisers off every other node.
+        if raw == 0 && crate::eval::endgame::is_draw_verdict(board) {
+            return (0, 0);
+        }
         let p = &self.cfg.core;
         let mut eval = i64::from(raw);
         if p.eval_material_scale != 0 {
@@ -377,6 +386,36 @@ mod tests {
         let slots = searcher.correction_slots(&board, 4);
         assert!(slots.continuation[0].is_some());
         assert_eq!(slots.continuation[1], None, "no move four plies back");
+    }
+
+    /// A draw verdict is the evaluator's classification: tables trained on its
+    /// own keys leave it at exactly 0, while the same tables move an ordinary
+    /// raw 0, so the guard is the verdict and not the value.
+    #[test]
+    fn a_draw_verdict_takes_no_correction() {
+        let mut searcher = Searcher::default();
+        // The wrong-bishop rook-pawn draw: a light bishop cannot cover h8.
+        let verdict = Board::from_fen("7k/8/6KP/8/8/8/8/5B2 w - - 0 1").expect("valid FEN");
+        assert!(crate::eval::endgame::is_draw_verdict(&verdict));
+        assert_eq!(searcher.raw_eval(&verdict), 0, "the recogniser's verdict");
+        for _ in 0..50 {
+            searcher.train_correction(&verdict, 12, 300, 0);
+        }
+        assert_ne!(
+            searcher.correction_value(&verdict, 0),
+            0,
+            "the tables are trained"
+        );
+        assert_eq!(searcher.corrected_eval_parts(&verdict, 0, 0), (0, 0));
+
+        let ordinary = Board::from_fen(FEN).expect("valid FEN");
+        assert!(!crate::eval::endgame::is_draw_verdict(&ordinary));
+        for _ in 0..50 {
+            searcher.train_correction(&ordinary, 12, 300, 0);
+        }
+        let correction = searcher.correction_value(&ordinary, 0);
+        assert_ne!(correction, 0);
+        assert_eq!(searcher.corrected_eval_parts(&ordinary, 0, 0).1, correction);
     }
 
     #[test]

@@ -133,7 +133,7 @@ fn every_drawn_kpk_reads_exactly_zero() {
 }
 
 #[test]
-#[ignore = "D.5 item 21: 88 won KPK positions read at or below 0 for the winner (a pawn on its 2nd to 4th rank, the lone king beside it)"]
+#[ignore = "D.5.21: 88 won KPK positions read at or below 0 for the winner (a pawn on its 2nd to 4th rank, the lone king beside it)"]
 fn every_won_kpk_reads_above_zero_for_the_winner() {
     let failures: Vec<String> = every_kpk_position()
         .into_iter()

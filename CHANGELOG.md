@@ -30,6 +30,10 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 - **No more full-time-limit thinks in won endings.** In some won endings
   the engine could spend its whole time limit on a single move. It now
   plays the move once the search has run well past its target.
+- **Recognised draws keep their verdict.** Endings the engine knows are dead
+  draws, such as a rook pawn with a bishop of the wrong colour, were often
+  scored as clearly winning during a search. The engine now keeps its draw
+  verdict for them.
 
 ## [2.6.0] - 2026-10-22
 
