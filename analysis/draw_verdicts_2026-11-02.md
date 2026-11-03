@@ -119,3 +119,37 @@ scratch_krpkr -- --ignored --nocapture`. The patch is
 D.4 item 19's other hard zeros (the KQKP fortress, `krpkb_scale`, the
 wrong-corner KBPK) and the partial scales stay unread; KBPvK and KQvKP are
 4-man tables, so an exhaustive read of those two costs minutes.
+
+## 5. The repair read, 2026-11-03 (D.5.15)
+
+Engine commit `3a16fbb`: `corrected_eval_parts` returns `(0, 0)` when the raw
+value is 0 and `eval::endgame::is_draw_verdict` holds. Binaries (in
+`analysis/artifacts/d5-item15/bin/`): the baseline from the commit before
+(`rarog-base.exe`, `b4497868…`, bench 13,987,223 / EBF 2.565), the repair
+(`rarog-repair.exe`, `3df6e2bb…`, bench **14,749,043 / EBF 2.564**), and the
+probe patch on each (`rarog-probe-base.exe` `10c7f834…`,
+`rarog-probe-repair.exe` `d693d315…`).
+
+**Per-FEN differential** (`fen_differential.py`, `fen_differential.log`; a
+fresh process per FEN, `go depth 13`): FENs 3 (116,725 → 231,181), 6
+(21,127 → 20,461), 37 (123,752 → 76,242) and 40 (148,345 → 180,905) moved,
+each reaching verdict leaves in the baseline (278, 19, 58 and 41); FENs 15,
+16, 35 and 39 reach a few verdict leaves and did not move; the 32 FENs with
+none reproduce their node counts exactly. Confined.
+
+**The probe on the repair** (`prime_probe_repair.log`,
+`bench13_verdict_repair.log`): no verdict leaf keeps a moved value, in
+bench (644 verdict leaves) or in any fixture arm.
+
+| Arm | Beyond ±75 before | After | Scores after, worst |
+|---|---:|---:|---:|
+| cleared tables, 28 | 28 | 7 | +103 |
+| trained tables, 28 | 24 | 9 | +216 |
+| `5k2/8/6KP/8/8/8/8/5B2 b`, depths 8–14, one process | 1 (−110 at 14) | 1 (−110 at 14) | −110 |
+
+The committed test (`tests/endgames.rs`, ignored for D.5.23) reads the
+same 7 and 9, and the one-drawing-move position within ±75 at every depth
+in a fresh searcher; the probe's −110 came after depths 8 to 13 in the same
+process with `ucinewgame` between, so some state survives `ucinewgame`. The
+verdict's correction carried most of the misread; what remains comes
+through leaves the recogniser does not cover (PLAN D.5.23).

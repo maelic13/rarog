@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **13,987,223 / EBF 2.565** at engine source `9fb525e` (C.10's search tune on the frozen evaluation; `rustc 1.99.1`) | RAR-S105, RAR-P36 |
+| Fingerprint | `bench 13` **14,749,043 / EBF 2.564** at engine source `3a16fbb` (D.5.15: a draw verdict takes no correction; before it 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.99.1`) | RAR-S105, RAR-P36 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -328,7 +328,6 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.15 | READY_FOR_IMPLEMENTATION | I1 | The repair, next: a verdict takes no correction at either static-evaluation site; its tests fail on today's code; gate case 1 by a per-FEN static differential; prediction frozen 2026-11-02; before the 2.7.0 cut |
 | D.3.1 | READY_FOR_IMPLEMENTATION | I1 | First of D.3's eight, each with its `uci_process` case written first; before the 2.7.0 cut |
 | D.3.2 | READY_FOR_IMPLEMENTATION | I1 | In order after D.3.1; its `uci_process` case first; before the 2.7.0 cut |
 | D.3.3 | READY_FOR_IMPLEMENTATION | I1 | In order after D.3.2; its `uci_process` case first; before the 2.7.0 cut |
@@ -380,6 +379,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | D.5.19 | RESEARCH | R2 | Screen before any implementation; its gate queued behind D.2 |
 | D.5.20 | RESEARCH | R2 | Screen before any implementation; its gate queued behind D.2 |
 | D.5.21 | RESEARCH | R2 | Screen: does a one- or two-ply search already read the 88 above 0; minutes |
+| D.5.23 | RESEARCH | R2 | Screen: raw against corrected at the non-verdict leaves near the verdicts in the 63 fixture searches; minutes |
 | D.5.22 | RESEARCH | R2 | Screen: a per-site scale that keeps the draws near 0 and the wins above it; minutes |
 | D.3.9 | RESEARCH | R2 | Research cards; the `src/uci/` (planned) move with D.6.13 |
 | D.8 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
@@ -2686,7 +2686,7 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       (NODE-12: nothing unless item 6 lands); the non-pawn correction key
       without kings and a fifty-move bucket in the TT key (BOARD-9: R2 only).
   Added 2026-11-02 from the Basilisk cross-check (`analysis/basilisk_crosscheck_2026-11-02.md`):
-    - **D.5.15 The correction is added to the evaluator's draw verdicts — `I1`.** (A1;
+    - **D.5.15 The correction is added to the evaluator's draw verdicts — `I1`, DONE 2026-11-03.** (A1;
       Basilisk's B.14, accepted as BAS-S44 on 2026-11-01). The evaluator
       returns exactly 0 for the drawn KPK, the wrong-corner KBP-K,
       KK/KNK/KBK and minor against minor, and KNNK
@@ -2758,6 +2758,28 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       a correctness repair), and the fixtures' misread returns to
       `RESEARCH` (the training producer, H17's shared keys) as its own
       card.
+      **Implemented and read 2026-11-03** (`3a16fbb`;
+      `analysis/draw_verdicts_2026-11-02.md` §5): `corrected_eval_parts`
+      returns 0 with no correction when the raw value is 0 and
+      `is_draw_verdict` holds, a predicate that follows `scale_endgame`'s
+      own order and is tested against its zeros. The fingerprint moves from
+      13,987,223 / EBF 2.565 to **14,749,043 / EBF 2.564**. **Gate, case 1:**
+      the per-FEN static differential (a fresh process per FEN, depth 13)
+      is confined: FENs 3, 6, 37 and 40, each reaching verdict leaves,
+      moved, four others that reach a few did not, and all 32 FENs without
+      a verdict leaf reproduce their node counts exactly. Correctness read: in bench and in every fixture arm
+      no verdict leaf keeps a moved value (703 of 712 in bench before).
+      *Calibration:* no moved verdict (0.98) and a confined differential
+      (0.85) held. The fixtures missed: from cleared tables 7 of 28 still
+      read beyond ±75 (+83 to +103, against 28 of 28 at +123 to +252),
+      after training 9 of 28 (24 before); the one-drawing-move position
+      read −110 at depth 14 in the probe's process, unchanged, and within
+      ±75 in a fresh searcher (predicted all within ±75 at 0.70, 0.65 and
+      0.75). The miss is in coverage: the verdicts carried
+      most of the misread, not all of it. **The falsifier fired** (7 of 28
+      cold): by the stop rule the repair stays, its differential clean, and
+      the remaining misread is D.5.23, whose acceptance test is committed
+      `#[ignore]`d.
     - **D.5.16 Quiescence prunes by gain against a decisive material edge — `R2`.** (A2;
       Basilisk `d8d30e9`): futility (`node.rs:2355-2362`) and the SEE
       threshold (`node.rs:2392-2396`) read a capture's gain as the piece
@@ -2848,6 +2870,25 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       registration states its measured exposure and the gate case follows
       (a static differential confines it, case 1; a refitted scale is a
       value change, case 2's fixed read). `R2` card.
+    - **D.5.23 Wrong-bishop draws still misread through leaves the recogniser does not cover — `R2`.**
+      D.5.15's falsifier (2026-11-03): with the correction kept off every
+      verdict, Basilisk's four wrong-bishop KBP-K draws still read beyond
+      ±75 in 7 of 28 searches from cleared tables (+83 to +103) and in 9 of
+      28 after the two lost same-structure positions have trained the
+      tables (up to +216), though no verdict leaf carries a correction
+      (`analysis/draw_verdicts_2026-11-02.md` §5). `5k2/8/6KP/8/8/8/8/5B2 b`
+      reads −110 at depth 14 in a process that searched depths 8 to 13
+      first, with `ucinewgame` between, and within ±75 in a fresh searcher:
+      some state survives `ucinewgame`, a second thing to read. Candidates: the
+      correction on ordinary leaves just outside the recogniser's domain
+      (the defending king off the corner square's neighbours, the pawn
+      advanced), trained on the lost positions' shared structure keys
+      (H17; Basilisk's producer guard, no training at a raw 0, is one
+      form); the recogniser's domain itself; the generic evaluation of the
+      near-corner positions. Screen: the probe extended to non-verdict
+      leaves within a move of a verdict, raw against corrected, on the 63
+      searches. Acceptance test: `wrong_bishop_draws_read_as_draws_with_cleared_and_trained_tables`
+      in `tests/endgames.rs`, committed `#[ignore]`d. `R2` read, minutes.
   Evidence for items already here (H18–H21, H25): item 4 (NODE-2), the
   donor form read +3.3 ± 9.1 in Basilisk (2,000 games) and each of its
   consumers alone (IIR, the no-TT-move LMR term) threw a promotion fixture
