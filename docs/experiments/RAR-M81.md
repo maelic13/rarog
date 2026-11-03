@@ -1,4 +1,4 @@
-# RAR-M81 — Four-thread scaling measured again: RAR-M78's threads legs for Rarog and Reckless on one night, with a passive host sampler and a per-leg validity check — REGISTERED 2026-11-02, before any game
+# RAR-M81 — Four-thread scaling measured again: RAR-M78's threads legs for Rarog and Reckless on one night, with a passive host sampler and a per-leg validity check — REGISTERED 2026-11-02, before any game; READ 2026-11-03: UNRESOLVED, Rarog's leg in its own slow state
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -238,3 +238,105 @@ with the same command, and ends with `ALL DONE`.
 - **Expected runtime:** RAR-M80 about 80 minutes; RAR-M78's Rarog and
   Reckless threads legs took 2 h 41 min and 3 h 02 min; with the idle waits
   and dry runs about 7 to 7.5 hours.
+
+## Result — 2026-11-03, appended after exposure
+
+Run by the maintainer with `analysis/artifacts/d2-night/run.ps1` from 23:09
+on 2026-11-02 to 06:15 on 2026-11-03, ending `ALL DONE`. Both legs
+completed with no fault and no time loss; the host was 0.1% and 0.2% busy at
+their starts, and the logical CPUs outside the three slots averaged 1.3% and
+1.2% across them (`foreign_load.py` `2798dc36…`, `foreign_load.log`), so
+nothing else ran. Colosseum's manifests:
+
+- `rarog-threads`: 1,000 games, pentanomial 24, 224, 217, 35, 0, arm A
+  −83.9 ± 11.2 Elo, `games.pgn` `54B75420…`;
+- `reckless-threads`: 1,000 games, 3, 318, 163, 16, 0, −110.6 ± 9.4,
+  `46C56905…`.
+
+The reading (`m81_read.py`, `m81_read.log` `e695a3c7…`):
+
+| Leg | R, whole leg | R by fifth, in order | Validity |
+|---|---:|---|---|
+| Rarog | 2.65 | 2.64, 2.64, 2.63, 2.66, 2.66 | SLOW STATE |
+| Reckless | 3.46 | 3.44, 3.46, 3.47, 3.44, 3.48 | valid |
+
+| Engine | G2 (Elo) | G4 (Elo) | D, 95% | X |
+|---|---|---|---|---|
+| Rarog | +101.8 ± 11.5 | +83.9 ± 11.2 | 0.82 [0.68, 0.97] | 1.77 |
+| Reckless | +86.2 ± 9.8 | +110.6 ± 9.4 | 1.28 [1.10, 1.47] | 2.43 |
+| Stockfish (RAR-M78's leg) | +86.9 ± 9.9 | +114.1 ± 9.3 | 1.31 [1.13, 1.50] | 2.48 |
+
+Rarog's D minus Reckless's is −0.46 ± 0.23 (upper bound −0.23), minus
+Stockfish's −0.49 ± 0.23 (−0.26). **Outcome: UNRESOLVED (SLOW STATE:
+`rarog-threads`).** Replication: Reckless's G4 +110.6 against RAR-M78's
++103.7, +6.9 ± 13.2. Also read: non-mate depth, Rarog 16.81 at one thread
+and 16.07 at four (−0.74), Reckless 17.44 and 18.19 (+0.75); the
+four-thread side's moves held over the margin, Rarog 17,849 of 64,234,
+Reckless 260 of 72,025.
+
+**The sampler** (`tools/results/d2-night-sampler-20261102_230936/`; read by
+`sampler_read.py` `97b57387…` and `thread_read.py` `3b212f67…`, logs beside
+them):
+
+- No logical CPU of any slot was parked (mean Parking Status 0.000), and `%
+  of Maximum Frequency` read 100 throughout, in both legs and RAR-M80's.
+- The four-thread processes' summed thread CPU, over their busy one-second
+  samples: median 225–227% and p90 317–326% for both engines (a one-second
+  sample mixes the two sides' turns). Rarog's threads are scheduled as much
+  as Reckless's; each produces about a third less than Rarog's single
+  thread (7.37 M nodes a second over four against 2.78 M, where Reckless's
+  four make 0.86 of its one each).
+- Load on both SMT siblings of a core, `2·Σ min / Σ` over busy samples by
+  slot: Rarog 0.82, 0.76, 0.75; Reckless 0.67, 0.70, 0.59. Samples with a
+  core's two siblings both above 60%: Rarog 57.7%, 29.4%, 30.0%; Reckless
+  45.1%, 25.0%, 19.4%.
+- The thread collector restarted 81 times as idle threads came and went,
+  leaving short gaps; the CPU collector ran unbroken (25,333 samples).
+
+## Disposition
+
+- **The slow state is Rarog's, not the host's.** In the same hours, on the
+  same quiet host and in the same slots, Reckless's four threads kept 3.44 to
+  3.48 times one thread's speed in every fifth, Rarog's 2.63 to 2.66, flat
+  for 2 h 40 and in all four of RAR-M80's legs before (9.5 hours in all;
+  RAR-M78's leg read 2.48, flat, beside Reckless's 3.46). The audit's
+  host-state reading, on which this registration's question was framed, is
+  corrected here and in PLAN D.2.
+- **In that state four threads are worth 0.82 doublings of Rarog's time**,
+  against Reckless's 1.28 and Stockfish's 1.31: deficient by RAR-M78's Elo
+  rule, both upper bounds below zero. The registered rule does not judge a
+  slow leg, so the outcome is UNRESOLVED; G4 follows R as predicted (RAR-M78's
+  +73.7 at R 2.48 to +83.9 at 2.65: 0.066 doublings at 101.8 Elo a doubling
+  and `e057d84`'s 2.4% give about +10), so the deficit is the slow state's.
+- **The mechanism** is not core parking, frequency or scheduling: Rarog's
+  threads run as long as Reckless's and each does a third less work than
+  Rarog's own single thread. Rarog's load sits more often on both siblings
+  of a core; one-second samples cannot say whether that is the cause or a
+  symptom.
+- **Decision for the maintainer.** The registered UNRESOLVED branch plays the
+  slow leg again on another night. I recommend against that now: two
+  1,000-game legs and four short ones over two nights read Rarog slow
+  throughout, so a replay most likely repeats 2.6 and costs a night. The
+  cheaper discriminating read is zero-game, about an hour on an idle host:
+  the slot rebuilt outside the harness (an idle one-thread process and a
+  four-thread one confined to the same eight logical CPUs, three slots at
+  once), the four-thread search's NPS with its process confined to one
+  logical CPU per physical core against both siblings, Reckless the control.
+  One per core restoring R near 3.8 (RAR-R31's alone) names Windows'
+  placement of Rarog's threads; no lift points at per-thread throughput under
+  co-location (memory, caches, the shared table). It needs the host free of
+  Basilisk's tune.
+
+## Calibration
+
+- NOT DEFICIENT was predicted 0.60 and UNRESOLVED 0.25; UNRESOLVED read. A
+  miss in mechanism: the prediction took the slow state for the host's and
+  expected a healthy night; it is Rarog's own and lasted all night.
+- Levels: Rarog's G4 +122 (80% +105 to +138) read +83.9, below; its D 1.20
+  (1.03 to 1.36) read 0.82, below; its R 3.4 (3.2 to 3.6) read 2.65, below.
+  Reckless's G4 +104 (+90 to +118) read +110.6, D 1.20 read 1.28, R 3.45
+  (3.3 to 3.6) read 3.46: inside. Rarog's misses all follow from R; the Elo
+  for an R held.
+- A SLOW STATE leg (0.30) appeared. Given one, the sampler naming a mechanism
+  (0.6): in part; it excludes parking, frequency and scheduling and does not
+  show the remaining candidate.

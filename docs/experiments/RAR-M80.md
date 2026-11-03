@@ -1,4 +1,4 @@
-# RAR-M80 — One game at a time against three: does it cost the four-thread side, Rarog's and Reckless's alike, on one host state — REGISTERED 2026-11-02, before any game
+# RAR-M80 — One game at a time against three: does it cost the four-thread side, Rarog's and Reckless's alike, on one host state — REGISTERED 2026-11-02, before any game; READ 2026-11-03: NOT REPLICATED
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -142,3 +142,45 @@ and ends with `ALL DONE`.
   one-game condition, and this run's `x1` and `x3` legs, 20 minutes apart,
   can fall in different episodes. The judgement and prediction stand; the
   sampler's CSVs over each leg's window are where an episode would show.
+
+## Result — 2026-11-03, appended after exposure
+
+Run as the first step of the D.2 night (RAR-M81's `run.ps1`) from 23:10 on
+2026-11-02 to 00:33 on 2026-11-03, the sampler beside it. The four legs
+completed with no fault and no time loss; the host was 0.0% to 0.4% busy at
+their starts. Colosseum's manifests: `rarog-x1` 60 games, pentanomial 0, 11,
+16, 3, 0 (`882F9982…`); `reckless-x3` 0, 20, 8, 2, 0 (`D209AD67…`);
+`reckless-x1` 0, 22, 8, 0, 0 (`AD0E57BA…`); `rarog-x3` 1, 14, 14, 1, 0
+(`DEA57E3A…`). The reading (`solo_read.py`, `solo_read.log` `ad238115…`),
+over the 30 openings every leg played:
+
+| Engine | R one game at a time | R three at a time | L, 90% |
+|---|---:|---:|---|
+| Rarog | 2.64 | 2.62 | +0.008 (−0.024 to +0.045) |
+| Reckless | 3.45 | 3.36 | +0.029 (+0.010 to +0.047) |
+
+One game alone ran Rarog's one-thread side 7.7% and its four-thread side
+8.6% faster, Reckless's 4.3% and 7.3%. **Outcome: NOT REPLICATED.**
+
+## Disposition
+
+- One game at a time costs neither engine's four threads anything. RAR-M79's
+  23% was the moment it was played in: read by fifths, RAR-M79's `b9` leg
+  entered the slow state 11 minutes before `solo` began (RAR-M81,
+  *Preparation*).
+- By the rule H7 closes as variation that short legs cannot locate, and the
+  same night corrects its kind: the variation is not the host's. Rarog's
+  four-thread side read 2.62 to 2.64 in both its legs here, Reckless's 3.36
+  to 3.45 between them on the same host. RAR-M81 carries the finding and the
+  next read.
+
+## Calibration
+
+- NOT REPLICATED was predicted 0.20 and read: a miss in confidence, the
+  prediction trusting RAR-M79's tight interval for a condition's effect when
+  an episode drove it.
+- Levels: L_rarog −0.25 (80% −0.40 to −0.05) read +0.008, outside;
+  L_reckless −0.12 (−0.35 to +0.05) read +0.029, inside; R_rarog_x3 3.5 (3.1
+  to 3.8) read 2.62, outside (Rarog's slow state); R_rarog_x1 2.7 (2.3 to
+  3.3) read 2.64, inside for a reason the prediction did not hold;
+  R_reckless_x3 3.4 (3.0 to 3.7) read 3.36, inside.
