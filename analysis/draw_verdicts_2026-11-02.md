@@ -153,3 +153,30 @@ in a fresh searcher; the probe's −110 came after depths 8 to 13 in the same
 process with `ucinewgame` between, so some state survives `ucinewgame`. The
 verdict's correction carried most of the misread; what remains comes
 through leaves the recogniser does not cover (PLAN D.5.23).
+
+## 6. Measured exposure, 2026-11-03 (D.5.15)
+
+AGENTS (*Gating*, maintainer decision 2026-11-02) asks a repair for the share
+of recent gate games that reach its domain. The gates: the three latest
+SPRT gates, all on the current evaluation at `3+0.03`
+(`tools/results/rar-s105-gate`, `rar-r22-gate`, `rar-r27-gate`; their PGNs
+hold 38,860 games, the 38,766 scored and the unfinished pairs). Every game
+was replayed with python-chess (`exposure.py` `4510f146…`, `exposure.log`
+`aeb6808c…`), every played position with five men or fewer or a bare king
+kept as a candidate (416,163 distinct, `candidates.txt` `d33023ec…`), and
+each candidate classified by the engine's own `is_draw_verdict` through a
+scratch test (`analysis/d5_item15_exposure_classify.patch`, not committed to
+the source; `verdicts.txt` `7a78e3bf…`, 13,783 verdicts).
+
+| Share of games | Games | % |
+|---|---:|---:|
+| the played line reaches five men or a bare king | 17,807 | 45.8 |
+| a played position is a verdict | 2,888 | 7.4 |
+| a verdict before the game's last position | 1,354 | 3.5 |
+
+The verdicts before the end: a drawn KPK in 556 games, an ending with pawns
+(KBP, KQKP, KRPKR, KRPKB) in 317, a pawnless draw in 481. The reach share is
+not a bound, since a search from six or seven men reaches five-man leaves
+too; the 3.5% is a lower bound on the games whose searches the repair
+changes, and the 45.8% the share that enters the domain on the board. Case
+1 stands by its rule; no strength gate is registered.

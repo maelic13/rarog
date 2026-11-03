@@ -2781,6 +2781,14 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       cold): by the stop rule the repair stays, its differential clean, and
       the remaining misread is D.5.23, whose acceptance test is committed
       `#[ignore]`d.
+      **Measured exposure, 2026-11-03** (AGENTS, *Gating*;
+      `analysis/draw_verdicts_2026-11-02.md` §6): of the 38,860 games of
+      the three latest SPRT gates (`3+0.03`), 45.8% reach five men or a
+      bare king on the board, where the search's leaves can be verdicts,
+      and 3.5% play through a verdict before their last position (7.4%
+      counting the last). Case 1 stands by its rule: the differential
+      confines the change. No strength gate is registered; a
+      maintainer who wants one has case 2's 2,000-game harm read.
     - **D.5.16 Quiescence prunes by gain against a decisive material edge — `R2`.** (A2;
       Basilisk `d8d30e9`): futility (`node.rs:2355-2362`) and the SEE
       threshold (`node.rs:2392-2396`) read a capture's gain as the piece
