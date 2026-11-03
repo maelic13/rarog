@@ -328,7 +328,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.3.10 | RESEARCH | I1 | Cause unread; read with D.3's tests, before the cut |
+| D.3.11 | RESEARCH | I1 | Cause unread; read with D.3's tests, before the cut |
 | D.2 | RESEARCH | R2 | **Night read 2026-11-03:** the slow state is Rarog's, not the host's (Rarog's four threads 2.62–2.66 times one thread for 9.5 hours, Reckless's 3.36–3.48 beside it); RAR-M81 UNRESOLVED (in that state Rarog's D 0.82 against 1.28 and 1.31), RAR-M80 NOT REPLICATED; parking, frequency and scheduling excluded. **Corrected 2026-11-03** (the audit, section 10): the sampler shows Windows packing both engines' four threads on two or three cores' SMT siblings inside the slot, Rarog's harder (two cores in 90–96% of its turns, Reckless 47–66%), and neither engine places its threads on Windows, so the slow state is the scheduler's placement inside the eight-logical-CPU slot, not the host's and not Rarog's code. Registered: RAR-M82, the legs again in a sibling-free slot (`--placement`, one logical CPU per physical core; `38ef0d5` lets the wrapper accept it), 200 games each, **read 2026-11-03: RESTORED**, Rarog's four threads 4.03 times one (every fifth 3.94–4.11), Reckless's 4.45, no sibling busy, so RAR-M81's and RAR-M78's deficit verdicts were measured in the packed state and are superseded, the explicit placement is the policy for rated multi-thread reads (PROCESS) and the self-relative comparison is next, re-registered sibling-free (three four-thread legs, 1,000 games each, about nine hours; RAR-M78's time-odds legs reused); RAR-P54, the per-core sibling loss of each engine standalone, **read 2026-11-03: REFUTED**, Rarog 0.63 against Reckless 0.65 beside a sibling, the same loss, so the night's gap is placement alone. Registered 2026-11-03: **RAR-M83**, the self-relative comparison sibling-free (Rarog's, Reckless's and Stockfish's four-thread legs, 1,000 games each, RAR-M78's time-odds legs as G2, about nine hours on an idle night, `analysis/artifacts/d2-selfrel/run.ps1`), NOT DEFICIENT 0.70, DEFICIENT 0.20. Earlier reads: the D.2 text below |
 | D.4.1 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value: the table handle and the helper lifecycle first |
 | D.4.2 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value; exact fingerprint, pooled NPS where hot |
@@ -2375,7 +2375,7 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       decision also covers castling rights that do not match the rooks
       (`4k3/8/8/8/8/8/8/R3K3 w KQkq - 0 1`): Rarog rejects the FEN and ends
       the process, Basilisk keeps the rights the rooks support.
-    - **D.3.10 `tests/uci_process.rs` times out under the full suite's load — `I1`.**
+    - **D.3.10 `tests/uci_process.rs` times out under the full suite's load — `I1`, DONE 2026-11-03.**
       Found 2026-11-01 in D.2's checks (D.3's text above): under a full
       `cargo test`, debug or release, 1 to 5 of the file's 28 tests time
       out with no engine output, a different set each run, on the unchanged
@@ -2385,6 +2385,44 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       start-up of a fresh process under the suite's load first. On
       2026-11-03 four full runs (D.5.15's and D.3's, debug and release, the
       file holding 28 tests and then 36) timed out none: intermittent.
+      **Read and repaired 2026-11-03** (`fec05ef`; `analysis/artifacts/d3-10/`).
+      In the logged failures (D.5.15's first run, 2026-11-02 22:48, 1 in
+      debug and 5 in release, `analysis/artifacts/d5-item15/`) every test
+      got `uciok` and then no line within its budget after its first
+      command. The input thread prints `uciok` while the engine thread may
+      still be building and touching its tables (`Engine::new`), and a `go`
+      queued behind that has its clock running: the sessions skipped the
+      `isready` UCI requires before the first search. With N fresh
+      processes reaching their first `go` at once, `go` to the first line
+      read 8 ms alone and 301 ms at N 36 in release (median; max 354), 38
+      and 149 ms in debug at N 28. Large pages are not the multiplier: 309
+      ms with them disabled in a throwaway build against 312 on, each
+      build's `bench` line proving its state. `UciSession::ready()` now
+      completes the handshake for all 26 sessions; no assertion or budget
+      changed. **Not reproduced:** what stretched construction past 2 s on
+      2026-11-01 and 2026-11-02. Neither the old file nor the new fails
+      today: 27 runs each at three and six copies at once (up to 216
+      processes), 8 each alternated under from-scratch release builds and
+      8 each under a from-scratch `cargo test --release --no-run` (CPU 45
+      to 77%): 0 timeouts, 0 `seen: []`. The repair removes the one
+      load-scaling step from the timed windows and is verified only that
+      far. **Retry trigger:** a `uci_process` timeout after `fec05ef`
+      reopens the leaf with its log; a `seen: []` after `readyok` is a
+      stall construction cannot explain. Verified: debug and release suites
+      (36 of 36 in the file), `cargo fmt --check`, `cargo clippy
+      --all-features --all-targets` at zero warnings; tests only, no engine
+      input changed.
+    - **D.3.11 `first_kpk_search_in_a_fresh_process_costs_what_a_warm_one_does` fails under CPU load — `I1`.**
+      Found 2026-11-03 in D.3.10's stress. The test asserts that a fresh
+      process's first KPK search reports at most 15 ms more than a warm
+      one; it failed in a full debug run on 2026-10-23
+      (`analysis/artifacts/d16-cascade-2026-10-23/verify15.log`) and once in
+      the 18 runs at six copies of the file at once (D.3.10's stress, the
+      repaired file; the assertion is the same in both). It already waits
+      for `readyok`, so construction is outside its window; an absolute
+      15 ms margin under contention is inside it. Cause unread: the cold
+      search's own first touches against the scheduler's noise first. A
+      test that fails only under load is still a failure.
 - **D.4 Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, the `Hash` notice, dead code, test and CI gaps — `I1`.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` (its §5 lists
   every item with its reviewer ID; the reports are in
