@@ -181,6 +181,16 @@ for NNUE and
 SMP details where Reckless is silent (maintainer decision 2026-09-09; PLAN
 rule 1 points here).
 
+**Triumviratus** (Francesco Torsello, GPL-3.0; `github.com/Tors3/Triumviratus`
+at `0c18907`, its networks repository at `5f3dc60`) is a third donor, for
+mechanisms only (maintainer decision 2026-11-03). Its mechanisms, failure
+modes and measurement methods may cross; its code and its tuned values do not;
+Phase F's own-data rule excludes its data recipe. Its verdicts were measured
+on a Stockfish-19-shaped search with a material-expert network, on one host
+and often by early-stopped SPRTs, so they order Rarog's tests and never accept
+anything. The snapshot, the checks run against Rarog and the placements are
+`analysis/triumviratus_review_2026-11-03.md`.
+
 - May cross: architecture, mechanisms, population choices, contracts, failure
   modes and constants. A constant is a seed on the donor's scale: converted
   through the measured scale ratio, fitted locally and gated (PLAN rule 2).

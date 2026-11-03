@@ -1,6 +1,6 @@
 # RAR-X04 — A 6-ply continuation-history channel lost −7.70 in Basilisk
 
-Indexed under *8. Cross-engine evidence imported from Basilisk* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+Indexed under *8. Cross-engine evidence imported from other engines › From Basilisk* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Basilisk evidence
 

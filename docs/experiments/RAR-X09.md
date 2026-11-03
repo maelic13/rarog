@@ -1,6 +1,6 @@
 # RAR-X09 — Basilisk's SMP safety bundle gained +30.42 ± 8.77 at 4T, smaller than Rarog's five-change +102.78 bundle
 
-Indexed under *8. Cross-engine evidence imported from Basilisk* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+Indexed under *8. Cross-engine evidence imported from other engines › From Basilisk* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Basilisk evidence
 

@@ -15,8 +15,8 @@ than their table's columns keep those cells as numbered parts.
 
 Every lesson below is conditional. A result describes one engine state, test
 protocol, time control, compiler and machine population; it does not establish
-a universal chess-programming rule. An experiment from Basilisk is only a
-prior for Rarog and never bypasses Rarog's own gates.
+a universal chess-programming rule. An experiment from Basilisk or
+Triumviratus is only a prior for Rarog and never bypasses Rarog's own gates.
 
 **Numbering note.** Rows cite three retired numbering schemes (legacy phases
 such as `8.2(a)`, the Phase-4 roadmap before and after its 2026-09-04
@@ -49,7 +49,9 @@ that holds every one of them.
 - [5. Evaluation and data experiments](#5-evaluation-and-data-experiments)
 - [6. Throughput, build and platforms](#6-throughput-build-and-platforms)
 - [7. Correctness and protocol lessons](#7-correctness-and-protocol-lessons)
-- [8. Cross-engine evidence imported from Basilisk](#8-cross-engine-evidence-imported-from-basilisk)
+- [8. Cross-engine evidence imported from other engines](#8-cross-engine-evidence-imported-from-other-engines)
+  - [From Basilisk](#from-basilisk)
+  - [From Triumviratus](#from-triumviratus)
 - [9. Open retry map](#9-open-retry-map)
 - [10. Template for a new experiment](#10-template-for-a-new-experiment)
 
@@ -70,7 +72,7 @@ a future decision. Do not copy the tables into `PLAN.md`.
 | **Observation** | Diagnostic evidence, not an acceptance verdict. |
 | **No-change** | Research closed because the measured premise/opportunity did not justify an engine change. |
 | **Deferred** | Not decided under present prerequisites; owner and objective resume condition are recorded. |
-| **Imported prior** | Evidence from Basilisk; useful for ordering or designing a Rarog test, never for accepting it. |
+| **Imported prior** | Evidence from another engine (Basilisk, Triumviratus); useful for ordering or designing a Rarog test, never for accepting it. |
 
 Unless a row says otherwise, historical strength tests used paired games at
 fast time control. Results before the pinned-harness repair of 2026-07-21 may
@@ -554,11 +556,13 @@ make any historical parameter group exempt from the current audit and gate.
 | [RAR-C03](experiments/RAR-C03.md) | Multi-thread diagnostics reset/dumped inside helper-called root search and the diagnostic build had stopped … | Fixed |
 | [RAR-C04](experiments/RAR-C04.md) | Aspiration mate-score re-search could fail to terminate | Fixed and regression-covered |
 
-## 8. Cross-engine evidence imported from Basilisk
+## 8. Cross-engine evidence imported from other engines
 
 These are ideas, warnings or ordering priors already incorporated where useful
 in Rarog's forward plan. No additional roadmap item is created merely by
 listing them here.
+
+### From Basilisk
 
 | ID | Experiment | Disposition |
 |---|---|---|
@@ -576,6 +580,22 @@ The cross-review found no additional high-value Basilisk item missing from the
 current Rarog plan. Items above are already covered, contradicted by local
 evidence, or deliberately postponed to the NNUE/scaling phases.
 
+### From Triumviratus
+
+Triumviratus (GPL-3.0, `0c18907`) was registered on 2026-11-03 as a donor for
+mechanisms only. Its review, the fifteen checks run on Rarog and the placement
+of every item are `analysis/triumviratus_review_2026-11-03.md`. Its verdicts
+come from a Stockfish-19-shaped search with a material-expert network, one host
+and many early-stopped SPRTs.
+
+| ID | Experiment | Disposition |
+|---|---|---|
+| [RAR-X10](experiments/RAR-X10.md) | Search findings on a Stockfish-19-shaped search: single gains of +1 to +6, a +86 cluster rebuild | Priors; the small gains wait for Phase H, and three forms go to D.5.7, D.5.12 and D.5.18 |
+| [RAR-X11](experiments/RAR-X11.md) | Speed work at an identical tree and the board correctness instrument | No board rebuild; the speed leads go to H.4, the instrument to D.4.17 |
+| [RAR-X12](experiments/RAR-X12.md) | Clock, protocol and thread defects, and the time-management rules | Rarog's checks clean except D.4.23 and a D.3.9 input; Zobrist rank 64, now a test; the clock rules go to H.3 |
+| [RAR-X13](experiments/RAR-X13.md) | Measurement and tuning method, and the evaluation residual regression | Schedule checked; the bake and range rules go to F.6's registration, the regression to F.2.1 |
+| [RAR-X14](experiments/RAR-X14.md) | NNUE architecture, data and training | Priors and instruments for F.3 to F.8 |
+
 ## 9. Open retry map
 
 | Prior IDs | Retry condition | PLAN destination |
@@ -592,6 +612,7 @@ evidence, or deliberately postponed to the NNUE/scaling phases.
 | RAR-E03, RAR-E04, RAR-X03 | NNUE data/teacher experiment with changed representation and a frozen external holdout — not another HCE refit. The Phase-4 HCE track may study evaluator contracts but does not retry this distillation. | 4.12–4.16 for contracts; 5.0–7.2 for teacher/data |
 | RAR-R13 | A game record shows the head failing to win, or forfeiting, after a won position, the loss preceded by a deep stall (≥ 0.9 × maximum at depth 40 or more, after a mate shown, or on a root lower bound); or a CCRL-blitz-or-longer record shows such moves costing results; or D.1.2 changes the bound model (rerun `tm_games.py`). | D.1.2 |
 | RAR-R19 | A refit of the five aspiration coordinates around the depth-reduced re-search only if D.1.6.3's gate reads H0 with the probe passing, or at the next search tune (F.6); Stockfish's recovery into the next iterations (`failHighRecovery`) only if the gate passes and the probe shows the next iteration repaying the cascade. | D.1.6, else F.6 |
+| RAR-X10, RAR-X11, RAR-X12 | The network is released (F.9) and F.7, F.8 and G.3 stop accepting: H.1 re-ranks the deferred small gains on the network head. Earlier only where an open leaf must choose the form (D.5.7, D.5.12, D.5.18). | H.1–H.4 |
 
 Anything not meeting its trigger stays closed. A retry is a new experiment with
 a new ID and manifest; it does not overwrite the historical row.

@@ -1,6 +1,6 @@
 # RAR-X02 — Check-extension removal lost −10.17 ± 6.52 in Basilisk while Rarog's extension had gained +30.75
 
-Indexed under *8. Cross-engine evidence imported from Basilisk* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+Indexed under *8. Cross-engine evidence imported from other engines › From Basilisk* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Basilisk evidence
 

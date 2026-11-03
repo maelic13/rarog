@@ -1,6 +1,6 @@
 # RAR-X06 — Root instability TM reverified at +6.46 ± 4.12, while Rarog's raw pool-view variant lost −5.54
 
-Indexed under *8. Cross-engine evidence imported from Basilisk* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+Indexed under *8. Cross-engine evidence imported from other engines › From Basilisk* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Basilisk evidence
 
