@@ -1,13 +1,13 @@
 # Hard draw verdicts read against the search and against Syzygy, 2026-11-02
 
-PLAN D.5 item 15 (the correction added to the evaluator's draw verdicts) and
-D.4 item 19 (the KPK evaluation and `krpkr_scale`'s hard zeros against
+PLAN D.6 item 15 (the correction added to the evaluator's draw verdicts) and
+D.5 item 19 (the KPK evaluation and `krpkr_scale`'s hard zeros against
 Syzygy), run while D.2 waits on the maintainer's night. No engine source
 changed: the probe is a diag-only patch built in its own target directory
 and reverted; the KRPKR read used a scratch test, also reverted. Raw logs are
 in `analysis/artifacts/d5-item15/` (ignored).
 
-## 1. Does the correction move a verdict off 0? (D.5 item 15)
+## 1. Does the correction move a verdict off 0? (D.6 item 15)
 
 **Instrument.** `analysis/d5_item15_verdict_probe.patch` (applies to
 `4441777`) adds, under `--features diag` only, a classifier of the
@@ -56,7 +56,7 @@ search reaches, by about a pawn on average, in bench and in the fixtures.
 That the fixtures' misreads come from those leaves is the repair's
 prediction, not shown here: the probe observes, it does not ablate.
 
-## 2. The KPK evaluation against Syzygy (D.4 item 19)
+## 2. The KPK evaluation against Syzygy (D.5 item 19)
 
 `tests/kpk_syzygy.rs` enumerates every placement of two kings and one pawn,
 both pawn colours and both sides to move, keeps what `Board::from_fen`
@@ -76,7 +76,7 @@ back-rank pawns), and reads each position's raw static evaluation against
   its 4th in 4, the lone king beside it (`8/8/8/8/8/8/6kP/K7 w` reads −7,
   `8/8/8/8/8/8/2kP4/7K w` −57). Basilisk found 2,022.
 
-## 3. `krpkr_scale`'s five hard zeros against Syzygy (D.4 item 19)
+## 3. `krpkr_scale`'s five hard zeros against Syzygy (D.5 item 19)
 
 A scratch unit test (recipe below) drew 2,000,000 random legal KRPKR
 positions, either side strong and either to move, from xorshift64* seed
@@ -116,11 +116,11 @@ scratch_krpkr -- --ignored --nocapture`. The patch is
 
 ## 4. Not read
 
-D.4 item 19's other hard zeros (the KQKP fortress, `krpkb_scale`, the
+D.5 item 19's other hard zeros (the KQKP fortress, `krpkb_scale`, the
 wrong-corner KBPK) and the partial scales stay unread; KBPvK and KQvKP are
 4-man tables, so an exhaustive read of those two costs minutes.
 
-## 5. The repair read, 2026-11-03 (D.5.15)
+## 5. The repair read, 2026-11-03 (D.6.15)
 
 Engine commit `3a16fbb`: `corrected_eval_parts` returns `(0, 0)` when the raw
 value is 0 and `eval::endgame::is_draw_verdict` holds. Binaries (in
@@ -147,14 +147,14 @@ bench (644 verdict leaves) or in any fixture arm.
 | trained tables, 28 | 24 | 9 | +216 |
 | `5k2/8/6KP/8/8/8/8/5B2 b`, depths 8–14, one process | 1 (−110 at 14) | 1 (−110 at 14) | −110 |
 
-The committed test (`tests/endgames.rs`, ignored for D.5.23) reads the
+The committed test (`tests/endgames.rs`, ignored for D.6.23) reads the
 same 7 and 9, and the one-drawing-move position within ±75 at every depth
 in a fresh searcher; the probe's −110 came after depths 8 to 13 in the same
 process with `ucinewgame` between, so some state survives `ucinewgame`. The
 verdict's correction carried most of the misread; what remains comes
-through leaves the recogniser does not cover (PLAN D.5.23).
+through leaves the recogniser does not cover (PLAN D.6.23).
 
-## 6. Measured exposure, 2026-11-03 (D.5.15)
+## 6. Measured exposure, 2026-11-03 (D.6.15)
 
 AGENTS (*Gating*, maintainer decision 2026-11-02) asks a repair for the share
 of recent gate games that reach its domain. The gates: the three latest

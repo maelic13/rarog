@@ -590,10 +590,10 @@ and many early-stopped SPRTs.
 
 | ID | Experiment | Disposition |
 |---|---|---|
-| [RAR-X10](experiments/RAR-X10.md) | Search findings on a Stockfish-19-shaped search: single gains of +1 to +6, a +86 cluster rebuild | Priors; the small gains wait for Phase H, and three forms go to D.5.7, D.5.12 and D.5.18 |
-| [RAR-X11](experiments/RAR-X11.md) | Speed work at an identical tree and the board correctness instrument | No board rebuild; the speed leads go to H.4, the instrument to D.9.3 |
-| [RAR-X12](experiments/RAR-X12.md) | Clock, protocol and thread defects, and the time-management rules | Rarog's checks clean except D.4.23 and a D.3.9 input; Zobrist rank 64, now a test; the wall-clock read D.9.1 done; the loss table D.9.5; the clock rules go to H.3 |
-| [RAR-X13](experiments/RAR-X13.md) | Measurement and tuning method, and the evaluation residual regression | The schedule read D.9.2 done; pricing D.9.4 and the counter read D.9.6; the bake and range rules go to F.6's registration, the regression to F.2.1 |
+| [RAR-X10](experiments/RAR-X10.md) | Search findings on a Stockfish-19-shaped search: single gains of +1 to +6, a +86 cluster rebuild | Priors; the small gains wait for Phase H, and three forms go to D.6.7, D.6.12 and D.6.18 |
+| [RAR-X11](experiments/RAR-X11.md) | Speed work at an identical tree and the board correctness instrument | No board rebuild; the speed leads go to H.4, the stack probes to D.8.19, the instrument to D.4.3 |
+| [RAR-X12](experiments/RAR-X12.md) | Clock, protocol and thread defects, and the time-management rules | Rarog's checks clean except D.5.23 and a D.3.9 input; Zobrist rank 64, now a test; the wall-clock read D.4.1 done; the loss table D.4.5; the clock rules go to H.3 |
+| [RAR-X13](experiments/RAR-X13.md) | Measurement and tuning method, and the evaluation residual regression | The schedule read D.4.2 done; pricing D.4.4 and the counter read D.4.6; the bake and range rules go to F.6's registration, the regression to F.2.1 |
 | [RAR-X14](experiments/RAR-X14.md) | NNUE architecture, data and training, and its network path net by net | Phase F's seven requirements and the inputs of F.0 to F.8 |
 
 ## 9. Open retry map
@@ -612,7 +612,7 @@ and many early-stopped SPRTs.
 | RAR-E03, RAR-E04, RAR-X03 | NNUE data/teacher experiment with changed representation and a frozen external holdout — not another HCE refit. The Phase-4 HCE track may study evaluator contracts but does not retry this distillation. | 4.12–4.16 for contracts; 5.0–7.2 for teacher/data |
 | RAR-R13 | A game record shows the head failing to win, or forfeiting, after a won position, the loss preceded by a deep stall (≥ 0.9 × maximum at depth 40 or more, after a mate shown, or on a root lower bound); or a CCRL-blitz-or-longer record shows such moves costing results; or D.1.2 changes the bound model (rerun `tm_games.py`). | D.1.2 |
 | RAR-R19 | A refit of the five aspiration coordinates around the depth-reduced re-search only if D.1.6.3's gate reads H0 with the probe passing, or at the next search tune (F.6); Stockfish's recovery into the next iterations (`failHighRecovery`) only if the gate passes and the probe shows the next iteration repaying the cascade. | D.1.6, else F.6 |
-| RAR-X10, RAR-X11, RAR-X12 | The network is released (F.9) and F.7, F.8 and G.3 stop accepting: H.1 re-ranks the deferred small gains on the network head. Earlier only where an open leaf must choose the form (D.5.7, D.5.12, D.5.18). | H.1–H.4 |
+| RAR-X10, RAR-X11, RAR-X12 | The network is released (F.9) and F.7, F.8 and G.3 stop accepting: H.1 re-ranks the deferred small gains on the network head. Earlier only where an open leaf must choose the form (D.6.7, D.6.12, D.6.18). | H.1–H.4 |
 
 Anything not meeting its trigger stays closed. A retry is a new experiment with
 a new ID and manifest; it does not overwrite the historical row.

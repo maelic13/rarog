@@ -33,7 +33,7 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
   | `stockfish-threads` | Stockfish 18 bmi2 | `D:/chess/engines/stockfish/stockfish-18-windows-x86-64-bmi2.exe` (`bf2d8bf6…`) | defaults (`Move Overhead` already 10) | 133 |
 
   - **Rarog's binary is RAR-M82's**, not the d2 head's. Since `e057d84`
-    the head has taken D.5.15 (a draw-verdict repair that moved the
+    the head has taken D.6.15 (a draw-verdict repair that moved the
     fingerprint) and D.3.1–D.3.8 (protocol and shell), neither of which
     touches the threads. Keeping the binary keeps this card's validity
     floor calibrated on the binary that read R 4.03, and G2's reuse on the

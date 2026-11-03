@@ -24,7 +24,7 @@ root and aspiration change. The itemised list is TS-1 to TS-19 in
 
 ## Rarog check
 
-Rarog lacks the upcoming-repetition detection altogether (D.5.18). Rarog has
+Rarog lacks the upcoming-repetition detection altogether (D.6.18). Rarog has
 LDSE inside a line extension budget, and no TT-cutoff damping. Its null-move
 floor is a coordinate already. Its quiescence has no quiet checks.
 
@@ -34,8 +34,8 @@ A prior for ordering and designing Rarog's own tests, never for accepting
 one. The +86 rebuild against flat single ports corroborates PLAN rule 3.
 Items at about +5 or less wait for Phase H by the maintainer's placement
 rule. The exceptions are forms an open leaf must choose anyway: TS-1 for
-D.5.7, the cuckoo filter for D.5.18, and the multiply-high index for D.5.12.
+D.6.7, the cuckoo filter for D.6.18, and the multiply-high index for D.6.12.
 
 ## Existing PLAN coverage
 
-D.5.2, D.5.7, D.5.12, D.5.13, D.5.14, D.5.18, F.6, G.3, H.2
+D.6.2, D.6.7, D.6.12, D.6.13, D.6.14, D.6.18, F.6, G.3, H.2

@@ -36,10 +36,12 @@ but runs no exhaustive perft through the staged picker.
 
 No board rebuild is warranted. The speed items are leads for an
 identical-tree pass on the network head (H.4), each read by pooled-PGO NPS.
-The instrument is placed now, as D.9.3, before D.5.1 and D.5.2 change the
-picker and D.6 moves the board. On AMD the same prefetch may cost instead of
+The stack probes are the exception: D.8.19 (the node frame) already plans
+the same repair, and the −1.55% is its prior.
+The instrument is placed now, as D.4.3, before D.6.1 and D.6.2 change the
+picker and D.8 moves the board. On AMD the same prefetch may cost instead of
 pay.
 
 ## Existing PLAN coverage
 
-D.9.3, F.1, F.5, G.1, G.2, H.4
+D.4.3, D.8.19, F.1, F.5, G.1, G.2, H.4

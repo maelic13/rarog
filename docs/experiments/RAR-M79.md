@@ -110,7 +110,7 @@ way.
 
 - **REPRODUCED with LARGE PAGES:** large pages carry the loss. D.2 registers
   the repair: which allocations take large pages, or the default, read by
-  this leg's in-game NPS; and [D.8](../PLAN.md) (Linux huge pages) is
+  this leg's in-game NPS; and [D.7](../PLAN.md) (Linux huge pages) is
   designed in that light, since transparent huge pages lock nothing.
 - **REPRODUCED with NEIGHBOURS:** concurrent games cost Rarog's four-thread
   side more than Reckless's; the memory each process and thread uses enters
@@ -193,7 +193,7 @@ The reading (`harness_read.log`, `dc919baa…`):
   low and flat ([RAR-R31](RAR-R31.md)'s `pgn_drift.log`), and the same
   configuration today does not.
 - **Large pages carry no loss:** off reads 2.7% higher in R, far from 15%.
-  D.8 is designed as written and the Windows default stays.
+  D.7 is designed as written and the Windows default stays.
 - **B.9 scales no better in games here:** 3.28 against the head's 3.44;
   RAR-M74's 3.72 for B.9 was another day's host.
 - **H7 changes shape.** How much speed four threads keep in games depends on
@@ -228,7 +228,7 @@ The reading (`harness_read.log`, `dc919baa…`):
   (R_on 3.44), so it shows that large pages cost nothing in the healthy
   state; it cannot clear them for the slow one, which no leg of this run
   reproduced at three games at a time. "Large pages carry no loss" above is
-  read in that light, and D.8's order paragraph is corrected.
+  read in that light, and D.7's order paragraph is corrected.
 - The depth column (4T − 1T) averages mate-score moves in, where the head's
   four-thread side reports 7 to 10 plies and its one-thread side 24 to 28,
   while B.9 reports 41 to 45 on both sides. Over the other moves: `on` −0.25,

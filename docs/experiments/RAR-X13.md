@@ -43,13 +43,13 @@ and 7 at c_end.
 ## Possible Rarog implication
 
 Most of the method is already Rarog's: unresolved stops, regime-specific
-reads, the sibling-free slot. Three instruments become D.9's leaves: the
-schedule read (D.9.2, done), pruning and reduction pricing (D.9.4) and the
-counter read (D.9.6). The shortcut builds go with H.4's speed items. The bake
+reads, the sibling-free slot. Three instruments become D.4's leaves: the
+schedule read (D.4.2, done), pruning and reduction pricing (D.4.4) and the
+counter read (D.4.6). The shortcut builds go with H.4's speed items. The bake
 rule, the range rule and tree-size centring go to F.6's registration, as a
 decision for the maintainer. The residual regression is a screen for F.2.1's
 classical refit.
 
 ## Existing PLAN coverage
 
-D.9.2, D.9.4, D.9.6, F.2.1, F.6, F.7, G.3, H.1, H.4
+D.4.2, D.4.4, D.4.6, F.2.1, F.6, F.7, G.3, H.1, H.4

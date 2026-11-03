@@ -38,17 +38,17 @@ Run on `30593ba`, 2026-11-03 (the packet, §4).
   0.93); `go movetime 100` 100.8 ms; a same-size `Hash` re-send 0.033 ms
   (Stockfish 19 1.15).
 - **Found:** the correction bonus can overflow `i32` at extreme depth and
-  residual (D.4.23), and a FEN halfmove clock above 255 ends the process
+  residual (D.5.23), and a FEN halfmove clock above 255 ends the process
   (D.3.9).
 
 ## Possible Rarog implication
 
 Rarog's protocol and clock surface is in good order. The wall-clock read is
-D.9.1, done and clean: `go movetime` overshoots by under 1 ms, and in games
+D.4.1, done and clean: `go movetime` overshoots by under 1 ms, and in games
 RAR-R30 holds 1.2% of the charged time at one thread. The paths read correct
-but untested become D.4.17 tests. The time-management rules are small gains
-for H.3. The loss table is the instrument D.9.5, which E.1 re-reads.
+but untested become D.5.17 tests. The time-management rules are small gains
+for H.3. The loss table is the instrument D.4.5, which E.1 re-reads.
 
 ## Existing PLAN coverage
 
-D.2, D.3.9, D.4.17, D.4.23, D.5.12, D.9.1, D.9.5, E.1, G.1, H.3
+D.2, D.3.9, D.5.17, D.5.23, D.6.12, D.4.1, D.4.5, E.1, G.1, H.3
