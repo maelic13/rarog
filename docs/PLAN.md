@@ -329,7 +329,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.3.10 | RESEARCH | I1 | Cause unread; read with D.3's tests, before the cut |
-| D.2 | RESEARCH | R2 | **Night read 2026-11-03:** the slow state is Rarog's, not the host's (Rarog's four threads 2.62–2.66 times one thread for 9.5 hours, Reckless's 3.36–3.48 beside it); RAR-M81 UNRESOLVED (in that state Rarog's D 0.82 against 1.28 and 1.31), RAR-M80 NOT REPLICATED; parking, frequency and scheduling excluded. **Corrected 2026-11-03** (the audit, section 10): the sampler shows Windows packing both engines' four threads on two or three cores' SMT siblings inside the slot, Rarog's harder (two cores in 90–96% of its turns, Reckless 47–66%), and neither engine places its threads on Windows, so the slow state is the scheduler's placement inside the eight-logical-CPU slot, not the host's and not Rarog's code. Registered: RAR-M82, the legs again in a sibling-free slot (`--placement`, one logical CPU per physical core; `38ef0d5` lets the wrapper accept it), 200 games each, about an hour and a quarter on an idle host; RAR-P54, the per-core sibling loss of each engine standalone, minutes. Earlier reads: the D.2 text below |
+| D.2 | RESEARCH | R2 | **Night read 2026-11-03:** the slow state is Rarog's, not the host's (Rarog's four threads 2.62–2.66 times one thread for 9.5 hours, Reckless's 3.36–3.48 beside it); RAR-M81 UNRESOLVED (in that state Rarog's D 0.82 against 1.28 and 1.31), RAR-M80 NOT REPLICATED; parking, frequency and scheduling excluded. **Corrected 2026-11-03** (the audit, section 10): the sampler shows Windows packing both engines' four threads on two or three cores' SMT siblings inside the slot, Rarog's harder (two cores in 90–96% of its turns, Reckless 47–66%), and neither engine places its threads on Windows, so the slow state is the scheduler's placement inside the eight-logical-CPU slot, not the host's and not Rarog's code. Registered: RAR-M82, the legs again in a sibling-free slot (`--placement`, one logical CPU per physical core; `38ef0d5` lets the wrapper accept it), 200 games each, about an hour and a quarter on an idle host; RAR-P54, the per-core sibling loss of each engine standalone, **read 2026-11-03: REFUTED**, Rarog 0.63 against Reckless 0.65 beside a sibling, the same loss, so the night's gap is placement alone. Earlier reads: the D.2 text below |
 | D.4.1 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value: the table handle and the helper lifecycle first |
 | D.4.2 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value; exact fingerprint, pooled NPS where hot |
 | D.4.3 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value; exact fingerprint, pooled NPS where hot |
@@ -2141,7 +2141,12 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
   INSTRUMENT 0.05 (`analysis/artifacts/d2-placement/run.ps1`, about an
   hour and a quarter on an idle host); **RAR-P54**, what a thread of each
   engine keeps beside its SMT sibling on one core, standalone under
-  affinity masks, f_rarog 0.66 against f_reckless 0.83 predicted. By
+  affinity masks, f_rarog 0.66 against f_reckless 0.83 predicted;
+  **read 2026-11-03: REFUTED**, 0.630 and 0.647 over three cycles, the
+  same loss within 0.02, so the night's ratio gap is placement alone and
+  sibling sharing costs any engine here about 37% a thread: a slot of one
+  logical CPU per physical core is the only fair multi-thread
+  measurement, and the per-thread working-set question leaves the card. By
   RAR-M82: RESTORED supersedes RAR-M81's verdict and re-registers the
   self-relative comparison sibling-free, with the explicit placement the
   policy for every rated multi-thread read and an engine-side placement

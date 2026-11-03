@@ -66,4 +66,55 @@
   the two binaries by hash; raw readings archived in
   `tools/results/sibling-loss-<stamp>/raw.json`, the table in
   `analysis/artifacts/d2-placement/sibling_loss.log`.
-- **Result:** appended after the read.
+## Result — 2026-11-03, appended after the read
+
+- **Run:** `tools/results/sibling-loss-20261103_094151/raw.json`
+  (`0489671a…`), the table in
+  `analysis/artifacts/d2-placement/sibling_loss.log`; host idle at 3.0%
+  CPU with no engine, harness or build process; every mask read back as
+  set. Two cycles, then the stop rule's third for every cell (Rarog's
+  2T-cores cell read 5.03 and 5.37, 6.6% apart): `--extend` was added to
+  the script after exposure for that cycle (`ac90c1f0…`); the first two
+  cycles' readings are untouched in `raw.json`.
+
+| engine | cell | cycle 1 | cycle 2 | cycle 3 | mean (Mnps) |
+|---|---|---|---|---|---|
+| Rarog | 1T-core | 2.683 | 2.715 | 2.719 | 2.706 |
+| Rarog | 2T-siblings | 3.272 | 3.291 | 3.289 | 3.284 |
+| Rarog | 2T-cores | 5.028 | 5.371 | 5.245 | 5.215 |
+| Reckless | 1T-core | 1.307 | 1.340 | 1.336 | 1.327 |
+| Reckless | 2T-siblings | 1.769 | 1.777 | 1.804 | 1.783 |
+| Reckless | 2T-cores | 2.724 | 2.755 | 2.795 | 2.758 |
+
+- **f_rarog 0.630, f_reckless 0.647;** the difference 0.017. Two cores
+  against one thread: Rarog 1.93, Reckless 2.08.
+- **Disposition: REFUTED.** The per-core hypothesis is out: a Rarog thread
+  and a Reckless thread keep the same share beside a sibling, within 0.02.
+  Competing hypothesis (a) holds: the night's ratio gap (2.65 against
+  3.46) is placement alone. Both f are under 0.70, so sibling sharing
+  costs any engine on this host about 37% a thread, and a slot of one
+  logical CPU per physical core is the only fair multi-thread
+  measurement; nothing here is about Rarog's code.
+- **Instrument note:** Rarog's final `info` line carries the cumulative
+  time at its last report (26 to 29 s of the 32 s searched), Reckless's
+  the full 32 s; each cell's rate is cumulative nodes over cumulative time
+  at that line, the same measure within an engine, so f is unaffected.
+  Rarog's one-thread node counts are identical across cycles (its last
+  completed iteration), its times differ.
+
+## Calibration
+
+- **Original prediction (unchanged above):** f_rarog 0.66 (0.60 to
+  0.75), f_reckless 0.83 (0.75 to 0.92), the gap 0.08 or more at 0.70.
+- **Observed:** Rarog inside its range; Reckless far below it, 0.647
+  against 0.75 at the lowest. The miss is in mechanism and magnitude. The
+  five sixths was worked back from the night's per-second packing shares
+  as if a share of seconds were a share of thread-time; threads migrate
+  within a second, so the night's 3.46 under partial packing is consistent
+  with the same per-sibling loss and more thread-time on three cores.
+- **Confidence:** 0.70 was too high for a figure derived through an
+  assumption the data could not check.
+- **Conditional lesson:** a per-second placement share is not a per-thread
+  state; read per-thread loss directly, as here, before attributing it.
+- **Retry trigger:** `closed`. The per-thread working-set question leaves
+  D.2's card; RAR-M82 decides the placement question.

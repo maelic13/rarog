@@ -110,4 +110,13 @@ It dry-runs both legs first, waits for an idle host before each, resumes
 with the same command after an interruption, writes
 `placement_read.log` beside itself and ends with `ALL DONE`.
 
+## Preparation, 2026-11-03, before any game
+
+- `run.ps1` (`3d6cf102…`, full `3d6cf10208a26ac28857734a6e79db8048b241d96059302160db75fb29b8c1af`) dry-run end to end: both
+  binaries and all four scripts matched their recorded hashes, both legs
+  resolved to the policy (`dryrun.log` beside it), nothing played.
+- RAR-P54, read the same morning, refuted the per-core hypothesis: both
+  engines keep 0.63 to 0.65 beside a sibling, so this read's RESTORED
+  prediction stands on placement alone, as registered.
+
 - **Result:** appended after the read.
