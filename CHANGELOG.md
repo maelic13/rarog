@@ -34,6 +34,18 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   draws, such as a rook pawn with a bishop of the wrong colour, were often
   scored as clearly winning during a search. The engine now keeps its draw
   verdict for them.
+- **No endless think on an empty clock.** A `go` with a zero, negative or
+  unreadable clock now moves at once instead of searching until `stop`.
+- **The engine follows its GUI.** `setoption` during analysis no longer
+  stops the engine from answering `stop`; closing the engine's input ends an
+  infinite or ponder search; a closed output ends the engine normally
+  instead of crashing it; and an input line that is not valid text no longer
+  makes it exit.
+- **Smaller protocol fixes.** `stop` during `bench` or `wac` says the run was
+  interrupted instead of printing a short, normal-looking summary; a `Hash`
+  size the system cannot allocate is reported once, not after every later
+  option change; and `searchmoves` with a single move searches it to the
+  requested depth.
 
 ## [2.6.0] - 2026-10-22
 

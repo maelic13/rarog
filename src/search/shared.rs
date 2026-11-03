@@ -49,6 +49,10 @@ pub(super) struct TbRootDecision {
 pub(super) struct SearchShared {
     pub(super) tt: TranspositionTable,
     pub(super) hash_mb: usize,
+    /// The `Hash` last asked for. Every option change resends the whole
+    /// option set, so a size the allocator refused is tried again only when
+    /// a later request differs, not announced again on every `setoption`.
+    pub(super) requested_hash_mb: usize,
     /// The `LargePages` value this searcher's tables were allocated under.
     pub(super) large_pages: bool,
     pub(super) syzygy: SyzygySettings,
@@ -63,6 +67,7 @@ impl Default for SearchShared {
         Self {
             tt: TranspositionTable::default(),
             hash_mb: 64,
+            requested_hash_mb: 64,
             large_pages: true,
             syzygy: SyzygySettings::default(),
             threads: 1,

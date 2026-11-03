@@ -53,6 +53,25 @@ pub(crate) fn flush_stdout() {
     let _ = std::io::stdout().flush();
 }
 
+/// Set, for the whole process, once a write to standard output has failed:
+/// the GUI has closed the pipe, so the engine quits.
+static STDOUT_CLOSED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// One line to standard output, for `uci_println!`. `println!` panics on a
+/// closed pipe, and under `panic = "abort"` a normal GUI shutdown would end
+/// the engine as a crash; a failed write is recorded instead.
+pub fn write_stdout_line(line: std::fmt::Arguments<'_>) {
+    use std::io::Write;
+    if writeln!(std::io::stdout().lock(), "{line}").is_err() {
+        STDOUT_CLOSED.store(true, std::sync::atomic::Ordering::Release);
+    }
+}
+
+/// Whether a write to standard output has failed.
+pub fn stdout_closed() -> bool {
+    STDOUT_CLOSED.load(std::sync::atomic::Ordering::Acquire)
+}
+
 /// Domain-bounded narrowing to `u8` (squares, files, ranks).
 #[inline(always)]
 pub(crate) fn to_u8<T: SmallInt>(x: T) -> u8 {

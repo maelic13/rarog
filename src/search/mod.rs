@@ -370,7 +370,9 @@ impl Searcher {
             self.shared.tt = TranspositionTable::new(1);
             self.shared.hash_mb = 1;
         }
-        if options.hash_mb != self.shared.hash_mb {
+        let hash_requested = options.hash_mb != self.shared.requested_hash_mb;
+        self.shared.requested_hash_mb = options.hash_mb;
+        if options.hash_mb != self.shared.hash_mb && (hash_requested || backing_changed) {
             if self.shared.tt.resize(options.hash_mb) {
                 self.shared.hash_mb = options.hash_mb;
             } else {
@@ -1044,14 +1046,16 @@ impl Searcher {
             // score. Stockfish behaves the same way — it moves instantly under
             // a clock but keeps searching under `go infinite`. Fixed-depth and
             // fixed-node searches keep the shortcut (bench relies on it, and
-            // `go depth N` on a forced move is still a move request).
+            // `go depth N` on a forced move is still a move request). Under
+            // `searchmoves` one move left is the caller's line, not a forced
+            // move, so the shortcut counts the whole root or does not fire.
             // A tablebase root keeps its best-ranked group; the shortcut reads
             // the moves it could choose from before that cut.
             let root_choices = match self.shared.syzygy.root.ranked_from {
                 0 => legal_moves.len(),
                 ranked_from => ranked_from,
             };
-            if root_choices == 1 && depth >= 2 && !self.cfg.limits.analysis_mode {
+            if root_choices == 1 && depth >= 2 && self.cfg.limits.forced_move_shortcut {
                 break;
             }
 
@@ -2505,6 +2509,34 @@ mod tests {
         );
     }
 
+    /// `searchmoves` with one move is the caller's line, not a forced move:
+    /// the search runs to its depth instead of stopping at depth 2.
+    #[test]
+    fn a_one_move_searchmoves_is_not_a_forced_move() {
+        let board = Board::starting_position();
+        let mv = board.parse_move("e2e4").expect("legal move");
+        let limits = SearchLimits {
+            depth: Some(6),
+            search_moves: vec![mv],
+            ..SearchLimits::default()
+        };
+        let mut searcher = Searcher::default();
+        searcher.reset_search_state(
+            &limits,
+            &EngineOptions::default(),
+            board.side_to_move(),
+            0,
+            true,
+        );
+        let depth = searcher
+            .search_root(board, &[mv], false, &mut || SearchEvent::None)
+            .depth;
+        assert_eq!(
+            depth, 6,
+            "a one-move searchmoves stopped at the forced-move shortcut"
+        );
+    }
+
     #[test]
     fn single_legal_move_shortcut_skips_analysis_but_not_move_requests() {
         const FORCED: &str = "1k3Q1r/pPpP2p1/P1P3P1/8/8/1p6/1P6/K6N b - - 0 1";
@@ -2655,8 +2687,8 @@ mod tests {
 
     fn minute_clock() -> SearchLimits {
         SearchLimits {
-            white_time: 60_000,
-            black_time: 60_000,
+            white_time: Some(60_000),
+            black_time: Some(60_000),
             ..SearchLimits::default()
         }
     }
@@ -2864,8 +2896,8 @@ mod tests {
         // Built first: allocating the table is not part of this move.
         let mut searcher = Searcher::default();
         let limits = SearchLimits {
-            white_time: 150,
-            black_time: 150,
+            white_time: Some(150),
+            black_time: Some(150),
             white_increment: 30,
             black_increment: 30,
             issued: Some(Instant::now() - Duration::from_millis(60)),

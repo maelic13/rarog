@@ -11,6 +11,22 @@ fn piece_at(board: &Board, square: Square) -> Option<(Color, Piece)> {
     board.piece_at(square)
 }
 
+/// A clock `go` sends is present whatever its value: a zero, negative or
+/// unreadable one is 1 ms, never the absent clock that searches without limit.
+#[test]
+fn a_sent_clock_is_present_and_at_least_one_millisecond() {
+    for (wtime, want) in [("0", 1), ("-50", 1), ("none", 1), ("2500", 2500)] {
+        let mut options = SearchOptions::default();
+        options.set_search_parameters(&args(&["wtime", wtime, "btime", "1000"]));
+        assert_eq!(options.limits.white_time, Some(want), "wtime {wtime}");
+        assert_eq!(options.limits.black_time, Some(1000));
+    }
+    let mut options = SearchOptions::default();
+    options.set_search_parameters(&args(&["depth", "3"]));
+    assert_eq!(options.limits.white_time, None);
+    assert_eq!(options.limits.black_time, None);
+}
+
 #[test]
 fn search_options_parse_startpos_moves_and_go_limits() {
     let mut options = SearchOptions::default();
@@ -51,8 +67,8 @@ fn search_options_parse_startpos_moves_and_go_limits() {
         "7",
     ]));
 
-    assert_eq!(options.limits.white_time, 10_000);
-    assert_eq!(options.limits.black_time, 9_000);
+    assert_eq!(options.limits.white_time, Some(10_000));
+    assert_eq!(options.limits.black_time, Some(9_000));
     assert_eq!(options.limits.white_increment, 100);
     assert_eq!(options.limits.black_increment, 200);
     assert_eq!(options.limits.movestogo, 20);
@@ -122,8 +138,9 @@ fn search_options_default_go_and_invalid_limits_are_bounded() {
     assert_eq!(options.limits.depth, Some(2));
     assert_eq!(options.limits.nodes, 0);
     assert_eq!(options.limits.move_time, 0);
-    assert_eq!(options.limits.white_time, 0);
-    assert_eq!(options.limits.black_time, 0);
+    // A present clock that does not parse moves at once; it is never "no clock".
+    assert_eq!(options.limits.white_time, Some(1));
+    assert_eq!(options.limits.black_time, Some(1));
     assert_eq!(options.limits.movestogo, 0);
 }
 

@@ -1,5 +1,5 @@
 use std::io::{BufRead, BufReader, Write};
-use std::process::{Child, ChildStdin, Command, Output, Stdio};
+use std::process::{Child, ChildStdin, Command, ExitStatus, Output, Stdio};
 use std::sync::mpsc::{self, Receiver};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -53,7 +53,8 @@ fn stdout(output: &Output) -> String {
 
 struct UciSession {
     child: Child,
-    stdin: ChildStdin,
+    /// `None` once the test has closed the engine's input.
+    stdin: Option<ChildStdin>,
     stdout_rx: Receiver<String>,
 }
 
@@ -80,14 +81,51 @@ impl UciSession {
 
         Self {
             child,
-            stdin,
+            stdin: Some(stdin),
             stdout_rx,
         }
     }
 
+    fn input(&mut self) -> &mut ChildStdin {
+        self.stdin.as_mut().expect("the engine's input is open")
+    }
+
     fn send(&mut self, command: &str) {
-        writeln!(self.stdin, "{command}").expect("command should be written");
-        self.stdin.flush().expect("command should be flushed");
+        writeln!(self.input(), "{command}").expect("command should be written");
+        self.input().flush().expect("command should be flushed");
+    }
+
+    /// Raw bytes, for input that is not text.
+    fn send_bytes(&mut self, bytes: &[u8]) {
+        self.input()
+            .write_all(bytes)
+            .expect("bytes should be written");
+        self.input().flush().expect("bytes should be flushed");
+    }
+
+    /// Close the engine's input, as a GUI that exits does.
+    fn close_input(&mut self) {
+        drop(self.stdin.take());
+    }
+
+    /// The engine's exit status, or a panic if it is still running at the
+    /// deadline.
+    fn wait_for_exit(&mut self, timeout: Duration) -> ExitStatus {
+        let deadline = Instant::now() + timeout;
+        loop {
+            if let Some(status) = self
+                .child
+                .try_wait()
+                .expect("Rarog process should be waitable")
+            {
+                return status;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "Rarog did not exit within {timeout:?}"
+            );
+            thread::sleep(Duration::from_millis(10));
+        }
     }
 
     /// Write several commands in one `write_all`, so the engine reads them back
@@ -97,10 +135,10 @@ impl UciSession {
             .iter()
             .map(|command| format!("{command}\n"))
             .collect();
-        self.stdin
+        self.input()
             .write_all(batch.as_bytes())
             .expect("commands should be written");
-        self.stdin.flush().expect("commands should be flushed");
+        self.input().flush().expect("commands should be flushed");
     }
 
     fn expect_line_containing(&self, needle: &str, timeout: Duration) -> String {
@@ -164,7 +202,7 @@ impl UciSession {
 
     fn quit(mut self) {
         self.send("quit");
-        self.stdin.flush().expect("quit should be flushed");
+        self.input().flush().expect("quit should be flushed");
         assert!(
             self.child
                 .wait()
@@ -238,6 +276,162 @@ fn ponderhit_after_spent_movetime_does_not_restart_search_clock() {
     session.send("ponderhit");
 
     session.expect_line_containing("bestmove", Duration::from_millis(750));
+    session.quit();
+}
+
+/// A zero, negative or unreadable own clock is a clock with no time left,
+/// not an absent one: each moves at once instead of searching until `stop`.
+#[test]
+fn a_zero_negative_or_unreadable_clock_moves_at_once() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    for go in [
+        "go wtime 0 btime 0",
+        "go wtime -50 btime 1000",
+        "go wtime none btime 1000",
+    ] {
+        session.send("position startpos");
+        session.send(go);
+        session
+            .try_collect_until_line_containing("bestmove", wait(2))
+            .unwrap_or_else(|seen| panic!("`{go}` did not move at once; seen: {seen:?}"));
+    }
+    session.quit();
+}
+
+/// `setoption` during `go infinite` must not wedge the input thread: the
+/// `stop` after it still ends the search, and the option applies after.
+#[test]
+fn setoption_during_an_infinite_search_leaves_stop_working() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("position startpos");
+    session.send("go infinite");
+    session.expect_line_containing("info depth 1", wait(2));
+    session.send("setoption name Hash value 32");
+    session.send("stop");
+    session.expect_line_containing("bestmove", wait(2));
+    session.send("isready");
+    session.expect_line_containing("readyok", wait(2));
+    session.quit();
+}
+
+/// End of input ends a `go infinite`: no `stop` can arrive any more, so the
+/// search answers and the engine exits instead of searching forever.
+#[test]
+fn end_of_input_ends_an_infinite_search() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("position startpos");
+    session.send("go infinite");
+    session.expect_line_containing("info depth 1", wait(2));
+    session.close_input();
+    session.expect_line_containing("bestmove", wait(2));
+    assert!(session.wait_for_exit(wait(5)).success());
+}
+
+/// A closed standard output is a GUI that has gone: the engine quits normally
+/// rather than dying on a failed write.
+#[test]
+fn a_closed_output_ends_the_engine_normally() {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_rarog"))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Rarog binary should start");
+    drop(child.stdout.take());
+    let mut stdin = child.stdin.take().expect("stdin should be piped");
+    stdin
+        .write_all(b"uci\nisready\nposition startpos\ngo depth 4\n")
+        .expect("commands should be written");
+    thread::sleep(Duration::from_millis(500));
+    drop(stdin);
+    let deadline = Instant::now() + wait(5);
+    let status = loop {
+        if let Some(status) = child.try_wait().expect("Rarog process should be waitable") {
+            break status;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "Rarog did not exit after its output closed"
+        );
+        thread::sleep(Duration::from_millis(10));
+    };
+    assert!(status.success(), "status: {status:?}");
+}
+
+/// A line that is not UTF-8 is an unknown command, not the end of input.
+#[test]
+fn a_non_utf8_line_does_not_end_the_session() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send_bytes(b"\xff\xfe not text\n");
+    session.send("isready");
+    session.expect_line_containing("readyok", wait(2));
+    session.quit();
+}
+
+/// `stop` during `bench` says the bench was interrupted and prints no summary
+/// that could pass for a result.
+#[test]
+fn stop_during_bench_reports_an_interruption_not_a_summary() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("bench 16");
+    session.expect_line_containing("Large pages", wait(5));
+    session.send("stop");
+    let lines = session.collect_until_line_containing("interrupted by stop", wait(5));
+    assert!(
+        !lines.iter().any(|line| line.contains("Nodes searched")),
+        "an interrupted bench printed a summary: {lines:?}"
+    );
+    session.quit();
+}
+
+/// A `Hash` the allocator refuses is announced once, not again on every later
+/// `setoption` that resends the option set.
+#[test]
+fn a_refused_hash_is_announced_once() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("setoption name Hash value 33554432");
+    session.send("isready");
+    let first = session.collect_until_line_containing("readyok", wait(15));
+    let refusals = |lines: &[String]| {
+        lines
+            .iter()
+            .filter(|line| line.contains("Unable to allocate Hash"))
+            .count()
+    };
+    assert_eq!(refusals(&first), 1, "{first:?}");
+    session.send("setoption name Threads value 2");
+    session.send("isready");
+    let second = session.collect_until_line_containing("readyok", wait(15));
+    assert_eq!(refusals(&second), 0, "{second:?}");
+    session.quit();
+}
+
+/// `searchmoves` with one move is the caller's line: the search reaches its
+/// depth instead of stopping at the forced-move shortcut.
+#[test]
+fn a_one_move_searchmoves_searches_to_its_depth() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    session.expect_line_containing("uciok", wait(15));
+    session.send("position startpos");
+    session.send("go depth 6 searchmoves e2e4");
+    let lines = session.collect_until_line_containing("bestmove", wait(5));
+    assert!(
+        lines.iter().any(|line| line.starts_with("info depth 6 ")),
+        "the search stopped short of depth 6: {lines:?}"
+    );
     session.quit();
 }
 

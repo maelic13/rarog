@@ -30,7 +30,7 @@ fn main() {
     crash_report::install_stdout_reporter();
     request_fine_grained_scheduling();
 
-    println!(
+    rarog::uci_println!(
         "{} {} by {}",
         capitalize_first_letter(env!("CARGO_PKG_NAME")),
         rarog::VERSION,
@@ -40,7 +40,7 @@ fn main() {
     // Say so when this CPU would be better served by a different asset.
     // Silent when the choice is already right, which is the common case.
     if let Some(advice) = cpu_advice::startup_advice() {
-        println!("{advice}");
+        rarog::uci_println!("{advice}");
     }
 
     // Before any input is read: `go` is timestamped as it is parsed, so a table

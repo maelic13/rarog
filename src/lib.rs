@@ -5,12 +5,26 @@
 /// touching the call sites. The search writes its notices through `InfoSink`.
 ///
 /// UCI *protocol* output (`bestmove`, `info depth …`) deliberately stays in
-/// the protocol layer, and the `bench`/`wac` console reports stay plain
-/// `println!` — those are human-facing CLI output, not engine diagnostics.
+/// the protocol layer, and the `bench`/`wac` console reports are plain lines
+/// — those are human-facing CLI output, not engine diagnostics. Every one
+/// goes through `uci_println!`.
 #[macro_export]
 macro_rules! info_string {
     ($($arg:tt)*) => {
-        println!("info string {}", format_args!($($arg)*))
+        $crate::uci_println!("info string {}", format_args!($($arg)*))
+    };
+}
+
+/// `println!` for everything the engine writes to standard output. A write to
+/// a pipe the GUI has closed does not panic: it is recorded, and the engine
+/// quits at its next poll (`infra::stdout_closed`).
+#[macro_export]
+macro_rules! uci_println {
+    () => {
+        $crate::infra::write_stdout_line(format_args!(""))
+    };
+    ($($arg:tt)*) => {
+        $crate::infra::write_stdout_line(format_args!($($arg)*))
     };
 }
 

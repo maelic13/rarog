@@ -70,9 +70,12 @@ impl Default for EngineOptions {
 #[derive(Clone, Default)]
 pub struct SearchLimits {
     pub move_time: usize,
-    pub white_time: usize,
+    /// Each side's clock in milliseconds when `go` sent one. A present clock
+    /// is at least 1 ms, so a zero, negative or unreadable one moves at once
+    /// rather than reading as no clock.
+    pub white_time: Option<usize>,
     pub white_increment: usize,
-    pub black_time: usize,
+    pub black_time: Option<usize>,
     pub black_increment: usize,
     /// Fixed-depth limit from `go depth N` / `go mate N`. `None` = no depth
     /// limit (the search runs to the internal MAX_DEPTH ceiling).
@@ -312,13 +315,13 @@ impl SearchOptions {
             self.limits.move_time = Self::parse_or_notice(args, index, "movetime");
         }
         if let Some(index) = at(GoKeyword::WTime) {
-            self.limits.white_time = Self::parse_or_notice(args, index, "wtime");
+            self.limits.white_time = Some(Self::parse_clock(args, index, "wtime"));
         }
         if let Some(index) = at(GoKeyword::WInc) {
             self.limits.white_increment = Self::parse_or_notice(args, index, "winc");
         }
         if let Some(index) = at(GoKeyword::BTime) {
-            self.limits.black_time = Self::parse_or_notice(args, index, "btime");
+            self.limits.black_time = Some(Self::parse_clock(args, index, "btime"));
         }
         if let Some(index) = at(GoKeyword::BInc) {
             self.limits.black_increment = Self::parse_or_notice(args, index, "binc");
@@ -546,6 +549,20 @@ impl SearchOptions {
                 OptionUpdate::Unknown
             }
         }
+    }
+
+    /// A side's clock: the value after `args[index]` in milliseconds, at
+    /// least 1. A GUI past its flag sends a negative clock, and a zero or
+    /// unreadable one must not read as no clock, which searches without
+    /// limit; each moves at once instead, as the donors do.
+    fn parse_clock(args: &[String], index: usize, name: &str) -> usize {
+        let parsed = args
+            .get(index + 1)
+            .and_then(|value| value.parse::<i64>().ok());
+        if parsed.is_none() {
+            crate::info_string!("Invalid {name} value.");
+        }
+        usize::try_from(parsed.unwrap_or(0).max(1)).unwrap_or(usize::MAX)
     }
 
     /// The value after `args[index]`, or zero with a notice when it is missing

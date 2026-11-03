@@ -22,7 +22,7 @@ struct StdoutSink;
 
 impl InfoSink for StdoutSink {
     fn line(&self, line: &str) {
-        println!("{line}");
+        crate::uci_println!("{line}");
     }
 }
 
@@ -41,7 +41,9 @@ impl Engine {
     }
 
     pub fn start(&mut self) {
-        while self.handle(self.commands.wait_pop()) == SearchExit::Stop {}
+        while self.handle(self.commands.wait_pop()) == SearchExit::Stop
+            && !crate::infra::stdout_closed()
+        {}
     }
 
     /// Run one command. `Quit` from here ends the engine thread.
@@ -111,18 +113,16 @@ impl Engine {
 
     fn search(&mut self, options: &SearchOptions, emit_info: bool, epoch: u64) -> SearchResult {
         let control = Arc::clone(&self.control);
+        let unbounded = options.limits.infinite || options.limits.ponder;
         self.searcher
-            .search(
-                options.board.clone(),
-                options,
-                emit_info,
-                || match control.poll_search(epoch) {
+            .search(options.board.clone(), options, emit_info, || {
+                match poll(&control, epoch, unbounded) {
                     SearchControl::Quit => SearchEvent::Quit,
                     SearchControl::Stop => SearchEvent::Stop,
                     SearchControl::PonderHit => SearchEvent::PonderHit,
                     SearchControl::None => SearchEvent::None,
-                },
-            )
+                }
+            })
     }
 
     fn wait_until_bestmove_allowed(
@@ -137,7 +137,7 @@ impl Engine {
         }
 
         loop {
-            match self.control.poll_search(epoch) {
+            match poll(&self.control, epoch, true) {
                 SearchControl::Quit => return SearchExit::Quit,
                 SearchControl::Stop | SearchControl::PonderHit => return SearchExit::Stop,
                 SearchControl::None => thread::sleep(Duration::from_millis(1)),
@@ -175,8 +175,8 @@ impl Engine {
         let mut total_ms_first = 0u128;
         let mut nps_samples: Vec<u128> = Vec::with_capacity(repeats as usize);
 
-        println!("Large pages     : {}", crate::large_pages::large_pages());
-        println!();
+        crate::uci_println!("Large pages     : {}", crate::large_pages::large_pages());
+        crate::uci_println!();
         for repeat in 0..repeats {
             // Clean, identical starting state each repeat (TT + histories + eval
             // caches) so every run is the same deterministic workload — the only
@@ -233,7 +233,7 @@ impl Engine {
                     // Floored at 1 ms like the `info` lines: a position solved
                     // inside the first millisecond printed its node count.
                     let nps = result.nodes as u128 * 1000 / result.elapsed_ms.max(1);
-                    println!(
+                    crate::uci_println!(
                         "bench {}/{}  depth {}  score {}  nodes {}  ebf {:.2}  time {}ms  nps {}",
                         index + 1,
                         BENCH_FENS.len(),
@@ -252,6 +252,11 @@ impl Engine {
                     return SearchExit::Quit;
                 }
                 if epoch != 0 && self.control.current_epoch() != epoch {
+                    self.control.finish_search_if_current(epoch);
+                    return SearchExit::Stop;
+                }
+                if self.control.stop_requested(epoch) {
+                    report_interrupted("bench");
                     self.control.finish_search_if_current(epoch);
                     return SearchExit::Stop;
                 }
@@ -274,7 +279,7 @@ impl Engine {
                 max_nodes = per_position_nodes.iter().copied().max().unwrap_or(0);
             }
             if !detailed {
-                println!(
+                crate::uci_println!(
                     "run {}/{}  nodes {}  time {}ms  nps {}",
                     repeat + 1,
                     repeats,
@@ -300,7 +305,7 @@ impl Engine {
         let min_nps = nps_samples.first().copied().unwrap_or(0);
         let median_nps = nps_samples.get(nps_samples.len() / 2).copied().unwrap_or(0);
 
-        println!(
+        crate::uci_println!(
             "\n=========================\n\
              Nodes searched  : {fingerprint_nodes}\n\
              Geomean EBF     : {geomean_ebf:.3}\n\
@@ -310,9 +315,9 @@ impl Engine {
         // Keep a line beginning "Nodes/second" for the single-run case — the PGO
         // training harness (xtask) waits for it as the completion marker.
         if repeats == 1 {
-            println!("Total time (ms) : {total_ms_first}\nNodes/second    : {best_nps}");
+            crate::uci_println!("Total time (ms) : {total_ms_first}\nNodes/second    : {best_nps}");
         } else {
-            println!(
+            crate::uci_println!(
                 "Nodes/second    : {best_nps}   (best of {repeats}; median {median_nps}, min {min_nps})"
             );
         }
@@ -340,7 +345,7 @@ impl Engine {
         let mut total_nodes = 0u64;
         let mut total_ms = 0u128;
 
-        println!();
+        crate::uci_println!();
         for (index, pos) in positions.iter().enumerate() {
             if epoch != 0 && self.control.current_epoch() != epoch {
                 self.control.finish_search_if_current(epoch);
@@ -376,7 +381,7 @@ impl Engine {
                     pos.best_moves.join(" ")
                 ));
             }
-            println!(
+            crate::uci_println!(
                 "wac {}/{}  {}  nodes {}  time {}ms  (solved {})",
                 index + 1,
                 positions.len(),
@@ -391,9 +396,14 @@ impl Engine {
                 self.control.finish_search_if_current(epoch);
                 return SearchExit::Quit;
             }
+            if self.control.stop_requested(epoch) {
+                report_interrupted("wac");
+                self.control.finish_search_if_current(epoch);
+                return SearchExit::Stop;
+            }
         }
 
-        println!(
+        crate::uci_println!(
             "\n=========================\n\
              WAC solved      : {}/{} at depth {}\n\
              Nodes searched  : {}\n\
@@ -405,7 +415,7 @@ impl Engine {
             total_ms
         );
         if !failed.is_empty() {
-            println!("Failed: {}", failed.join(", "));
+            crate::uci_println!("Failed: {}", failed.join(", "));
         }
         flush_stdout();
 
@@ -414,11 +424,29 @@ impl Engine {
     }
 }
 
+/// The control's word for one search. `go infinite` and a ponder search end
+/// only on `stop` or `ponderhit`, so once standard input has ended, when
+/// neither can arrive, they stop; every other search runs to its limit, as a
+/// piped `go depth` must.
+fn poll(control: &EngineControl, epoch: u64, unbounded: bool) -> SearchControl {
+    if unbounded && control.input_closed() {
+        return SearchControl::Stop;
+    }
+    control.poll_search(epoch)
+}
+
+/// A suite cut short by `stop` says so and prints no summary: its node count
+/// would read as an ordinary result, and the PGO trainer waits for that line.
+fn report_interrupted(suite: &str) {
+    crate::uci_println!("\n{suite} interrupted by stop: no summary");
+    flush_stdout();
+}
+
 fn print_bestmove(result: &SearchResult) {
     if result.pondermove.is_null() {
-        println!("bestmove {}", result.bestmove);
+        crate::uci_println!("bestmove {}", result.bestmove);
     } else {
-        println!("bestmove {} ponder {}", result.bestmove, result.pondermove);
+        crate::uci_println!("bestmove {} ponder {}", result.bestmove, result.pondermove);
     }
     flush_stdout();
 }

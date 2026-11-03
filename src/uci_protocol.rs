@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, BufRead};
 use std::process;
 use std::sync::{Arc, mpsc};
 
@@ -36,17 +36,30 @@ impl UciProtocol {
     }
 
     pub fn uci_loop(&mut self) {
+        let mut input = Vec::new();
         loop {
-            let mut input = String::new();
-            // A read error means stdin is gone (pipe closed / GUI
-            // exited) — treated exactly like EOF, which the next branch
-            // already handles, rather than panicking.
-            let bytes_read = io::stdin().read_line(&mut input).unwrap_or_default();
+            input.clear();
+            // Only the end of input, or a read error (the pipe is gone), ends
+            // the loop. A line that is not UTF-8 is still a line: read as
+            // text it would be an error, and the engine would exit silently.
+            let bytes_read = io::stdin()
+                .lock()
+                .read_until(b'\n', &mut input)
+                .unwrap_or(0);
             if bytes_read == 0 {
+                // An ordinary FIFO quit, so that a piped `bench` completes;
+                // a search only `stop` can end sees the closed input instead.
+                self.control.close_input();
                 self.commands.push(EngineCommand::Quit { epoch: 0 });
                 break;
             }
-            if self.handle_command(input.trim()) == CommandOutcome::Quit {
+            let line = String::from_utf8_lossy(&input);
+            if self.handle_command(line.trim()) == CommandOutcome::Quit {
+                break;
+            }
+            if crate::infra::stdout_closed() {
+                // Nobody reads the engine any more.
+                self.quit();
                 break;
             }
         }
@@ -108,16 +121,16 @@ impl UciProtocol {
     }
 
     fn uci(&self) {
-        println!(
+        crate::uci_println!(
             "id name {} {}",
             capitalize_first_letter(env!("CARGO_PKG_NAME")),
             crate::VERSION
         );
-        println!("id author {}", env!("CARGO_PKG_AUTHORS").replace(':', ", "));
+        crate::uci_println!("id author {}", env!("CARGO_PKG_AUTHORS").replace(':', ", "));
         for option in SearchOptions::get_uci_options() {
-            println!("{option}");
+            crate::uci_println!("{option}");
         }
-        println!("uciok");
+        crate::uci_println!("uciok");
         flush_stdout();
     }
 
@@ -127,7 +140,7 @@ impl UciProtocol {
             self.commands.push(EngineCommand::Ready(ready_tx));
             let _ = ready_rx.recv();
         }
-        println!("readyok");
+        crate::uci_println!("readyok");
         flush_stdout();
     }
 
@@ -154,8 +167,10 @@ impl UciProtocol {
         self.commands.push(EngineCommand::Stop { epoch });
     }
 
+    /// Applied when the engine thread reaches it: the queue orders the change
+    /// after any search already running, so this thread need not wait, and
+    /// must not, since it alone reads the `stop` that ends a `go infinite`.
     fn set_option(&mut self, args: &[String]) {
-        self.wait_for_search_finished();
         match self.search_options.set_option(args) {
             OptionUpdate::Engine => self
                 .commands
@@ -232,17 +247,8 @@ impl UciProtocol {
     fn run_perft(&self, depth: u32) {
         let mut board = self.search_options.board.clone();
         let nodes = board.perft(depth);
-        println!("\nNodes searched: {nodes}\n");
+        crate::uci_println!("\nNodes searched: {nodes}\n");
         flush_stdout();
-    }
-
-    fn wait_for_search_finished(&self) {
-        if !self.control.is_searching() {
-            return;
-        }
-        let (ready_tx, ready_rx) = mpsc::channel();
-        self.commands.push(EngineCommand::Ready(ready_tx));
-        let _ = ready_rx.recv();
     }
 
     /// `help` — orientation, not a manual.
@@ -256,7 +262,7 @@ impl UciProtocol {
     /// and the fact that they work as arguments — someone who reached this text
     /// by typing `rarog help` at a shell is exactly who needs telling.
     fn help(&self) {
-        println!("{}", help_text());
+        crate::uci_println!("{}", help_text());
         flush_stdout();
     }
 
@@ -264,7 +270,7 @@ impl UciProtocol {
         if command_line.is_empty() || command_line.starts_with('#') {
             return;
         }
-        println!("Unknown command: '{command_line}'. Type help for more information.");
+        crate::uci_println!("Unknown command: '{command_line}'. Type help for more information.");
         flush_stdout();
     }
 }
