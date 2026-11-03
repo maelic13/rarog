@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.3.1** (`I1`): A zero, negative or unparsable own clock searches without limit.
+**Now: D.3.10** (`I1`): `tests/uci_process.rs` times out under the full suite's load.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -46,14 +46,14 @@ field, about 3,475 on CCRL's Blitz scale.
         - [x] **D.1.6.3** Gate: the repairs' reads and gates, the probe and the differential — DONE 2026-10-26
 - [ ] **D.2** Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; RAR-M78 read Rarog deficient at four threads (effective speedup 1.65 against Reckless 2.30 and Stockfish 2.48) — **RESEARCH / R2**
 - [ ] **D.3** Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — **I1**
-    - [ ] **D.3.1** A zero, negative or unparsable own clock searches without limit — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.3.2** `setoption` during a search wedges the input thread — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.3.3** End of input never ends `go infinite` or a finished ponder search — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.3.4** A closed stdout panics every `println!` — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.3.5** A non-UTF-8 input line reads as end of input — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.3.6** `stop` during `bench` or `wac` prints an ordinary-looking summary — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.3.7** A refused `Hash` is retried on every later `setoption` — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.3.8** The forced-move shortcut fires for a one-move `searchmoves` — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.3.1** A zero, negative or unparsable own clock searches without limit — DONE 2026-11-03
+    - [x] **D.3.2** `setoption` during a search wedges the input thread — DONE 2026-11-03
+    - [x] **D.3.3** End of input never ends `go infinite` or a finished ponder search — DONE 2026-11-03
+    - [x] **D.3.4** A closed stdout panics every `println!` — DONE 2026-11-03
+    - [x] **D.3.5** A non-UTF-8 input line reads as end of input — DONE 2026-11-03
+    - [x] **D.3.6** `stop` during `bench` or `wac` prints an ordinary-looking summary — DONE 2026-11-03
+    - [x] **D.3.7** A refused `Hash` is retried on every later `setoption` — DONE 2026-11-03
+    - [x] **D.3.8** The forced-move shortcut fires for a one-move `searchmoves` — DONE 2026-11-03
     - [ ] **D.3.9** The score-normalisation card, the `src/uci/` (planned) move and the protocol decisions — **RESEARCH / R2**
     - [ ] **D.3.10** `tests/uci_process.rs` times out under the full suite's load — **RESEARCH / I1**
 - [ ] **D.4** Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, the `Hash` notice, dead code, test and CI gaps — **I1**
@@ -173,7 +173,7 @@ field, about 3,475 on CCRL's Blitz scale.
 | Evaluation deficit | **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21): Stockfish's classical HCE over Rarog's frozen evaluation inside Stockfish's search, from +181.7 ± 19.0 at Phase C's start (RAR-O05), 82.5 ± 25.2 closed. The donor's remaining king signal is the index's structure (RAR-E72, RAR-E73); Phase F supersedes the classical evaluation, and an evaluation change under a fitted search follows PROCESS |
 | Speed | The C head (2026-10-21/22): **+28.92%** pooled-PGO bench NPS over the B.9 head (RAR-P39; `rustc 1.99.1`'s −1.63% included, RAR-P37, its code generation −3.6% without PGO, RAR-P38); in games (Colosseum CLI 0.4.0) +29.8% at 1T and −9.2% at 4T over the B.9 head (RAR-M73, RAR-M74), and −8.6% at 1T and −19.1% at 4T against Rarog 2.4.0 in the same games; the evaluation 21.1% of search samples, B.9's 24.3% (RAR-P40) |
 | Conversion | **13.8 draws and 0.0 losses per 1,000 games** after a persistent piece-up (RAR-M73's games, the C head; Poisson 95% 9.5–19.3 and 0–1.5), against the B.9 head's 15.8 and 0.8 (RAR-M64) and 2.4.0's 24.4 and 5.3: the draw rate's fall is not resolved |
-| Active experiment | **D.2's night, read 2026-11-03** (RAR-M80, RAR-M81): the four-thread slow state is Rarog's, not the host's. On one quiet host Rarog's four-thread side ran at 2.62–2.66 times its one-thread side in every leg and every fifth for 9.5 hours; Reckless's ran at 3.36–3.48 beside it. RAR-M81 reads UNRESOLVED by its rule (Rarog's leg in the slow state); in that state four threads are worth 0.82 doublings of Rarog's own time against Reckless's 1.28 and Stockfish's 1.31. RAR-M80: one game at a time costs nothing. The host sampler excludes core parking, frequency and scheduling; Rarog's threads get the same CPU time as Reckless's and do a third less with it. Next for D.2, zero-game on an idle host after Basilisk's tune: Rarog's four threads one to a physical core against both siblings. **D.5.15 done 2026-11-03** (`3a16fbb`): the search no longer adds its correction to the evaluator's draw verdicts; the per-FEN differential is confined to positions that reach a verdict, but 7 of 28 wrong-bishop draws still misread from cleared tables, so the rest is **D.5.23**. Next: **D.3.1–D.3.8** (eight protocol and shell defects). The history of D.2's reads is in PLAN D.2; D.1's in PLAN D.1 |
+| Active experiment | **D.2's night, read 2026-11-03** (RAR-M80, RAR-M81): the four-thread slow state is Rarog's, not the host's. On one quiet host Rarog's four-thread side ran at 2.62–2.66 times its one-thread side in every leg and every fifth for 9.5 hours; Reckless's ran at 3.36–3.48 beside it. RAR-M81 reads UNRESOLVED by its rule (Rarog's leg in the slow state); in that state four threads are worth 0.82 doublings of Rarog's own time against Reckless's 1.28 and Stockfish's 1.31. RAR-M80: one game at a time costs nothing. The host sampler excludes core parking, frequency and scheduling; Rarog's threads get the same CPU time as Reckless's and do a third less with it. Next for D.2, zero-game on an idle host after Basilisk's tune: Rarog's four threads one to a physical core against both siblings. **D.5.15 done 2026-11-03** (`3a16fbb`): the search no longer adds its correction to the evaluator's draw verdicts; the per-FEN differential is confined to positions that reach a verdict, but 7 of 28 wrong-bishop draws still misread from cleared tables, so the rest is **D.5.23**. **D.3.1–D.3.8 done 2026-11-03** (`46ddf56`): eight protocol and shell defects repaired, each with its process test, fingerprint unchanged. Next: D.3.10 (the `uci_process` load flake) and D.3.9's cards, then D.4. The history of D.2's reads is in PLAN D.2; D.1's in PLAN D.1 |
 
 ## Holds and obligations
 

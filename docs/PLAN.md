@@ -328,14 +328,6 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.3.1 | READY_FOR_IMPLEMENTATION | I1 | First of D.3's eight, each with its `uci_process` case written first; before the 2.7.0 cut |
-| D.3.2 | READY_FOR_IMPLEMENTATION | I1 | In order after D.3.1; its `uci_process` case first; before the 2.7.0 cut |
-| D.3.3 | READY_FOR_IMPLEMENTATION | I1 | In order after D.3.2; its `uci_process` case first; before the 2.7.0 cut |
-| D.3.4 | READY_FOR_IMPLEMENTATION | I1 | In order after D.3.3; its `uci_process` case first; before the 2.7.0 cut |
-| D.3.5 | READY_FOR_IMPLEMENTATION | I1 | In order after D.3.4; its `uci_process` case first; before the 2.7.0 cut |
-| D.3.6 | READY_FOR_IMPLEMENTATION | I1 | In order after D.3.5; its `uci_process` case first; before the 2.7.0 cut |
-| D.3.7 | READY_FOR_IMPLEMENTATION | I1 | In order after D.3.6; its `uci_process` case first; before the 2.7.0 cut |
-| D.3.8 | READY_FOR_IMPLEMENTATION | I1 | In order after D.3.7; its `uci_process` case first; before the 2.7.0 cut |
 | D.3.10 | RESEARCH | I1 | Cause unread; read with D.3's tests, before the cut |
 | D.2 | RESEARCH | R2 | **Night read 2026-11-03:** the slow state is Rarog's, not the host's (Rarog's four threads 2.62–2.66 times one thread for 9.5 hours, Reckless's 3.36–3.48 beside it); RAR-M81 UNRESOLVED (in that state Rarog's D 0.82 against 1.28 and 1.31), RAR-M80 NOT REPLICATED; parking, frequency and scheduling excluded. Next, zero-game on an idle host after Basilisk's tune: Rarog's four threads one to a physical core against both siblings in a rebuilt slot, Reckless the control. Earlier reads: the D.2 text below |
 | D.4.1 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value: the table handle and the helper lifecycle first |
@@ -2244,14 +2236,14 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
   sends no clock and no `setoption` during a search), repair case 1 with the
   `tests/uci_process.rs` case written first. They go before the 2.7.0 cut, in
   this order:
-    - **D.3.1 A zero, negative or unparsable own clock searches without limit — `I1`.** A zero, negative or unparsable own clock runs an unbounded search: clocks
+    - **D.3.1 A zero, negative or unparsable own clock searches without limit — `I1`, DONE 2026-11-03.** A zero, negative or unparsable own clock runs an unbounded search: clocks
      parse as `usize`, a failure becomes 0 with a notice, and
      `time.rs:145–149` reads 0 as no clock, so `go wtime 0 btime 0` and `go
      wtime -50 btime 1000` search until `stop` (replayed: past 3 s with no
      limit). Parse signed, keep presence as `Option` per side, clamp a present
      clock to at least 1 ms (the donor moves at once on a zero clock;
      Stockfish clamps); a unit test on `compute_runtime_limits`.
-    - **D.3.2 `setoption` during a search wedges the input thread — `I1`.** `setoption` during a search wedges the stdin thread for good:
+    - **D.3.2 `setoption` during a search wedges the input thread — `I1`, DONE 2026-11-03.** `setoption` during a search wedges the stdin thread for good:
      `set_option` calls `wait_for_search_finished`, which pushes a `Ready`
      behind the running `Go` and blocks; under `go infinite` the only line
      that could end the search is one that thread never reads (replayed:
@@ -2259,30 +2251,37 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
      the FIFO already orders `Configure` after the `Go`: drop it or answer
      with a notice. The donor forwards only `isready`, `stop` and `quit` while
      searching.
-    - **D.3.3 End of input never ends `go infinite` or a finished ponder search — `I1`.** Stdin EOF never ends a `go infinite` or a finished ponder search: EOF
+    - **D.3.3 End of input never ends `go infinite` or a finished ponder search — `I1`, DONE 2026-11-03.** Stdin EOF never ends a `go infinite` or a finished ponder search: EOF
      pushes an ordinary FIFO `Quit` (deliberately, so a piped `bench`
      completes) and sets no flag the search polls, so the engine searches or
      sleeps forever when stdout stays open. An `eof` flag treated as `Stop` by
      `infinite` and `ponder` searches only.
-    - **D.3.4 A closed stdout panics every `println!` — `I1`.** Every library `println!` panics on a closed stdout, and under `panic =
+    - **D.3.4 A closed stdout panics every `println!` — `I1`, DONE 2026-11-03.** Every library `println!` panics on a closed stdout, and under `panic =
      "abort"` the engine thread dies as a crash on a normal GUI shutdown
      order: `writeln!` on a locked handle with `request_quit` on `Err`, one
      GUI-gone signal that serves item 3 too.
-    - **D.3.5 A non-UTF-8 input line reads as end of input — `I1`.** A non-UTF-8 input line is read as EOF (`read_line`'s `Err` becomes 0
+    - **D.3.5 A non-UTF-8 input line reads as end of input — `I1`, DONE 2026-11-03.** A non-UTF-8 input line is read as EOF (`read_line`'s `Err` becomes 0
      bytes through `unwrap_or_default`) and the engine exits silently with
      status 0: `read_until` and `from_utf8_lossy`; only `Ok(0)` is EOF.
-    - **D.3.6 `stop` during `bench` or `wac` prints an ordinary-looking summary — `I1`.** `stop` during `bench` or `wac` ends the suite early and prints an
+    - **D.3.6 `stop` during `bench` or `wac` prints an ordinary-looking summary — `I1`, DONE 2026-11-03.** `stop` during `bench` or `wac` ends the suite early and prints an
      ordinary-looking summary (`Nodes searched : 110427` against 1,679,897 for
      the same `bench 9`), the line the PGO trainer waits for: print that the
      bench was interrupted and no summary on `Stop`.
-    - **D.3.7 A refused `Hash` is retried on every later `setoption` — `I1`.** A refused `Hash` is retried and re-announced on every later `setoption`,
+    - **D.3.7 A refused `Hash` is retried on every later `setoption` — `I1`, DONE 2026-11-03.** A refused `Hash` is retried and re-announced on every later `setoption`,
      because option state lives twice (the protocol's copy and
      `SearchShared.hash_mb`) and every `Configure` resends the whole struct:
      remember the last requested size, or configure only the option that
      changed.
-    - **D.3.8 The forced-move shortcut fires for a one-move `searchmoves` — `I1`.** The forced-move shortcut (stop after depth 2 with one legal move) fires
+    - **D.3.8 The forced-move shortcut fires for a one-move `searchmoves` — `I1`, DONE 2026-11-03.** The forced-move shortcut (stop after depth 2 with one legal move) fires
      for a one-move `searchmoves` under fixed depth or time, because the
      filtered root list feeds the count: exclude a non-empty `search_moves`.
+    **Done 2026-11-03:** D.3.1 to D.3.8 (`46ddf56`); each defect has its
+    `uci_process` case, written to fail on the code before (a present clock
+    of 1 ms at least, `setoption` without the wait, the input-closed flag,
+    `uci_println!`, lossy UTF-8 input, the interrupted-suite report, the
+    remembered `Hash` request, the shortcut off under `searchmoves`);
+    behaviour-neutral, the fingerprint 14,749,043 / EBF 2.564 reproduced;
+    debug and release suites, fmt and clippy clean.
     - **D.3.9 The score-normalisation card, the `src/uci/` (planned) move and the protocol decisions — `R2`.**
       Decisions to record, not changes: a bad `position` ends the process with
       `process::exit(1)` from library code (both donors keep the previous
@@ -2322,7 +2321,9 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       head too; read again 2026-11-02 in D.4.19's verification (1 in debug,
       4 in release; 28 of 28 with the file alone, both profiles). A test
       that fails only under load is still a failure. Cause unread; the
-      start-up of a fresh process under the suite's load first.
+      start-up of a fresh process under the suite's load first. On
+      2026-11-03 four full runs (D.5.15's and D.3's, debug and release, the
+      file holding 28 tests and then 36) timed out none: intermittent.
 - **D.4 Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, the `Hash` notice, dead code, test and CI gaps — `I1`.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` (its §5 lists
   every item with its reviewer ID; the reports are in
