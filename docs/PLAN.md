@@ -329,7 +329,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.3.10 | RESEARCH | I1 | Cause unread; read with D.3's tests, before the cut |
-| D.2 | RESEARCH | R2 | **Night read 2026-11-03:** the slow state is Rarog's, not the host's (Rarog's four threads 2.62–2.66 times one thread for 9.5 hours, Reckless's 3.36–3.48 beside it); RAR-M81 UNRESOLVED (in that state Rarog's D 0.82 against 1.28 and 1.31), RAR-M80 NOT REPLICATED; parking, frequency and scheduling excluded. **Corrected 2026-11-03** (the audit, section 10): the sampler shows Windows packing both engines' four threads on two or three cores' SMT siblings inside the slot, Rarog's harder (two cores in 90–96% of its turns, Reckless 47–66%), and neither engine places its threads on Windows, so the slow state is the scheduler's placement inside the eight-logical-CPU slot, not the host's and not Rarog's code. Registered: RAR-M82, the legs again in a sibling-free slot (`--placement`, one logical CPU per physical core; `38ef0d5` lets the wrapper accept it), 200 games each, **read 2026-11-03: RESTORED**, Rarog's four threads 4.03 times one (every fifth 3.94–4.11), Reckless's 4.45, no sibling busy, so RAR-M81's and RAR-M78's deficit verdicts were measured in the packed state and are superseded, the explicit placement is the policy for rated multi-thread reads (PROCESS) and the self-relative comparison is next, re-registered sibling-free (three four-thread legs, 1,000 games each, about nine hours; RAR-M78's time-odds legs reused); RAR-P54, the per-core sibling loss of each engine standalone, **read 2026-11-03: REFUTED**, Rarog 0.63 against Reckless 0.65 beside a sibling, the same loss, so the night's gap is placement alone. Earlier reads: the D.2 text below |
+| D.2 | RESEARCH | R2 | **Night read 2026-11-03:** the slow state is Rarog's, not the host's (Rarog's four threads 2.62–2.66 times one thread for 9.5 hours, Reckless's 3.36–3.48 beside it); RAR-M81 UNRESOLVED (in that state Rarog's D 0.82 against 1.28 and 1.31), RAR-M80 NOT REPLICATED; parking, frequency and scheduling excluded. **Corrected 2026-11-03** (the audit, section 10): the sampler shows Windows packing both engines' four threads on two or three cores' SMT siblings inside the slot, Rarog's harder (two cores in 90–96% of its turns, Reckless 47–66%), and neither engine places its threads on Windows, so the slow state is the scheduler's placement inside the eight-logical-CPU slot, not the host's and not Rarog's code. Registered: RAR-M82, the legs again in a sibling-free slot (`--placement`, one logical CPU per physical core; `38ef0d5` lets the wrapper accept it), 200 games each, **read 2026-11-03: RESTORED**, Rarog's four threads 4.03 times one (every fifth 3.94–4.11), Reckless's 4.45, no sibling busy, so RAR-M81's and RAR-M78's deficit verdicts were measured in the packed state and are superseded, the explicit placement is the policy for rated multi-thread reads (PROCESS) and the self-relative comparison is next, re-registered sibling-free (three four-thread legs, 1,000 games each, about nine hours; RAR-M78's time-odds legs reused); RAR-P54, the per-core sibling loss of each engine standalone, **read 2026-11-03: REFUTED**, Rarog 0.63 against Reckless 0.65 beside a sibling, the same loss, so the night's gap is placement alone. Registered 2026-11-03: **RAR-M83**, the self-relative comparison sibling-free (Rarog's, Reckless's and Stockfish's four-thread legs, 1,000 games each, RAR-M78's time-odds legs as G2, about nine hours on an idle night, `analysis/artifacts/d2-selfrel/run.ps1`), NOT DEFICIENT 0.70, DEFICIENT 0.20. Earlier reads: the D.2 text below |
 | D.4.1 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value: the table handle and the helper lifecycle first |
 | D.4.2 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value; exact fingerprint, pooled NPS where hot |
 | D.4.3 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value; exact fingerprint, pooled NPS where hot |
@@ -2169,6 +2169,19 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
   hint a separate leaf held on how CCRL's testers place a four-thread
   engine; PARTIAL adds the per-thread working set to the card; NOT
   RESTORED returns D.2 to its engine card.
+  **RAR-M83 registered 2026-11-03**, before any game: the self-relative
+  comparison in the sibling-free slot, Rarog (`e057d84`, RAR-M82's
+  binary), Reckless 0.9.0 and Stockfish 18 each one thread against four,
+  1,000 games at `10+0.1`, seeds 131 to 133, RAR-M78's time-odds legs as
+  G2; a leg is INSTRUMENT when its four-thread turns are off four cores
+  or its R is under its floor (Rarog 3.5, Reckless 4.0, Stockfish 3.8);
+  DEFICIENT when Rarog's D is below both others' at 95%, NOT DEFICIENT
+  otherwise; NOT DEFICIENT 0.70, DEFICIENT 0.20, INSTRUMENT 0.08, NOT
+  JUDGED 0.02 (`analysis/artifacts/d2-selfrel/run.ps1`, about nine hours
+  on an idle night). Stockfish's leg is in: the rule needs both
+  references, and no clean Stockfish four-thread leg exists. By its
+  result D.2's four-thread target opens on RAR-R33's next read or closes
+  `NO_CHANGE`.
 - **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `I1` for the eight review-confirmed defects (2026-11-01), then `R2` for the cards.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.
