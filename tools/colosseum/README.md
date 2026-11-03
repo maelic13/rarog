@@ -43,8 +43,10 @@ decision 2026-10-22) — and `calibrate-null.toml` is what runs it.
 
 Shared conditions: `3+0.03`, Hash 64, one thread, the UHO book in random order,
 no adjudication, a 20 ms time margin, `--placement auto` with one physical core
-of headroom, and engine processes kept per slot in every mode, gauntlets and
-datagen included (`colosseum.ps1` refuses anything else). Gates run 14 concurrent games;
+of headroom (or an explicit list of game cores, one logical CPU per physical
+core with a game core left free, for a multi-thread read that must keep each
+thread on its own core), and engine processes kept per slot in every mode,
+gauntlets and datagen included (`colosseum.ps1` refuses anything else). Gates run 14 concurrent games;
 a tune runs 15, because both perturbation arms share one slot.
 
 ## Running one

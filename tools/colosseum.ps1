@@ -26,8 +26,10 @@
         and a Core* surface requires a tune build that advertises them;
       - the configuration Colosseum resolves is Rarog's policy, field by field:
         no adjudication, the registered clock and margin, Hash and Threads, the
-        UHO book in random order, automatic placement with a core of headroom,
-        never CPU 0, and the registered concurrency;
+        UHO book in random order, placement automatic with a core of headroom
+        or an explicit list of game cores (one logical CPU per physical core,
+        no SMT sibling, a game core left free), never CPU 0, and the
+        registered concurrency;
       - the run directory is described by a manifest that hashes every input,
         and by the dry run that produced the configuration;
       - after the run, the CLI's own record shows no fault and no excess time
@@ -645,12 +647,6 @@ if ($maxThreads -gt 1 -and $coresPerGame -lt $maxThreads) {
     Add-Violation ("cores_per_game is $coresPerGame for Threads $maxThreads, so the engines' threads share " +
         "fewer physical cores than they run; pass -ExtraArgs @('--cores-per-game', '$maxThreads')")
 }
-if ("$($resolved.execution.placement_policy.mode)" -ne "auto") {
-    Add-Violation "placement is '$($resolved.execution.placement_policy.mode)', expected auto (RAR-M48: unpinned games carry a hidden per-run offset)"
-}
-if ([int]$resolved.execution.placement_policy.headroom_physical_cores -lt 1) {
-    Add-Violation "placement leaves no physical core of headroom"
-}
 # Every run keeps each slot's engine processes between games. A command's
 # default has changed between runner versions, so the resolved value is read.
 $processes = $resolved.PSObject.Properties['engine_processes']
@@ -714,6 +710,35 @@ if ($slotCpus.Count -gt 0 -and $offGameCores.Count -gt 0) {
     Add-Violation ("slots use physical cores outside the game-core set (" +
         ($offGameCores -join ',') + "); CPU 0 is reserved for the operating system")
 }
+# Placement is automatic with a core of headroom (RAR-M48: unpinned games
+# carry a hidden per-run offset), or an explicit list of game cores: one
+# logical CPU per physical core and no SMT sibling, so a multi-thread engine
+# measures with each thread on its own core (Windows packs four threads on two
+# cores' siblings inside an auto slot, RAR-M81's sampler), and a game core
+# left free as headroom.
+$placement = $resolved.execution.placement_policy
+switch ("$($placement.mode)") {
+    'auto' {
+        if ([int]$placement.headroom_physical_cores -lt 1) {
+            Add-Violation "placement leaves no physical core of headroom"
+        }
+    }
+    'explicit' {
+        $listed = @($placement.cpus | ForEach-Object { [int]$_.number } | Sort-Object -Unique)
+        $notGame = @($listed | Where-Object { $gameCpus -notcontains $_ })
+        if ($notGame.Count -gt 0) {
+            Add-Violation ("explicit placement names logical CPUs outside the game-core set (" +
+                ($notGame -join ',') + "): one logical CPU per physical core, never CPU 0, no SMT sibling")
+        }
+        $freeGameCores = @($gameCpus | Where-Object { $slotCpus -notcontains $_ })
+        if ($freeGameCores.Count -lt 1) {
+            Add-Violation "explicit placement leaves no game core free as headroom"
+        }
+    }
+    default {
+        Add-Violation "placement is '$($placement.mode)', expected auto or an explicit game-core list (RAR-M48: unpinned games carry a hidden per-run offset)"
+    }
+}
 
 if ($violations.Count -gt 0) {
     Write-Host ""
@@ -770,7 +795,12 @@ $lines.Add("adjudication:     none (games play to a rules result)")
 $lines.Add("hash_mb:          $Hash")
 $lines.Add("threads:          $(if ($threadsB -ne $Threads) { "A $Threads, B $threadsB" } else { $Threads })")
 $lines.Add("concurrency:      $($resolved.execution.concurrency)")
-$lines.Add("placement:        $($resolved.execution.placement_policy.mode), headroom $($resolved.execution.placement_policy.headroom_physical_cores) physical core(s)")
+$placementText = if ("$($placement.mode)" -eq 'explicit') {
+    "explicit (" + (@($placement.cpus | ForEach-Object { [int]$_.number }) -join ',') + "), one logical CPU per physical core"
+} else {
+    "$($placement.mode), headroom $($placement.headroom_physical_cores) physical core(s)"
+}
+$lines.Add("placement:        $placementText")
 $lines.Add("slot_cpus:        $($slotCpus -join ',')")
 if ($Mode -eq "sprt") {
     $design = $resolved.design.parameters
