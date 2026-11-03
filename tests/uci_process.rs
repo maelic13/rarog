@@ -86,6 +86,21 @@ impl UciSession {
         }
     }
 
+    /// A session past the handshake UCI requires before the first search:
+    /// `uciok`, then `isready` answered. The input thread prints `uciok` while
+    /// the engine thread may still be building its tables, and a `go` queued
+    /// behind that construction has its clock running; with the file's tests
+    /// all starting processes at once the construction took about 300 ms
+    /// against 8 ms alone, so a budget counted from `uciok` measures it.
+    fn ready() -> Self {
+        let mut session = Self::start();
+        session.send("uci");
+        session.expect_line_containing("uciok", wait(15));
+        session.send("isready");
+        session.expect_line_containing("readyok", wait(15));
+        session
+    }
+
     fn input(&mut self) -> &mut ChildStdin {
         self.stdin.as_mut().expect("the engine's input is open")
     }
@@ -234,9 +249,7 @@ fn uci_advertises_ponder_and_core_options() {
 
 #[test]
 fn completed_ponder_search_waits_for_ponderhit_before_bestmove() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("position startpos moves e2e4");
     session.send("go ponder depth 1");
 
@@ -250,9 +263,7 @@ fn completed_ponder_search_waits_for_ponderhit_before_bestmove() {
 
 #[test]
 fn completed_ponder_search_waits_for_stop_before_bestmove() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("position startpos moves e2e4");
     session.send("go ponder depth 1");
 
@@ -266,9 +277,7 @@ fn completed_ponder_search_waits_for_stop_before_bestmove() {
 
 #[test]
 fn ponderhit_after_spent_movetime_does_not_restart_search_clock() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("position startpos moves e2e4");
     session.send("go ponder movetime 1000");
 
@@ -283,9 +292,7 @@ fn ponderhit_after_spent_movetime_does_not_restart_search_clock() {
 /// not an absent one: each moves at once instead of searching until `stop`.
 #[test]
 fn a_zero_negative_or_unreadable_clock_moves_at_once() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     for go in [
         "go wtime 0 btime 0",
         "go wtime -50 btime 1000",
@@ -304,9 +311,7 @@ fn a_zero_negative_or_unreadable_clock_moves_at_once() {
 /// `stop` after it still ends the search, and the option applies after.
 #[test]
 fn setoption_during_an_infinite_search_leaves_stop_working() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("position startpos");
     session.send("go infinite");
     session.expect_line_containing("info depth 1", wait(2));
@@ -322,9 +327,7 @@ fn setoption_during_an_infinite_search_leaves_stop_working() {
 /// search answers and the engine exits instead of searching forever.
 #[test]
 fn end_of_input_ends_an_infinite_search() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("position startpos");
     session.send("go infinite");
     session.expect_line_containing("info depth 1", wait(2));
@@ -367,9 +370,7 @@ fn a_closed_output_ends_the_engine_normally() {
 /// A line that is not UTF-8 is an unknown command, not the end of input.
 #[test]
 fn a_non_utf8_line_does_not_end_the_session() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send_bytes(b"\xff\xfe not text\n");
     session.send("isready");
     session.expect_line_containing("readyok", wait(2));
@@ -380,9 +381,7 @@ fn a_non_utf8_line_does_not_end_the_session() {
 /// that could pass for a result.
 #[test]
 fn stop_during_bench_reports_an_interruption_not_a_summary() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("bench 16");
     session.expect_line_containing("Large pages", wait(5));
     session.send("stop");
@@ -398,9 +397,7 @@ fn stop_during_bench_reports_an_interruption_not_a_summary() {
 /// `setoption` that resends the option set.
 #[test]
 fn a_refused_hash_is_announced_once() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("setoption name Hash value 33554432");
     session.send("isready");
     let first = session.collect_until_line_containing("readyok", wait(15));
@@ -422,9 +419,7 @@ fn a_refused_hash_is_announced_once() {
 /// depth instead of stopping at the forced-move shortcut.
 #[test]
 fn a_one_move_searchmoves_searches_to_its_depth() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("position startpos");
     session.send("go depth 6 searchmoves e2e4");
     let lines = session.collect_until_line_containing("bestmove", wait(5));
@@ -437,9 +432,7 @@ fn a_one_move_searchmoves_searches_to_its_depth() {
 
 #[test]
 fn movetime_100_completes_at_least_one_depth() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("position startpos");
     session.send("go movetime 100");
 
@@ -460,9 +453,7 @@ fn movetime_100_completes_at_least_one_depth() {
 
 #[test]
 fn long_endgame_search_does_not_overflow_engine_thread_stack() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("position fen 8/2Pq4/5K2/7k/8/6Q1/8/8 b - - 0 80");
     session.send("go movetime 100");
 
@@ -477,9 +468,7 @@ fn long_endgame_search_does_not_overflow_engine_thread_stack() {
 
 #[test]
 fn threaded_go_nodes_returns_bestmove_and_reports_nodes() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("setoption name Threads value 4");
     session.send("isready");
     session.expect_line_containing("readyok", wait(5));
@@ -515,9 +504,7 @@ fn threaded_go_nodes_returns_bestmove_and_reports_nodes() {
 
 #[test]
 fn threaded_infinite_search_stops_cleanly() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("setoption name Threads value 4");
     session.send("isready");
     session.expect_line_containing("readyok", wait(5));
@@ -532,9 +519,7 @@ fn threaded_infinite_search_stops_cleanly() {
 
 #[test]
 fn threaded_ponderhit_after_spent_movetime_does_not_restart_search_clock() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("setoption name Threads value 4");
     session.send("isready");
     session.expect_line_containing("readyok", wait(5));
@@ -576,9 +561,7 @@ const PONDER_RACE_SCENARIOS: [(&str, &str, &str); 3] = [
 fn assert_ponder_race_answers(threads: usize, release: &str, budget: Duration) {
     let mut unanswered = Vec::new();
     for (scenario, position, go) in PONDER_RACE_SCENARIOS {
-        let mut session = UciSession::start();
-        session.send("uci");
-        session.expect_line_containing("uciok", wait(15));
+        let mut session = UciSession::ready();
         session.send(&format!("setoption name Threads value {threads}"));
         session.send("setoption name Ponder value true");
         session.send("isready");
@@ -640,9 +623,7 @@ fn threaded_stop_written_with_go_ponder_still_answers_the_go() {
 /// one that arrives with no search, must not release the next ponder search.
 #[test]
 fn ponderhit_never_converts_a_later_ponder_search() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("position startpos moves e2e4");
     session.send("go ponder depth 1");
     session.expect_line_containing("info depth 1", wait(2));
@@ -664,9 +645,7 @@ fn ponderhit_never_converts_a_later_ponder_search() {
 /// to its limit.
 #[test]
 fn stop_with_no_search_does_not_stop_the_next_go() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("position startpos");
     session.send_together(&["stop", "go depth 4"]);
 
@@ -685,9 +664,7 @@ fn emitted_pvs_are_legal_for_tournament_positions_with_threads() {
         "2k5/pp3pp1/5n2/2P5/1PP2P2/P2BK1p1/2b3PP/7R w - - 2 24",
         "2k5/pp3pp1/5n2/2P5/1PP2P2/P2BK1p1/6PP/3b3R b - - 1 23",
     ];
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
 
     for threads in [1, 8] {
         session.send(&format!("setoption name Threads value {threads}"));
@@ -760,9 +737,7 @@ fn a_triple_check_fen_is_a_critical_exit_before_any_search() {
 /// says nothing about tablebases; a genuine path that holds none still does.
 #[test]
 fn the_empty_syzygy_path_placeholder_says_nothing() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("setoption name SyzygyPath value <empty>");
     session.send("isready");
     session.expect_line_containing("readyok", wait(5));
@@ -786,9 +761,7 @@ fn the_empty_syzygy_path_placeholder_says_nothing() {
 /// plots against depth. One thread at fixed depth is deterministic.
 #[test]
 fn seldepth_resets_each_iteration_and_counts_plies_from_one() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("position startpos");
     session.send("go depth 12");
     let lines = session.collect_until_line_containing("bestmove", wait(60));
@@ -831,9 +804,7 @@ fn seldepth_resets_each_iteration_and_counts_plies_from_one() {
 /// searches are deterministic, so this asserts exact shapes.
 #[test]
 fn single_pv_reports_aspiration_bounds() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("position startpos");
     session.send("go depth 12");
     let lines = session.collect_until_line_containing("bestmove", wait(60));
@@ -881,9 +852,7 @@ fn a_root_with_no_legal_move_reports_a_score_before_bestmove() {
         // Stalemate: Black to move, no legal move, not in check.
         ("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1", "info depth 0 score cp 0"),
     ] {
-        let mut session = UciSession::start();
-        session.send("uci");
-        session.expect_line_containing("uciok", wait(15));
+        let mut session = UciSession::ready();
         session.send(&format!("position fen {fen}"));
         session.send("go depth 5");
         let lines = session.collect_until_line_containing("bestmove", wait(5));
@@ -936,9 +905,7 @@ fn last_pv_and_bestmove(lines: &[String]) -> (String, String) {
 /// deterministically by `only_a_helpers_line_is_reported_after_the_vote`.
 #[test]
 fn threaded_bestmove_is_the_move_the_last_info_line_reports() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     session.send("setoption name Threads value 8");
     session.send("isready");
     session.expect_line_containing("readyok", wait(5));
@@ -972,9 +939,7 @@ fn threaded_bestmove_is_the_move_the_last_info_line_reports() {
 /// prints its result's own line before `bestmove` whenever they differ.
 #[test]
 fn a_stopped_fail_high_line_is_followed_by_the_line_of_the_move_played() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     let fen = "position fen r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3";
     for nodes in (9_000..=13_000).step_by(500) {
         session.send("ucinewgame");
@@ -1019,9 +984,7 @@ fn kpk_search_ms(session: &mut UciSession) -> u64 {
 /// the cost of building the table in either profile.
 #[test]
 fn first_kpk_search_in_a_fresh_process_costs_what_a_warm_one_does() {
-    let mut session = UciSession::start();
-    session.send("uci");
-    session.expect_line_containing("uciok", wait(15));
+    let mut session = UciSession::ready();
     let cold = kpk_search_ms(&mut session);
     let warm = kpk_search_ms(&mut session);
     assert!(
