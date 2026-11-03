@@ -331,7 +331,8 @@ GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.2 | RESEARCH | R2 | **Night read 2026-11-03:** the slow state is Rarog's, not the host's (Rarog's four threads 2.62–2.66 times one thread for 9.5 hours, Reckless's 3.36–3.48 beside it); RAR-M81 UNRESOLVED (in that state Rarog's D 0.82 against 1.28 and 1.31), RAR-M80 NOT REPLICATED; parking, frequency and scheduling excluded. **Corrected 2026-11-03** (the audit, section 10): the sampler shows Windows packing both engines' four threads on two or three cores' SMT siblings inside the slot, Rarog's harder (two cores in 90–96% of its turns, Reckless 47–66%), and neither engine places its threads on Windows, so the slow state is the scheduler's placement inside the eight-logical-CPU slot, not the host's and not Rarog's code. Registered: RAR-M82, the legs again in a sibling-free slot (`--placement`, one logical CPU per physical core; `38ef0d5` lets the wrapper accept it), 200 games each, **read 2026-11-03: RESTORED**, Rarog's four threads 4.03 times one (every fifth 3.94–4.11), Reckless's 4.45, no sibling busy, so RAR-M81's and RAR-M78's deficit verdicts were measured in the packed state and are superseded, the explicit placement is the policy for rated multi-thread reads (PROCESS) and the self-relative comparison is next, re-registered sibling-free (three four-thread legs, 1,000 games each, about nine hours; RAR-M78's time-odds legs reused); RAR-P54, the per-core sibling loss of each engine standalone, **read 2026-11-03: REFUTED**, Rarog 0.63 against Reckless 0.65 beside a sibling, the same loss, so the night's gap is placement alone. Registered 2026-11-03: **RAR-M83**, the self-relative comparison sibling-free (Rarog's, Reckless's and Stockfish's four-thread legs, 1,000 games each, RAR-M78's time-odds legs as G2, about nine hours on an idle night, `analysis/artifacts/d2-selfrel/run.ps1`), NOT DEFICIENT 0.70, DEFICIENT 0.20. Earlier reads: the D.2 text below |
+| D.2.6 | READY_FOR_IMPLEMENTATION | V | Registered 2026-11-03, the maintainer's: one idle night of about nine hours (`analysis/artifacts/d2-selfrel/run.ps1`), Rarog's, Reckless's and Stockfish's four-thread legs at 1,000 games each in a slot of one logical CPU per physical core, RAR-M78's time-odds legs as G2; NOT DEFICIENT 0.70, DEFICIENT 0.20. The slot is the policy because the night's slow state was Windows packing four threads on SMT siblings (RAR-M82 RESTORED, 4.03 times one; RAR-P54 REFUTED, both engines keep 0.63–0.65 beside a sibling) |
+| D.2.7 | RESEARCH | R2 | Held on D.2.6: DEFICIENT opens it on RAR-R33's next read; NOT DEFICIENT closes D.2's four-thread target `NO_CHANGE` and hands its items to G.1 |
 | D.3.9 | RESEARCH | R2 | After D.2 (maintainer order, 2026-11-03): the score-normalisation card and the protocol decisions; the `src/uci/` (planned) move with D.8.13, the adapter boundary |
 | D.4.3 | READY_FOR_IMPLEMENTATION | I1 | Before D.6.1, D.6.2 and D.8.4; a planted dropped move must fail it |
 | D.4.4 | RESEARCH | R2 | The card: how to re-search without perturbing the measured tree; before D.6's screens |
@@ -1624,586 +1625,615 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
   evidence from staggered depths, no per-node shared atomics) against Rarog's
   current weighted helper voting. RAR-M46 found no 4T defect, so the question
   is which shape scales to G.1, not which repairs a deficit. Gate:
-  4T SPRT `[0,5]` against the 1T-accepted head at 4T, no affinity, null pair
-  first. High-thread and NUMA remain G.1.
+  4T SPRT `[0,5]` against the 1T-accepted head at 4T, null pair first, in a
+  slot of one logical CPU per physical core (PROCESS; RAR-M82 replaced the
+  earlier "no affinity"). High-thread and NUMA remain G.1.
   **Input, allocation and copy audit 2026-10-06:** `TranspositionTable`
   derives `Clone`, and a clone of the single-thread form copies the whole
   table. The one search-time clone, each helper's job in `search_parallel`,
   is safe only because `make_shared` runs first. Remove `Clone` and give
   helpers a handle only the shared form can produce, so the copy cannot be
   written; behaviour-neutral, exact fingerprint, no gate of its own.
-  **PREMISE CONTRADICTED, RAR-M46, 2026-09-11 — re-scope before spending work
-  here.** This leaf is written to recover strength from immature lazy SMP. At
-  4T against the reference field there is no such deficit: Rarog's deficits are
-  26 to 75 Elo *smaller* at 4T than at 1T against three of the four targets,
-  its performance rating is +31 against its frozen 1T rating, and it beats
-  Basilisk 1.10.0 at 4T (+25) having lost at 1T (−23). That does **not** show
-  the SMP is good in absolute terms — it beats engines designed for two to four
-  cores, which is a low bar, and says nothing about G.1's 8/16/32 threads where
-  lazy SMP characteristically degrades. The cheap re-justification is a
-  **self-scaling curve** — Rarog at 1T/2T/4T/8T against one fixed opponent —
-  which measures Rarog's own scaling without needing a donor comparison. Until
-  something like that establishes a defect, D.2 has no measured target.
-  **Maintainer steer, 2026-09-11: compare against modern engines, not this
-  field.** The RAR-M46 result only shows Rarog beating engines that never
-  targeted SMP; the question D.2 actually asks is whether Rarog's lazy SMP is
-  weak against engines that did. The clean instrument is **self-relative
-  scaling**: for each engine play it against *itself* at 4T versus 1T and read
-  the Elo it gains from the threads. That removes every cross-engine confound —
-  strength, evaluation, NPS accounting — because each engine is its own
-  control. Run it for Rarog, **Reckless** (`reckless-windows-avx2.exe`) and
-  **Stockfish** (`stockfish-windows-x86-64-bmi2.exe`), all present in
-  `D:/chess/engines/`, and compare the three gains. SMP value grows with time
-  control, so the clock is a registration decision, not a default.
-  **Target measured, RAR-P46, 2026-10-27.** For the C head, RAR-M46's
-  contradiction no longer holds. Its own 4T/1T bench scaling is 3.28 against
-  the B.9 head's 3.80, lost already at 2T. Under the games' conditions (three
-  concurrent pinned 4T processes, 100 ms searches) it alone enters a
-  system-level slow state, 7–10% under B.9 instead of 23% over. **RAR-P47,
-  2026-10-27:** the `LargePages` option (`2b7bca9`) turns large pages off; the
-  slow state appeared only with them on (2 of 16 passes against 0 of 16), weak
-  evidence for the allocator. Off costs about 1–4% NPS in these cells.
-  **RAR-M77, 2026-10-28:** in games under RAR-M74's four-thread conditions,
-  large pages on are +2.7% NPS and +10.3 ± 5.9 Elo over off, so the default
-  stays on. The slow state does not show in games: a match keeps its engine
-  processes. The same head reads 8.08 M nps against itself but read 6.47 M
-  against RAR-M74's field, so that −9.2% is a question about the opponents
-  sharing the slot, not about large pages. Next for the agent: the 2T loss in
-  shared writes; the self-relative scaling games come after.
-  **RAR-P48 registered 2026-10-29.** A static read finds nothing threads
-  share that changed since B.9; the speed pass that made C's nodes 22%
-  cheaper was measured at one thread only. The read separates the loss
-  into hardware (independent 1T processes on the same cores), the shared
-  search, a search split across the two CCDs, and large pages, at 5 s
-  with one thread per physical core. Its outcome picks D.2's next step.
-  **RAR-P48 read 2026-10-29: Mixed.** Pinned one thread per physical
-  core, the C head's E at 4T is 0.90 against B.9's 1.07, so the loss is
-  real and is not RAR-P46's placement. It is not the CCD split, and not
-  large pages. The split between hardware and shared search is
-  unresolved: the instrument pooled two positions, and it read NPS from
-  an iteration line that ends 2.3 to 5.0 s into the search. Per
-  position, both meet the shared-search rule, and B.9's threads are
-  faster sharing a search than apart while C's are not. Next for the
-  agent: repair the instrument (per position, one fixed window) and
-  register the read that decides it.
-  **RAR-P49 registered 2026-10-29.** It reads every search's nodes at
-  exactly 5,000 ms, interpolated between its info lines, judges each
-  position separately, and keeps B.9 and the C head with large pages
-  off. Shared search or both sends D.2 to a bisect of the speed pass at
-  1T and 4T; hardware or not reproduced sends it to the scaling games.
-  **RAR-P49 read 2026-10-30: shared search.** At 4T the two heads lose
-  exactly the same to the shared hardware (H 0.956 against 0.956), and
-  C's whole loss is in the shared search (Q 0.98 against 1.06, and 0.94
-  against 1.00). Next for the agent: register a bisect from B.9 to C on
-  this instrument, read on Q. Its first read asks whether the speed
-  pass's parent already shows the loss; within the speed pass the
-  prefetch sites go first.
-  **RAR-P50 registered 2026-10-30.** A long-control match first was
-  considered and set aside: RAR-M76 played C against B.9's search at 4T
-  at `3+0.03`, where the loss does not exist, and a match long enough to
-  see it would take days. The bisect reads five revisions, B.9,
-  `52cc6de`, `6ade0e6`, `138d867` and the C head, each built with rustc
-  1.99.1, and names the interval that holds at least half the loss in Q.
-  **RAR-P50 read 2026-10-30: Mixed.** At the tightly measured position
-  the loss splits between C's evaluation rebuilds (about 0.05 in ln Q)
-  and the speed-pass squash (about 0.03). At the noisier one it
-  accumulates over every step. No single change holds it, and both
-  holders bought large gains, so the bisect stops; a mechanism study by
-  shared-table counters waits for a hypothesis that predicts which rate
-  differs. The engine target RAR-P46 named stays recorded and unfixed:
-  about 6–7% per thread at 4T in searches of seconds, unseen in any
-  match. Next for D.2: the self-relative scaling games, the maintainer's
-  run.
-  **RAR-M78 registered 2026-10-30.** Rarog, Reckless 0.9.0 and Stockfish 18
-  each play themselves at four threads against one and, on one thread, at
-  `20+0.2` against `10+0.1`. A raw four-thread gain favours a weaker
-  engine, which gains more from any extra search. So each gain is divided
-  by the engine's own Elo per doubling of time, giving an effective speedup
-  comparable across engines (maintainer decision 2026-10-30). Rarog
-  deficient opens a four-thread SMP research card; otherwise D.2's
-  four-thread target stays closed and scaling beyond four threads stays
-  with G.1.
-  **Engine review input, 2026-11-01** (`analysis/engine_review_2026-11-01.md`,
-  §3.3 and §3.4; the reviewers' reports and the profile logs are in
-  `analysis/artifacts/engine-review-2026-11-01/`). The static read of what
-  threads share is complete: on the node path only the transposition table and
-  one 64-byte counter line are shared; histories, correction tables, the pawn
-  and imbalance caches, the evaluator, the stack and the root records are per
-  thread, every atomic is `Relaxed`, and the batched node counter with the
-  stop flag costs an estimated 0.2–0.4% at four threads and table coherence
-  1–2%, none of it the 6–7% loss. Three mechanisms can make a cheaper node
-  share worse with no shared-memory change, and the review ranks their reads
-  by cost. Every prediction below is frozen here, before any read.
-  1. **The PGO profile covers one of three kernel copies.** `negamax`,
-     `quiescence`, `check_stop` and `search_root_window` are generic over the
-     poll closure, so the binary holds one copy of each for the engine's
-     serial poll (`Engine::search`), one for `search_parallel`'s main thread
-     (`main_poll`) and one for the helpers (`helper_poll`), about 15% of the
-     binary; the training run sends `bench {depth}` at one thread
-     (`xtask/src/main.rs:1156-1176`) and reaches only the first. In a replica
-     of the recipe the eleven multi-thread instantiations had all-zero profile
-     counters and were placed in `.text$unlikely`, the untrained
-     `negamax<NonPv>` at 6,680 assembly lines against 15,568 for the trained
-     copy; one Threads-2 training pass made every copy hot. Every thread of a
-     `Threads > 1` search, the main one included, runs an untrained copy, and
-     RAR-P49's Q compares exactly that against the trained copy in its 1T and
-     4×1T cells, so any PGO-sensitive speed-up (the speed pass was tuned under
-     PGO) lowers Q with no shared cause: the shape of RAR-P50's loss, spread
-     over unrelated commits. Read: build the head with the poll taken as `&mut
-     dyn FnMut() -> SearchEvent` at `search_impl`, `search_parallel` and
-     `run_worker_job` (one copy, covered by the serial profile; the poll runs
-     once per 2,048 nodes), or with a Threads-2 run added to the training, one
-     cure at a time; `bench 13` must stay 13,987,223 / EBF 2.565; read Q at 4T
-     and the 1T cell on RAR-P50's instrument against the current PGO build.
-     Prediction: Q rises by 0.03 to 0.10 in ln with the 1T cell within 1%;
-     under 0.02 kills it. A confirmed cure is a behaviour-neutral change
-     qualified by the 4T NPS read, no game; it improves every shipped
-     multi-thread asset and the 4T arm of every read since RAR-P46.
-     Independent of RAR-M78, which prices four threads in Elo.
-  2. **The shared backend's cost per operation, F16** (handed to D.2 by
-     `analysis/architecture_review_2026-09.md` §4.6 and absent from this text
-     until now). A shared probe is up to six (8-byte load, 2-byte load,
-     `fold16`, compare) and a store scans up to six slots through `load_any`
-     and `unpack_entry`; the local form does the same over three plain
-     entries. Fitting RAR-P50's medians to a fixed per-node cost gives 47–61
-     ns, about 12% of the head's node time, and a cheaper node makes a fixed
-     cost a larger share, which is what the bisect's I2 step looks like. The
-     1T fingerprint never sees the shared path, and 1T and 4T play different
-     replacement geometry (3-way against 6-way). Read, no code change: `bench
-     3` pooled at Threads 2 against Threads 1 (below `MIN_PARALLEL_DEPTH` the
-     search stays serial but `configure` has made the table shared, so only
-     the backend differs). Prediction: head ratio 0.87–0.91, B.9 0.90–0.93;
-     refuted at 0.97 or above. Then, in cost order: the cure of item 1; a
-     `replacement` that reads only occupancy, depth and age bits
-     (behaviour-neutral); skipping byte-identical stores (item 4); and F16's
-     answer, one atomic backend at every thread count, an `I2` with the 1T NPS
-     pool at ±0.5% and gate case 3, because the geometry moves the
-     fingerprint.
-  3. **Q is an NPS ratio, and NPS mixes node cost with node mix.** A shared
-     table turns searched nodes into cheap probe-and-return nodes, so Q above
-     one is possible with nothing wasted (B.9: 1.051 at position 0) and Q can
-     fall when the evaluation gets cheaper; RAR-R07/R08 showed the opposite
-     failure of the proxy (3.95× NPS, lower depth). Read: RAR-R10's paired
-     time-to-depth harness, 4T against 1T, B.9 and the head, zero games, about
-     30 minutes. Prediction: the ratios differ by under 5%; six percent or
-     more makes the loss real waste and keeps items 2 and 4 in scope.
-  4. **The rest of the card.** The two pick-time prefetches (`1aaa39e`,
-     `65f490e`) and the own-cluster prefetch are the only table-side change
-     since B.9 (`tt.rs` is byte-identical to `24aefb4`) and fetch lines for
-     moves then pruned, measured at one thread only: counters first
-     (prefetches per searched move, predicted 1.6–2.2 against B.9's 1.0), then
-     one arm per site on the instrument, Q +0.00 to +0.02 each kills the
-     family. Byte-identical stores keep a line Modified and a probe miss
-     stores twice: a counter (predicted 8–25%), compare before storing at 10%
-     or more. `tb_hits` is a `fetch_add` per tablebase probe and sits with
-     `stop_state`, `nodes` and the votes on one unpadded line: a thread-local
-     flush on the 128-node boundary and `repr(align(64))`, fingerprint exact,
-     a 5-man four-thread read as the activation read. Six slots of 16-bit tags
-     have twice the local form's false-hit rate and 64 times Reckless's: a
-     shadow full-key array in the instrument build measures it before any
-     wider tag. Instrument rule: a four-thread rate study uses thread-local
-     counters in `ThreadData` summed at join behind a feature; a `diag`
-     build's process-global RMWs perturb what they measure and its NPS is
-     never read. Donor divergences recorded so they are not rediscovered as
-     fixes: the vote weight `+14` with a floor (donor `+10`), decisive results
-     ranked by vote rather than by a win-or-loss rule, the quorum
-     `floor(N/2)+1` without withdrawal (equal to the donor's at 2–4 and 6
-     threads, different at 5, 7, 8 and 16), the ponder-move preference in the
-     key, the SMP bundle of RAR-R03 (root rotation, pooled root scores, window
-     re-centring) accepted whole and never decomposed, and correction history
-     per thread where the donor shares it; each is priced, if at all, with
-     RAR-M78's instrument under this leaf or G.1. The `Clone` derive and the
-     helper handle the 2026-10-06 audit asked for are D.5's.
-     **Triumviratus input, 2026-11-03**
-     (`analysis/triumviratus_review_2026-11-03.md` §8, TP-1, TP-3, TP-4). Its
-     TT rejects a torn write with a 48-bit tag XORed with the data word,
-     beside this leaf's 16-bit tag study. Its per-thread state is aligned to
-     128 bytes against false sharing at make and unmake, beside the shared
-     counters' `repr(align(64))`. Its SMP levers are priors for the engine
-     card if RAR-M83 reads DEFICIENT, otherwise for G.1: a helper LMR bias in
-     fine units (Reckless-derived, +4.91 ± 7.97 at 8 threads), staggered
-     helpers with depth in the vote (+1.72 ± 4.61), a thread vote (−3.5 ±
-     8.7).
-**RAR-M78 read 2026-11-01: Rarog deficient**, by the registered rule. Four
-threads are worth 0.72 of a doubling of Rarog's own time (G4 +73.7 ± 11.5 over
-G2 +101.8 ± 11.5 at `10+0.1`, effective speedup 1.65), against 1.20 (2.30) for
-Reckless 0.9.0 and 1.31 (2.48) for Stockfish 18; Rarog's D minus theirs is
--0.48 ± 0.22 and -0.59 ± 0.23, both below zero. The runner's own statistics
-say where to look: Rarog's four-thread side reached a lower mean depth than
-its one-thread side (15.41 against 17.28) at 2.28× the nodes per second (the
-bench read 3.28), where Reckless gained 1.3 plies at 3.45× and Stockfish 2.8
-at 3.47×; and 28% of Rarog's four-thread moves were held over the 20 ms margin
-outside its own clock (p99 175 ms) against 2% at one thread and under 1% for
-the other engines. RAR-P50's recommendation against pursuing the four-thread
-loss is withdrawn. **The four-thread SMP research card is open; its reads in
-order:** (1) the PGO coverage of the multi-thread kernel copies, item 1 above,
-one build (at four threads the main thread itself runs an untrained copy,
-which a depth loss at higher NPS is consistent with); (2) time-to-depth four
-threads against one on RAR-R10's harness, item 3 above; (3) the holds: where
-the four-thread process spends the time between the clock's end and `bestmove`
-(the join of every helper, `threads.rs:363–371`, the 1 ms wait loops, the
-`info` and vote path), read from the games' `h=` comments and a timed `go
-movetime` at Threads 1 and 4, then repaired as a clock-side defect under D.1's
-rules; (4) the shared backend's cost, item 2 above; (5) the card's own
-questions from the registration, what the helpers' nodes are worth: helper
-depth, shared-table use and root diversity, with the donor divergences of item
-4 priced on this instrument. Each read is registered with its prediction
-before exposure; a repair that moves no fingerprint closes on the four-thread
-NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
-`[0,5]`, whose premise this read restores.
-  **The four-thread card, 2026-11-01** (research, zero games so far). The
-  deficit is RAR-M78's: four threads are worth 0.72 doublings of Rarog's own
-  time against 1.20 for Reckless and 1.31 for Stockfish, a gap of 0.48 to
-  0.59 doublings. A speed-only mechanism is bounded: a gain of s in ln NPS is
-  worth s / ln 2 doublings, so 7% buys 0.10. Established today, by file reads
-  and builds:
-  - **The kernel copies.** The head's PGO profile holds 17 kernel
-    instantiations, the 11 multi-thread ones with all-zero counts, as the
-    review found. `e057d84` takes the poll as a trait object: 6
-    instantiations, all trained, `bench 13` exact. The table's shared-form
-    branches inside the kernel stay untrained under any one-thread training.
-  - **The holds are inside the clock.** `h=` is Colosseum's overhead after
-    the last `info` line and lies within the charged time (RAR-R30), so
-    RAR-M78's "outside its own clock" is corrected: no forfeit risk, but 9.0%
-    of the four-thread time (1.2% at one thread) goes to search that is never
-    reported. The code accounts for it: in a pool the soft stop is a vote, and
-    the main thread past its target keeps iterating until three of four
-    agree.
-  - **The depth deficit is not the holds.** On moves held 20 ms or less the
-    four-thread side still reports 15.25 plies against 17.30. Its main thread
-    searched about a quarter of 1,392,558 nodes a move against the one-thread
-    side's 622,252; at EBF 2.565 that costs 0.62 plies, not 1.87. About 1.25
-    plies are unexplained by node count.
+    - **D.2.1 The premise re-scoped: no four-thread deficit against the field (RAR-M46), so self-relative scaling against modern engines becomes the instrument — `R2`, DONE 2026-09-11.**
+      **PREMISE CONTRADICTED, RAR-M46, 2026-09-11 — re-scope before spending work
+      here.** This leaf is written to recover strength from immature lazy SMP. At
+      4T against the reference field there is no such deficit: Rarog's deficits are
+      26 to 75 Elo *smaller* at 4T than at 1T against three of the four targets,
+      its performance rating is +31 against its frozen 1T rating, and it beats
+      Basilisk 1.10.0 at 4T (+25) having lost at 1T (−23). That does **not** show
+      the SMP is good in absolute terms — it beats engines designed for two to four
+      cores, which is a low bar, and says nothing about G.1's 8/16/32 threads where
+      lazy SMP characteristically degrades. The cheap re-justification is a
+      **self-scaling curve** — Rarog at 1T/2T/4T/8T against one fixed opponent —
+      which measures Rarog's own scaling without needing a donor comparison. Until
+      something like that establishes a defect, D.2 has no measured target.
+      **Maintainer steer, 2026-09-11: compare against modern engines, not this
+      field.** The RAR-M46 result only shows Rarog beating engines that never
+      targeted SMP; the question D.2 actually asks is whether Rarog's lazy SMP is
+      weak against engines that did. The clean instrument is **self-relative
+      scaling**: for each engine play it against *itself* at 4T versus 1T and read
+      the Elo it gains from the threads. That removes every cross-engine confound —
+      strength, evaluation, NPS accounting — because each engine is its own
+      control. Run it for Rarog, **Reckless** (`reckless-windows-avx2.exe`) and
+      **Stockfish** (`stockfish-windows-x86-64-bmi2.exe`), all present in
+      `D:/chess/engines/`, and compare the three gains. SMP value grows with time
+      control, so the clock is a registration decision, not a default.
+    - **D.2.2 The four-thread speed loss: measured (RAR-P46, RAR-P47, RAR-M77), located in the shared search (RAR-P48, RAR-P49), bisected with no single holder (RAR-P50) — `R2`, DONE 2026-10-30.**
+      **Target measured, RAR-P46, 2026-10-27.** For the C head, RAR-M46's
+      contradiction no longer holds. Its own 4T/1T bench scaling is 3.28 against
+      the B.9 head's 3.80, lost already at 2T. Under the games' conditions (three
+      concurrent pinned 4T processes, 100 ms searches) it alone enters a
+      system-level slow state, 7–10% under B.9 instead of 23% over. **RAR-P47,
+      2026-10-27:** the `LargePages` option (`2b7bca9`) turns large pages off; the
+      slow state appeared only with them on (2 of 16 passes against 0 of 16), weak
+      evidence for the allocator. Off costs about 1–4% NPS in these cells.
+      **RAR-M77, 2026-10-28:** in games under RAR-M74's four-thread conditions,
+      large pages on are +2.7% NPS and +10.3 ± 5.9 Elo over off, so the default
+      stays on. The slow state does not show in games: a match keeps its engine
+      processes. The same head reads 8.08 M nps against itself but read 6.47 M
+      against RAR-M74's field, so that −9.2% is a question about the opponents
+      sharing the slot, not about large pages. Next for the agent: the 2T loss in
+      shared writes; the self-relative scaling games come after.
+      **RAR-P48 registered 2026-10-29.** A static read finds nothing threads
+      share that changed since B.9; the speed pass that made C's nodes 22%
+      cheaper was measured at one thread only. The read separates the loss
+      into hardware (independent 1T processes on the same cores), the shared
+      search, a search split across the two CCDs, and large pages, at 5 s
+      with one thread per physical core. Its outcome picks D.2's next step.
+      **RAR-P48 read 2026-10-29: Mixed.** Pinned one thread per physical
+      core, the C head's E at 4T is 0.90 against B.9's 1.07, so the loss is
+      real and is not RAR-P46's placement. It is not the CCD split, and not
+      large pages. The split between hardware and shared search is
+      unresolved: the instrument pooled two positions, and it read NPS from
+      an iteration line that ends 2.3 to 5.0 s into the search. Per
+      position, both meet the shared-search rule, and B.9's threads are
+      faster sharing a search than apart while C's are not. Next for the
+      agent: repair the instrument (per position, one fixed window) and
+      register the read that decides it.
+      **RAR-P49 registered 2026-10-29.** It reads every search's nodes at
+      exactly 5,000 ms, interpolated between its info lines, judges each
+      position separately, and keeps B.9 and the C head with large pages
+      off. Shared search or both sends D.2 to a bisect of the speed pass at
+      1T and 4T; hardware or not reproduced sends it to the scaling games.
+      **RAR-P49 read 2026-10-30: shared search.** At 4T the two heads lose
+      exactly the same to the shared hardware (H 0.956 against 0.956), and
+      C's whole loss is in the shared search (Q 0.98 against 1.06, and 0.94
+      against 1.00). Next for the agent: register a bisect from B.9 to C on
+      this instrument, read on Q. Its first read asks whether the speed
+      pass's parent already shows the loss; within the speed pass the
+      prefetch sites go first.
+      **RAR-P50 registered 2026-10-30.** A long-control match first was
+      considered and set aside: RAR-M76 played C against B.9's search at 4T
+      at `3+0.03`, where the loss does not exist, and a match long enough to
+      see it would take days. The bisect reads five revisions, B.9,
+      `52cc6de`, `6ade0e6`, `138d867` and the C head, each built with rustc
+      1.99.1, and names the interval that holds at least half the loss in Q.
+      **RAR-P50 read 2026-10-30: Mixed.** At the tightly measured position
+      the loss splits between C's evaluation rebuilds (about 0.05 in ln Q)
+      and the speed-pass squash (about 0.03). At the noisier one it
+      accumulates over every step. No single change holds it, and both
+      holders bought large gains, so the bisect stops; a mechanism study by
+      shared-table counters waits for a hypothesis that predicts which rate
+      differs. The engine target RAR-P46 named stays recorded and unfixed:
+      about 6–7% per thread at 4T in searches of seconds, unseen in any
+      match. Next for D.2: the self-relative scaling games, the maintainer's
+      run.
+    - **D.2.3 The four-thread card opened: RAR-M78's self-relative comparison read deficient (later superseded), the engine review's mechanisms, six hypotheses and their tests — `R2`, DONE 2026-11-01.**
+      **RAR-M78 registered 2026-10-30.** Rarog, Reckless 0.9.0 and Stockfish 18
+      each play themselves at four threads against one and, on one thread, at
+      `20+0.2` against `10+0.1`. A raw four-thread gain favours a weaker
+      engine, which gains more from any extra search. So each gain is divided
+      by the engine's own Elo per doubling of time, giving an effective speedup
+      comparable across engines (maintainer decision 2026-10-30). Rarog
+      deficient opens a four-thread SMP research card; otherwise D.2's
+      four-thread target stays closed and scaling beyond four threads stays
+      with G.1.
+      **Engine review input, 2026-11-01** (`analysis/engine_review_2026-11-01.md`,
+      §3.3 and §3.4; the reviewers' reports and the profile logs are in
+      `analysis/artifacts/engine-review-2026-11-01/`). The static read of what
+      threads share is complete: on the node path only the transposition table and
+      one 64-byte counter line are shared; histories, correction tables, the pawn
+      and imbalance caches, the evaluator, the stack and the root records are per
+      thread, every atomic is `Relaxed`, and the batched node counter with the
+      stop flag costs an estimated 0.2–0.4% at four threads and table coherence
+      1–2%, none of it the 6–7% loss. Three mechanisms can make a cheaper node
+      share worse with no shared-memory change, and the review ranks their reads
+      by cost. Every prediction below is frozen here, before any read.
+      1. **The PGO profile covers one of three kernel copies.** `negamax`,
+         `quiescence`, `check_stop` and `search_root_window` are generic over the
+         poll closure, so the binary holds one copy of each for the engine's
+         serial poll (`Engine::search`), one for `search_parallel`'s main thread
+         (`main_poll`) and one for the helpers (`helper_poll`), about 15% of the
+         binary; the training run sends `bench {depth}` at one thread
+         (`xtask/src/main.rs:1156-1176`) and reaches only the first. In a replica
+         of the recipe the eleven multi-thread instantiations had all-zero profile
+         counters and were placed in `.text$unlikely`, the untrained
+         `negamax<NonPv>` at 6,680 assembly lines against 15,568 for the trained
+         copy; one Threads-2 training pass made every copy hot. Every thread of a
+         `Threads > 1` search, the main one included, runs an untrained copy, and
+         RAR-P49's Q compares exactly that against the trained copy in its 1T and
+         4×1T cells, so any PGO-sensitive speed-up (the speed pass was tuned under
+         PGO) lowers Q with no shared cause: the shape of RAR-P50's loss, spread
+         over unrelated commits. Read: build the head with the poll taken as `&mut
+         dyn FnMut() -> SearchEvent` at `search_impl`, `search_parallel` and
+         `run_worker_job` (one copy, covered by the serial profile; the poll runs
+         once per 2,048 nodes), or with a Threads-2 run added to the training, one
+         cure at a time; `bench 13` must stay 13,987,223 / EBF 2.565; read Q at 4T
+         and the 1T cell on RAR-P50's instrument against the current PGO build.
+         Prediction: Q rises by 0.03 to 0.10 in ln with the 1T cell within 1%;
+         under 0.02 kills it. A confirmed cure is a behaviour-neutral change
+         qualified by the 4T NPS read, no game; it improves every shipped
+         multi-thread asset and the 4T arm of every read since RAR-P46.
+         Independent of RAR-M78, which prices four threads in Elo.
+      2. **The shared backend's cost per operation, F16** (handed to D.2 by
+         `analysis/architecture_review_2026-09.md` §4.6 and absent from this text
+         until now). A shared probe is up to six (8-byte load, 2-byte load,
+         `fold16`, compare) and a store scans up to six slots through `load_any`
+         and `unpack_entry`; the local form does the same over three plain
+         entries. Fitting RAR-P50's medians to a fixed per-node cost gives 47–61
+         ns, about 12% of the head's node time, and a cheaper node makes a fixed
+         cost a larger share, which is what the bisect's I2 step looks like. The
+         1T fingerprint never sees the shared path, and 1T and 4T play different
+         replacement geometry (3-way against 6-way). Read, no code change: `bench
+         3` pooled at Threads 2 against Threads 1 (below `MIN_PARALLEL_DEPTH` the
+         search stays serial but `configure` has made the table shared, so only
+         the backend differs). Prediction: head ratio 0.87–0.91, B.9 0.90–0.93;
+         refuted at 0.97 or above. Then, in cost order: the cure of item 1; a
+         `replacement` that reads only occupancy, depth and age bits
+         (behaviour-neutral); skipping byte-identical stores (item 4); and F16's
+         answer, one atomic backend at every thread count, an `I2` with the 1T NPS
+         pool at ±0.5% and gate case 3, because the geometry moves the
+         fingerprint.
+      3. **Q is an NPS ratio, and NPS mixes node cost with node mix.** A shared
+         table turns searched nodes into cheap probe-and-return nodes, so Q above
+         one is possible with nothing wasted (B.9: 1.051 at position 0) and Q can
+         fall when the evaluation gets cheaper; RAR-R07/R08 showed the opposite
+         failure of the proxy (3.95× NPS, lower depth). Read: RAR-R10's paired
+         time-to-depth harness, 4T against 1T, B.9 and the head, zero games, about
+         30 minutes. Prediction: the ratios differ by under 5%; six percent or
+         more makes the loss real waste and keeps items 2 and 4 in scope.
+      4. **The rest of the card.** The two pick-time prefetches (`1aaa39e`,
+         `65f490e`) and the own-cluster prefetch are the only table-side change
+         since B.9 (`tt.rs` is byte-identical to `24aefb4`) and fetch lines for
+         moves then pruned, measured at one thread only: counters first
+         (prefetches per searched move, predicted 1.6–2.2 against B.9's 1.0), then
+         one arm per site on the instrument, Q +0.00 to +0.02 each kills the
+         family. Byte-identical stores keep a line Modified and a probe miss
+         stores twice: a counter (predicted 8–25%), compare before storing at 10%
+         or more. `tb_hits` is a `fetch_add` per tablebase probe and sits with
+         `stop_state`, `nodes` and the votes on one unpadded line: a thread-local
+         flush on the 128-node boundary and `repr(align(64))`, fingerprint exact,
+         a 5-man four-thread read as the activation read. Six slots of 16-bit tags
+         have twice the local form's false-hit rate and 64 times Reckless's: a
+         shadow full-key array in the instrument build measures it before any
+         wider tag. Instrument rule: a four-thread rate study uses thread-local
+         counters in `ThreadData` summed at join behind a feature; a `diag`
+         build's process-global RMWs perturb what they measure and its NPS is
+         never read. Donor divergences recorded so they are not rediscovered as
+         fixes: the vote weight `+14` with a floor (donor `+10`), decisive results
+         ranked by vote rather than by a win-or-loss rule, the quorum
+         `floor(N/2)+1` without withdrawal (equal to the donor's at 2–4 and 6
+         threads, different at 5, 7, 8 and 16), the ponder-move preference in the
+         key, the SMP bundle of RAR-R03 (root rotation, pooled root scores, window
+         re-centring) accepted whole and never decomposed, and correction history
+         per thread where the donor shares it; each is priced, if at all, with
+         RAR-M78's instrument under this leaf or G.1. The `Clone` derive and the
+         helper handle the 2026-10-06 audit asked for are D.5's.
+         **Triumviratus input, 2026-11-03**
+         (`analysis/triumviratus_review_2026-11-03.md` §8, TP-1, TP-3, TP-4). Its
+         TT rejects a torn write with a 48-bit tag XORed with the data word,
+         beside this leaf's 16-bit tag study. Its per-thread state is aligned to
+         128 bytes against false sharing at make and unmake, beside the shared
+         counters' `repr(align(64))`. Its SMP levers are priors for the engine
+         card if RAR-M83 reads DEFICIENT, otherwise for G.1: a helper LMR bias in
+         fine units (Reckless-derived, +4.91 ± 7.97 at 8 threads), staggered
+         helpers with depth in the vote (+1.72 ± 4.61), a thread vote (−3.5 ±
+         8.7).
+      **RAR-M78 read 2026-11-01: Rarog deficient**, by the registered rule. Four
+      threads are worth 0.72 of a doubling of Rarog's own time (G4 +73.7 ± 11.5 over
+      G2 +101.8 ± 11.5 at `10+0.1`, effective speedup 1.65), against 1.20 (2.30) for
+      Reckless 0.9.0 and 1.31 (2.48) for Stockfish 18; Rarog's D minus theirs is
+      -0.48 ± 0.22 and -0.59 ± 0.23, both below zero. The runner's own statistics
+      say where to look: Rarog's four-thread side reached a lower mean depth than
+      its one-thread side (15.41 against 17.28) at 2.28× the nodes per second (the
+      bench read 3.28), where Reckless gained 1.3 plies at 3.45× and Stockfish 2.8
+      at 3.47×; and 28% of Rarog's four-thread moves were held over the 20 ms margin
+      outside its own clock (p99 175 ms) against 2% at one thread and under 1% for
+      the other engines. RAR-P50's recommendation against pursuing the four-thread
+      loss is withdrawn. **The four-thread SMP research card is open; its reads in
+      order:** (1) the PGO coverage of the multi-thread kernel copies, item 1 above,
+      one build (at four threads the main thread itself runs an untrained copy,
+      which a depth loss at higher NPS is consistent with); (2) time-to-depth four
+      threads against one on RAR-R10's harness, item 3 above; (3) the holds: where
+      the four-thread process spends the time between the clock's end and `bestmove`
+      (the join of every helper, `threads.rs:363–371`, the 1 ms wait loops, the
+      `info` and vote path), read from the games' `h=` comments and a timed `go
+      movetime` at Threads 1 and 4, then repaired as a clock-side defect under D.1's
+      rules; (4) the shared backend's cost, item 2 above; (5) the card's own
+      questions from the registration, what the helpers' nodes are worth: helper
+      depth, shared-table use and root diversity, with the donor divergences of item
+      4 priced on this instrument. Each read is registered with its prediction
+      before exposure; a repair that moves no fingerprint closes on the four-thread
+      NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
+      `[0,5]`, whose premise this read restores.
+      **The four-thread card, 2026-11-01** (research, zero games so far). The
+      deficit is RAR-M78's: four threads are worth 0.72 doublings of Rarog's own
+      time against 1.20 for Reckless and 1.31 for Stockfish, a gap of 0.48 to
+      0.59 doublings. A speed-only mechanism is bounded: a gain of s in ln NPS is
+      worth s / ln 2 doublings, so 7% buys 0.10. Established today, by file reads
+      and builds:
+      - **The kernel copies.** The head's PGO profile holds 17 kernel
+        instantiations, the 11 multi-thread ones with all-zero counts, as the
+        review found. `e057d84` takes the poll as a trait object: 6
+        instantiations, all trained, `bench 13` exact. The table's shared-form
+        branches inside the kernel stay untrained under any one-thread training.
+      - **The holds are inside the clock.** `h=` is Colosseum's overhead after
+        the last `info` line and lies within the charged time (RAR-R30), so
+        RAR-M78's "outside its own clock" is corrected: no forfeit risk, but 9.0%
+        of the four-thread time (1.2% at one thread) goes to search that is never
+        reported. The code accounts for it: in a pool the soft stop is a vote, and
+        the main thread past its target keeps iterating until three of four
+        agree.
+      - **The depth deficit is not the holds.** On moves held 20 ms or less the
+        four-thread side still reports 15.25 plies against 17.30. Its main thread
+        searched about a quarter of 1,392,558 nodes a move against the one-thread
+        side's 622,252; at EBF 2.565 that costs 0.62 plies, not 1.87. About 1.25
+        plies are unexplained by node count.
 
-  Competing hypotheses, each with the shared signals it touches, its test and
-  its falsifier:
-  1. **H1, untrained kernel copies** raise every thread's node cost. Signals:
-     none (code layout). Test: RAR-P52, Q at four threads. Falsifier: mean
-     L(Q) under 0.02.
-  2. **H2, the shared backend** (F16) costs each node, its branches cold in
-     the shipped build. Signals: the table's geometry (six-way against
-     three-way) and replacement. Test: RAR-P53, one binary, both backends,
-     with and without PGO. Falsifier: R at 0.97 or above.
-  3. **H3, the helpers slow the main thread's progress to depth.** Every
-     thread searches the same depths (no skip; the old tables were inert,
-     RAR-R10), same-depth helpers overwrite the main thread's entries, and the
-     RAR-R03 bundle reorders and re-centres the main thread's root from the
-     pool (`apply_shared_root_scores`, pooled root scores, window
-     re-centring). Signals: table entries and replacement, root order,
-     aspiration windows, and the best-move changes the clock reads. Test:
-     RAR-R29's level X_ctl. Falsifier: X_ctl at 1.8 or above.
-  4. **H4, the soft-stop vote** spends about 9% of four-thread time in a main
-     iteration that never finishes. Signals: the soft target, the votes, the
-     stop. Test: RAR-R30's timed read. Falsifier: NOT REPRODUCED, or JOIN
-     (then a clock-side defect under D.1's rules).
-  5. **H5, result selection.** The weighted vote (`+14` with a floor,
-     decisive results by vote) can choose a helper's move, and the reported
-     depth is then that helper's. Signals: the vote, the reported line, the
-     ponder move. Test, not yet registered: the share of four-thread searches
-     whose move differs from the main thread's, and their depths, counted in
-     an instrument build. Falsifier: under 5% of moves differ.
-  6. **H6, the table fills faster** at 2.28× the nodes. Signals: replacement.
-     Test: RAR-R29's harness at Hash 1024, only if H3 survives. Falsifier: no
-     change in X.
+      Competing hypotheses, each with the shared signals it touches, its test and
+      its falsifier:
+      1. **H1, untrained kernel copies** raise every thread's node cost. Signals:
+         none (code layout). Test: RAR-P52, Q at four threads. Falsifier: mean
+         L(Q) under 0.02.
+      2. **H2, the shared backend** (F16) costs each node, its branches cold in
+         the shipped build. Signals: the table's geometry (six-way against
+         three-way) and replacement. Test: RAR-P53, one binary, both backends,
+         with and without PGO. Falsifier: R at 0.97 or above.
+      3. **H3, the helpers slow the main thread's progress to depth.** Every
+         thread searches the same depths (no skip; the old tables were inert,
+         RAR-R10), same-depth helpers overwrite the main thread's entries, and the
+         RAR-R03 bundle reorders and re-centres the main thread's root from the
+         pool (`apply_shared_root_scores`, pooled root scores, window
+         re-centring). Signals: table entries and replacement, root order,
+         aspiration windows, and the best-move changes the clock reads. Test:
+         RAR-R29's level X_ctl. Falsifier: X_ctl at 1.8 or above.
+      4. **H4, the soft-stop vote** spends about 9% of four-thread time in a main
+         iteration that never finishes. Signals: the soft target, the votes, the
+         stop. Test: RAR-R30's timed read. Falsifier: NOT REPRODUCED, or JOIN
+         (then a clock-side defect under D.1's rules).
+      5. **H5, result selection.** The weighted vote (`+14` with a floor,
+         decisive results by vote) can choose a helper's move, and the reported
+         depth is then that helper's. Signals: the vote, the reported line, the
+         ponder move. Test, not yet registered: the share of four-thread searches
+         whose move differs from the main thread's, and their depths, counted in
+         an instrument build. Falsifier: under 5% of moves differ.
+      6. **H6, the table fills faster** at 2.28× the nodes. Signals: replacement.
+         Test: RAR-R29's harness at Hash 1024, only if H3 survives. Falsifier: no
+         change in X.
 
-  **Interactions.** H1 and H2 multiply into per-thread NPS and share the cold
-  shared branches, which a Threads-2 training run would cure together. H3 acts
-  on depth per node and hides behind any NPS gain, so RAR-R29 reads levels as
-  well as differences. H4 and H5 act on time and on the decision and are
-  invisible to `go depth`. H2's answer, one atomic backend, would move the
-  fingerprint and every table measurement H3 relies on, so it comes last.
+      **Interactions.** H1 and H2 multiply into per-thread NPS and share the cold
+      shared branches, which a Threads-2 training run would cure together. H3 acts
+      on depth per node and hides behind any NPS gain, so RAR-R29 reads levels as
+      well as differences. H4 and H5 act on time and on the decision and are
+      invisible to `go depth`. H2's answer, one atomic backend, would move the
+      fingerprint and every table measurement H3 relies on, so it comes last.
 
-  **The cheapest discriminating tests** are the four registered reads, about
-  50 minutes of the maintainer's machine and no games: RAR-P52, RAR-R29,
-  RAR-R30, RAR-P53. Then, by their outcome, H5's count and H3's ablations of
-  the RAR-R03 members on RAR-R29's harness (tune-only switches), before any
-  game.
+      **The cheapest discriminating tests** are the four registered reads, about
+      50 minutes of the maintainer's machine and no games: RAR-P52, RAR-R29,
+      RAR-R30, RAR-P53. Then, by their outcome, H5's count and H3's ablations of
+      the RAR-R03 members on RAR-R29's harness (tune-only switches), before any
+      game.
 
-  **Stop rule.** Each hypothesis stops at its falsifier. If H1 to H4 all fall
-  and X_ctl is 1.8 or above, no zero-game read has found the deficit: the
-  card registers H5's count and, if that falls too, closes `NO_CHANGE` with
-  the deficit handed to G.1 rather than a 4T SPRT spent without a candidate.
-  A repair that moves no fingerprint closes on the four-thread NPS and
-  time-to-depth reads; anything else takes the leaf's 4T SPRT `[0,5]`, or a
-  removal bracket for a RAR-R03 member.
+      **Stop rule.** Each hypothesis stops at its falsifier. If H1 to H4 all fall
+      and X_ctl is 1.8 or above, no zero-game read has found the deficit: the
+      card registers H5's count and, if that falls too, closes `NO_CHANGE` with
+      the deficit handed to G.1 rather than a 4T SPRT spent without a candidate.
+      A repair that moves no fingerprint closes on the four-thread NPS and
+      time-to-depth reads; anything else takes the leaf's 4T SPRT `[0,5]`, or a
+      removal bracket for a RAR-R03 member.
 
-  **Readiness: not `READY_FOR_IMPLEMENTATION`** for any playing change. The
-  one change made, `e057d84`, is behaviour-neutral and was kept by RAR-P52.
+      **Readiness: not `READY_FOR_IMPLEMENTATION`** for any playing change. The
+      one change made, `e057d84`, is behaviour-neutral and was kept by RAR-P52.
 
-  **The four reads, 2026-11-02** (zero games, the maintainer's runs):
-  - **H1 holds, small.** RAR-P52: Q +0.031 in ln, in the band at its edge;
-    four-thread NPS +2.4%, the one-thread cell about 0.9% slower, inside the
-    registered 1%. `e057d84` stays and closes.
-  - **H2 is refuted.** RAR-P53: the shared backend costs a one-thread node
-    2.3% (R 0.977), and its cold PGO branches nothing (1.004). F16 leaves the
-    card; cure (b), a Threads-2 PGO training run, is not registered.
-  - **H3 holds, and it predates the C head.** RAR-R29: four threads reach a
-    fixed depth more slowly than one, X 0.87 for the head and 0.96 for B.9,
-    at about four times one thread's nodes. The main thread's own tree is no
-    smaller than alone: the helpers buy it no depth. The registered
-    comparison reads WASTE (d −0.099, 90% −0.235 to +0.014), about 0.06 of
-    it the NPS ratio and 0.035 the nodes.
-  - **H4 holds.** RAR-R30, VOTE: under the clock 25% of four-thread searches
-    hold over 20 ms against 6% at one thread; the stop path is fast. A
-    designed behaviour, priced only by games.
-  - **The games' depth deficit is not reproduced.** At equal time X 0.87
-    costs about 0.15 plies, against the games' 2.05 on unheld moves. The
-    read searched depths 20 to 22 for about 2 s from a cleared table; the
-    games search depths 15 to 17 in about 200 ms with the table kept.
+    - **D.2.4 The card's zero-game reads: H1 kept as `e057d84`, H2 refuted, H3 and H4 hold, the games' depth deficit not reproduced, RAR-M79's host-state episode — `R2`, DONE 2026-11-02.**
+      **The four reads, 2026-11-02** (zero games, the maintainer's runs):
+      - **H1 holds, small.** RAR-P52: Q +0.031 in ln, in the band at its edge;
+        four-thread NPS +2.4%, the one-thread cell about 0.9% slower, inside the
+        registered 1%. `e057d84` stays and closes.
+      - **H2 is refuted.** RAR-P53: the shared backend costs a one-thread node
+        2.3% (R 0.977), and its cold PGO branches nothing (1.004). F16 leaves the
+        card; cure (b), a Threads-2 PGO training run, is not registered.
+      - **H3 holds, and it predates the C head.** RAR-R29: four threads reach a
+        fixed depth more slowly than one, X 0.87 for the head and 0.96 for B.9,
+        at about four times one thread's nodes. The main thread's own tree is no
+        smaller than alone: the helpers buy it no depth. The registered
+        comparison reads WASTE (d −0.099, 90% −0.235 to +0.014), about 0.06 of
+        it the NPS ratio and 0.035 the nodes.
+      - **H4 holds.** RAR-R30, VOTE: under the clock 25% of four-thread searches
+        hold over 20 ms against 6% at one thread; the stop path is fast. A
+        designed behaviour, priced only by games.
+      - **The games' depth deficit is not reproduced.** At equal time X 0.87
+        costs about 0.15 plies, against the games' 2.05 on unheld moves. The
+        read searched depths 20 to 22 for about 2 s from a cleared table; the
+        games search depths 15 to 17 in about 200 ms with the table kept.
 
-  **Next, by RAR-R29's rule for X under 1.2:** what the helpers do to the
-  main thread, each a zero-game read registered before exposure, ordered in
-  that registration: RAR-R29's harness at the games' depth and time with the
-  table kept across searches (it separates a short-search cost from a
-  carried-table one); H3's ablations of the RAR-R03 members on the same
-  harness; H5's count in an instrument build; H6 at Hash 1024, now in scope.
-  H1 and H2 are closed and H4 waits for games. Still not ready for any
-  playing change.
+      **Next, by RAR-R29's rule for X under 1.2:** what the helpers do to the
+      main thread, each a zero-game read registered before exposure, ordered in
+      that registration: RAR-R29's harness at the games' depth and time with the
+      table kept across searches (it separates a short-search cost from a
+      carried-table one); H3's ablations of the RAR-R03 members on the same
+      harness; H5's count in an instrument build; H6 at Hash 1024, now in scope.
+      H1 and H2 are closed and H4 waits for games. Still not ready for any
+      playing change.
 
-  **Registered 2026-11-02, the maintainer's, about two hours, no games:**
-  - **RAR-R31,** the games replayed: twelve of RAR-M78's games searched again
-    position by position with the games' clocks and the table kept, alone
-    and under the games' conditions one at a time. It folds in H6 (a Hash
-    1024 cell) and H5's count (searches that end on a line for a move no
-    earlier line named), read from the output without an instrument build.
-    Read from the games first: **in play four threads ran at 2.28 times one
-    thread's NPS at every search length**, against 3.6 alone and pinned, and
-    the same in every slot (H7, new: a condition of the games costs the
-    four-thread side speed; Reckless keeps 3.44 under it).
-  - **RAR-R32,** H3's screen: the pool's root order, the window centre, the
-    helpers' rotation and the jitter offset switched off one at a time and
-    together, on RAR-R29's harness.
+      **Registered 2026-11-02, the maintainer's, about two hours, no games:**
+      - **RAR-R31,** the games replayed: twelve of RAR-M78's games searched again
+        position by position with the games' clocks and the table kept, alone
+        and under the games' conditions one at a time. It folds in H6 (a Hash
+        1024 cell) and H5's count (searches that end on a line for a move no
+        earlier line named), read from the output without an instrument build.
+        Read from the games first: **in play four threads ran at 2.28 times one
+        thread's NPS at every search length**, against 3.6 alone and pinned, and
+        the same in every slot (H7, new: a condition of the games costs the
+        four-thread side speed; Reckless keeps 3.44 under it).
+      - **RAR-R32,** H3's screen: the pool's root order, the window centre, the
+        helpers' rotation and the jitter offset switched off one at a time and
+        together, on RAR-R29's harness.
 
-  **Read 2026-11-02:**
-  - **RAR-R31, NOT REPRODUCED.** Alone, with the games' positions, clocks
-    and kept tables, four threads report the same depth as one (+0.08
-    plies) at 3.78 times its NPS. On the same moves the games ran the
-    four-thread side at about 60% of that speed and 1.38 plies shallower,
-    the one-thread side at 91%. The slot's eight logical CPUs and three
-    processes at once cost under 6%; H6 is refuted; H5 is active (+5.6
-    points of closing lines) and held.
-  - **RAR-R32, nothing resolves:** none of the four RAR-R03 members, nor all
-    four together, holds the main thread back at about ±10%.
+      **Read 2026-11-02:**
+      - **RAR-R31, NOT REPRODUCED.** Alone, with the games' positions, clocks
+        and kept tables, four threads report the same depth as one (+0.08
+        plies) at 3.78 times its NPS. On the same moves the games ran the
+        four-thread side at about 60% of that speed and 1.38 plies shallower,
+        the one-thread side at 91%. The slot's eight logical CPUs and three
+        processes at once cost under 6%; H6 is refuted; H5 is active (+5.6
+        points of closing lines) and held.
+      - **RAR-R32, nothing resolves:** none of the four RAR-R03 members, nor all
+        four together, holds the main thread back at about ±10%.
 
-  **Compared with Reckless's code, 2026-11-02.** The same Lazy SMP skeleton
-  (one shared table, every thread at every depth, a persistent blocking pool,
-  the score-and-depth vote, a three-of-four soft stop), and six differences:
-  Rarog's helper diversity (root rotation, pooled root order, window centre,
-  jitter offset), which Reckless does without; per-thread correction history,
-  where Reckless shares one; two table layouts by thread count against one;
-  one node counter every thread adds to on the stop flag's cache line,
-  against per-thread padded counters and a read-only stop line; a vote never
-  withdrawn; and **large pages locked on Windows** for the table and every
-  thread's big tables since `6ade0e6`, where Reckless allocates ordinarily on
-  Windows and asks for transparent huge pages only on Linux. Rarog asks for
-  none on Linux: D.7.
+      **Compared with Reckless's code, 2026-11-02.** The same Lazy SMP skeleton
+      (one shared table, every thread at every depth, a persistent blocking pool,
+      the score-and-depth vote, a three-of-four soft stop), and six differences:
+      Rarog's helper diversity (root rotation, pooled root order, window centre,
+      jitter offset), which Reckless does without; per-thread correction history,
+      where Reckless shares one; two table layouts by thread count against one;
+      one node counter every thread adds to on the stop flag's cache line,
+      against per-thread padded counters and a read-only stop line; a vote never
+      withdrawn; and **large pages locked on Windows** for the table and every
+      thread's big tables since `6ade0e6`, where Reckless allocates ordinarily on
+      Windows and asks for transparent huge pages only on Linux. Rarog asks for
+      none on Linux: D.7.
 
-  **Read 2026-11-02 (the maintainer's run, 16:51 to 18:06):**
-  - **RAR-M79, ABSENT:** in RAR-M78's own configuration (three games at
-    once) the head's four threads ran at 3.44 times one thread in games,
-    against RAR-M78's 2.48; `e057d84` covers 2.4% of that. Large pages off
-    (3.53) and the B.9 head (3.28) carry no loss. **One game at a time**
-    reads 2.69: on the same openings the four-thread side is 23% slower than
-    with three games at once and the one-thread side 6% faster (an
-    unregistered reading).
-  - **RAR-R33, HITS WITHOUT SAVINGS:** at four threads the main thread's hit
-    rate rises 5.6 points (90% +5.1 to +6.0) and its own probes do not fall
-    (M 1.09, 90% 0.98 to 1.21): the helpers' entries reach it without
-    cutting its tree. The next H3 read is the depth and bound of those hits
-    against what the node needs.
+      **Read 2026-11-02 (the maintainer's run, 16:51 to 18:06):**
+      - **RAR-M79, ABSENT:** in RAR-M78's own configuration (three games at
+        once) the head's four threads ran at 3.44 times one thread in games,
+        against RAR-M78's 2.48; `e057d84` covers 2.4% of that. Large pages off
+        (3.53) and the B.9 head (3.28) carry no loss. **One game at a time**
+        reads 2.69: on the same openings the four-thread side is 23% slower than
+        with three games at once and the one-thread side 6% faster (an
+        unregistered reading).
+      - **RAR-R33, HITS WITHOUT SAVINGS:** at four threads the main thread's hit
+        rate rises 5.6 points (90% +5.1 to +6.0) and its own probes do not fall
+        (M 1.09, 90% 0.98 to 1.21): the helpers' entries reach it without
+        cutting its tree. The next H3 read is the depth and bound of those hits
+        against what the node needs.
 
-  **H7, rewritten 2026-11-02 after RAR-M79.** RAR-M78's 2.48 was its
-  sessions' host state, not a fixed condition of the games: the same
-  configuration now reads 3.44. RAR-M78's threads leg is recorded as
-  confounded and its effective speedup (1.65) is measured again before D.2
-  reads anything from it. What stands is that the speed four threads keep in
-  games depends on the host's state by up to a third, and that one game
-  alone on the host, the nearest condition to a rating list that plays one
-  game a machine, costs the four-thread side most. Whether Reckless loses
-  the same way was never measured on one host state: its 3.44 in RAR-M78 was
-  another session's. Next, each registered before exposure: one game at a
-  time against three, Rarog and Reckless side by side, per-side in-game NPS;
-  then Rarog's four-thread scaling measured again in the condition that read
-  chooses. No engine change is in scope until then. RAR-R31's framing (40%
-  lost in games, Reckless far less) stands as measured in RAR-M78's
-  sessions.
+      **H7, rewritten 2026-11-02 after RAR-M79.** RAR-M78's 2.48 was its
+      sessions' host state, not a fixed condition of the games: the same
+      configuration now reads 3.44. RAR-M78's threads leg is recorded as
+      confounded and its effective speedup (1.65) is measured again before D.2
+      reads anything from it. What stands is that the speed four threads keep in
+      games depends on the host's state by up to a third, and that one game
+      alone on the host, the nearest condition to a rating list that plays one
+      game a machine, costs the four-thread side most. Whether Reckless loses
+      the same way was never measured on one host state: its 3.44 in RAR-M78 was
+      another session's. Next, each registered before exposure: one game at a
+      time against three, Rarog and Reckless side by side, per-side in-game NPS;
+      then Rarog's four-thread scaling measured again in the condition that read
+      chooses. No engine change is in scope until then. RAR-R31's framing (40%
+      lost in games, Reckless far less) stands as measured in RAR-M78's
+      sessions.
 
-  **Registered 2026-11-02, the maintainer's, about 80 minutes:**
-  **RAR-M80**, one game at a time against three, Rarog and Reckless 0.9.0
-  each against itself, one thread against four at `10+0.1`, 60 games a leg
-  on the same openings and host state; per-side in-game NPS, no Elo read.
-  Not replicated, Rarog's own, or shared decides the next read.
-  **Basilisk cross-check input, 2026-11-02** (`analysis/basilisk_crosscheck_2026-11-02.md` §H, H26–H28), for H3
-  and H5 once the condition is located: the root's first move is the shared
-  table's (`node.rs:650-662`, as in Reckless; Stockfish 19 takes the
-  thread's own previous best), so a helper's store at its own depth, or a
-  fail-low root's least-bad move (D.6.4), can put a non-PV move first
-  on the main thread; RAR-R32 switched off rotation, the pool order and the
-  window centre but not this. Read, zero games: at four threads, the share
-  of main-thread iterations whose first root move differs from that
-  thread's last completed best, split fail-low and other; if large, one
-  arm with the thread's own `root_moves[0]` first on RAR-R29's instrument.
-  Stockfish 19 also shares its continuation, pawn and correction histories
-  across threads through atomic entries, where Rarog keeps all of them per
-  thread and Reckless shares correction only: a competing mechanism under
-  H3, with RAR-R06's helper-history blend (−0.52) as the prior against.
-  If a coherent table reopens (TT-9), Basilisk's costs at one thread are
-  the prior: a `key16 ^ fold16` tag −3.91%, one packed 64-bit word with the
-  move apart −1.22% [−1.72, −0.76] (BAS-C05).
-  **Audit 2026-11-02** (`analysis/d2_audit_2026-11-02.md`, a re-read of
-  every record and artifact above; nothing built, no game):
-  - **The depth figures that steered the card are contaminated.** Every
-    mean depth quoted from the runner (1.9 plies less at four threads,
-    2.05 on unheld moves, Reckless +1.3, Stockfish +2.8, B.9 +0.30)
-    averages mate-score moves in, where the head's four-thread side
-    reports 7 to 10 plies and its one-thread side 23 to 27 (B.9 41 to 45
-    on both sides, Reckless 62, Stockfish 125): a reporting difference in
-    decided positions. Without them the four-thread side is 1.05 plies
-    shallower in RAR-M78's games, 0.25 in RAR-M79's `on` leg (R 3.44),
-    0.15 in `off`, 0.93 in `solo`, and B.9's is 0.51 shallower, not
-    deeper; Reckless's is 0.72 deeper and Stockfish's 1.6. At R 3.44 the
-    0.25 is RAR-R29's X 0.87 (0.15 plies) plus the shorter own time
-    (0.12): on a healthy host no in-game depth deficit is unexplained.
-    RAR-R30's "the holds do not explain the depth deficit", RAR-R31's
-    premise and H5's motivation rest on the contaminated figure; each
-    record carries its correction.
-  - **RAR-M78's threads leg is confounded, as RAR-M79 found, and the
-    deficit verdict falls with it:** "Rarog deficient" is not
-    established, and the card's question is open again, not answered.
-    Frozen prediction for a clean rerun at R about 3.4: G4 +122 ± 12
-    (0.47 doublings more than at R 2.48, by the odds leg's 101.8 Elo a
-    doubling), D 1.2, X 2.3, level with Reckless; G4 at about +85 or
-    below reads deficient against Reckless again and makes the lead
-    below the engine's own target.
-  - **The host state is the blocker, and it is unidentified.**
-    Four-thread processes alone lose a third of their speed, flat for
-    hours, the head's so far and never a one-thread side: RAR-M74
-    (2.60), RAR-P46 (5 of 12 passes), RAR-M78 (a whole leg), RAR-M79
-    `solo` (2.69), against 3.44 to 3.8 when healthy. RAR-M79's `off` leg
-    ran in the healthy state, so it cannot clear large pages for the
-    slow one (D.7 corrected). In the slow state the main thread loses
-    about twice the depth its NPS loss predicts (RAR-M78 1.05 plies
-    against 0.6 expected, `solo` 0.93 against 0.5; RAR-R31's fidelity is
-    +1.33 on non-mate moves), so the loss is not a uniform slowdown of
-    every thread. Candidates that predict R near 2.5: two threads a
-    physical core (the slot's eight logical CPUs, a parked core) and a
-    parked or down-clocked core; the host runs a custom power plan with
-    its parking settings at their defaults. The instrument is passive
-    and costs nothing: `typeperf` at one second over the slot's logical
-    CPUs (`% Processor Time`, `Parking Status`, `% of Maximum
-    Frequency`, `Processor Frequency`) and `\Thread(rarog*)\% Processor
-    Time`, beside every four-thread leg from now on, so the next slow
-    episode names its mechanism; and each leg's per-side in-game R
-    recorded as its validity check (a four-thread Rarog block under 3.0
-    is not read).
-  - **What stands as the engine-side lead:** four threads reach a depth
-    with four times one thread's nodes and the helpers' entries do not
-    cut the main thread's tree (RAR-R29, RAR-R33), where Reckless's and
-    Stockfish's four-thread sides in games reach one thread's depth at
-    1.3 to 1.6 times its nodes. It predates C (B.9 0.96) and is priced
-    only by the rerun.
-  - **Next, in order.** (1) RAR-M80 as registered, with the sampler
-    beside it (an added observation; its legs do not change). (2)
-    RAR-M81, the maintainer's night: Rarog's and Reckless's threads legs
-    of RAR-M78 played again in alternating blocks of 250 games (three
-    games at a time, the same binaries, Hash 256, `10+0.1`, the odds
-    legs reused), the sampler running, each block's per-side R its
-    validity check, read as RAR-M78 with the prediction above. (3) By
-    its outcome: not deficient closes D.2's four-thread target
-    `NO_CHANGE` with the host-state note carried to E.2's four-thread
-    arm and every rated four-thread read; deficient makes RAR-R33's next
-    read (the depth and bound of the main thread's hits against what its
-    node needs) the card's first engine question, with helper depth
-    staggering and the shared histories (H27) as the competing
-    mechanisms. No engine change is in scope before (2). Until the night
-    read is in, D.2 is held and the agent works D.6.15, D.5.19
-    and D.3, in the register's order.
-  **Registered 2026-11-02, after the audit:** RAR-M80 amended with the
-  sampler (an added observation, before any game), and **RAR-M81**, the
-  decision read above: Rarog's and Reckless's threads legs of RAR-M78
-  played again, 1,000 games each, the odds legs reused, the sampler
-  running, a leg with any fifth under R 3.0 (Reckless 3.2) recorded as
-  slow state and not read; NOT DEFICIENT 0.60, UNRESOLVED 0.25, DEFICIENT
-  0.15. One night, after RAR-M80 in one command
-  (`analysis/artifacts/d2-night/run.ps1`), prepared 2026-11-02: self-test,
-  dry run and sampler smoke recorded in RAR-M81's *Preparation*.
-  **Night read 2026-11-03** (RAR-M80, RAR-M81; the sampler's reads in
-  RAR-M81's *Result*): **the slow state is Rarog's, not the host's.** On one
-  quiet host Rarog's four-thread side ran at 2.62–2.66 times its one-thread
-  side in every leg and every fifth for 9.5 hours, Reckless's at 3.36–3.48
-  beside it. RAR-M80 NOT REPLICATED: one game at a time costs nothing
-  (RAR-M79's 23% was an episode). RAR-M81 UNRESOLVED by its rule (Rarog's
-  leg SLOW STATE); in that state four threads are worth 0.82 doublings of
-  Rarog's time against Reckless's 1.28 and Stockfish's 1.31, and G4 follows
-  R. The sampler excludes core parking, frequency and scheduling: Rarog's
-  threads get Reckless's CPU time and each does a third less than Rarog's
-  single thread; its load sits more often on both SMT siblings of a core.
-  The audit's host-state reading is corrected. Next, zero-game and on an
-  idle host (after Basilisk's tune): the slot rebuilt outside the harness,
-  Rarog's four-thread search confined to one logical CPU per physical core
-  against both siblings, Reckless the control. Recommended before the
-  registered replay of the slow leg, which would most likely repeat it.
-  **Corrected and registered 2026-11-03** (the audit, section 10): the
-  sampler's per-logical-CPU busy shows where each four-thread side's work
-  landed inside its slot: Rarog's four threads on both siblings of two
-  physical cores in 90–96% of its turns, all night, every slot; Reckless's
-  on two cores in 47–66% and three in most of the rest, one per core under
-  1% for either. Windows packs four busy threads inside an
-  eight-logical-CPU affinity mask for both engines, Rarog's harder; neither
-  engine places its threads on Windows (Reckless binds to NUMA nodes on
-  Linux only). So the slow state is the scheduler's placement inside
-  Colosseum's slot, not the host's and not Rarog's code; the repair is not
-  first the engine's (hard affinity in an engine fights the tester's mask;
-  no donor does it), and the fair four-thread measurement is a slot of one
-  logical CPU per physical core, which the pinned runner gives from an
-  explicit list and which `38ef0d5` lets `colosseum.ps1` accept (game cores
-  only, a core left free). Registered: **RAR-M82**, RAR-M81's threads legs
-  in that slot, 200 games each, the night's openings, the sampler riding,
-  an instrument rule, RESTORED 0.70 / PARTIAL 0.20 / NOT RESTORED 0.05 /
-  INSTRUMENT 0.05 (`analysis/artifacts/d2-placement/run.ps1`, about an
-  hour and a quarter on an idle host); **RAR-P54**, what a thread of each
-  engine keeps beside its SMT sibling on one core, standalone under
-  affinity masks, f_rarog 0.66 against f_reckless 0.83 predicted;
-  **read 2026-11-03: REFUTED**, 0.630 and 0.647 over three cycles, the
-  same loss within 0.02, so the night's ratio gap is placement alone and
-  sibling sharing costs any engine here about 37% a thread: a slot of one
-  logical CPU per physical core is the only fair multi-thread
-  measurement, and the per-thread working-set question leaves the card.
-  **RAR-M82 read 2026-11-03: RESTORED** (predicted 0.70): with one logical
-  CPU per physical core Rarog's four threads run at 4.03 times one (every
-  fifth 3.94 to 4.11, 1.007 a thread), Reckless's at 4.45; four-thread
-  turns on four distinct cores in 94 to 98% of their seconds, no sibling
-  busy. The night's Reckless control was packed too (3.46), so neither
-  RAR-M78's nor RAR-M81's four-thread legs of any engine are clean
-  references; RAR-M78's time-odds legs stand. Observed, not judged: on the
-  night's first 200 openings Rarog's four threads over one +127.0 ± 23.7
-  (the packed leg +83.9), Reckless's +121.1 ± 19.6; Rarog's non-mate depth
-  +0.37 plies at four threads (the night −0.74), Reckless's +1.75; the
-  four-thread holds unchanged (p99 162 ms, 28% of moves over the margin;
-  Reckless 3 ms), the card's third read. Next: the self-relative
-  comparison re-registered in this slot, Rarog's, Reckless's and
-  Stockfish's four-thread legs at 1,000 games each (about nine hours), with
-  RAR-M78's time-odds legs as G2; the engine-side placement hint a held
-  leaf. The decision rule as registered: by
-  RAR-M82: RESTORED supersedes RAR-M81's verdict and re-registers the
-  self-relative comparison sibling-free, with the explicit placement the
-  policy for every rated multi-thread read and an engine-side placement
-  hint a separate leaf held on how CCRL's testers place a four-thread
-  engine; PARTIAL adds the per-thread working set to the card; NOT
-  RESTORED returns D.2 to its engine card.
-  **RAR-M83 registered 2026-11-03**, before any game: the self-relative
-  comparison in the sibling-free slot, Rarog (`e057d84`, RAR-M82's
-  binary), Reckless 0.9.0 and Stockfish 18 each one thread against four,
-  1,000 games at `10+0.1`, seeds 131 to 133, RAR-M78's time-odds legs as
-  G2; a leg is INSTRUMENT when its four-thread turns are off four cores
-  or its R is under its floor (Rarog 3.5, Reckless 4.0, Stockfish 3.8);
-  DEFICIENT when Rarog's D is below both others' at 95%, NOT DEFICIENT
-  otherwise; NOT DEFICIENT 0.70, DEFICIENT 0.20, INSTRUMENT 0.08, NOT
-  JUDGED 0.02 (`analysis/artifacts/d2-selfrel/run.ps1`, about nine hours
-  on an idle night). Stockfish's leg is in: the rule needs both
-  references, and no clean Stockfish four-thread leg exists. By its
-  result D.2's four-thread target opens on RAR-R33's next read or closes
-  `NO_CHANGE`.
+    - **D.2.5 The slow state located: the audit, the night (RAR-M80, RAR-M81), Windows packing four threads on SMT siblings; restored in a sibling-free slot (RAR-M82, RAR-P54) — `R2`, DONE 2026-11-03.**
+      **Registered 2026-11-02, the maintainer's, about 80 minutes:**
+      **RAR-M80**, one game at a time against three, Rarog and Reckless 0.9.0
+      each against itself, one thread against four at `10+0.1`, 60 games a leg
+      on the same openings and host state; per-side in-game NPS, no Elo read.
+      Not replicated, Rarog's own, or shared decides the next read.
+      **Basilisk cross-check input, 2026-11-02** (`analysis/basilisk_crosscheck_2026-11-02.md` §H, H26–H28), for H3
+      and H5 once the condition is located: the root's first move is the shared
+      table's (`node.rs:650-662`, as in Reckless; Stockfish 19 takes the
+      thread's own previous best), so a helper's store at its own depth, or a
+      fail-low root's least-bad move (D.6.4), can put a non-PV move first
+      on the main thread; RAR-R32 switched off rotation, the pool order and the
+      window centre but not this. Read, zero games: at four threads, the share
+      of main-thread iterations whose first root move differs from that
+      thread's last completed best, split fail-low and other; if large, one
+      arm with the thread's own `root_moves[0]` first on RAR-R29's instrument.
+      Stockfish 19 also shares its continuation, pawn and correction histories
+      across threads through atomic entries, where Rarog keeps all of them per
+      thread and Reckless shares correction only: a competing mechanism under
+      H3, with RAR-R06's helper-history blend (−0.52) as the prior against.
+      If a coherent table reopens (TT-9), Basilisk's costs at one thread are
+      the prior: a `key16 ^ fold16` tag −3.91%, one packed 64-bit word with the
+      move apart −1.22% [−1.72, −0.76] (BAS-C05).
+      **Audit 2026-11-02** (`analysis/d2_audit_2026-11-02.md`, a re-read of
+      every record and artifact above; nothing built, no game):
+      - **The depth figures that steered the card are contaminated.** Every
+        mean depth quoted from the runner (1.9 plies less at four threads,
+        2.05 on unheld moves, Reckless +1.3, Stockfish +2.8, B.9 +0.30)
+        averages mate-score moves in, where the head's four-thread side
+        reports 7 to 10 plies and its one-thread side 23 to 27 (B.9 41 to 45
+        on both sides, Reckless 62, Stockfish 125): a reporting difference in
+        decided positions. Without them the four-thread side is 1.05 plies
+        shallower in RAR-M78's games, 0.25 in RAR-M79's `on` leg (R 3.44),
+        0.15 in `off`, 0.93 in `solo`, and B.9's is 0.51 shallower, not
+        deeper; Reckless's is 0.72 deeper and Stockfish's 1.6. At R 3.44 the
+        0.25 is RAR-R29's X 0.87 (0.15 plies) plus the shorter own time
+        (0.12): on a healthy host no in-game depth deficit is unexplained.
+        RAR-R30's "the holds do not explain the depth deficit", RAR-R31's
+        premise and H5's motivation rest on the contaminated figure; each
+        record carries its correction.
+      - **RAR-M78's threads leg is confounded, as RAR-M79 found, and the
+        deficit verdict falls with it:** "Rarog deficient" is not
+        established, and the card's question is open again, not answered.
+        Frozen prediction for a clean rerun at R about 3.4: G4 +122 ± 12
+        (0.47 doublings more than at R 2.48, by the odds leg's 101.8 Elo a
+        doubling), D 1.2, X 2.3, level with Reckless; G4 at about +85 or
+        below reads deficient against Reckless again and makes the lead
+        below the engine's own target.
+      - **The host state is the blocker, and it is unidentified.**
+        Four-thread processes alone lose a third of their speed, flat for
+        hours, the head's so far and never a one-thread side: RAR-M74
+        (2.60), RAR-P46 (5 of 12 passes), RAR-M78 (a whole leg), RAR-M79
+        `solo` (2.69), against 3.44 to 3.8 when healthy. RAR-M79's `off` leg
+        ran in the healthy state, so it cannot clear large pages for the
+        slow one (D.7 corrected). In the slow state the main thread loses
+        about twice the depth its NPS loss predicts (RAR-M78 1.05 plies
+        against 0.6 expected, `solo` 0.93 against 0.5; RAR-R31's fidelity is
+        +1.33 on non-mate moves), so the loss is not a uniform slowdown of
+        every thread. Candidates that predict R near 2.5: two threads a
+        physical core (the slot's eight logical CPUs, a parked core) and a
+        parked or down-clocked core; the host runs a custom power plan with
+        its parking settings at their defaults. The instrument is passive
+        and costs nothing: `typeperf` at one second over the slot's logical
+        CPUs (`% Processor Time`, `Parking Status`, `% of Maximum
+        Frequency`, `Processor Frequency`) and `\Thread(rarog*)\% Processor
+        Time`, beside every four-thread leg from now on, so the next slow
+        episode names its mechanism; and each leg's per-side in-game R
+        recorded as its validity check (a four-thread Rarog block under 3.0
+        is not read).
+      - **What stands as the engine-side lead:** four threads reach a depth
+        with four times one thread's nodes and the helpers' entries do not
+        cut the main thread's tree (RAR-R29, RAR-R33), where Reckless's and
+        Stockfish's four-thread sides in games reach one thread's depth at
+        1.3 to 1.6 times its nodes. It predates C (B.9 0.96) and is priced
+        only by the rerun.
+      - **Next, in order.** (1) RAR-M80 as registered, with the sampler
+        beside it (an added observation; its legs do not change). (2)
+        RAR-M81, the maintainer's night: Rarog's and Reckless's threads legs
+        of RAR-M78 played again in alternating blocks of 250 games (three
+        games at a time, the same binaries, Hash 256, `10+0.1`, the odds
+        legs reused), the sampler running, each block's per-side R its
+        validity check, read as RAR-M78 with the prediction above. (3) By
+        its outcome: not deficient closes D.2's four-thread target
+        `NO_CHANGE` with the host-state note carried to E.2's four-thread
+        arm and every rated four-thread read; deficient makes RAR-R33's next
+        read (the depth and bound of the main thread's hits against what its
+        node needs) the card's first engine question, with helper depth
+        staggering and the shared histories (H27) as the competing
+        mechanisms. No engine change is in scope before (2). Until the night
+        read is in, D.2 is held and the agent works D.6.15, D.5.19
+        and D.3, in the register's order.
+      **Registered 2026-11-02, after the audit:** RAR-M80 amended with the
+      sampler (an added observation, before any game), and **RAR-M81**, the
+      decision read above: Rarog's and Reckless's threads legs of RAR-M78
+      played again, 1,000 games each, the odds legs reused, the sampler
+      running, a leg with any fifth under R 3.0 (Reckless 3.2) recorded as
+      slow state and not read; NOT DEFICIENT 0.60, UNRESOLVED 0.25, DEFICIENT
+      0.15. One night, after RAR-M80 in one command
+      (`analysis/artifacts/d2-night/run.ps1`), prepared 2026-11-02: self-test,
+      dry run and sampler smoke recorded in RAR-M81's *Preparation*.
+      **Night read 2026-11-03** (RAR-M80, RAR-M81; the sampler's reads in
+      RAR-M81's *Result*): **the slow state is Rarog's, not the host's.** On one
+      quiet host Rarog's four-thread side ran at 2.62–2.66 times its one-thread
+      side in every leg and every fifth for 9.5 hours, Reckless's at 3.36–3.48
+      beside it. RAR-M80 NOT REPLICATED: one game at a time costs nothing
+      (RAR-M79's 23% was an episode). RAR-M81 UNRESOLVED by its rule (Rarog's
+      leg SLOW STATE); in that state four threads are worth 0.82 doublings of
+      Rarog's time against Reckless's 1.28 and Stockfish's 1.31, and G4 follows
+      R. The sampler excludes core parking, frequency and scheduling: Rarog's
+      threads get Reckless's CPU time and each does a third less than Rarog's
+      single thread; its load sits more often on both SMT siblings of a core.
+      The audit's host-state reading is corrected. Next, zero-game and on an
+      idle host (after Basilisk's tune): the slot rebuilt outside the harness,
+      Rarog's four-thread search confined to one logical CPU per physical core
+      against both siblings, Reckless the control. Recommended before the
+      registered replay of the slow leg, which would most likely repeat it.
+      **Corrected and registered 2026-11-03** (the audit, section 10): the
+      sampler's per-logical-CPU busy shows where each four-thread side's work
+      landed inside its slot: Rarog's four threads on both siblings of two
+      physical cores in 90–96% of its turns, all night, every slot; Reckless's
+      on two cores in 47–66% and three in most of the rest, one per core under
+      1% for either. Windows packs four busy threads inside an
+      eight-logical-CPU affinity mask for both engines, Rarog's harder; neither
+      engine places its threads on Windows (Reckless binds to NUMA nodes on
+      Linux only). So the slow state is the scheduler's placement inside
+      Colosseum's slot, not the host's and not Rarog's code; the repair is not
+      first the engine's (hard affinity in an engine fights the tester's mask;
+      no donor does it), and the fair four-thread measurement is a slot of one
+      logical CPU per physical core, which the pinned runner gives from an
+      explicit list and which `38ef0d5` lets `colosseum.ps1` accept (game cores
+      only, a core left free). Registered: **RAR-M82**, RAR-M81's threads legs
+      in that slot, 200 games each, the night's openings, the sampler riding,
+      an instrument rule, RESTORED 0.70 / PARTIAL 0.20 / NOT RESTORED 0.05 /
+      INSTRUMENT 0.05 (`analysis/artifacts/d2-placement/run.ps1`, about an
+      hour and a quarter on an idle host); **RAR-P54**, what a thread of each
+      engine keeps beside its SMT sibling on one core, standalone under
+      affinity masks, f_rarog 0.66 against f_reckless 0.83 predicted;
+      **read 2026-11-03: REFUTED**, 0.630 and 0.647 over three cycles, the
+      same loss within 0.02, so the night's ratio gap is placement alone and
+      sibling sharing costs any engine here about 37% a thread: a slot of one
+      logical CPU per physical core is the only fair multi-thread
+      measurement, and the per-thread working-set question leaves the card.
+      **RAR-M82 read 2026-11-03: RESTORED** (predicted 0.70): with one logical
+      CPU per physical core Rarog's four threads run at 4.03 times one (every
+      fifth 3.94 to 4.11, 1.007 a thread), Reckless's at 4.45; four-thread
+      turns on four distinct cores in 94 to 98% of their seconds, no sibling
+      busy. The night's Reckless control was packed too (3.46), so neither
+      RAR-M78's nor RAR-M81's four-thread legs of any engine are clean
+      references; RAR-M78's time-odds legs stand. Observed, not judged: on the
+      night's first 200 openings Rarog's four threads over one +127.0 ± 23.7
+      (the packed leg +83.9), Reckless's +121.1 ± 19.6; Rarog's non-mate depth
+      +0.37 plies at four threads (the night −0.74), Reckless's +1.75; the
+      four-thread holds unchanged (p99 162 ms, 28% of moves over the margin;
+      Reckless 3 ms), the card's third read. Next: the self-relative
+      comparison re-registered in this slot, Rarog's, Reckless's and
+      Stockfish's four-thread legs at 1,000 games each (about nine hours), with
+      RAR-M78's time-odds legs as G2; the engine-side placement hint a held
+      leaf. The decision rule as registered: by
+      RAR-M82: RESTORED supersedes RAR-M81's verdict and re-registers the
+      self-relative comparison sibling-free, with the explicit placement the
+      policy for every rated multi-thread read and an engine-side placement
+      hint a separate leaf held on how CCRL's testers place a four-thread
+      engine; PARTIAL adds the per-thread working set to the card; NOT
+      RESTORED returns D.2 to its engine card.
+    - **D.2.6 RAR-M83: the self-relative comparison in the sibling-free slot, the maintainer's night run — `V`.**
+      **RAR-M83 registered 2026-11-03**, before any game: the self-relative
+      comparison in the sibling-free slot, Rarog (`e057d84`, RAR-M82's
+      binary), Reckless 0.9.0 and Stockfish 18 each one thread against four,
+      1,000 games at `10+0.1`, seeds 131 to 133, RAR-M78's time-odds legs as
+      G2; a leg is INSTRUMENT when its four-thread turns are off four cores
+      or its R is under its floor (Rarog 3.5, Reckless 4.0, Stockfish 3.8);
+      DEFICIENT when Rarog's D is below both others' at 95%, NOT DEFICIENT
+      otherwise; NOT DEFICIENT 0.70, DEFICIENT 0.20, INSTRUMENT 0.08, NOT
+      JUDGED 0.02 (`analysis/artifacts/d2-selfrel/run.ps1`, about nine hours
+      on an idle night). Stockfish's leg is in: the rule needs both
+      references, and no clean Stockfish four-thread leg exists. By its
+      result D.2's four-thread target opens on RAR-R33's next read or closes
+      `NO_CHANGE`.
+    - **D.2.7 The four-thread engine card, by RAR-M83's outcome: what the helpers' entries do to the main thread, then a gate — `R2`, then `I2`/`V`.**
+      Held on D.2.6. NOT DEFICIENT closes D.2's four-thread target
+      `NO_CHANGE`: the placement policy stays with E.2's four-thread arm and
+      every rated four-thread read (PROCESS), and the open items below go to
+      G.1 as priors. DEFICIENT opens the card on RAR-R33's next read, the
+      depth and bound of the main thread's table hits against what its node
+      needs (four threads reach a depth with four times one thread's nodes,
+      and the helpers' entries do not cut the main thread's tree: RAR-R29,
+      RAR-R33), with helper depth staggering and shared histories (H27) as
+      the competing mechanisms. Its other open items are recorded in D.2.3
+      to D.2.5: H5's result selection (active, +5.6 points of closing lines,
+      RAR-R31); the four-thread holds (28% of moves over the 20 ms margin,
+      p99 162 ms, in RAR-M82's sibling-free legs; H4, priced only by games);
+      the root's first move taken from the shared table (H26); item 4 of the
+      engine review input (the pick-time prefetches, byte-identical stores,
+      the shared counter line, the 16-bit tag's false-hit rate, the donor
+      divergences); and Triumviratus's SMP priors. A repair that moves no
+      fingerprint closes on the four-thread NPS and time-to-depth reads;
+      anything else takes the leaf's 4T SPRT `[0,5]`, or a removal bracket
+      for a RAR-R03 member (D.2.3's stop rule). RAR-M82's rule named an
+      engine-side placement hint as a held leaf; it is G.1's, which owns
+      the thread-affinity policy.
 - **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `I1` for the eight review-confirmed defects (2026-11-01), then `R2` for the cards.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.
@@ -3867,6 +3897,11 @@ this phase meets them, each is now a requirement of the leaf named:
   card; `analysis/triumviratus_review_2026-11-03.md` §6, §8): search state on
   large pages beyond the TT, NUMA placement with one network and one history
   set per node, and its SMP levers.
+  From D.2 (RAR-M82, 2026-11-03): whether the engine should place its own
+  threads waits on how CCRL's testers place a multi-thread engine. In a slot
+  of one logical CPU per physical core Rarog's four threads keep 4.03 times
+  one; hard affinity inside an engine fights the tester's mask, and no donor
+  sets it.
 - **G.2 Platform and product: Chess960 on demand, distributed testing, and the OPTIONAL universal binary (`analysis/universal_binary_2026-09.md`) — `I1`.** Chess960 on demand, distributed
   testing when typical gains reach 1–3 Elo, and the **optional universal
   x86-64 binary**. The universal work is fully designed and deliberately
