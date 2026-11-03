@@ -591,10 +591,10 @@ and many early-stopped SPRTs.
 | ID | Experiment | Disposition |
 |---|---|---|
 | [RAR-X10](experiments/RAR-X10.md) | Search findings on a Stockfish-19-shaped search: single gains of +1 to +6, a +86 cluster rebuild | Priors; the small gains wait for Phase H, and three forms go to D.5.7, D.5.12 and D.5.18 |
-| [RAR-X11](experiments/RAR-X11.md) | Speed work at an identical tree and the board correctness instrument | No board rebuild; the speed leads go to H.4, the instrument to D.4.17 |
-| [RAR-X12](experiments/RAR-X12.md) | Clock, protocol and thread defects, and the time-management rules | Rarog's checks clean except D.4.23 and a D.3.9 input; Zobrist rank 64, now a test; the clock rules go to H.3 |
-| [RAR-X13](experiments/RAR-X13.md) | Measurement and tuning method, and the evaluation residual regression | Schedule checked; the bake and range rules go to F.6's registration, the regression to F.2.1 |
-| [RAR-X14](experiments/RAR-X14.md) | NNUE architecture, data and training | Priors and instruments for F.3 to F.8 |
+| [RAR-X11](experiments/RAR-X11.md) | Speed work at an identical tree and the board correctness instrument | No board rebuild; the speed leads go to H.4, the instrument to D.9.3 |
+| [RAR-X12](experiments/RAR-X12.md) | Clock, protocol and thread defects, and the time-management rules | Rarog's checks clean except D.4.23 and a D.3.9 input; Zobrist rank 64, now a test; the wall-clock read D.9.1 done; the loss table D.9.5; the clock rules go to H.3 |
+| [RAR-X13](experiments/RAR-X13.md) | Measurement and tuning method, and the evaluation residual regression | The schedule read D.9.2 done; pricing D.9.4 and the counter read D.9.6; the bake and range rules go to F.6's registration, the regression to F.2.1 |
+| [RAR-X14](experiments/RAR-X14.md) | NNUE architecture, data and training, and its network path net by net | Phase F's seven requirements and the inputs of F.0 to F.8 |
 
 ## 9. Open retry map
 

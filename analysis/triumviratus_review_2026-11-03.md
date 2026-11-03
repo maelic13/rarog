@@ -99,6 +99,15 @@ then pass.
 
   Instruments, correctness checks and measurement-integrity reads are never
   small gains. They go to the leaf that consumes them.
+- **Instruments first, close to the current work** (maintainer, 2026-11-03).
+  The instruments that help now are leaves of the current phase, placed just
+  before the next cluster that uses them. Here that is **D.9**, in the register
+  after D.4 and before D.5, whose cards are their first users. Its two
+  measurement-integrity reads, the wall-clock overhead (D.9.1) and the SPSA
+  schedule (D.9.2), are done and clean, so nothing measured so far was
+  distorted by them. Basilisk's B.16 is the same step.
+- **Own self-play only.** Rarog's networks train on its own self-play, never
+  public data. §12 and §12b are read for that case.
 - **No board review step.** Basilisk added a board review and rebuild (its
   B.15) against Stockfish's board and Triumviratus's ideas. Rarog's evidence
   says its board does not need one:
@@ -165,7 +174,7 @@ harness running), timed from outside by
 |---|---|---|---|---|
 | 1 | Zobrist key quality | **Correct: GF(2) rank 64** | 793 keys from splitmix64 at compile time (`src/board/zobrist.rs`), all distinct, rank 64. Each part has full rank: the 768 piece keys 64, the 25 side, castling and en-passant keys 25. Triumviratus's 32-bit generator gave rank 32 and false hash hits; its fix read +4.57 ± 3.56 (`24d791c`) | Permanent test `the_hash_keys_span_all_64_bits` (`b028d52`, in `zobrist.rs`). It fails with "left: 32" when the keys are masked to 32 bits |
 | 2 | Upcoming-repetition (cuckoo) filter | **Absent** | No upcoming-repetition code in `src/`. Adding Stockfish 19's filter (a cycle counts only when the opponent's key changes inside the window cancel) read +5.62 ± 4.47 over 6,500 (D8 §41). Basilisk's own detection read 0.0 ± 9.3 switched off | D.5.18 already owns the mechanism. The filter is the form it must take there |
-| 3 | Wall-clock overhead | **Correct** | One locked `writeln!` per line, no explicit flush per fragment (`src/infra.rs:128-133`). `Instant` with `timeBeginPeriod(1)` (`src/main.rs:103-108`). A persistent helper pool (`src/search/threads.rs:56-73`). Measured, medians of 100 (Rarog / Stockfish 19 / Reckless): `go nodes 1000` 0.55 / 0.93 / 1.52 ms; `go nodes 1` 0.09 / 0.23 / 0.50 ms; `go movetime 100` 100.8 / 100.0 / 86.1 ms (20 each); at 4 threads `go nodes 1000` 0.28 / 0.57 / 1.05 ms. A ponder that has finished waits in a 1 ms sleep loop (`src/engine.rs:139-149`); `ponderhit` → `bestmove` took 0.53–1.56 ms over 8 cycles, against Stockfish's 0.09–0.11. Triumviratus measured 6.15 ms against Stockfish's 1.24 at `go nodes 1000`, 109.8 ms at `movetime 100`, and 12.3 ms at `ponderhit`; its fix read +29.8 ± 7.4 at 5+0.05 (D8 §45) | Nothing to place. The ponder wait costs about 1 ms per ponder hit and no rated list ponders |
+| 3 | Wall-clock overhead | **Correct** | One locked `writeln!` per line, no explicit flush per fragment (`src/infra.rs:128-133`). `Instant` with `timeBeginPeriod(1)` (`src/main.rs:103-108`). A persistent helper pool (`src/search/threads.rs:56-73`). Measured, medians of 100 (Rarog / Stockfish 19 / Reckless): `go nodes 1000` 0.55 / 0.93 / 1.52 ms; `go nodes 1` 0.09 / 0.23 / 0.50 ms; `go movetime 100` 100.8 / 100.0 / 86.1 ms (20 each, the timer reading the `info` lines in its own thread of control); with a reader thread draining the output, `go movetime` 50, 100 and 300 overshoot by 0.56–0.68 ms (median) at one thread and 0.78–0.94 at four, 1.44 at most, Stockfish 19's by about 0 (`movetime.py`); at 4 threads `go nodes 1000` 0.28 / 0.57 / 1.05 ms. A ponder that has finished waits in a 1 ms sleep loop (`src/engine.rs:139-149`); `ponderhit` → `bestmove` took 0.53–1.56 ms over 8 cycles, against Stockfish's 0.09–0.11. Triumviratus measured 6.15 ms against Stockfish's 1.24 at `go nodes 1000`, 109.8 ms at `movetime 100`, and 12.3 ms at `ponderhit`; its fix read +29.8 ± 7.4 at 5+0.05 (D8 §45) | **D.9.1, done.** In games RAR-R30 already read it at `3+0.03`: 1.2% of the charged time held after the last `info` line at one thread, median 1 ms. Every gap to Stockfish is under the 1 ms at which it would go to a repair. The ponder wait costs about 1 ms per ponder hit, and no rated list ponders |
 | 4 | Re-sent options | **Correct** | A same-size `Hash` re-send costs 0.033 ms, against `isready`'s 0.024 ms floor. Stockfish 19 takes 1.15 ms, and a real resize takes Rarog 1.37 ms. The table is resized only on a change (`src/search/mod.rs:373-375`); the same Syzygy path returns early (`src/syzygy.rs:157-159`); an unchanged `Threads` is a no-op. In Triumviratus a re-send cost one side 0.22 ply and faked a 20-Elo socket gap (D8 §29) | No test pins it. Added to D.4.17 |
 | 5 | Null move and the fifty-move counter | **Stockfish's form, a local negative on record** | The null move increments the clock (`src/board/board.rs:1914`), as Stockfish's does, and the evaluation fades with the clock (`eval_rule50_damping`). Triumviratus's fix read +1.6 ± 2.6 on endgames, bundled with a fade formula (D8 §25). Here RAR-S18's null-clock/fence variant read −11.91 ± 7.67. The repetition scan crosses null moves (`board.rs:2291-2306`); D.4.18 records the false twofold this produces | Refused: a +1.6 bundled prior does not fire RAR-S18's trigger. One unverified variant is added to D.4.18: a single null move with the opponent triangulating |
 | 6 | Quiescence TT depth | **Correct** | Quiescence stores depth 0 at all three sites (`src/search/node.rs:2257`, `2447`, `2487`). A depth-0 entry never cuts a main-search node and only refines its estimate (`src/tt.rs:699`, `714`). Triumviratus stored −1, and its fix read +3.38 ± 2.58 over 20,162 (D8 §25) | Nothing |
@@ -177,7 +186,7 @@ harness running), timed from outside by
 | 12 | Protocol defects | **Correct, two notes** | Before any `position`, the board is the start position; `d` and `eval` are unknown commands. Lines are trimmed and split on whitespace; input lines have no cap; a clock of −1 or 0 is clamped to 1 ms (D.3.1). There is one stdout lock per line, and only thread 0 prints. `go infinite` waits for `stop`, also when mated. `go nodes` counts every thread. A non-decisive vote never beats a mate; among decisive results the weighted vote decides (a recorded donor divergence, D.2). Thread 0 is reset before helpers start. After a stop mid-iteration, the result line is reprinted when the last line's move differs from `bestmove`, and MultiPV reprints its lines (`search/mod.rs:1436-1456`, `1954-1965`). `currmove` is never printed (optional). Threads get a 16 MiB stack (`infra.rs:112`). The ply cap is D.5.7. **Note 1:** a FEN halfmove clock above 255 is parsed as `u8` and refused, and a refused `position` ends the process (`board.rs:369-372`, `uci_protocol.rs:188-191`). **Note 2:** the correction bonus `corr_update_slope * depth * diff / 128` is `i32` (`src/search/correction.rs:228`). Mate and tablebase residuals are trained on purpose, and `diff` is bounded only by a mate score against an evaluation at the opposite clamp, about 63,700. At that residual the product overflows from depth 135 at the default slope 250, and from depth 66 at the tune range's ceiling, 512. Release has no overflow checks, so a wrapped bonus is clamped to a full-size update of the wrong sign. At the defaults no search reaches it in practice (iterations stop at depth 100); a `tune` arm near the ceiling might. Triumviratus had a 32-bit overflow in its correction decay in tablebase endgames (D8 §12) | Note 1 goes to D.3.9 (PROTO-6's decision). Note 2 becomes a new behaviour-neutral repair, **D.4.23** |
 | 13 | FEN robustness | **Correct** | Refused with an error: an en-passant square on the wrong rank (`board.rs:2186-2189`), castling rights the board does not support (`2320-2358`), the side not to move in check (`2163-2166`). An en-passant square enters the key only when a legal capture exists, from a FEN and after a double push (`2205-2208`, `1838-1841`), so one position has one key. Triumviratus's phantom en-passant square gave one position two keys (D6 note 8, `67538a5`) | Nothing. `ep_capture_is_legal` checks slider exposure only; that is exact after a real double push. An unreachable FEN with a knight check and an en-passant square could keep a key with no capture behind it; recorded here, not placed |
 | 14 | Time-manager defects | **Correct** | The game ply comes from the FEN's fullmove number (`search/mod.rs:488`, `threads.rs:252`). `go movetime` is used as given (`time.rs:128-143`). The hard stop is held until depth 1 completes (`mod.rs:1786-1791`). Only a `stop` or a tiny node limit before then returns the first legal move unsearched. Triumviratus gave the first move after a book about 30% less time, scaled `movetime`, and could time out before any root move (D8 §20, D6 note 8) | Nothing |
-| 15 | SPSA schedule | **Correct schedule; ranges unread** | Colosseum (pinned `8fa63cc`) uses fishtest's form: c₀ = c_end·N^0.102, c_k = c₀/(k+1)^0.102, last iteration exactly c_end (`colosseum-core/src/spsa.rs:120-143`, `272-276`). Rarog's converter sets c₀ to the registered step. The wrapper refuses a horizon that differs from `-Iterations` (`tools/colosseum.ps1:670-671`). Journal `tools/results/rar-r21-fit/run.log`: c 6.0000 at iteration 0, 2.7634 at iteration 1,999 of 2,000, equal to `spsa-schedule.json`'s c_end; `c10-long` 2.0001 → 0.8583 over 4,000. Triumviratus's tool explored with half its intended perturbation for a month (D8 §48.1). Its other rule, start ± 2.25c clear of the points where a formula changes nature (D81 *Plan* item 4), fails at c₀ for 10 of 15 coordinates of RAR-R21's fit and 43 of 82 of RAR-S104's. Examples: `AspGrowthPct` 164 − 2.25·38 = 78.5, below 100, where the window stops growing; five LMR terms cross 0, where they switch off. At c_end, 0 and 7 fail. PROCESS step 8 already notes that a seed within c₀ of a range end biases its estimate | The rule goes to F.6, the next tune, to settle before its registration. A method change is the maintainer's |
+| 15 | SPSA schedule | **Correct schedule; ranges unread** | Colosseum (pinned `8fa63cc`) uses fishtest's form: c₀ = c_end·N^0.102, c_k = c₀/(k+1)^0.102, last iteration exactly c_end (`colosseum-core/src/spsa.rs:120-143`, `272-276`). Rarog's converter sets c₀ to the registered step. The wrapper refuses a horizon that differs from `-Iterations` (`tools/colosseum.ps1:670-671`). Journal `tools/results/rar-r21-fit/run.log`: c 6.0000 at iteration 0, 2.7634 at iteration 1,999 of 2,000, equal to `spsa-schedule.json`'s c_end; `c10-long` 2.0001 → 0.8583 over 4,000. Triumviratus's tool explored with half its intended perturbation for a month (D8 §48.1). Its other rule, start ± 2.25c clear of the points where a formula changes nature (D81 *Plan* item 4), fails at c₀ for 10 of 15 coordinates of RAR-R21's fit and 43 of 82 of RAR-S104's. Examples: `AspGrowthPct` 164 − 2.25·38 = 78.5, below 100, where the window stops growing; five LMR terms cross 0, where they switch off. At c_end, 0 and 7 fail. PROCESS step 8 already notes that a seed within c₀ of a range end biases its estimate | **D.9.2, done.** That journal ran on CLI 0.4.0. The pinned runner is now 0.5.0 (`8fa63cc`), the executable Basilisk pins: Basilisk's live 0.5.0 block on this host (`D:/code/basilisk/tools/results/b33-spsa-block1/run.log`) runs c 1.9999, 1.8634, …, 0.9925 at iteration 961 of 2,000, as c₀/(k+1)^0.102 predicts, so 0.5.0 also ends at c_end. The range rule goes to F.6, the next tune, to settle before its registration; a method change is the maintainer's |
 
 ## 5. Search findings (TS; on a Stockfish-19-shaped search)
 
@@ -192,8 +201,8 @@ mechanism came from Reckless, which therefore matter more here.
 | TS-4 | **TT cutoff value damped toward beta** (from Coda): +2.2 ± 3.2 over 11,774 in three runs (D8 §27) | **H.2**. Rarog returns the stored score (`tt.rs:691-708`) |
 | TS-5 | **HistGrad.** The quiet-history update is scaled by the gradient of a softmax over the ordering scores: a surprising best move learns more, and a tried move the ordering rated low is barely punished. +0.90 ± 3.41 over 11,166 (NOV; `59003c8`) | **H.2** |
 | TS-6 | **Discovered-check ordering bonus:** +0.8 ± 3.7 over 9,178, paused (NOV) | **H.2** |
-| TS-7 | **Chess-knowledge ordering terms.** King-shield malus (Reckless-derived; +3.53 ± 3.42 in 6.0, −1.57 ± 4.32 in 8.0); knight and bishop outposts; attack from a safe square (Reckless-derived; Reckless's own SPRTs +3.7 and +5.7 at 40+0.4); passed-pawn push, queen promotion (Reckless-derived) and bishop-pair capture. Flat at hand values (D8 §34). Baked through an SPSA vector, +3.4 ± 3.9 over about 8,100. On the next network, **removing them read +4.21 ± 2.79 over 15,194, H1**, and saved 1.5–2.4% of cycles (`9910b23`). Counting an ordering bonus again in reductions lost (`KnowRed`, −13.6, D8 §46). An offense-square term read −9.70 alone in 6.0 | **F.6**: on the network, re-read Rarog's Reckless-derived ordering terms with a simplification bracket. The evidence says their value depends on the evaluator |
-| TS-8 | **Continuous improvement in the late-move count** (Reckless-derived, `ImpSlopeLmp`): the move count scales with the two-ply evaluation change instead of the improving flag. Baked 2026-11-03 with no result in the message (`0c18907`) | **H.2** (no measurement). Rarog already uses the improvement's size in margins and LMR (`node.rs:341-356`, `414-423`) |
+| TS-7 | **Chess-knowledge ordering terms.** King-shield malus (Reckless-derived; +3.53 ± 3.42 in 6.0, −1.57 ± 4.32 in 8.0); knight and bishop outposts; attack from a safe square (Reckless-derived; Reckless's own SPRTs +3.7 and +5.7 at 40+0.4); passed-pawn push, queen promotion (Reckless-derived) and bishop-pair capture. Flat at hand values (D8 §34). Baked through an SPSA vector, +3.4 ± 3.9 over about 8,100. On the next network, **removing them read +4.21 ± 2.79 over 15,194, H1**, and saved 1.5–2.4% of cycles (`9910b23`). Counting an ordering bonus again in reductions lost (`KnowRed`, −13.6, D8 §46). An offense-square term read −9.70 alone in 6.0 | **H.2**, a prior against adding them: Rarog's quiet ordering has Reckless's threat escape bonus and threatened-square malus (`src/search/movepick.rs:28-30`), and none of these terms. If one is proposed, it is read only as an SPSA coordinate beside the histories it competes with |
+| TS-8 | **Continuous improvement in the late-move count** (Reckless-derived, `ImpSlopeLmp`): the move count scales with the two-ply evaluation change instead of the improving flag. Baked 2026-11-03 with no result in the message (`0c18907`) | Nothing: Rarog's form already. Its move-count limit scales with the improvement's size (`lmp_improvement * improvement / 16`, `src/search/node.rs:1565-1568`), as Reckless's does |
 | TS-9 | **No null move with a minor piece or less** (`NmpNpmFloor 3`): +1.32 ± 2.29 over 6,844 on an endgame book (`af49b20`) | **H.2**. Rarog's floor is a coordinate already (`NmpMinNonPawnPieces`, 1, range 1–3), so this is a fit, not a mechanism |
 | TS-10 | **Passed-pawn pushes to the 6th and 7th with little material** are reduced less and never pruned: +4.4 ± 6.8 on an endgame book (D8 §17). Older: exempting advanced pawn pushes from pruning read −9.04, then +0.30 ± 2.56 over 22,000 (NOV) | **H.2** |
 | TS-11 | **Continuation correction six plies back**, with every correction weight rebalanced (about 0.9×) and the post-null-move correction weight as a lever. Adopted in 8.1 (`2c33b92`); alone it read −0.8 ± 5.6 (D8 §26) | **H.2**. RAR-X04 (a six-ply history channel lost −7.70 in Basilisk) is the local caution |
@@ -212,7 +221,7 @@ mechanism came from Reckless, which therefore matter more here.
 
 | ID | Finding and evidence | Rarog placement |
 |---|---|---|
-| TB-1 | **`tdperft`:** perft through the search's own generator, make and unmake. At every node it recomputes every key (hash, pawn, non-pawn, minor and major), the occupancy and the piece table from scratch. It re-checks every parent move against the TT and killer pseudo-legality test. 482M nodes, 0 errors; it validated Chess960 and a board rewrite (D8 §12, §14) | **D.4.17** (an instrument). Rarog's `tests/board_differential.rs` already rebuilds every derived field after each make and unmake, but on random walks, through `generate_legal_moves`. The gaps are exhaustive perft through the staged picker, and every generated move re-checked by the TT-move legality test. It is also the guard D.6.4 and D.6.5 run under |
+| TB-1 | **`tdperft`:** perft through the search's own generator, make and unmake. At every node it recomputes every key (hash, pawn, non-pawn, minor and major), the occupancy and the piece table from scratch. It re-checks every parent move against the TT and killer pseudo-legality test. 482M nodes, 0 errors; it validated Chess960 and a board rewrite (D8 §12, §14) | **D.9.3** (an instrument). Rarog's `tests/board_differential.rs` already rebuilds every derived field after each make and unmake, but on random walks, through `generate_legal_moves`. The gaps are exhaustive perft through the staged picker, and every generated move re-checked by the TT-move legality test. It guards D.5.1 and D.5.2, which change the picker's partition, and D.6.4 and D.6.5, which move the board |
 | TB-2 | Zobrist rank | §4 item 1: rank 64, now a test |
 | TB-3 | FEN robustness | §4 item 13: correct |
 | TB-4 | **Per-node state computed once:** pins and checkers shared by the picker's stages; one enemy attack map shared by the generator and quiet scoring (−0.35% cycles, `d6a79a8`); the child's in-check status taken from the parent's gives-check; the illegal-position guard only at the root (D8 §4, D81 §1). A legal generator (from Zoomies/Surge, MIT) in the exact order of the staged one: level on AVX-512, +3.6% to +9.2% elsewhere (D81 §1) | **H.4** |
@@ -233,7 +242,7 @@ mechanism came from Reckless, which therefore matter more here.
 
 | ID | Finding and evidence | Rarog placement |
 |---|---|---|
-| TT-1 | **Loss analysis by cell.** A judge engine scores every move of lost and spoiled games, tabulated by position class (defending, level, ahead) × clock left × material. 33.8% of its loss against Stockfish 19 sat in "defending with under 10% of the clock", and half the real errors vanished with more nodes (D8 §32, §43). It held 36.7% of its defending games against Stockfish's 50.6% (D8 §47.4) | **E.1** (an instrument): run on E.2's games, it says where the classical head's losses sit, and its table ranks H.3. Rarog's conversion instrument covers only won positions |
+| TT-1 | **Loss analysis by cell.** A judge engine scores every move of lost and spoiled games, tabulated by position class (defending, level, ahead) × clock left × material. 33.8% of its loss against Stockfish 19 sat in "defending with under 10% of the clock", and half the real errors vanished with more nodes (D8 §32, §43). It held 36.7% of its defending games against Stockfish's 50.6% (D8 §47.4) | **D.9.5** (an instrument): on stored pool and gate games, judged by Stockfish 19 at fixed nodes, both sides, the worst errors re-searched at 4× and 16× nodes to split clock errors from evaluation errors. It says where the classical head's losses sit, and its table ranks H.3; E.1 re-reads it at the release head. Rarog's conversion instrument covers only won positions |
 | TT-2 | Wall-clock overhead | §4 item 3: correct, measured |
 | TT-3 | **Measure each time lever at the time control it acts at.** Tune against an external engine with release-speed builds, because self-play rewards the side that spends more (D8 §19, §21, §23) | **H.3**, as its rule. D.1.5's harm reads at two controls are the local form |
 | TT-4 | Time-manager defects | §4 item 14: correct |
@@ -265,9 +274,11 @@ mechanism came from Reckless, which therefore matter more here.
 | TM-4 | Stopped leans add up to nothing (§3) | Rarog's rule already: an unresolved stop is not "probably fine" (AGENTS, *Gating*) |
 | TM-5 | **A measurement is valid only in the regime it was taken.** Quiet checks in quiescence flipped sign once a cap was lifted (D6 notes 9–10). A correction weight moved up when tuned at 15 s and down at 30 s, and only the 30 s vector passed (D7 §2) | **F.6** and **G.3**, as a registration check |
 | TM-6 | **Analyse an idea that should not lose but does, before closing it.** `CorrPhase` lost until a prefetch of the wrong keys was found (D8 §25) | Rarog's practice already (RAR-S64; the research packets' falsifiers). Corroboration |
-| TM-7 | **Speed by hardware counters at an identical tree:** cycles, instructions and branch misses per node, engine pinned, search threads only (start-up was 5% of cycles at 400k nodes per position); a byte-identical copy of the base as the noise control; paired simultaneous runs on two hyperthread siblings, null test ±0.1% (D8 §2, §36; `build/nps_pair.py`, `build/node_identity.py`) | **H.4**, as a candidate instrument beside Rarog's pooled-PGO method, which already uses a self-pair as its control. A sibling pair on Windows needs RAR-P54's per-core reading first |
+| TM-7 | **Speed by hardware counters at an identical tree:** cycles, instructions and branch misses per node, engine pinned, search threads only (start-up was 5% of cycles at 400k nodes per position); a byte-identical copy of the base as the noise control; paired simultaneous runs on two hyperthread siblings, null test ±0.1% (D8 §2, §36; `build/nps_pair.py`, `build/node_identity.py`) | **D.9.6**, beside Rarog's pooled-PGO method, which already uses a self-pair as its control; its card chooses the tool on the 5950X and asks whether code layout forces several builds here too. Its users are D.4's and D.6's NPS guards, D.8 and H.4. No sibling pair: RAR-P54 read both engines at 0.63–0.65 beside a sibling |
 | TM-8 | **Tree-size centring for any lever that changes the tree.** A fit on search data plus a node-count sweep on fixed positions finds in minutes what an SPSA looks for over hours. The bench is useless for it, because a few positions dominate its sum (S2 §2.6) | **F.6**: with rule 8's curvature sweep, which reads `bench 13` and WAC. The "top-pos share" line (14.4% today) is the bench's own warning |
-| TM-9 | **Ablations:** switching off features accepted on weak evidence, with a simplification SPRT, freed two features (`QuietOffense`; `ContHistPrune` +5.94) (D8 §8) | **H.1**: the triage ablates the features accepted on weak evidence |
+| TM-9 | **Pricing what pruning and reductions hide.** Data builds record which rule pruned or reduced a move, and search a sample of those moves again at the denied depth: `prunelog` for every pruning rule (S3 §3.3; `source/prunelog.h`), `redlog` for reduced searches, with a quarter of reduced fail-lows probed at full depth (S2 §2.6; `source/redlog.h`); `ordlog` is a move-ordering oracle (`source/ordlog.h`). The label that matters is "failed low reduced, beats alpha at full depth" (1.7% of probed moves). Its first label, "beats alpha", spent nodes on moves already re-searched (−9.65 ± 10.36) | **D.9.4**. Rarog's `diag` counters count each rule's decisions and its ablation mask prices whole mechanisms on fixed-node screens; nothing prices the moves a rule denied. The card settles the form, because the `diag` build may not change nodes and a re-search writes the TT and histories |
+| TM-10 | **Shortcut builds.** Every identical-tree shortcut ships with a build switch that runs the original beside it at every node and aborts on the first disagreement (`TRIUMV_VERIFY_*`: SEE, TT store, rank, quiet scores, attack maps, accumulator sync) (D8 §27, §40) | **H.4**, with each shortcut it reads. Rarog's exact fingerprint catches a shortcut that moves the tree, but not one that disagrees only off the bench's positions |
+| TM-A | **Ablations:** switching off features accepted on weak evidence, with a simplification SPRT, freed two features (`QuietOffense`; `ContHistPrune` +5.94) (D8 §8) | **H.1**: the triage ablates the features accepted on weak evidence |
 
 ## 10. Evaluation analysis (TE; useful for a classical evaluation)
 
@@ -302,6 +313,40 @@ mechanism came from Reckless, which therefore matter more here.
 | TD-6 | **Proposals, unmeasured** (FD §3–5): hard examples (positions lost, or where a deep search contradicts the static score) need a dedicated generation at scale; overlapping material bands in training; shared and private first-layer lanes per expert | **F.8** (hard-position mining); the expert proposals in **F.7** |
 | TD-7 | **Gains hide.** Network gains shrink at longer controls and hide behind shared cores: one net read +0.8 ± 10.1 at 30+0.3 with 75 concurrent games, and +23.4 ± 12.0 at 12+0.12 with 38 (D8 §9) | **F.3** and **F.7**, as a measurement rule: Rarog's sibling-free placement (RAR-M82) is the local form |
 | TD-8 | **Recalibrate per network:** the evaluation scale per piece-count bucket, judged by games (matching the raw ratio to the previous net lost); scale-dependent margins (25 parameters) retuned on the final net (+8.6); blend constants inherited from Stockfish, tuned on its own net (+3.75 ± 3.49 at 20+0.2) (NET, D7 §2) | **F.6** |
+| TD-9 | **One label scale per run, and labels strong enough.** Triumviratus re-labelled every source with one evaluator before mixing, because mixed targets train toward neither. A net trained on Stockfish's 5,000-node self-play alone ended −84 against the reference, and a second stage on data with stronger labels closed half the gap (`removed/dfa5a6b/docs/networks/NETWORKS_4.2-7.0.md`; recipe 02) | **F.2**, read for self-play: data from successive heads is re-scored by one search before mixing, and the node budget per label is sized by the learning curve, not by throughput |
+| TD-10 | **Measure the stream's shape:** files drawn uniformly over-read small files; sampling by piece count toward endgames, which material buckets otherwise starve; soft rather than hard early skipping; the positions the search actually evaluates compared with the training stream bucket by bucket. On Triumviratus the search held 2–3.5× more unbalanced material pairs than the data, and game positions at every ply were the right source; book exits and endgame books were not (recipe 07 `docs/C2_SEARCH_DISTRIBUTION_2026-10-21.md`) | **F.2** |
+| TD-11 | **Its first network's failures, each visible in the command line:** no factoriser, λ 1.0 only, and a stop on a flat validation loss while the rate was still 38% of its start read −102 against the reference; fixed, −39 (recipe 01) | **F.3**: every recipe checked against a reference recipe before a run is paid for |
+| TD-12 | **Judge checkpoints carefully:** at 20+0.2 or longer (one net read −27 at 8+0.08 and −84 at 20+0.2); against one fixed anchor (checkpoint-to-checkpoint deltas summed to +71 where the direct gap closed by +28); the first epochs after a restart at a higher rate are recovery, not progress (−27 at epoch 19, parity by 119); a validation loss computed at a moving λ cannot rank checkpoints, so save-top-k by it is unusable (recipes 02, 05) | **F.3**; F.8 gates each refresh on the same anchor |
+| TD-13 | **Saturation calls for capacity or information, not epochs.** On the 1024-wide net there was no gain between epochs 249 and 416, an annealing tail read −0.28 ± 5.21 over 5,024, and fine-tunes read zero. Meanwhile a 99k-parameter passed-pawn block bought +7 in four epochs, and material buckets about +15 (recipe 05) | **F.7** |
+| TD-14 | **Own self-play in a refine:** 67M positions (6.5% of the mix, listed ten times) rode with new Leela data and the pawn-pair block, +18 together, so their own share is unknown. A filter that streamed only passed-pawn positions added nothing to a converged block (recipe 03) | **F.8** |
+| TD-15 | **Finishing:** the weight average of the last few epochs (+3.8 ± 7.7 over a single checkpoint, kept for its lower variance). Feature-transformer neurons permuted over **all** input blocks, the evaluation bit-identical (+1.6% to +2.5% NPS); permuting only some blocks makes the net wrong, not slow | The average: **F.3**. The permutation: **F.5** |
+| TD-16 | **Shape of a network step** (recipe 07 `docs/DESIGN_NEXT_NETWORK_2026-10-21.md`): CPU-only gates before any GPU hour (the shape's speed with a random net, bucket changes per node in the tree, occupancy per bucket on the data, engine against trainer); then proxy trainings of about 40G positions, each judged by an SPRT; then one full run, close calls taking the conservative choice. The same document surveys Stockfish's networks in October 2026: PSQT removed (SFNNv17); int8 first-layer weights trained by clamping the merged weights; king × opponent-queen buckets with 32 layer stacks (SFNNv18, about +4 at STC and LTC, every single change failing alone); row pairing in the update (+5% to +7% NPS); learned routers for the layer stacks; pawn input blocks in test | The step shape: **F.0** and **F.7**. The survey: **F.0**, for F.7 |
+
+## 12b. Triumviratus's network path, net by net (read for a self-play network)
+
+| Net (release) | What was done | Result | Lesson |
+|---|---|---|---|
+| before 4.2 | Stockfish's own network in the engine; a policy network tried inside alpha-beta | the policy net lost in four forms | TN-6 |
+| `rubicon-v1` (4.2) | `HalfKAv2_hm^`, L1 2560, Leela `test80`, nnue-pytorch; the first run without the factoriser, λ 1.0, stopped at epoch 124 on a flat validation loss | first run **−102** against the Stockfish net; the fixed run (factoriser, about 400 epochs, λ squeezed to 0.75 on the best checkpoint) **−39** | TD-11 |
+| `rubicon-alea-v1` (5.0) | threat inputs (SFNNv13), L1 1024; stage 1 on Stockfish 5,000-node self-play, stage 2 on Leela data at λ 0.74 | stage 1 **−84** at 20+0.2 (−27 at 8+0.08); after stage 2 **−40**; the engine +50 over 4.2 | TD-9, TD-12 |
+| `rubicon-alea-v2` (6.0) | v1 fine-tuned with a pawn-pair block grafted at zero, two learning rates (base 1e-4, new block 1e-3), λ 0.75 fixed, 6.5% own self-play; validation flat from epoch 80, stopped at 470; annealed, the last three averaged | **+18.3** over v1, the network isolated | TN-4, TD-14, TD-15 |
+| `rubicon-alea-v3` (6.0) | a 96-input passed-pawn block trained alone on the frozen base | **+7.0** in four epochs; later epochs no better | TD-13 |
+| `legio-septima` (7.0) | SFNNv16, all from scratch, both stages re-labelled to one scale; λ fixed early in stage 2 | **+23.4**; then saturated | TD-9, TD-13 |
+| Consilium (8.0) | four input-weight sets by material at the same L1; one data mix; a λ cycle climbing back to 1.0 caused a plateau, fixed mid-run; restart cycles; the last five epochs averaged | about **+15** of 8.0's +27.3 | TN-1, TD-1, TD-3 |
+| Consilium Plebis (8.1) | eight per-side sets by the opponent's material, int8 king-relative weights, a cached pawn-king subnetwork; CPU gates and a staged plan before training | **+10.3** at fixed nodes | TN-2, TD-16 |
+
+**What a self-play-trained Rarog can skip, in the order Phase F meets it.**
+Each is now a requirement of the PLAN leaf named (PLAN Phase F, *Lessons from
+Triumviratus's network path*):
+
+1. a recipe checked against a reference before the first paid hour (F.3; TD-11);
+2. conformance gates before training (F.4; TN-9);
+3. one label scale, and labels deep enough (F.2; TD-9);
+4. the stream's shape measured against what the search evaluates (F.2; TD-10);
+5. checkpoints judged at long controls against one anchor, on holdout loss at
+   fixed λ, with λ fixed early (F.3; TD-1, TD-12);
+6. capacity, not epochs, once saturated (F.7; TD-13);
+7. each network step as CPU gates, proxies, then one full run (F.0, F.7; TD-16).
 
 ## 13. Analysis build and product (TA)
 
@@ -311,13 +356,55 @@ mechanism came from Reckless, which therefore matter more here.
 | TA-2 | **Displayed scores:** the printed scale calibrated on self-play so that +1.00 is a 50% chance to win, refitted per network; tablebase wins printed as `cp 20000` minus the distance (D8 §24; `28c44db`, `9e74ae8`) | **D.3.9** (the score-normalisation card). Rarog already maps the tablebase band to `cp` 19,873–20,000 |
 | TA-3 | **Strength levels** (`UCI_LimitStrength`, `UCI_Elo`): limit the search and choose among the best root lines, calibrated in games (FD §13) | **G.2** |
 
+## 13a. One rebuild or clusters, read for Rarog
+
+Triumviratus did both, and its record separates the cases.
+
+- **One step with statistical acceptance.** It rebuilt its whole search on
+  Stockfish 19's base in a day, fitted it with one 51-parameter SPSA, and got
+  +85.8 ± 12.8 at 20+0.2 (D8 §17). It then spent two weeks finding, one SPRT
+  at a time, what the big diff hid: a cycle filter from an older Stockfish
+  (+5.62), the quiescence TT depth (+3.38), pins in SEE (+4.5), the null
+  move's fifty-move counter (+1.6), a lost prefetch, seven adapter
+  divergences and wrongly ported options (D8 §20, §25, §41, §48.2). Its
+  one-step rewrite of the reductions in 8.1, accepted on short-control
+  parity, lost at long controls and was taken back out (D81 §3).
+- **One step with exact acceptance.** Its 8.1 rewrites at an identical tree
+  (inference, infrastructure, the time manager, each search block) went fast,
+  because bench, perft and bit-identical evaluation decide each one without
+  games.
+
+**For Rarog** this is PLAN rule 3 and AGENTS' behaviour-neutral rule, with
+evidence from a third engine. A component with an exact oracle (an identical
+tree, perft, bit-identical output) may be rebuilt in one step: D.6's
+simplification programme, D.9.3's perft as its guard, F.4's and F.5's
+integer-exact conformance. A component accepted by games is cheaper in
+clusters, because a failed one-step change cannot say which part failed, and
+constants on another engine's score scale must be fitted cluster by cluster.
+Rarog's own first cluster read +65 unfitted and +138 fitted (RAR-S73). Nothing
+new is placed.
+
+## 13b. The instruments step: PLAN D.9
+
+The instruments that help now, placed just before the next cluster that uses
+them (§2):
+
+| Leaf | Instrument | State | First users |
+|---|---|---|---|
+| D.9.1 | Wall-clock overhead read (TT-2, §4 item 3) | DONE 2026-11-03, clean | every `3+0.03` read so far |
+| D.9.2 | SPSA schedule read (TM-2, §4 item 15) | DONE 2026-11-03, clean | every fitted vector so far; F.6 |
+| D.9.3 | A search-path perft (TB-1) | READY_FOR_IMPLEMENTATION, `I1` | D.5.1, D.5.2, D.6.4, D.6.5 |
+| D.9.4 | Pruning and reduction pricing (TM-9) | RESEARCH, `R2` then `I2` | D.5.3, D.5.5, D.5.16, D.5.19, F.6 |
+| D.9.5 | The loss table by cell (TT-1) | READY_FOR_IMPLEMENTATION, `V` | E.1, H.3, the open draw-rate question |
+| D.9.6 | An identical-tree counter read (TM-7) | RESEARCH, `R2` then `I1` | the NPS guards of D.4 and D.6, D.8, H.4 |
+
 ## 14. Placements by Rarog leaf
 
 | Leaf | Items | Kind |
 |---|---|---|
 | D.2 | TP-1 (verification width), TP-3, TP-4 | priors for its card; TP-4 moves to G.1 if RAR-M83 reads NOT DEFICIENT |
 | D.3.9 | §4 item 12 note 1 (halfmove clock above 255), TA-2 | decisions |
-| D.4.17 | TB-1, §4 item 4 (a same-value `Hash` keeps the table) | instruments and tests |
+| D.4.17 | §4 items 4, 10 and 12: a same-value `Hash` keeps the table, repeated spaces and a trailing `\r`, a 64 KB `position` line, a clean frame on every child entry path | tests |
 | D.4.18 | §4 item 5 (the single-null variant, unverified), §4 item 7 (the stale SEE record) | record corrections |
 | **D.4.23** (new) | §4 item 12 note 2: the correction bonus in 64-bit arithmetic | behaviour-neutral repair |
 | D.5.2 | TS-14 | negative prior |
@@ -328,43 +415,65 @@ mechanism came from Reckless, which therefore matter more here.
 | D.5.14 | TS-18b (fifty-move key band, correction fade) | negative priors |
 | D.5.18 | §4 item 2 (the cuckoo filter), TS-16, TS-17 | the leaf's form; negative and null priors |
 | D.6.11 | §4 item 9 (six runtime `SearchParams` reads) | behaviour-neutral |
-| E.1 | TT-1 | instrument |
+| **D.9** (new) | D.9.1 TT-2 (done), D.9.2 TM-2 (done), D.9.3 TB-1, D.9.4 TM-9, D.9.5 TT-1, D.9.6 TM-7 | instruments (§13b) |
+| E.1 | TT-1, D.9.5's table re-read at the release head | instrument |
 | E.3.0 | Triumviratus named as a mechanisms-only donor | disclosure |
+| Phase F rules | the seven requirements of §12b | requirements |
+| F.0 | §12b, TN-1, TN-3, TN-6, TD-16 (the step shape, Stockfish's networks in October 2026) | |
 | F.1 | TB-10 | |
+| F.2 | TD-9, TD-10 | |
 | F.2.1 | TE-1 | screen |
-| F.3 | TD-1–TD-4, TD-7 | |
+| F.3 | TD-1–TD-4, TD-7, TD-11, TD-12, TD-15 (the average) | |
 | F.4 | TN-9 | instruments |
-| F.5 | TN-7, TN-8, TN-9, TB-14 (AVX-VNNI), TB-15 | |
-| F.6 | TS-7, TD-8, TM-3, TM-5, TM-8, §4 item 15 (ranges) | registration inputs |
-| F.7 | TN-1–TN-6, TE-2, TD-6 (experts), TD-7 | |
-| F.8 | TD-5, TD-6 | |
+| F.5 | TN-5, TN-7, TN-8, TD-15 (the permutation), TB-14 (AVX-VNNI), TB-15 | |
+| F.6 | TD-8, TM-3, TM-5, TM-8, §4 item 15 (ranges) | registration inputs |
+| F.7 | TN-1–TN-6, TE-2, TD-6, TD-13, TD-16 | |
+| F.8 | TD-5, TD-6, TD-14 | |
 | G.1 | TB-13, TP-6 (TP-4 if D.2 closes NOT DEFICIENT) | |
 | G.2 | TB-9, TB-14 (universal binary, per-tier PGO), TA-1, TA-3 | |
 | G.3 | TS-2 (long-control warning), TS-19, TM-5 | |
-| **H.1** (new) | TM-9; the re-ranking of everything below | triage |
-| **H.2** (new) | TS-3, TS-4, TS-5, TS-6, TS-8, TS-9, TS-10, TS-11, TS-12 (if experts), §4 item 8 (the minor-each draw) | small search gains |
+| **H.1** (new) | TM-A; the re-ranking of everything below; Basilisk's opening trigger | triage |
+| **H.2** (new) | TS-3, TS-4, TS-5, TS-6, TS-7 (a prior), TS-9, TS-10, TS-11, TS-12 (if experts), §4 item 8 (the minor-each draw) | small search gains |
 | **H.3** (new) | TT-3, TT-5–TT-10 | small clock gains |
-| **H.4** (new) | TB-4–TB-8, TB-11, TB-12, TB-14 (layout), TB-16, TM-7 | identical-tree speed on the network head |
-| none | TS-13, TS-13b, TS-18, the rest of TS-18b, TN-6 (refused or already covered), TM-1, TM-2, TM-4, TM-6, TB-2, TB-3, TP-2, TP-5, TT-2, TT-4 (checked) | |
+| **H.4** (new) | TB-4–TB-8, TB-11, TB-12, TB-14 (layout), TB-16, TM-10 | identical-tree speed on the network head |
+| none | TS-8 (Rarog's form already), TS-13, TS-13b, TS-18, the rest of TS-18b, TN-6 (refused or already covered); TM-1, TM-4, TM-6, TB-2, TB-3, TP-2, TP-5, TT-4 (checked) | |
 
 Phase H holds Basilisk's split of small gains: H.1 triage, H.2 search,
 H.3 time management. It adds H.4, because Rarog has no open speed pass
 before the network: C.12 is closed, and F.5 covers the network's inference
 only.
 
-## 15. Basilisk's placements, for orientation
+## 15. What Basilisk adopted, and what Rarog takes
 
-Basilisk's packet is `D:/code/basilisk/analysis/triumviratus_review_2026-11-03.md`;
-its ledger imports are BAS-X37 to BAS-X40. It found most of the fifteen checks
-already in Basilisk's form, as Rarog does here. Where Rarog differs:
+Read on 2026-11-03 from Basilisk's PLAN after its four Triumviratus commits of
+that day. All four are documents and its snapshot; Basilisk has implemented
+none of the review in code yet. Its packet is
+`D:/code/basilisk/analysis/triumviratus_review_2026-11-03.md`; its ledger
+imports are BAS-X37 to BAS-X40.
 
-- **The snapshot** is in ignored storage, not tracked (§1).
-- **No board rebuild step:** Basilisk's B.15 has no counterpart (§2).
-- **TS-1 goes to D.5.7, the ply cap.** Basilisk put it in its root and
-  aspiration cluster. Here the line-growth evidence (RAR-R19) and the cap
-  sit in D.5.7.
-- **Basilisk's B.7.2 speed pass items go to H.4.** Rarog's speed pass (C.12)
-  is closed, so its next identical-tree pass runs on the network head.
-- **The protocol defects.** Basilisk filed them under its D.3.2; Rarog's
-  D.3.1–D.3.8 had already closed the comparable set. The checks found one
-  new repair (D.4.23) and one decision input (D.3.9).
+Basilisk placed more of the review in early leaves because its search
+programme is still open (its B.3 tune is running). It uses B.4 quiescence, B.5
+root and line growth, B.6.1 donor reconciliation, B.7.2 speed pass, B.15 board
+review, C.0 residuals, D.1 time management and D.3.2 protocol. Rarog closed
+those programmes: Phase B on 2026-10-05, Phase C on 2026-10-22, D.1 on
+2026-10-26. So their items here go to an open leaf or wait in Phase H.
+
+| Basilisk leaf | What it took | Rarog |
+|---|---|---|
+| B.16, the instruments (TT-2, TM-9, TT-1, TM-7) | four instruments before its next cluster | **Adopted as D.9**, before D.5, with two more: the schedule read and the search-path perft. The wall-clock and schedule reads are done |
+| B.3.3 | the schedule check on its live 0.5.0 block | D.9.2, done: the same pinned executable |
+| B.4, quiescence (TS-13, TS-14) | its quiet-check card | Rarog's quiescence has no quiet checks; TS-14 goes to D.5.2 |
+| B.5, root, aspiration, line growth (TS-1, TS-15) | TS-1 as a third form | D.5.7 and D.5.13 |
+| B.6.1, donor reconciliation (TS-16, TS-17) | priors | D.5.18 |
+| B.15, board review and rebuild (TB-1 to TB-10) | B.15.1, a board-contract audit porting Rarog's board-v2 corpus; B.15.2, a component review | **Not adopted.** B.15.1 ports the contract work Rarog did in 2026-09, which is a standing contract here. Rarog's board is at measured parity, and C.12 read the speed items. TB-1 is D.9.3, TB-10 is in F.1, and the rest is H.4 (§2) |
+| B.7.2, speed pass (TB-8, TB-11 to TB-16, TM-10) | read before the network | H.4: C.12 is closed, so they are read on the network head |
+| C.0 (TE-1, TE-2, TM-5) | residuals on its evaluation | TE-1 goes to F.2.1, TE-2 to F.7 |
+| D.1 (TT-3 to TT-6), reading B.16's loss table first | its time management is still open | Rarog's D.1 is closed; H.3 reads D.9.5 first |
+| D.2 (TP-1 to TP-5) | TT16 as a candidate for its TT incoherence | D.2 and D.5.12. Rarog's shared table already verifies by XOR |
+| D.3.2, protocol (TR-1 to TR-5) | a test for each defect | Rarog's D.3.1–D.3.8 closed the comparable defects. The paths the checks read correct but untested go to D.4.17 as tests; the overflow is D.4.23 |
+| F.0 to F.8 | the network path, leaf by leaf | **Adopted in full**: the lessons block and inputs F.0–F.8 |
+| G.1, G.2, G.3 | TP-6; TB-9 and TA; TS-19 | the same |
+| H.1 to H.3 | the small gains, and an opening trigger for H.1 | the same, plus H.4; the trigger adopted |
+
+**Also not taken:** the snapshot is in ignored storage here, not tracked
+(maintainer decision 2026-11-03, §1).

@@ -351,6 +351,10 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | D.4.20 | READY_FOR_IMPLEMENTATION | I1 | Tooling; after D.3 |
 | D.4.21 | READY_FOR_IMPLEMENTATION | I1 | After D.3; the behaviour-test sweep |
 | D.4.23 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value; exact fingerprint, a unit test at an overflowing depth |
+| D.9.3 | READY_FOR_IMPLEMENTATION | I1 | Before D.5.1, D.5.2 and D.6.4; a planted dropped move must fail it |
+| D.9.4 | RESEARCH | R2 | The card: how to re-search without perturbing the measured tree; before D.5's screens |
+| D.9.5 | READY_FOR_IMPLEMENTATION | V | The tool first, then the judge run's sample registered; maintainer-run |
+| D.9.6 | RESEARCH | R2 | The tool on the 5950X, validated on a patch of known effect; before D.6's NPS guards |
 | D.5.1 | RESEARCH | R2 | Screen first among the cards (castling's classification) |
 | D.5.2 | RESEARCH | R2 | Screen second (quiet queen promotions in quiescence) |
 | D.5.3 | RESEARCH | R2 | Screen before any implementation; its gate queued behind D.2 |
@@ -2571,14 +2575,14 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       cross-null repetition characterisation of item 18; `tests/endgames.epd`
       and the recogniser FENs through `mirror_fen` (every one has White as the
       stronger side today).
-      Also (2026-11-03, `analysis/triumviratus_review_2026-11-03.md` TB-1 and
-      §4 item 4): an exhaustive perft through the staged picker, make and
-      unmake that recomputes every key and derived field from scratch at each
-      node and re-checks every generated move with the TT-move legality test
-      (Triumviratus's `tdperft`; `board_differential.rs` covers the recompute
-      on random walks only), run before D.6.4 and D.6.5 move the board; and a
-      same-value `Hash` re-send that keeps the table's contents (measured at
-      0.033 ms, no reallocation, but no test pins it).
+      Also (2026-11-03, `analysis/triumviratus_review_2026-11-03.md` §4 items
+      4, 10 and 12): a same-value `Hash` re-send keeps the table's contents
+      (measured at 0.033 ms, no reallocation, but no test pins it); input
+      lines with repeated spaces and a trailing `\r`, and a 64 KB `position
+      startpos moves …` line (read correct, untested); every child entry path
+      (ordinary move, null move, ProbCut, exclusion, quiescence) starts a
+      clean frame, as `push_move` and `clear_move` bracket them today. The
+      search-path perft is D.9.3.
     - **D.4.18 A record corrected — `I1`.** (BOARD-3): `analysis/draw_policy_2026-09-08.md`
       Policy 2 says a repetition scan crossing a null move can only be a false
       negative; two null moves by the same side while the opponent shuffles a
@@ -3342,6 +3346,96 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
     MySQL's macOS notes; not an Apple document), and its base page is
     already 16 KB. The 2 MB superpages macOS offers exist on Intel Macs
     alone. On macOS `large_pages()` stays as it is.
+- **D.9 Instruments from the Triumviratus review: the measurement-integrity reads, a search-path perft, pruning and reduction pricing, the loss table by cell, an identical-tree counter read — `R2`, then `I1`/`I2`/`V`.**
+  Added 2026-11-03 (maintainer: the instruments that help now, placed just
+  before the next cluster that uses them;
+  `analysis/triumviratus_review_2026-11-03.md` §13b). Rarog has their
+  neighbours (pooled-PGO NPS, the `diag` counters, the ablation mask, the
+  conversion audit), but nothing that prices what a pruning rule hides, splits
+  a lost game's errors by cell, or reads speed below the pooled read's limit.
+  None changes the tree or a gate; each is validated on a planted case before
+  it is trusted, and its readings screen, never accept. In the register after
+  D.4 and before D.5, whose cards are their first users; the two
+  measurement-integrity reads are done.
+    - **D.9.1 Wall-clock overhead read — `V`, DONE 2026-11-03.**
+      Timed from outside on an idle host, `30593ba` (bench 14,749,043): `go
+      nodes 1000` 0.55 ms against Stockfish 19's 0.93 (0.28 against 0.57 at
+      four threads); `go movetime` 50, 100 and 300 overshoot by 0.56–0.68 ms
+      (median) at one thread and 0.78–0.94 at four, 1.44 at most, Stockfish's
+      by about 0, inside the 1 ms at which a gap would go to a repair;
+      `ponderhit` to `bestmove` 0.53–1.56 ms after a finished ponder (a 1 ms
+      sleep loop). In games RAR-R30 already read it at `3+0.03`: at one thread
+      1.2% of the charged time is held after the last `info` line, median 1
+      ms. Clean: Rarog's clock and output distorted no `3+0.03` read; the
+      four-thread holds RAR-R30 found are D.2's, not the clock's.
+      Triumviratus found 6.15 ms against 1.24 this way, worth +29.8 at 5+0.05
+      (TT-2). Scripts and logs: `analysis/artifacts/triumviratus-checks/`.
+    - **D.9.2 SPSA schedule read — `V`, DONE 2026-11-03.**
+      The pinned runner, Colosseum CLI 0.5.0 (`8fa63cc`, the executable
+      Basilisk pins too), sets c₀ = c_end·N^0.102 and asserts that the last
+      iteration reaches c_end (`colosseum-core/src/spsa.rs:120-143` at the
+      pin). Basilisk's live 0.5.0 block on this host runs c 1.9999, 1.8634, …
+      0.9925 at iteration 961 of 2,000, as c₀/(k+1)^0.102 predicts. Rarog's
+      last tune, on 0.4.0, ran 6.0000 to 2.7634, its c_end, at iteration 1,999
+      of 2,000 (`tools/results/rar-r21-fit/run.log`). Fishtest's form: no
+      fitted vector was explored at a reduced perturbation, as Triumviratus's
+      were for a month (TM-2). The range rule (start ± 2.25c clear of a
+      formula's change of nature) is F.6's decision.
+    - **D.9.3 A search-path perft — `I1`.**
+      Perft through the staged picker (the TT move, then the noisy and quiet
+      stages in the search's order), make and unmake, recomputing every key
+      and derived field from scratch at each node (`check_consistency`) and
+      re-checking every generated move with the TT move's legality test
+      (`legal_move`), on the standard perft positions in release against their
+      reference counts. `tests/board_differential.rs` does the recompute on
+      random walks through `generate_legal_moves` only. Planted case: a picker
+      that drops one stage's move fails it. Before D.5.1 and D.5.2, which
+      change the picker's partition, and D.6.4–D.6.5, which move the board.
+      Triumviratus's `tdperft` (TB-1) ran 482M nodes with 0 errors and
+      validated a board rewrite.
+    - **D.9.4 Pruning and reduction pricing — `R2`, then `I2`.**
+      What each pruning rule and each reduction hides (TM-9, Triumviratus's
+      `prunelog` and `redlog`): a deterministic sample of the moves each rule
+      prunes (razoring, reverse futility, null move, ProbCut, futility, the
+      move count, SEE, and quiescence's rules) and of the reduced searches
+      that fail low is searched again at the depth the rule denied, with the
+      node's window. Recorded per rule, depth, node type and move number: the
+      decisions, the share that would have raised alpha, and the share that
+      would have changed the node's best move. The label that matters is a
+      move that failed low reduced and beats alpha at full depth (1.7% of
+      probed moves there); a label of beating alpha at the reduced depth spent
+      nodes on moves already re-searched (−9.65). The card decides the form:
+      the `diag` build may not change nodes, and a re-search writes the TT and
+      the histories, so the pricing runs as its own feature or on scratch
+      tables. Validation: with sampling off the bench is exact; a planted
+      over-pruning rule reads higher than its honest form. Users: D.5.3,
+      D.5.5, D.5.16, D.5.19, and F.6's fit.
+    - **D.9.5 The loss table by cell — `V`.**
+      Where Rarog loses, from games already played (TT-1): the pool
+      tournaments' and the latest gates' games in Colosseum's database, every
+      move scored by a judge (Stockfish 19 at fixed nodes) as the evaluation
+      before it minus the evaluation after, from the mover's side; tabulated
+      for both sides by position class (defending, level, ahead), clock left
+      and material, with the opponent's moves in the same cells as the
+      control; the worst errors searched again at 4× and 16× the game's nodes
+      to split clock errors from evaluation errors. On Triumviratus one cell,
+      defending with under a tenth of the clock, held a third of the loss to
+      Stockfish 19. Rarog's conversion audit covers won positions only, and
+      its draw-rate question is open (GUIDE, *Conversion*). No new games; the
+      judge's CPU is the maintainer's, its sample registered first. It feeds
+      E.1, H.3 and the order of what follows.
+    - **D.9.6 An identical-tree counter read — `R2`, then `I1`.**
+      Speed of a change that keeps the tree, by hardware counters (TM-7):
+      cycles, instructions and branch misses per node, the engine pinned to
+      one core, the search thread only, a byte-identical copy of the base as
+      the noise control. The card decides the tool on the 5950X under Windows
+      (ETW's PMC sources, which `tools/profile_etw.ps1` already drives, or AMD
+      uProf) and whether code layout, which sets the pooled read's limit (four
+      builds an arm resolve 1%; twenty cycles reach only ±0.25%, PROCESS),
+      forces several builds here too. Validated against the pooled read on one
+      patch of known effect. Users: the NPS guards of D.4 and D.6, D.8, H.4.
+      No sibling pair: RAR-P54 read both engines at 0.63–0.65 beside a
+      sibling.
 
 ## Phase E — Classical checkpoint and release
 
@@ -3359,12 +3453,8 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
   Add a tablebase arm (H30): the head against the last release with Syzygy
   loaded, since the search has its own probes and CCRL testers use tables;
   Rarog's last games with tables predate D.1 (RAR-S97, 2026-10-01).
-  Add a loss table by cell (2026-11-03, TT-1 in
-  `analysis/triumviratus_review_2026-11-03.md`): a judge engine scores every
-  move of E.2's lost and spoiled games, tabulated by position class
-  (defending, level, ahead), clock left and material. Triumviratus found a
-  third of its loss against Stockfish 19 in defence with under a tenth of the
-  clock. The table ranks H.3.
+  Re-read D.9.5's loss table by cell on E.2's games at the release head (added
+  2026-11-03, TT-1 in `analysis/triumviratus_review_2026-11-03.md`).
 - **E.2 Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4.1 and Fritz 16 at 1T and 4T (Rybka 4.1 replaced Rybka 4, 2026-09-19); the binding arm is 1T — `V`.** The pool measurement defined in section 1, at 1T
   and 4T. Met, or not met with the measured shortfall per engine recorded.
   **The binding arm is 1T:** RAR-M46 measured 4T as the easier arm for three
@@ -3533,6 +3623,32 @@ scale, quiescence thresholds), fixed when F.6 refits the search; a search
 change that strands that overlay is expected to end the line. One binary
 with an evaluator option, never two release builds.
 
+**Lessons from Triumviratus's network path** (added 2026-11-03;
+`analysis/triumviratus_review_2026-11-03.md` §11, §12, §12b; IDs are its
+items). Triumviratus trained its own weights from random initialisation, but
+on public Leela and Stockfish data; this phase's rule excludes that recipe,
+and its architecture, inference, training method and failure list transfer.
+Its seven networks lost it Elo in ways each visible in advance: a first run
+102 below the reference for want of a factoriser, with a pure-evaluation
+target and an early stop; a self-play stage 84 below for want of label strength; a
+plateau a λ cycle hid; gains that vanished behind shared cores. In the order
+this phase meets them, each is now a requirement of the leaf named:
+
+1. a recipe checked against a reference recipe before the first paid GPU
+   hour (F.3; TD-11);
+2. conformance gates before any training run (F.4; TN-9);
+3. one label scale per run, and labels deep enough, sized by a learning
+   curve (F.2; TD-9);
+4. the training stream's shape measured against the positions the search
+   evaluates (F.2; TD-10);
+5. checkpoints judged at `20+0.2` or longer against one fixed anchor, on
+   holdout loss at fixed λ=0 and λ=1, with λ fixed early (F.3; TD-1, TD-12);
+6. capacity or new inputs, not more epochs, once a net saturates (F.7;
+   TD-13);
+7. each network step as CPU-only gates, then proxy trainings each judged by
+   an SPRT, then one full run, close calls taking the conservative choice
+   (F.0, F.7; TD-16).
+
 - **F.0 Investigation: board events, accumulator ownership, trainer choice, data format, first architecture — `R3`.**
   Board event interface and accumulator ownership (dirty pieces, per-thread
   per-ply accumulators, king buckets, refresh cache); trainer choice
@@ -3549,6 +3665,19 @@ with an evaluator option, never two release builds.
   pipeline (node-limited self-play with soft and hard caps, an opening book
   sampled by inverse use-count, viriformat output) is a compact reference
   for the data-format contract F.0 fixes for F.2.
+  Triumviratus inputs (2026-11-03; §12b, TN-1, TN-3, TN-6, TD-16): its network
+  path, net by net, read before the first architecture and recipe are chosen;
+  its cost-ledger points (L1 2048 −20% NPS, L1 1536 −11.2%, four input-layer
+  experts at L1 1024 −7.5%, a mobility block −16.2% untrained, the network on
+  large pages +6.7% at 250 MB); a refusal prior, a policy network inside
+  alpha-beta, which lost in four forms (−22.8 to −85) because ordering already
+  found the cutoff move first 79.2% of the time without a hash move and a
+  static prior from the parent loses to histories that adapt to the subtree;
+  and the state of Stockfish's networks in October 2026 as F.7's survey (PSQT
+  removed in SFNNv17; int8 first-layer weights trained by clamping; king ×
+  opponent-queen buckets with 32 layer stacks in SFNNv18, about +4 together
+  with every single change failing alone; row pairing in the update, +5% to
+  +7% NPS; learned routers for the layer stacks; pawn input blocks in test).
 - **F.1 Board events and accumulator scaffolding, behaviour-neutral for HCE; cost ledger — `I2`.** Behaviour-neutral
   for the HCE: factual move deltas, evaluator-owned stacks, validity and
   refresh semantics, randomized unwind tests, exact fingerprint, pooled NPS
@@ -3565,6 +3694,19 @@ with an evaluator option, never two release builds.
   the corpus from effective independent rows and a learning curve on the
   first slice, as Basilisk's C.2.2 does, before the maintainer spends the
   hours.
+  Triumviratus inputs (2026-11-03; TD-9, TD-10), read for self-play. One label
+  scale per run: data from successive heads is re-scored by one search before
+  it is mixed, because two target distributions in one run train toward
+  neither. Label strength over volume: its net trained on 5,000-node self-play
+  alone ended −84 against the reference, and a second stage with stronger
+  labels closed half the gap, so the node budget per label is sized by the
+  learning curve, not by throughput. The stream's shape measured, not assumed:
+  files drawn uniformly over-read small files; sampling by piece count feeds
+  the endgame buckets a material key otherwise starves; early skipping soft
+  rather than hard; the positions the search evaluates compared with the
+  training stream bucket by bucket (on Triumviratus the search held 2–3.5×
+  more unbalanced material pairs than its data). Game positions at every ply
+  were the right source; book exits and endgame books were not.
     - **F.2.1 Classical refit on search-visited data: the frozen HCE's whole surface refitted on F.2's dataset, gated as an evaluation change; the classical line's release if it wins — `V`.** The
       lever Phase C's review left (`analysis/phase_c_review_2026-10-19.md`,
       question 3; added 2026-10-22 by maintainer decision): the same-search
@@ -3604,57 +3746,101 @@ with an evaluator option, never two release builds.
 - **F.3 Trainer hardening and baseline nets, two seeds per configuration — `I2`, then `V`.** Deterministic
   pipeline, two seeds per configuration, validation selects, frozen test
   reports once.
-  Triumviratus inputs (TD-1 to TD-4, TD-7;
-  `analysis/triumviratus_review_2026-11-03.md` §12): holdout loss watched at
-  fixed λ=0 and λ=1, checkpoints registered with Elo targets, the last epochs'
-  weights averaged, the loader's throughput, and nets compared in a
-  sibling-free slot.
+  Triumviratus inputs (2026-11-03; TD-1–TD-4, TD-7, TD-11, TD-12, TD-15).
+  Check every recipe against a reference before paying for a run: its first
+  net (no factoriser, λ 1.0 only, a stop on a flat validation loss while the
+  rate was still 38% of its start) read −102, and −39 once fixed. Watch
+  holdout loss at fixed λ=0 and λ=1, never the training loss at a moving λ: a
+  λ cycle climbing back to 1.0 made its net imitate the labels while the
+  result loss stopped where Elo flattened, and a fixed λ of 0.75 restored the
+  gain. Register checkpoints with Elo targets (an early logarithmic fit
+  predicted −32 at the plateau; −70 was measured). Judge checkpoints at
+  `20+0.2` or longer against one fixed anchor (one net read −27 at 8+0.08 and
+  −84 at 20+0.2; checkpoint-to-checkpoint gains summed to +71 where the direct
+  gap closed by +28), never by a validation loss at a moving λ; the first
+  epochs after a restart at a higher rate are recovery, not progress. A
+  restart at a fifth of the peak rate moved a plateaued run, and the final net
+  is the average of the last few epochs' weights (+3.8 ± 7.7, kept for its
+  lower variance). The loader, not the GPU, was the limit (one feature thread
+  per GPU starved it: 381k to 1.9M positions a second with more). Nets are
+  compared in a sibling-free slot: one net read +0.8 at 75 concurrent games
+  and +23.4 at 38.
 - **F.4 Scalar integration: `quantised.bin` contract, integer-exact conformance, HCE fallback — `I2`.** `quantised.bin` contract, integer-exact
   conformance against the trainer's reference evaluation, clean HCE fallback.
-  Triumviratus's conformance gates are the checklist (TN-9,
-  `analysis/triumviratus_review_2026-11-03.md` §11): an integer evaluator
-  against the trainer, loader indices against an independent reader, a random
-  net with perturbed per-bucket deltas, the engine against the evaluator
-  across bucket changes.
+  Triumviratus's conformance gates, required before any training run
+  (2026-11-03; TN-9): an integer evaluator matching the trainer on exported
+  nets; loader indices against an independent reader (0 of 7,025 wrong there);
+  a random net with perturbed per-bucket parts, since zero deltas hide a wrong
+  bucket index; the engine against the evaluator move by move across bucket
+  changes; a golden position set bit-identical after any rewrite (2,000,124
+  positions there).
 - **F.5 Incremental and SIMD: same-net parity on every move type, tiers, pooled NPS attribution — `I2`, then `V`.** Same-net incremental parity
   on every move type, SIMD tiers (AVX2, PEXT builds, ARM NEON), scalar
   reference retained, pooled-PGO NPS attribution. Priors against (H36,
   BAS-P26): slider tables compressed and expanded with `pdep` −0.98%
   [−1.19, −0.78] (the flat tables' hot lines stay in cache), `-mtune=znver3`
   −0.95%, FMA/F16C/MOVBE +0.02%.
-  Triumviratus inputs (TN-7, TN-8, TN-9, TB-14, TB-15;
-  `analysis/triumviratus_review_2026-11-03.md` §6, §11): refresh caches, the
-  hybrid king-move update, both perspectives in one dirty-list pass, neurons
-  permuted at export, the network on large pages; memory as the cost;
-  incremental against refresh at every node; an AVX-VNNI tier; and whether the
-  evaluation cache still pays once the TT stores the network's evaluation.
+  Triumviratus inputs (2026-11-03; TN-5, TN-7, TN-8, TD-15, TB-14, TB-15):
+  incremental against refresh at every node (its `nnperft`); measured there: a
+  refresh cache per bucket, a pawn-block refresh cache keyed by the pawn
+  bitboards (+2.8%), the hybrid update on king moves (Stockfish `db98633b`,
+  +3.4%), both perspectives in one dirty-list pass (+1.5%), first-layer
+  neurons permuted at export over all input blocks so zero activations fall in
+  skipped blocks (+1.6% to +2.5%, bit-identical; permuting only some blocks
+  makes the net wrong, not slow), no feature opened and closed inside one
+  capture, the network on large pages (+6.7% at 250 MB), an AVX-VNNI tier (+6%
+  to +9%). Memory is the cost: 47% of last-level misses fell in the
+  incremental update and 11% in refreshes; a split accumulator cost +12%
+  cycles, and 8-bit weights quantised after training were slower. Whether the
+  evaluation cache still pays once the TT stores the network's evaluation (12
+  hits in 2.5M lookups there).
 - **F.6 Search re-fit for the network — `V`.** Score scale, correction
   histories, margins, qsearch and SEE thresholds re-fitted on the new
   evaluator (C.10's protocol).
-  Triumviratus inputs, to settle before this tune's registration (TS-7, TD-8,
-  TM-3, TM-5, TM-8; `analysis/triumviratus_review_2026-11-03.md` §4 item 15,
-  §9): re-read the Reckless-derived ordering-knowledge terms on the network
-  with a simplification bracket (removing them read +4.21 ± 2.79 on
-  Triumviratus's next net); recalibrate the scale per network by games; bake a
-  lever only when its net move is at least 2.5 times the random-walk
-  expectation; keep start ± 2.25c clear of a formula's change of nature (at c₀
-  this fails for 43 of RAR-S104's 82 coordinates); centre tree size by a
-  fixed-position node sweep. The method changes are the maintainer's decision.
+  Triumviratus inputs, to settle before this tune's registration (2026-11-03;
+  TD-8, TM-3, TM-5, TM-8, the review's check 15). The scale per piece-count
+  bucket recalibrated for each net by games (matching the raw ratio to the
+  previous net lost), the scale-dependent margins retuned on the final net
+  (+8.6 there), blend constants inherited from another net tuned on this one
+  (+3.75). A lever bakes only when its net move is at least 2.5 times the
+  random-walk expectation (with 37 levers about 11 look monotone by chance).
+  Start ± 2.25c clear of a formula's change of nature (at c₀ this fails for 43
+  of RAR-S104's 82 coordinates). Tree size centred by a fixed-position node
+  sweep before the SPSA. A tune taken at the control it is used at. The method
+  changes are the maintainer's decision.
 - **F.7 Architecture ladder: output buckets, king buckets, relation/threat inputs; one axis at a time — `R3` with `I2`/`V` sub-steps.** Output buckets,
   king buckets with mirroring, then relation and threat inputs as in
   Reckless, one axis at a time; each net gated against the previous.
-  Triumviratus inputs (TN-1 to TN-6, TE-2, TD-6;
-  `analysis/triumviratus_review_2026-11-03.md` §10–§12): input-layer experts
-  by material and per side, `PawnPair` and passed-pawn blocks, the
-  zero-initialised graft as the cheap screen with its frozen-layer limit, the
-  negatives (expert averaging, a split accumulator, post-training 8-bit
-  weights, a root-fixed expert), bucket keys chosen by mutual information, and
-  a policy network inside alpha-beta, lost in four forms, recorded so it is
-  not proposed.
+  Triumviratus inputs (2026-11-03; TN-1–TN-6, TE-2, TD-6, TD-13, TD-16). The
+  rungs it climbed and what each bought: threat inputs over plain
+  king-relative inputs (+50 for the engine), a pawn-pair block grafted at zero
+  (+18), a passed-pawn block trained alone on the frozen base (+7 in four
+  epochs), the whole net retrained from scratch on one label scale (+23); then
+  saturation, where more epochs, an annealing tail and fine-tunes all read
+  zero and only capacity paid: input-layer experts by total material as a
+  shared base plus zero-started deltas (about +15, at −7.5% NPS), and per-side
+  experts by the opponent's non-pawn material with int8 king-relative weights
+  and a cached pawn-king subnetwork (+10.3 ± 4.3 at fixed nodes). Bucket keys
+  chosen by measurement: its net's own regimes followed material × queens
+  (normalised mutual information 0.43). The zero-initialised graft as the
+  cheap screen, with its limit: frozen later layers may not use the new
+  information, and a block started from existing rows needs a lower rate.
+  Negative priors: averaging two experts near a band edge (−24 at time), a
+  split accumulator, weights quantised after training, the root's expert fixed
+  for the search (−27.7). Unmeasured proposals: overlapping material bands,
+  shared and private first-layer lanes per expert. Each step as CPU gates,
+  proxy trainings each judged by an SPRT, then one full run.
 - **F.8 Data frontier: on-policy refresh, deduplication, hard-position mining — `V`.** On-policy refresh with the strongest net,
   deduplication, hard-position mining; repeat while a cycle accepts.
-  Triumviratus inputs (TD-5, TD-6): converged networks barely move on more
-  data of the same family; hard examples need a dedicated generation.
+  Triumviratus inputs (2026-11-03; TD-5, TD-6, TD-14). A refresh adds new
+  information, not more of the old: more epochs on data of the same family
+  moved a converged net by 1% in scale and 0 Elo, per-expert fine-tunes +0.7,
+  and a stream filtered to passed-pawn positions added nothing to a converged
+  block. Its one refine with its own self-play (6.5% of the mix, listed ten
+  times) rode with new data and a new block, +18 together, so its own share is
+  unknown. Hard examples (positions lost, or where a deep search contradicts
+  the static score) need a dedicated generation at scale. Each refresh is
+  gated against the previous net on the fixed anchor.
 - **F.9 NNUE release, 3.0.0: beat the classical release at STC, LTC and 4T; platform matrix — `M`/`V`.** Beat the classical release at STC, LTC
   and 4T; platform matrix; publish.
 - **F.10 CCRL top-100 gate — `V`.** Submit; the list decides. Shortfall
@@ -3723,25 +3909,33 @@ gated as AGENTS' *Gating* requires, clustered where it shares a signal (rule
 labels H1–H45.
 
 - **H.1 Triage: every deferred small gain re-ranked on the network head — `R2`.**
-  Re-rank everything below against the then-current head and its profile: drop
-  what the network made moot (TS-12 without input experts, TT-10's expert
-  rules), group what shares a signal into clusters, and order by local
-  activation, not by the donor's Elo. With it, the ablation of features
-  accepted on weak evidence, each by a simplification bracket (TM-9). Sources:
+  Opens when F.10 and G.3 have closed, or earlier by maintainer decision once
+  two consecutive programme steps have each read under +5 Elo (the trigger
+  Basilisk set). Re-ranks everything below against the then-current head and
+  its profile: drops what the network made moot (TS-12 without input experts,
+  TT-10's expert rules), groups what shares a signal into clusters, and orders
+  by local activation, not by the donor's Elo; the order is registered before
+  any game. With it, the ablation of features accepted on weak evidence, each
+  by a simplification bracket (Triumviratus freed two that way). Sources:
   `analysis/triumviratus_review_2026-11-03.md` §14; later reviews add their
   own.
 - **H.2 Search refinements — `R2` cards, then `I2`/`V`.**
+  Each item alone against the head on one binary, its SPRT run to a decision
+  with no early stop on a lean (Triumviratus's stopped leans added up to
+  nothing, TM-4); levers that tune together enter one SPSA instead.
   Triumviratus's single search gains, each measured on a Stockfish-19-shaped
   search with material experts: causal reduction (TS-3, +4.27 ± 4.13); the TT
   cutoff value damped toward beta (TS-4, +2.2); HistGrad (TS-5, +0.9); a
-  discovered-check ordering bonus (TS-6, +0.8); the late-move count on
-  continuous improvement (TS-8, Reckless-derived, unmeasured); the null-move
-  non-pawn floor as a fit of `NmpMinNonPawnPieces` (TS-9, +1.3); passer pushes
-  reduced less and never pruned with little material (TS-10, +4.4 ± 6.8); a
-  continuation correction six plies back (TS-11, −0.8 alone; RAR-X04 is the
-  local caution); corrections and margins per expert if F.7 adopts input
-  experts (TS-12); a minor each with no king in a corner as a search draw (the
-  review's check 8, +1.1).
+  discovered-check ordering bonus (TS-6, +0.8); the null-move non-pawn floor
+  as a fit of `NmpMinNonPawnPieces` (TS-9, +1.3); passer pushes reduced less
+  and never pruned with little material (TS-10, +4.4 ± 6.8); a continuation
+  correction six plies back (TS-11, −0.8 alone; RAR-X04 is the local caution);
+  corrections and margins per expert if F.7 adopts input experts (TS-12); a
+  minor each with no king in a corner as a search draw (the review's check 8,
+  +1.1). Chess-knowledge ordering terms only as SPSA coordinates beside the
+  histories they compete with (TS-7: flat at hand values there, and removing
+  them gained +4.21 on its next net). TS-8's continuous improvement in the
+  move count is Rarog's form already.
 - **H.3 Time-management refinements — `R2`, then `I2`/`V`.**
   Ranked by E.1's loss table (TT-1) on Rarog's own games: the surprise rule
   (TT-7, +6.2 ± 6.8 at 40+0.4); less time when behind on the clock (TT-8);
@@ -3755,8 +3949,10 @@ labels H1–H45.
   network head's profile, Triumviratus's board, SEE, picker, prefetch,
   stack-probe and build-layout leads (TB-4 to TB-8, TB-11, TB-12, TB-14's
   layout flags; TB-16's negatives) are read where the profile shows their
-  cost, each with exact fingerprint and pooled-PGO NPS. TM-7's
-  hardware-counter method is a candidate instrument beside the pooled read.
+  cost, each with exact fingerprint, pooled-PGO NPS and D.9.6's counter read.
+  Each shortcut ships with a build switch that runs the original beside it at
+  every node and aborts on the first disagreement (TM-10, as Triumviratus
+  checked every identical-tree patch).
 
 ## 3. Measurement protocols
 

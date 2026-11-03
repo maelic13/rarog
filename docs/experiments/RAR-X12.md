@@ -43,9 +43,12 @@ Run on `30593ba`, 2026-11-03 (the packet, §4).
 
 ## Possible Rarog implication
 
-Rarog's protocol and clock surface is in good order. The time-management
-rules are small gains for H.3. The loss table is an instrument for E.1.
+Rarog's protocol and clock surface is in good order. The wall-clock read is
+D.9.1, done and clean: `go movetime` overshoots by under 1 ms, and in games
+RAR-R30 holds 1.2% of the charged time at one thread. The paths read correct
+but untested become D.4.17 tests. The time-management rules are small gains
+for H.3. The loss table is the instrument D.9.5, which E.1 re-reads.
 
 ## Existing PLAN coverage
 
-D.2, D.3.9, D.4.17, D.4.23, D.5.12, E.1, G.1, H.3
+D.2, D.3.9, D.4.17, D.4.23, D.5.12, D.9.1, D.9.5, E.1, G.1, H.3
