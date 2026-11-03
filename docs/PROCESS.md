@@ -374,7 +374,14 @@ triple, so it cannot catch this — check `rustup show active-toolchain` first.
 
 Games are pinned to physical cores on both paths, because unpinned Zen 3 runs
 carry a hidden per-run offset of roughly ±10 nElo (RAR-M48). Colosseum does it
-with `--placement auto` and one physical core of headroom; fastchess needs
+with `--placement auto` and one physical core of headroom at one thread. A
+multi-thread read names its game cores instead, one logical CPU per physical
+core (`--cores-per-game 4 --placement 2,4,6,8,16,18,20,22,24,26,28,30`, the
+wrapper refusing a sibling or a list with no free core): an auto slot holds
+both SMT siblings of its cores, Windows packs a four-thread side on two or
+three of them, and a thread beside its sibling keeps about 0.63 of its work
+for any engine, so Rarog's four threads read 2.65 times one in the auto slot
+and 4.03 sibling-free (RAR-P54, RAR-M82, 2026-11-03). fastchess needs
 `-use-affinity` with concurrency 14, and its list never contains CPU 0
 (`Get-HarnessGameCpus`), because Windows services most interrupts there. The
 two resolve to the same fourteen cores, checked field by field rather than by

@@ -1,4 +1,4 @@
-# RAR-M82 — The sibling-free slot: RAR-M81's threads legs with one logical CPU per physical core — REGISTERED 2026-11-03, before any game
+# RAR-M82 — The sibling-free slot: RAR-M81's threads legs with one logical CPU per physical core — RESTORED 2026-11-03: Rarog's four threads 4.03 times one, Reckless's 4.45
 
 - **Date / owner:** 2026-11-03, D.2.
 - **Baseline SHA / binaries:** d2 head `38ef0d5` (the wrapper accepts an
@@ -119,4 +119,84 @@ with the same command after an interruption, writes
   engines keep 0.63 to 0.65 beside a sibling, so this read's RESTORED
   prediction stands on placement alone, as registered.
 
-- **Result:** appended after the read.
+## Result — 2026-11-03, appended after the read
+
+- **Run:** `run.ps1` (`3d6cf102…`, unchanged) from 10:08 to 11:15; host
+  idle at 0% CPU before each leg and 0.3% at each launch
+  (`host_idle_waived: False`); both manifests read `placement: explicit
+  (2,4,6,8,16,18,20,22,24,26,28,30), one logical CPU per physical core`.
+  Rarog's leg `colosseum_match_placement-rarog-threads_20261103_100819`
+  (`results.txt` `76dbf57f…`), Reckless's
+  `colosseum_match_placement-reckless-threads_20261103_103919`
+  (`47ca8c9a…`), 200 scored games each, no faults, no time losses; the
+  sampler `tools/results/d2-placement-sampler-20261103_100809/cpu-001.csv`
+  (`135d554f…`, 10:08:11 to 11:15:51); the reading
+  `analysis/artifacts/d2-placement/placement_read.log` (`07c343e6…`).
+- **Instrument, both legs valid.** Four-thread turns on four distinct cores:
+  Rarog 98.0 / 96.5 / 94.8% by slot, Reckless 97.4 / 95.1 / 94.1%; an
+  excluded sibling busy 0.0% in every slot. The mask took.
+- **R, Rarog: 4.03** over the leg (NPS 11.01 M at four threads against
+  2.73 M at one), fifths 4.11, 4.04, 3.94, 4.03, 4.00: **RESTORED**. Four
+  threads on four cores do four times one thread's work (1.007 a thread).
+- **R, Reckless (control): 4.45**, fifths 4.36 to 4.53 (6.40 M against
+  1.44 M), 1.11 a thread, above four as RAR-P54's two-core read (2.08 for
+  two) already showed.
+- **Observed, not judged.** The runner's lines, on the night's first 200
+  openings: Rarog's four threads over one `Elo +127.0 +/- 23.7` (the night's
+  packed leg +83.9 ± 11.2 over 1,000; RAR-M78's audit predicted +122 ± 12
+  for a clean leg), Reckless's `+121.1 +/- 19.6` (the night +110.6 ± 9.4).
+  Non-mate depth: Rarog 16.85 at one thread, 17.22 at four (+0.37; the
+  night −0.74); Reckless 17.72 and 19.47 (+1.75; the night +0.75). The
+  four-thread side's holds are what they were in the packed state: Rarog
+  p50 5, p99 162, p999 531, max 1,686 ms, 3,393 of 12,148 moves over the
+  margin (the night: p99 167, the same share); Reckless p99 3 ms. Placement
+  does not move them; they stay the card's third read.
+
+## Disposition
+
+- **RESTORED.** The slow state was Colosseum's auto slot: with both SMT
+  siblings in the mask Windows packed each four-thread side on two or three
+  cores (the audit, section 10) and a thread beside its sibling keeps 0.63
+  of its work for either engine (RAR-P54); with one logical CPU per core
+  Rarog's four threads run at four times one. RAR-M81's "the slow state is
+  Rarog's" and RAR-M78's "RAROG DEFICIENT" were measured in the packed
+  state and are superseded as evidence of an engine deficit; RAR-M78's
+  time-odds legs, one thread on both sides, stand.
+- **Reckless's night was packed too:** 3.46 against 4.45 here, so neither
+  its RAR-M78 nor its RAR-M81 four-thread leg is a clean reference, and
+  Stockfish's RAR-M78 leg (R 3.47, the same slot) is not either.
+- **Policy:** every rated multi-thread read names its game cores, one
+  logical CPU per physical core (PROCESS, *Harness*); the wrapper accepts
+  the list since `38ef0d5` and refuses a sibling or a list with no free
+  core. An engine-side placement hint stays a separate leaf, held until how
+  CCRL's testers place a four-thread engine is known.
+- **Next:** the self-relative comparison re-registered in this slot: Rarog's,
+  Reckless's and Stockfish's four-thread legs, 1,000 games each at
+  `10+0.1`, about nine hours in all, with RAR-M78's three time-odds legs
+  reused as G2. Its prediction is frozen in its own registration; the
+  figures above are orientation, not a reading: at 200 games on the night's
+  openings Rarog's D would be 1.25 ± 0.27 against Reckless's 1.40 ± 0.28, a
+  difference of −0.16 ± 0.39 that resolves nothing.
+
+## Calibration
+
+- **Outcome:** RESTORED was predicted 0.70 and read; INSTRUMENT (0.05) did
+  not occur, the sibling share 0.0% against under 2% predicted.
+- **Levels, Rarog:** R 3.7 (3.5 to 3.85) read 4.03, above the range in the
+  predicted direction, every fifth above 3.9 against no fifth under 3.4. A
+  miss in magnitude: the level was set from RAR-R31's 3.78 alone, where
+  RAR-M79's healthy stretches had already read about 4.0; four threads on
+  four cores lose nothing to one.
+- **Levels, Reckless:** 3.5 (3.4 to 3.6) read 4.45, far above. A miss in
+  mechanism: the night's 3.46 was taken for Reckless's clean state and used
+  as the control's level, but Reckless was packed too (two or three cores
+  in most of its turns), and RAR-P54's two-core read of 2.08 for two
+  threads, in hand before the games, already said its four threads exceed
+  four. The control was read against the wrong baseline, not the wrong
+  mechanism.
+- **Instrument levels:** four-core share 95% or more in every slot predicted,
+  read 94.1 to 98.0, two slots a little under; the measure counts seconds
+  in which three logical CPUs are busy, so a turn's first and last second
+  dilute it. Inside the rule's 90%.
+- **Retry trigger:** `closed`; the comparison continues as its own
+  registration.

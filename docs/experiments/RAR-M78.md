@@ -296,3 +296,15 @@ interruption with the same command.
   (D 1.2, X 2.3), by the 0.47 doublings between R 2.48 and 3.44 at this leg's
   101.8 Elo a doubling; G4 at about +85 or below reads deficient against
   Reckless again.
+
+## Superseded 2026-11-03
+
+- The threads legs of all three engines ran in Colosseum's auto slot, whose
+  mask holds both SMT siblings of four cores; Windows packed each four-thread
+  side on two or three of them (`analysis/d2_audit_2026-11-02.md`, section
+  10), and a thread beside its sibling keeps 0.63 of its work for Rarog and
+  0.65 for Reckless (RAR-P54). With one logical CPU per physical core Rarog's
+  four threads run at 4.03 times one and Reckless's at 4.45 (RAR-M82). So
+  "RAROG DEFICIENT" above was measured in the packed state and is superseded
+  as evidence of an engine deficit; the time-odds legs, one thread on both
+  sides, stand as G2. The comparison is re-registered sibling-free.

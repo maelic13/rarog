@@ -340,3 +340,14 @@ them):
 - A SLOW STATE leg (0.30) appeared. Given one, the sampler naming a mechanism
   (0.6): in part; it excludes parking, frequency and scheduling and does not
   show the remaining candidate.
+
+## Superseded 2026-11-03
+
+- "The slow state is Rarog's, not the host's" is corrected: it was the
+  scheduler's packing of each four-thread side inside the slot's
+  eight-logical-CPU mask, Rarog's harder than Reckless's (the audit, section
+  10; RAR-P54 for the per-sibling loss, the same for both engines). RAR-M82,
+  the two legs again with one logical CPU per physical core, read Rarog's
+  four threads at 4.03 times one and Reckless's at 4.45, so the D of 0.82
+  above was measured in the packed state and Reckless's 1.28 in a lesser one;
+  neither is a clean reference. The comparison is re-registered sibling-free.
