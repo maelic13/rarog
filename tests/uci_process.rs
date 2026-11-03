@@ -976,22 +976,38 @@ fn kpk_search_ms(session: &mut UciSession) -> u64 {
 
 /// A fresh process's first search that reaches KPK must cost what the same
 /// search costs warm. The bitbase was built on first probe, inside that search
-/// and on its clock (about 34 ms in release), which lost games on time late in
-/// fast games whenever a harness started a fresh engine for every game.
+/// and on its clock (about 20 ms in release, 670 in debug), which lost games
+/// on time late in fast games whenever a harness started a fresh engine for
+/// every game.
 ///
 /// A genuine timing assertion, deliberately NOT scaled by `wait`: the margin
 /// sits far above a depth-4 KPK search's noise in either profile and below
 /// the cost of building the table in either profile.
+///
+/// A table built inside the search costs every fresh process's first search;
+/// a delay from the scheduler costs one search, and on a loaded host one
+/// such delay put a single cold search past the margin as often as it put a
+/// warm one past another warm one. So the fastest cold search of several
+/// fresh processes is compared with the fastest warm search.
 #[test]
 fn first_kpk_search_in_a_fresh_process_costs_what_a_warm_one_does() {
-    let mut session = UciSession::ready();
-    let cold = kpk_search_ms(&mut session);
-    let warm = kpk_search_ms(&mut session);
+    const PROCESSES: usize = 3;
+    let mut cold = Vec::new();
+    let mut warm = Vec::new();
+    for _ in 0..PROCESSES {
+        let mut session = UciSession::ready();
+        cold.push(kpk_search_ms(&mut session));
+        warm.push(kpk_search_ms(&mut session));
+        warm.push(kpk_search_ms(&mut session));
+        session.quit();
+    }
+    let fastest_cold = *cold.iter().min().expect("a cold search ran");
+    let fastest_warm = *warm.iter().min().expect("a warm search ran");
     assert!(
-        cold <= warm + 15,
-        "first KPK search took {cold} ms against {warm} ms warm: a table is being built inside the search"
+        fastest_cold <= fastest_warm + 15,
+        "the fastest first KPK search of {PROCESSES} fresh processes took {fastest_cold} ms against \
+         {fastest_warm} ms warm (cold {cold:?}, warm {warm:?}): a table is being built inside the search"
     );
-    session.quit();
 }
 
 fn parse_uci_u64_field(line: &str, field: &str) -> Option<u64> {
