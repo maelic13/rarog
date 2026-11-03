@@ -329,7 +329,7 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.3.10 | RESEARCH | I1 | Cause unread; read with D.3's tests, before the cut |
-| D.2 | RESEARCH | R2 | **Night read 2026-11-03:** the slow state is Rarog's, not the host's (Rarog's four threads 2.62–2.66 times one thread for 9.5 hours, Reckless's 3.36–3.48 beside it); RAR-M81 UNRESOLVED (in that state Rarog's D 0.82 against 1.28 and 1.31), RAR-M80 NOT REPLICATED; parking, frequency and scheduling excluded. Next, zero-game on an idle host after Basilisk's tune: Rarog's four threads one to a physical core against both siblings in a rebuilt slot, Reckless the control. Earlier reads: the D.2 text below |
+| D.2 | RESEARCH | R2 | **Night read 2026-11-03:** the slow state is Rarog's, not the host's (Rarog's four threads 2.62–2.66 times one thread for 9.5 hours, Reckless's 3.36–3.48 beside it); RAR-M81 UNRESOLVED (in that state Rarog's D 0.82 against 1.28 and 1.31), RAR-M80 NOT REPLICATED; parking, frequency and scheduling excluded. **Corrected 2026-11-03** (the audit, section 10): the sampler shows Windows packing both engines' four threads on two or three cores' SMT siblings inside the slot, Rarog's harder (two cores in 90–96% of its turns, Reckless 47–66%), and neither engine places its threads on Windows, so the slow state is the scheduler's placement inside the eight-logical-CPU slot, not the host's and not Rarog's code. Registered: RAR-M82, the legs again in a sibling-free slot (`--placement`, one logical CPU per physical core; `38ef0d5` lets the wrapper accept it), 200 games each, about an hour and a quarter on an idle host; RAR-P54, the per-core sibling loss of each engine standalone, minutes. Earlier reads: the D.2 text below |
 | D.4.1 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value: the table handle and the helper lifecycle first |
 | D.4.2 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value; exact fingerprint, pooled NPS where hot |
 | D.4.3 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value; exact fingerprint, pooled NPS where hot |
@@ -2121,6 +2121,33 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
   Rarog's four-thread search confined to one logical CPU per physical core
   against both siblings, Reckless the control. Recommended before the
   registered replay of the slow leg, which would most likely repeat it.
+  **Corrected and registered 2026-11-03** (the audit, section 10): the
+  sampler's per-logical-CPU busy shows where each four-thread side's work
+  landed inside its slot: Rarog's four threads on both siblings of two
+  physical cores in 90–96% of its turns, all night, every slot; Reckless's
+  on two cores in 47–66% and three in most of the rest, one per core under
+  1% for either. Windows packs four busy threads inside an
+  eight-logical-CPU affinity mask for both engines, Rarog's harder; neither
+  engine places its threads on Windows (Reckless binds to NUMA nodes on
+  Linux only). So the slow state is the scheduler's placement inside
+  Colosseum's slot, not the host's and not Rarog's code; the repair is not
+  first the engine's (hard affinity in an engine fights the tester's mask;
+  no donor does it), and the fair four-thread measurement is a slot of one
+  logical CPU per physical core, which the pinned runner gives from an
+  explicit list and which `38ef0d5` lets `colosseum.ps1` accept (game cores
+  only, a core left free). Registered: **RAR-M82**, RAR-M81's threads legs
+  in that slot, 200 games each, the night's openings, the sampler riding,
+  an instrument rule, RESTORED 0.70 / PARTIAL 0.20 / NOT RESTORED 0.05 /
+  INSTRUMENT 0.05 (`analysis/artifacts/d2-placement/run.ps1`, about an
+  hour and a quarter on an idle host); **RAR-P54**, what a thread of each
+  engine keeps beside its SMT sibling on one core, standalone under
+  affinity masks, f_rarog 0.66 against f_reckless 0.83 predicted. By
+  RAR-M82: RESTORED supersedes RAR-M81's verdict and re-registers the
+  self-relative comparison sibling-free, with the explicit placement the
+  policy for every rated multi-thread read and an engine-side placement
+  hint a separate leaf held on how CCRL's testers place a four-thread
+  engine; PARTIAL adds the per-thread working set to the card; NOT
+  RESTORED returns D.2 to its engine card.
 - **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `I1` for the eight review-confirmed defects (2026-11-01), then `R2` for the cards.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.
