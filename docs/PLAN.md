@@ -328,7 +328,6 @@ from the numbering; the first open row is GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.3.11 | RESEARCH | I1 | Cause unread; read with D.3's tests, before the cut |
 | D.2 | RESEARCH | R2 | **Night read 2026-11-03:** the slow state is Rarog's, not the host's (Rarog's four threads 2.62–2.66 times one thread for 9.5 hours, Reckless's 3.36–3.48 beside it); RAR-M81 UNRESOLVED (in that state Rarog's D 0.82 against 1.28 and 1.31), RAR-M80 NOT REPLICATED; parking, frequency and scheduling excluded. **Corrected 2026-11-03** (the audit, section 10): the sampler shows Windows packing both engines' four threads on two or three cores' SMT siblings inside the slot, Rarog's harder (two cores in 90–96% of its turns, Reckless 47–66%), and neither engine places its threads on Windows, so the slow state is the scheduler's placement inside the eight-logical-CPU slot, not the host's and not Rarog's code. Registered: RAR-M82, the legs again in a sibling-free slot (`--placement`, one logical CPU per physical core; `38ef0d5` lets the wrapper accept it), 200 games each, **read 2026-11-03: RESTORED**, Rarog's four threads 4.03 times one (every fifth 3.94–4.11), Reckless's 4.45, no sibling busy, so RAR-M81's and RAR-M78's deficit verdicts were measured in the packed state and are superseded, the explicit placement is the policy for rated multi-thread reads (PROCESS) and the self-relative comparison is next, re-registered sibling-free (three four-thread legs, 1,000 games each, about nine hours; RAR-M78's time-odds legs reused); RAR-P54, the per-core sibling loss of each engine standalone, **read 2026-11-03: REFUTED**, Rarog 0.63 against Reckless 0.65 beside a sibling, the same loss, so the night's gap is placement alone. Registered 2026-11-03: **RAR-M83**, the self-relative comparison sibling-free (Rarog's, Reckless's and Stockfish's four-thread legs, 1,000 games each, RAR-M78's time-odds legs as G2, about nine hours on an idle night, `analysis/artifacts/d2-selfrel/run.ps1`), NOT DEFICIENT 0.70, DEFICIENT 0.20. Earlier reads: the D.2 text below |
 | D.4.1 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value: the table handle and the helper lifecycle first |
 | D.4.2 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value; exact fingerprint, pooled NPS where hot |
@@ -1602,7 +1601,7 @@ D.3.10 are new).
           the `10+0.1` read +2.1 ± 11.6. Nothing lands; D.1.6 returns to
           research (above), and this gate is re-registered on the
           surviving cluster.
-- **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; RAR-M78 read Rarog deficient at four threads (effective speedup 1.65 against Reckless 2.30 and Stockfish 2.48) — `R2` investigation, `I2`/`V` sub-steps.** 4T and
+- **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; RAR-M78's deficit verdict was measured in a packed slot and is superseded (RAR-M82), the sibling-free comparison is RAR-M83 — `R2` investigation, `I2`/`V` sub-steps.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
   helper depth-skip policy is designed fresh from the donor; B.1 deleted the
@@ -2412,7 +2411,7 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       (36 of 36 in the file), `cargo fmt --check`, `cargo clippy
       --all-features --all-targets` at zero warnings; tests only, no engine
       input changed.
-    - **D.3.11 `first_kpk_search_in_a_fresh_process_costs_what_a_warm_one_does` fails under CPU load — `I1`.**
+    - **D.3.11 `first_kpk_search_in_a_fresh_process_costs_what_a_warm_one_does` fails under CPU load — `I1`, DONE 2026-11-03.**
       Found 2026-11-03 in D.3.10's stress. The test asserts that a fresh
       process's first KPK search reports at most 15 ms more than a warm
       one; it failed in a full debug run on 2026-10-23
@@ -2423,6 +2422,26 @@ NPS and time-to-depth reads, and anything else takes the leaf's 4T SPRT
       15 ms margin under contention is inside it. Cause unread: the cold
       search's own first touches against the scheduler's noise first. A
       test that fails only under load is still a failure.
+      **Read and repaired 2026-11-03** (`0c970d9`; `analysis/artifacts/d3-11/`):
+      the scheduler's noise. The test's own sequence in 48 processes at
+      once, debug: with only the cold searches started together, cold past
+      warm + 15 in 11 of 192 and a warm search past another warm one in
+      none, but with every search index started together (the same
+      contention for each) 3 of 288 against 6 of 288, release 0 against 2:
+      no cold-only cost, one delay of 15 ms or more landing on the one cold
+      search. The bitbase is built before the engine reads input, as the
+      test guards. A table built inside the search costs every first
+      search and a delay costs one, so the test now compares the fastest
+      cold search of three fresh processes with the fastest of their six
+      warm ones, the 15 ms margin unchanged. 48 debug copies at once, 5
+      rounds: the one-pair form failed 3 of 240 (cold 18 to 29 ms against
+      1 to 7), the new form 0 of 240. With the bitbase made lazy again
+      (throwaway build) it fails in both profiles: fastest cold 19 ms
+      against 0 in release, 671 against 0 in debug. The release margin is
+      thin, 19 against 15; debug's 671 carries the guard if the build gets
+      faster. Verified: debug and release suites (36 of 36 in the file),
+      `cargo fmt --check`, `cargo clippy --all-features --all-targets` at
+      zero warnings; tests only, no engine input changed.
 - **D.4 Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, the `Hash` notice, dead code, test and CI gaps — `I1`.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` (its §5 lists
   every item with its reviewer ID; the reports are in
