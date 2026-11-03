@@ -22,6 +22,6 @@ byte-exact.
 KQvK and KRvK are pawnless three-man tables, where distance to zeroing is
 distance to mate, so a line extended through them must end in mate in exactly
 the tables' distance. `KPvK.rtbw` (WDL only) was added on 2026-11-02 for PLAN
-D.4 item 19: `tests/kpk_syzygy.rs` reads every legal KPK position's static
+D.5 item 19: `tests/kpk_syzygy.rs` reads every legal KPK position's static
 evaluation against it. The six-man checks stay local and read
 `RAROG_SYZYGY_PATH` (`tests/multipv_syzygy.rs`).

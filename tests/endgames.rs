@@ -408,7 +408,7 @@ fn search_draw(searcher: &mut Searcher, fen: &str, depth: u32, nodes: u64) -> i3
 /// moves the recogniser's verdict, which took most of these to won scores;
 /// some still misread through leaves the recogniser does not cover.
 #[test]
-#[ignore = "D.5.23: after D.5.15, 7 of 28 cleared and 9 of 28 trained searches still read beyond +-75"]
+#[ignore = "D.6.23: after D.6.15, 7 of 28 cleared and 9 of 28 trained searches still read beyond +-75"]
 fn wrong_bishop_draws_read_as_draws_with_cleared_and_trained_tables() {
     let mut failures = Vec::new();
     let mut check = |arm: &str, fen: &str, depth: u32, score: i32| {
