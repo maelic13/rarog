@@ -23,6 +23,7 @@ mod correction;
 mod history;
 mod movepick;
 mod node;
+pub mod options;
 pub mod params;
 mod shared;
 mod stack;
@@ -36,9 +37,11 @@ use std::time::{Duration, Instant};
 use crate::board::{Board, Color, GameResult, Move, MoveList};
 use crate::eval::{INF_SCORE, MATE_SCORE};
 use crate::infra;
-use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
+use crate::search::options::{
+    EngineOptions, HashRequest, MAX_THREADS, SearchLimits, SearchOptions,
+};
 use crate::syzygy::{self, Wdl};
-use crate::tt::{TB_VALUE, TB_WIN_SCORE};
+use crate::tt::{TB_VALUE, TB_WIN_SCORE, TranspositionTable};
 
 use params::CoreParams;
 use params::Param;
@@ -53,17 +56,66 @@ use time::{IterationSignals, MateWatch, RuntimeLimits, TbExtension, compute_runt
 
 const MAX_DEPTH: usize = 100;
 
-const MAX_PLY: usize = 128;
+pub(crate) const MAX_PLY: usize = 128;
 const MAX_QPLY: usize = 16;
 const MIN_PARALLEL_DEPTH: usize = 4;
 const SHARED_NODE_BATCH: u64 = 128;
 const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
-/// Where a searcher writes its protocol output: the `info` line of each
-/// completed iteration and `info string` notices. The search formats lines and
-/// never touches stdout itself; the engine layer decides where they go.
+/// Where a searcher writes its protocol output: a report for each `info`
+/// line, which the protocol layer writes (`crate::uci::info`), and `info
+/// string` notices as text. The search never touches stdout itself; the
+/// engine layer decides where its output goes.
 pub trait InfoSink: Send {
-    /// One complete line, without the trailing newline.
+    /// One complete line of text, without the trailing newline.
     fn line(&self, line: &str);
+    /// One report of the search's state.
+    fn report(&self, report: &InfoReport<'_>);
+}
+
+/// What a search reports on an `info` line.
+pub enum InfoReport<'a> {
+    /// A line of an iteration.
+    Iteration(InfoRecord<'a>),
+    /// The root has no legal move: mated in check, stalemated otherwise.
+    NoLegalMove { in_check: bool },
+}
+
+/// One iteration's line, as the search knows it.
+pub struct InfoRecord<'a> {
+    pub depth: usize,
+    pub seldepth: usize,
+    /// The line's rank, from 1; only MultiPV reports more than one.
+    pub multipv: usize,
+    /// The score as shown: a tablebase result already placed in its
+    /// display band.
+    pub score: i32,
+    pub bound: ScoreBound,
+    pub nodes: u64,
+    /// The table's fill, in permille.
+    pub hashfull: usize,
+    pub tb_hits: u64,
+    pub elapsed_ms: u128,
+    pub pv: &'a [Move],
+}
+
+/// What a reported score is: exact, or the bound of a window that failed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScoreBound {
+    Exact,
+    /// The window failed high: the score is at least this.
+    Lower,
+    /// The window failed low: the score is at most this.
+    Upper,
+}
+
+impl From<RootBound> for ScoreBound {
+    fn from(bound: RootBound) -> Self {
+        match bound {
+            RootBound::Exact => Self::Exact,
+            RootBound::Lower => Self::Lower,
+            RootBound::Upper => Self::Upper,
+        }
+    }
 }
 
 /// Discards every line. The default, and what helper threads use.
@@ -71,6 +123,7 @@ struct SilentSink;
 
 impl InfoSink for SilentSink {
     fn line(&self, _line: &str) {}
+    fn report(&self, _report: &InfoReport<'_>) {}
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -314,34 +367,9 @@ pub struct Searcher {
     td: ThreadData,
 }
 
-/// Nodes per second for an `info` line. The elapsed time is floored at one
-/// millisecond, as Stockfish floors it: dividing by a zero elapsed time made
-/// the first lines of every search report `nps` a thousand times too low.
-fn nps(nodes: u64, elapsed_ms: u128) -> u128 {
-    u128::from(nodes) * 1000 / elapsed_ms.max(1)
-}
-
-/// What a tablebase win at the root prints, in centipawns; one less per ply
-/// further from the root, so a GUI reads a decided game, not a 300-pawn
-/// evaluation.
-const TB_DISPLAY_CP: i32 = 20_000;
-
 /// A tablebase result, not a mate: what the PV extension follows.
 fn is_tb_band(score: i32) -> bool {
     (TB_WIN_SCORE..=TB_VALUE).contains(&score.abs())
-}
-
-fn format_score(score: i32) -> String {
-    if score >= MATE_SCORE - infra::to_i32(MAX_PLY) {
-        format!("mate {}", (MATE_SCORE - score + 1) / 2)
-    } else if score <= -MATE_SCORE + infra::to_i32(MAX_PLY) {
-        format!("mate -{}", (MATE_SCORE + score + 1) / 2)
-    } else if score.abs() >= TB_WIN_SCORE {
-        let cp = TB_DISPLAY_CP - (TB_VALUE - score.abs());
-        format!("cp {}", score.signum() * cp)
-    } else {
-        format!("cp {score}")
-    }
 }
 
 impl Searcher {
@@ -356,14 +384,36 @@ impl Searcher {
         self.td.sink.line(&format!("info string {message}"));
     }
 
-    pub fn configure(&mut self, options: &EngineOptions) {
-        if options.hash_mb != self.shared.hash_mb {
-            if self.shared.tt.resize(options.hash_mb) {
-                self.shared.hash_mb = options.hash_mb;
+    pub fn configure(&mut self, options: &EngineOptions, hash: HashRequest) {
+        let in_use = self.shared.hash_mb;
+        // The option decides each big table's backing when it is allocated,
+        // so a change allocates them all again: the helpers with their own,
+        // this thread's, and the transposition table, released before its
+        // replacement so that two are never held at once.
+        let backing_changed = options.large_pages != self.shared.large_pages;
+        if backing_changed {
+            crate::large_pages::set_enabled(options.large_pages);
+            self.shared.large_pages = options.large_pages;
+            self.worker_pool.set_helper_count(0);
+            self.td.reallocate_tables();
+            self.shared.tt = TranspositionTable::new(1);
+            self.shared.hash_mb = 1;
+        }
+        // A Hash the GUI sent is tried whenever it differs from the table in
+        // use, and a refusal said every time; any other change only keeps the
+        // size in use, across a change of backing too, so it never reports on
+        // a Hash nobody sent.
+        let target = match hash {
+            HashRequest::Sent => options.hash_mb,
+            HashRequest::NotSent => in_use,
+        };
+        if target != self.shared.hash_mb {
+            if self.shared.tt.resize(target) {
+                self.shared.hash_mb = target;
             } else {
                 self.notice(format_args!(
-                    "Unable to allocate Hash value {}; keeping {} MiB.",
-                    options.hash_mb, self.shared.hash_mb
+                    "Unable to allocate Hash value {target}; keeping {} MiB.",
+                    self.shared.hash_mb
                 ));
             }
         }
@@ -399,6 +449,12 @@ impl Searcher {
                 self.shared.hash_mb
             ));
         }
+        if backing_changed {
+            self.notice(format_args!(
+                "Large pages: {}",
+                crate::large_pages::large_pages()
+            ));
+        }
     }
 
     pub fn clear_hash(&mut self) {
@@ -429,16 +485,20 @@ impl Searcher {
         emit_info: bool,
         mut poll: impl FnMut() -> SearchEvent,
     ) -> SearchResult {
-        self.search_impl::<true, _>(root, &options.limits, &options.engine, emit_info, &mut poll)
+        self.search_impl::<true>(root, &options.limits, &options.engine, emit_info, &mut poll)
     }
 
-    fn search_impl<const ALLOW_PARALLEL: bool, P: FnMut() -> SearchEvent + ?Sized>(
+    // The poll is a trait object from here down, and the main thread's and
+    // the helpers' polls are too, so the kernel exists once for every thread:
+    // a copy per closure type left the multi-thread copies outside the PGO
+    // profile, which trains at one thread. It is called once per 2,048 nodes.
+    fn search_impl<const ALLOW_PARALLEL: bool>(
         &mut self,
         mut root: Board,
         limits: &SearchLimits,
         engine_options: &EngineOptions,
         emit_info: bool,
-        poll: &mut P,
+        poll: &mut dyn FnMut() -> SearchEvent,
     ) -> SearchResult {
         if ALLOW_PARALLEL
             && engine_options.threads <= 1
@@ -748,12 +808,9 @@ impl Searcher {
     fn no_legal_moves_result(&mut self, board: &Board, emit_info: bool) -> SearchResult {
         let result = self.result_for_no_legal_moves(board);
         if emit_info {
-            let score = if board.is_in_check() {
-                "mate 0"
-            } else {
-                "cp 0"
-            };
-            self.td.sink.line(&format!("info depth 0 score {score}"));
+            self.td.sink.report(&InfoReport::NoLegalMove {
+                in_check: board.is_in_check(),
+            });
         }
         SearchResult {
             bestmove: Move::NULL,
@@ -1021,14 +1078,16 @@ impl Searcher {
             // score. Stockfish behaves the same way — it moves instantly under
             // a clock but keeps searching under `go infinite`. Fixed-depth and
             // fixed-node searches keep the shortcut (bench relies on it, and
-            // `go depth N` on a forced move is still a move request).
+            // `go depth N` on a forced move is still a move request). Under
+            // `searchmoves` one move left is the caller's line, not a forced
+            // move, so the shortcut counts the whole root or does not fire.
             // A tablebase root keeps its best-ranked group; the shortcut reads
             // the moves it could choose from before that cut.
             let root_choices = match self.shared.syzygy.root.ranked_from {
                 0 => legal_moves.len(),
                 ranked_from => ranked_from,
             };
-            if root_choices == 1 && depth >= 2 && !self.cfg.limits.analysis_mode {
+            if root_choices == 1 && depth >= 2 && self.cfg.limits.forced_move_shortcut {
                 break;
             }
 
@@ -1611,7 +1670,6 @@ impl Searcher {
         let elapsed_ms = self.cfg.start.elapsed().as_millis();
         let nodes = self.reported_nodes();
         let tb_hits = self.reported_tb_hits();
-        let nps = nps(nodes, elapsed_ms);
         let hashfull = self.hashfull();
         for (index, line) in lines.iter().enumerate() {
             if index == 0 {
@@ -1619,32 +1677,20 @@ impl Searcher {
                     .last_reported_move
                     .set(line.pv.first().copied().unwrap_or(Move::NULL));
             }
-            let bound = match self.displayed_bound(line.pv.first(), line.score, line.bound) {
-                RootBound::Exact => "",
-                RootBound::Lower => " lowerbound",
-                RootBound::Upper => " upperbound",
-            };
+            let bound = self.displayed_bound(line.pv.first(), line.score, line.bound);
             let (shown, line_pv) = self.shown_line(&line.pv, line.score);
-            let pv = line_pv
-                .iter()
-                .map(std::string::ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(" ");
-            self.td.sink.line(&format!(
-                "info depth {} seldepth {} multipv {} score {}{} nodes {} nps {} hashfull {} \
-                 tbhits {} time {} pv {}",
-                line.depth.max(1),
-                line.seldepth,
-                index + 1,
-                format_score(shown),
-                bound,
+            self.td.sink.report(&InfoReport::Iteration(InfoRecord {
+                depth: line.depth.max(1),
+                seldepth: line.seldepth,
+                multipv: index + 1,
+                score: shown,
+                bound: bound.into(),
                 nodes,
-                nps,
                 hashfull,
                 tb_hits,
                 elapsed_ms,
-                pv
-            ));
+                pv: &line_pv,
+            }));
         }
     }
 
@@ -1890,33 +1936,18 @@ impl Searcher {
         self.td
             .last_reported_move
             .set(pv.first().copied().unwrap_or(Move::NULL));
-        let elapsed_ms = self.cfg.start.elapsed().as_millis();
-        let nodes = self.reported_nodes();
-        let tb_hits = self.reported_tb_hits();
-        let nps = nps(nodes, elapsed_ms);
-        let pv = pv
-            .iter()
-            .map(std::string::ToString::to_string)
-            .collect::<Vec<_>>()
-            .join(" ");
-        let bound = match bound {
-            RootBound::Exact => "",
-            RootBound::Lower => " lowerbound",
-            RootBound::Upper => " upperbound",
-        };
-        self.td.sink.line(&format!(
-            "info depth {} seldepth {} multipv 1 score {}{} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
+        self.td.sink.report(&InfoReport::Iteration(InfoRecord {
             depth,
             seldepth,
-            format_score(shown),
-            bound,
-            nodes,
-            nps,
-            self.hashfull(),
-            tb_hits,
-            elapsed_ms,
-            pv
-        ));
+            multipv: 1,
+            score: shown,
+            bound: bound.into(),
+            nodes: self.reported_nodes(),
+            hashfull: self.hashfull(),
+            tb_hits: self.reported_tb_hits(),
+            elapsed_ms: self.cfg.start.elapsed().as_millis(),
+            pv,
+        }));
     }
 
     /// Before `bestmove`: print the result's own line unless the last `info`
@@ -1973,16 +2004,6 @@ mod tests {
     /// band without taking a dependency on the search. This is the assertion
     /// that keeps the mirror honest, and it lives here because this module is
     /// the one that legitimately sees both constants.
-    /// A line printed inside the first millisecond used to divide by zero and
-    /// fall back to the raw node count: `nodes 49 nps 49` instead of 49,000.
-    #[test]
-    fn nps_floors_the_elapsed_time_at_one_millisecond() {
-        assert_eq!(super::nps(49, 0), 49_000);
-        assert_eq!(super::nps(49, 1), 49_000);
-        assert_eq!(super::nps(2_000, 4), 500_000);
-        assert_eq!(super::nps(0, 0), 0);
-    }
-
     #[test]
     fn mopup_mirror_matches_the_real_ply_horizon() {
         assert_eq!(
@@ -2009,6 +2030,42 @@ mod tests {
         fn line(&self, line: &str) {
             self.0.lock().unwrap().push(line.to_string());
         }
+        fn report(&self, report: &InfoReport<'_>) {
+            self.line(&crate::uci::info::report_line(report));
+        }
+    }
+
+    /// A `Hash` the allocator refuses keeps the table it had and is announced
+    /// every time it is sent, and never when another option is.
+    /// `usize::MAX` MiB is a reservation `try_reserve_exact` rejects before any
+    /// memory is touched, so the refusal is the same on every platform.
+    #[test]
+    fn a_hash_the_allocator_refuses_keeps_the_table_and_is_announced_each_time_it_is_sent() {
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        let refused = EngineOptions {
+            hash_mb: usize::MAX,
+            ..EngineOptions::default()
+        };
+        let refusals = || {
+            lines
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|line| line.contains("Unable to allocate Hash"))
+                .count()
+        };
+        searcher.configure(&refused, HashRequest::Sent);
+        assert_eq!(refusals(), 1);
+        let threads = EngineOptions {
+            threads: 2,
+            ..refused.clone()
+        };
+        searcher.configure(&threads, HashRequest::NotSent);
+        assert_eq!(refusals(), 1, "another option reports nothing about Hash");
+        searcher.configure(&threads, HashRequest::Sent);
+        assert_eq!(refusals(), 2, "the same Hash sent again is tried again");
+        assert_eq!(searcher.shared.hash_mb, 64);
     }
 
     /// `bestmove` must be the move the last `info` line names. A stopped
@@ -2273,17 +2330,71 @@ mod tests {
             threads: 4,
             ..EngineOptions::default()
         };
-        searcher.configure(&options);
+        searcher.configure(&options, HashRequest::Sent);
         assert!(
             searcher.shared.tt.is_shared(),
             "Threads > 1 must convert the table at configure, not in the first search"
         );
         options.threads = 1;
-        searcher.configure(&options);
+        searcher.configure(&options, HashRequest::Sent);
         assert!(
             !searcher.shared.tt.is_shared(),
             "Threads = 1 must restore the local table at configure"
         );
+    }
+
+    /// A `LargePages` change allocates the tables again: the transposition
+    /// table comes back empty at the same `Hash` and form, and a notice says
+    /// how they are backed. Any other option change keeps the table.
+    #[test]
+    fn a_large_pages_change_allocates_the_tables_again() {
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        let board = Board::default();
+        let mut options = EngineOptions {
+            hash_mb: 2,
+            threads: 2,
+            ..EngineOptions::default()
+        };
+        searcher.configure(&options, HashRequest::Sent);
+        store_static_eval(&mut searcher, &board, 17);
+
+        options.multi_pv = 2;
+        searcher.configure(&options, HashRequest::Sent);
+        assert!(
+            searcher.shared.tt.probe(board.hash()).is_some(),
+            "an unrelated option change kept the table"
+        );
+        assert!(lines.lock().unwrap().is_empty());
+
+        options.large_pages = false;
+        searcher.configure(&options, HashRequest::Sent);
+        assert!(
+            searcher.shared.tt.probe(board.hash()).is_none(),
+            "the table was allocated again"
+        );
+        assert_eq!(searcher.shared.hash_mb, 2);
+        let mut reference = TranspositionTable::new(2);
+        reference.make_shared(2);
+        assert!(searcher.shared.tt.is_shared());
+        assert_eq!(
+            searcher.shared.tt.capacity_entries(),
+            reference.capacity_entries(),
+            "the shared table at the same Hash"
+        );
+        assert_eq!(
+            lines.lock().unwrap().as_slice(),
+            ["info string Large pages: disabled"]
+        );
+
+        options.large_pages = true;
+        searcher.configure(&options, HashRequest::Sent);
+        assert_eq!(
+            lines.lock().unwrap().len(),
+            2,
+            "the change back is reported"
+        );
+        assert!(!lines.lock().unwrap()[1].ends_with("disabled"));
     }
 
     #[test]
@@ -2425,6 +2536,34 @@ mod tests {
             run(),
             run(),
             "a serial search must be deterministic with all SMP gates closed"
+        );
+    }
+
+    /// `searchmoves` with one move is the caller's line, not a forced move:
+    /// the search runs to its depth instead of stopping at depth 2.
+    #[test]
+    fn a_one_move_searchmoves_is_not_a_forced_move() {
+        let board = Board::starting_position();
+        let mv = board.parse_move("e2e4").expect("legal move");
+        let limits = SearchLimits {
+            depth: Some(6),
+            search_moves: vec![mv],
+            ..SearchLimits::default()
+        };
+        let mut searcher = Searcher::default();
+        searcher.reset_search_state(
+            &limits,
+            &EngineOptions::default(),
+            board.side_to_move(),
+            0,
+            true,
+        );
+        let depth = searcher
+            .search_root(board, &[mv], false, &mut || SearchEvent::None)
+            .depth;
+        assert_eq!(
+            depth, 6,
+            "a one-move searchmoves stopped at the forced-move shortcut"
         );
     }
 
@@ -2578,8 +2717,8 @@ mod tests {
 
     fn minute_clock() -> SearchLimits {
         SearchLimits {
-            white_time: 60_000,
-            black_time: 60_000,
+            white_time: Some(60_000),
+            black_time: Some(60_000),
             ..SearchLimits::default()
         }
     }
@@ -2691,7 +2830,10 @@ mod tests {
             )
         );
         assert_eq!(stopped.bestmove.to_string(), fail_high.first);
-        assert_eq!(format_score(stopped.score), fail_high.score);
+        assert_eq!(
+            crate::uci::info::format_score(stopped.score),
+            fail_high.score
+        );
         assert_eq!(stopped.depth, fail_high.depth - 1);
 
         // Short of the soft target the fail-high is searched again as before.
@@ -2787,8 +2929,8 @@ mod tests {
         // Built first: allocating the table is not part of this move.
         let mut searcher = Searcher::default();
         let limits = SearchLimits {
-            white_time: 150,
-            black_time: 150,
+            white_time: Some(150),
+            black_time: Some(150),
             white_increment: 30,
             black_increment: 30,
             issued: Some(Instant::now() - Duration::from_millis(60)),

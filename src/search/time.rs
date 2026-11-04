@@ -4,7 +4,7 @@
 use crate::board::{Color, Move};
 use crate::eval::MATE_SCORE;
 use crate::infra;
-use crate::search_options::{EngineOptions, SearchLimits};
+use crate::search::options::{EngineOptions, SearchLimits};
 
 use super::MAX_PLY;
 use super::params::SearchParams;
@@ -22,11 +22,11 @@ pub(super) struct RuntimeLimits {
     pub(super) maximum_ms: f64,
     /// True when the `go movetime T` command was used.
     pub(super) movetime_mode: bool,
-    /// True for `go infinite` / `go ponder`: the caller wants an EVALUATION,
-    /// not a move, so search shortcuts that trade score quality for clock
-    /// time must not fire. Set from `SearchLimits`, which the searcher
-    /// otherwise never sees.
-    pub(super) analysis_mode: bool,
+    /// The single-legal-move shortcut may end the search: a move request
+    /// over the whole root. Not for `go infinite` or `go ponder`, where the
+    /// caller wants an evaluation, not a move, and not under `searchmoves`,
+    /// where one move left is the caller's choice of line, not a forced move.
+    pub(super) forced_move_shortcut: bool,
     /// The search may end on a proved mate ([`MateWatch`]): a clock search
     /// that asked for a move and nothing else. Analysis, ponder, movetime,
     /// depth, node and `searchmoves` requests run to their own limit.
@@ -81,7 +81,7 @@ impl Default for RuntimeLimits {
             optimum_ms: f64::INFINITY,
             maximum_ms: f64::INFINITY,
             movetime_mode: false,
-            analysis_mode: false,
+            forced_move_shortcut: true,
             mate_stop: false,
             tb_extension_ms: None,
             tb_extension_latest_start_ms: f64::INFINITY,
@@ -146,7 +146,7 @@ pub(super) fn compute_runtime_limits(
             Color::White => (options.white_time, options.white_increment),
             Color::Black => (options.black_time, options.black_increment),
         };
-        if time > 0 {
+        if let Some(time) = time {
             let overhead = engine_options.move_overhead;
             let explicit_mtg = options.movestogo > 0;
             let mtg = if explicit_mtg {
@@ -234,7 +234,7 @@ pub(super) fn compute_runtime_limits(
         optimum_ms,
         maximum_ms,
         movetime_mode,
-        analysis_mode,
+        forced_move_shortcut: !analysis_mode && options.search_moves.is_empty(),
         mate_stop,
         tb_extension_ms,
         tb_extension_latest_start_ms,
@@ -481,11 +481,27 @@ mod tests {
         assert!(lim.movetime_mode);
     }
 
+    /// A present clock of 1 ms, what a zero, negative or unreadable `wtime`
+    /// becomes, moves at once; only an absent clock leaves the search
+    /// without a clock limit.
+    #[test]
+    fn a_one_millisecond_clock_moves_at_once() {
+        let options = SearchLimits {
+            white_time: Some(1),
+            black_time: Some(1),
+            ..SearchLimits::default()
+        };
+        let lim = limits(0, &options);
+
+        assert!(lim.maximum_ms <= 1.0, "maximum_ms={}", lim.maximum_ms);
+        assert!(lim.optimum_ms <= lim.maximum_ms);
+    }
+
     #[test]
     fn clock_optimum_less_than_maximum() {
         // For any valid clock position optimum < maximum.
         let options = SearchLimits {
-            white_time: 1000,
+            white_time: Some(1000),
             white_increment: 100,
             ..SearchLimits::default()
         };
@@ -498,7 +514,7 @@ mod tests {
     #[test]
     fn sudden_death_stays_within_clock() {
         let options = SearchLimits {
-            white_time: 1000,
+            white_time: Some(1000),
             white_increment: 100,
             ..SearchLimits::default()
         };
@@ -511,9 +527,9 @@ mod tests {
     #[test]
     fn clock_selection_uses_side_to_move() {
         let options = SearchLimits {
-            white_time: 1_000,
+            white_time: Some(1_000),
             white_increment: 0,
-            black_time: 10_000,
+            black_time: Some(10_000),
             black_increment: 0,
             ..SearchLimits::default()
         };
@@ -530,7 +546,7 @@ mod tests {
     #[test]
     fn movestogo_uses_explicit_clock_horizon() {
         let options = SearchLimits {
-            black_time: 10_000,
+            black_time: Some(10_000),
             black_increment: 0,
             movestogo: 10,
             ..SearchLimits::default()
@@ -558,7 +574,7 @@ mod tests {
             ..EngineOptions::default()
         };
         let options = SearchLimits {
-            white_time: 50,
+            white_time: Some(50),
             white_increment: 50,
             ..SearchLimits::default()
         };
@@ -584,7 +600,7 @@ mod tests {
             ..EngineOptions::default()
         };
         let options = SearchLimits {
-            white_time: 3_000,
+            white_time: Some(3_000),
             white_increment: 30,
             ..SearchLimits::default()
         };
@@ -610,7 +626,7 @@ mod tests {
             limits(
                 126,
                 &SearchLimits {
-                    white_time: time,
+                    white_time: Some(time),
                     white_increment: 300,
                     ..SearchLimits::default()
                 },
@@ -627,7 +643,7 @@ mod tests {
         let clock = |time: usize, threads: usize| {
             compute_runtime_limits(
                 &SearchLimits {
-                    white_time: time,
+                    white_time: Some(time),
                     white_increment: 30,
                     ..SearchLimits::default()
                 },
@@ -712,7 +728,7 @@ mod tests {
             engine.search_params.tm_horizon_per_sec = per_sec;
             compute_runtime_limits(
                 &SearchLimits {
-                    white_time: time,
+                    white_time: Some(time),
                     white_increment: 30,
                     ..SearchLimits::default()
                 },
@@ -753,7 +769,7 @@ mod tests {
     #[test]
     fn only_a_clock_search_that_asks_for_a_move_may_end_on_a_mate() {
         let clock = SearchLimits {
-            white_time: 60_000,
+            white_time: Some(60_000),
             ..SearchLimits::default()
         };
         assert!(limits(0, &clock).mate_stop);

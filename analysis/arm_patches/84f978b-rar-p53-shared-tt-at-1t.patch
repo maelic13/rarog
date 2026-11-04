@@ -1,0 +1,42 @@
+Instrument for RAR-P53 (D.2 read 4), never merged: with RAROG_INSTRUMENT_SHARED_TT set,
+Rarog keeps the shared transposition table at one thread, so bench reads the shared
+backend against the local one in one binary.
+Applies to: 84f978b (the d2 head; engine source as 2b7bca9)
+Builds: tools/test_engines/rarog-d2ttsh-pext-pgo.exe (09497b01...), rarog-d2ttsh-pext.exe (6becffc1...)
+Wire: bench 13 after setoption name Hash value 64 reads 13,987,223 off and 14,429,386 on.
+
+diff --git a/src/search/mod.rs b/src/search/mod.rs
+index 1cf2c93..e1695a2 100644
+--- a/src/search/mod.rs
++++ b/src/search/mod.rs
+@@ -56,6 +56,13 @@ const MAX_DEPTH: usize = 100;
+ const MAX_PLY: usize = 128;
+ const MAX_QPLY: usize = 16;
+ const MIN_PARALLEL_DEPTH: usize = 4;
++
++/// RAR-P53's instrument, never merged: with `RAROG_INSTRUMENT_SHARED_TT` set,
++/// a one-thread search keeps the shared table, so `bench` reads the shared
++/// backend's cost against the local one in one binary.
++fn instrument_shared_tt() -> bool {
++    std::env::var_os("RAROG_INSTRUMENT_SHARED_TT").is_some()
++}
+ const SHARED_NODE_BATCH: u64 = 128;
+ const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
+ /// Where a searcher writes its protocol output: the `info` line of each
+@@ -404,7 +411,7 @@ impl Searcher {
+         // Put the table in the form the next search uses now, not in that
+         // search: converting allocates and clears the whole table (128 MiB
+         // cost 20 ms and 33,000 page faults on a fresh process's first move).
+-        if options.threads > 1 {
++        if options.threads > 1 || instrument_shared_tt() {
+             self.shared.tt.make_shared(self.shared.hash_mb);
+         } else if !self.shared.tt.ensure_local(self.shared.hash_mb) {
+             self.notice(format_args!(
+@@ -461,6 +468,7 @@ impl Searcher {
+     ) -> SearchResult {
+         if ALLOW_PARALLEL
+             && engine_options.threads <= 1
++            && !instrument_shared_tt()
+             && !self.shared.tt.ensure_local(self.shared.hash_mb)
+         {
+             self.notice(format_args!(

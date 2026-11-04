@@ -19,7 +19,7 @@ Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md
   detached worktree, SHA-256 `619D7730603551B9…3555D649A4`, bench
   **13,987,223**, version `2.7.0-dev`. It carries the stop at twice the
   target (`a79efe4`) and `CoreLmrCorrectionCap` 0.
-- **Candidate:** the throwaway branch `d16-gate3` at **`7703768`** on
+- **Candidate:** the throwaway branch `d16-gate3` at **7703768** on
   `6253027`.
   - It sets `CoreLmrCorrectionCap` 1024 as the default, version
     `2.7.0-dev+d16gate3`.

@@ -1,6 +1,6 @@
 # RAR-X07 — Basilisk's +4.34% NPS wave measured +8.69 ± 6.63 Elo at STC
 
-Indexed under *8. Cross-engine evidence imported from Basilisk* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+Indexed under *8. Cross-engine evidence imported from other engines › From Basilisk* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Basilisk evidence
 

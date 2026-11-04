@@ -205,6 +205,12 @@ impl Evaluator {
         self.pawn_table.fill(PawnEntry::default());
     }
 
+    /// The pawn cache allocated again, empty; the old one is released first.
+    pub(crate) fn reallocate_pawn_table(&mut self) {
+        self.pawn_table = Vec::new();
+        self.pawn_table = vec![PawnEntry::default(); PAWN_TABLE_SIZE];
+    }
+
     pub fn evaluate_result(&self, result: GameResult, color: Color, ply: usize) -> i32 {
         let mate = MATE_SCORE - infra::to_i32(ply);
         match (result, color) {

@@ -1,0 +1,115 @@
+Instrument for RAR-R32 (D.2 read 6), never merged: RAROG_ABLATE names the RAR-R03
+parallel-search members to switch off (order: the pool's root scores in the root
+order; center: the window centred on the pool's deeper exact score; rotate: each
+helper's rotated root list; jitter: the per-thread offset of the reduction jitter).
+Every switch acts only inside a pool; each member's first consultation goes to stderr.
+Applies to: e057d84 (the d2 head)
+Build: tools/test_engines/rarog-d2abl-pext-pgo.exe (d2afbd8b...)
+Wire: bench 13 reads 13,987,223 with no switch and with every switch; a four-thread
+search reports all four members consulted, off exactly as set.
+
+diff --git a/src/search/mod.rs b/src/search/mod.rs
+index 05f263a..69b7f5e 100644
+--- a/src/search/mod.rs
++++ b/src/search/mod.rs
+@@ -56,6 +56,48 @@ const MAX_DEPTH: usize = 100;
+ const MAX_PLY: usize = 128;
+ const MAX_QPLY: usize = 16;
+ const MIN_PARALLEL_DEPTH: usize = 4;
++
++/// Instrument only, never merged: `RAROG_ABLATE` names the parallel-search
++/// members to switch off, read once per process. Each member's first
++/// consultation is written to stderr once, so a wire check sees every site
++/// reached and which way it went.
++pub(crate) mod ablate {
++    use std::sync::OnceLock;
++    use std::sync::atomic::{AtomicU8, Ordering};
++
++    pub(crate) const ORDER: u8 = 1;
++    pub(crate) const CENTER: u8 = 2;
++    pub(crate) const ROTATE: u8 = 4;
++    pub(crate) const JITTER: u8 = 8;
++
++    static MASK: OnceLock<u8> = OnceLock::new();
++    static SEEN: AtomicU8 = AtomicU8::new(0);
++
++    pub(crate) fn off(member: u8) -> bool {
++        let off = mask() & member != 0;
++        if SEEN.load(Ordering::Relaxed) & member == 0
++            && SEEN.fetch_or(member, Ordering::Relaxed) & member == 0
++        {
++            eprintln!("ablate: member {member} consulted, off {off}");
++        }
++        off
++    }
++
++    fn mask() -> u8 {
++        *MASK.get_or_init(|| {
++            let value = std::env::var("RAROG_ABLATE").unwrap_or_default();
++            [
++                ("order", ORDER),
++                ("center", CENTER),
++                ("rotate", ROTATE),
++                ("jitter", JITTER),
++            ]
++            .iter()
++            .filter(|(name, _)| value.contains(name))
++            .fold(0, |mask, (_, bit)| mask | bit)
++        })
++    }
++}
+ const SHARED_NODE_BATCH: u64 = 128;
+ const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
+ /// Where a searcher writes its protocol output: the `info` line of each
+@@ -915,6 +957,7 @@ impl Searcher {
+             if let Some(shared) = self.shared.pool()
+                 && let Some((pool_depth, pool_score)) = shared.pool_best_exact()
+                 && pool_depth > infra::to_i32(completed_depth)
++                && !ablate::off(ablate::CENTER)
+             {
+                 window_center = pool_score;
+             }
+diff --git a/src/search/node.rs b/src/search/node.rs
+index 9b61499..96a9892 100644
+--- a/src/search/node.rs
++++ b/src/search/node.rs
+@@ -462,7 +462,11 @@ impl Searcher {
+         if !i.pv && i.parent_reduction > r + 414 {
+             r += p.lmr_parent;
+         }
+-        let thread = u64::try_from(self.td.thread_id).unwrap_or(0);
++        let thread = if super::ablate::off(super::ablate::JITTER) {
++            0
++        } else {
++            u64::try_from(self.td.thread_id).unwrap_or(0)
++        };
+         let spread = i32::try_from((self.td.nodes + thread * 27) % 128).unwrap_or(0);
+         r + spread - 59
+     }
+diff --git a/src/search/threads.rs b/src/search/threads.rs
+index dd80697..301908a 100644
+--- a/src/search/threads.rs
++++ b/src/search/threads.rs
+@@ -320,7 +320,11 @@ impl Searcher {
+                 engine_options: worker_engine_options.clone(),
+                 tt: self.shared.tt.clone(),
+                 hash_mb: self.shared.hash_mb,
+-                root_move_offset: offset,
++                root_move_offset: if super::ablate::off(super::ablate::ROTATE) {
++                    0
++                } else {
++                    offset
++                },
+                 thread_id: index + 1,
+                 tb_root: self.shared.syzygy.root,
+                 shared_state: Arc::clone(&shared_state),
+@@ -454,6 +458,9 @@ impl Searcher {
+         let Some(shared) = self.shared.pool() else {
+             return;
+         };
++        if super::ablate::off(super::ablate::ORDER) {
++            return;
++        }
+         for entry in scored.as_mut_slice() {
+             let Some(index) = self.root_record_index(entry.mv) else {
+                 continue;

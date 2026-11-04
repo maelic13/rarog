@@ -5,7 +5,7 @@ use std::sync::{
     mpsc::Sender,
 };
 
-use crate::search_options::{EngineOptions, SearchOptions};
+use crate::search::options::{EngineOptions, HashRequest, SearchOptions};
 
 /// Signals from the protocol thread to the search. Every command that starts a
 /// search takes a new epoch, and `stop` and `ponderhit` are scoped to the latest
@@ -21,6 +21,8 @@ pub struct EngineControl {
     ponderhit: AtomicU64,
     searching: AtomicBool,
     epoch: AtomicU64,
+    /// Standard input has ended: no `stop` or `ponderhit` can arrive any more.
+    input_closed: AtomicBool,
 }
 
 impl EngineControl {
@@ -36,6 +38,21 @@ impl EngineControl {
         let epoch = self.next_epoch();
         self.quit.store(true, Ordering::Release);
         epoch
+    }
+
+    /// Record that standard input has ended.
+    pub(crate) fn close_input(&self) {
+        self.input_closed.store(true, Ordering::Release);
+    }
+
+    pub(crate) fn input_closed(&self) -> bool {
+        self.input_closed.load(Ordering::Acquire)
+    }
+
+    /// Stopped by `stop`, without being replaced: a suite that runs search
+    /// after search reads this between them.
+    pub(crate) fn stop_requested(&self, epoch: u64) -> bool {
+        epoch < self.stopped_below.load(Ordering::Acquire)
     }
 
     /// Convert the latest search, started or still queued.
@@ -77,9 +94,10 @@ impl EngineControl {
     }
 
     /// Epoch 0 is a search outside the protocol's numbering, as in unit tests:
-    /// any stop reaches it and no `ponderhit` converts it.
+    /// any stop reaches it and no `ponderhit` converts it. A closed standard
+    /// output ends everything: nobody reads the engine any more.
     pub(crate) fn poll_search(&self, epoch: u64) -> SearchControl {
-        if self.quit.load(Ordering::Acquire) {
+        if self.quit.load(Ordering::Acquire) || crate::infra::stdout_closed() {
             SearchControl::Quit
         } else if epoch < self.stopped_below.load(Ordering::Acquire) {
             SearchControl::Stop
@@ -175,12 +193,12 @@ pub enum EngineCommand {
         options: SearchOptions,
         epoch: u64,
     },
-    Configure(EngineOptions),
+    Configure {
+        options: EngineOptions,
+        hash: HashRequest,
+    },
     ClearHash,
     NewGame,
-    /// The protocol thread has already raised the ponderhit flag; the queued
-    /// command keeps the engine's view of the queue in UCI order.
-    PonderHit,
     /// Answered once every earlier command has run.
     Ready(Sender<()>),
 }

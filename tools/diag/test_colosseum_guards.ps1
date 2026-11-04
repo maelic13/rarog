@@ -136,6 +136,34 @@ try {
     Invoke-Case -Name "control: four threads, four cores" -Expect "" `
         -Arguments (Merge-Arguments $fourThreads @{ ExtraArgs = @("--cores-per-game", "4") })
 
+    # A self-relative scaling match: one engine at one thread against itself at
+    # four. The larger side sets the cores a game needs.
+    $scaling = Merge-Arguments $base @{
+        Mode = "match"; Games = 100; Threads = 1; ThreadsB = 4; Hash = 512; Concurrency = 3
+        EngineB = $armA; NameB = "armA4t"
+    } @("MaxPairs")
+    Invoke-Case -Name "arm B's four threads on one core" -Expect "cores_per_game is 1 for Threads 4" `
+        -Arguments $scaling
+    Invoke-Case -Name "control: one binary, 1T against 4T" -Expect "" `
+        -Arguments (Merge-Arguments $scaling @{ ExtraArgs = @("--cores-per-game", "4") })
+    # A time-odds match: one engine at twice the time against itself.
+    $odds = Merge-Arguments $base @{
+        Mode = "match"; Games = 100; EngineB = $armA; NameB = "armA2x"; BaseMsB = 6000; IncrementMsB = 60
+    } @("MaxPairs")
+    Invoke-Case -Name "control: one binary, 1x against 2x" -Expect "" -Arguments $odds
+    # -Hash with no side options must still reach both engines; the policy
+    # check reads each side's resolved Hash.
+    Invoke-Case -Name "control: -Hash alone reaches both sides" -Expect "" `
+        -Arguments (Merge-Arguments $odds @{ Hash = 256 })
+    Invoke-Case -Name "time odds on a fixed-node read" -Expect "a fixed-node read (-Nodes) has none" `
+        -Arguments (Merge-Arguments $odds @{ Nodes = 5000 })
+    Invoke-Case -Name "-BaseMsB in a null pair" -Expect "-Mode calibrate ignores: BaseMsB" `
+        -Arguments @{ Mode = "calibrate"; EngineA = $armA; EngineB = $armA; NameA = "a"; NameB = "b"; BaseMsB = 6000
+                      Dir = (Join-Path $scratch "null"); DryRun = $true; AllowBusyHost = $true }
+    Invoke-Case -Name "-ThreadsB in a null pair" -Expect "-Mode calibrate ignores: ThreadsB" `
+        -Arguments @{ Mode = "calibrate"; EngineA = $armA; EngineB = $armA; NameA = "a"; NameB = "b"; ThreadsB = 4
+                      Dir = (Join-Path $scratch "null"); DryRun = $true; AllowBusyHost = $true }
+
     $stale = Copy-Arm -Source $EngineA -Name "stale"
     Set-Sidecar -EnginePath $stale -Fields @{ binary_sha256 = ("0" * 64) }
     Invoke-Case -Name "stale sidecar hash" -Expect "PROVENANCE MISMATCH" `
@@ -178,6 +206,13 @@ try {
         -Arguments (Merge-Arguments $categorical @{ Mode = "sprt"; MaxPairs = 100 } -Remove @("Games"))
     Invoke-Case -Name "categorical waiver with equal options" -Expect "differ by UCI options" `
         -Arguments (Merge-Arguments $categorical @{ OptionsA = @() })
+
+    # The arms' names are the runner's labels; with one executable on both sides
+    # they are all that keeps the two sides' statistics apart.
+    Invoke-Case -Name "two arms with one name" -Expect "need distinct names" `
+        -Arguments (Merge-Arguments $categorical @{ NameB = "ALT" })
+    Invoke-Case -Name "a second label in -ExtraArgs" -Expect "'--a-label <A_LABEL>' cannot be used multiple times" `
+        -Arguments (Merge-Arguments $categorical @{ ExtraArgs = @("--a-label", "impostor") })
 
     # -Nodes: a fixed-node read resolves fixed nodes on both sides and nothing
     # else; the clock run file under -Nodes, or -Nodes outside a match, is
@@ -227,8 +262,10 @@ try {
         -Arguments (Merge-Arguments $base @{ OptionsA = @("SyzygyPath=$emptyTables")
                                               OptionsB = @("SyzygyPath=$emptyTables") })
 
-    Invoke-Case -Name "conditions off Rarog's policy" -Expect "not Rarog's policy" `
-        -Arguments (Merge-Arguments $base @{ Hash = 128 })
+    # A runner argument the wrapper did not ask for moves the resolved
+    # configuration off what it was told; the policy check reads the result.
+    Invoke-Case -Name "conditions off Rarog's policy" -Expect "engine_b_time_control base is 4000 ms, expected 3000" `
+        -Arguments (Merge-Arguments $base @{ ExtraArgs = @("--b-base-ms", "4000") })
 
     # The runner pin, checked by pointing the wrapper at a pin file whose hash is
     # not the staged binary's.

@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.2** (`R2`): Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first.
+**Now: D.4.3** (`I1`): A search-path perft.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -44,9 +44,105 @@ field, about 3,475 on CCRL's Blitz scale.
         - [x] **D.1.6.1** Research: the cascade's mechanism in Rarog's loop, the donors' devices, the cheapest prototype and its zero-game reads, the registration — DONE 2026-10-23
         - [x] **D.1.6.2** Implementation: the cleanup, the unused D.1.6 instruments removed and the stop at twice the target kept — DONE 2026-10-26
         - [x] **D.1.6.3** Gate: the repairs' reads and gates, the probe and the differential — DONE 2026-10-26
-- [ ] **D.2** Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; its premise is contradicted by RAR-M46, so re-scope first — **RESEARCH / R2**
-- [ ] **D.3** Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — **RESEARCH / R2**
-- [ ] **D.4** Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — **RESEARCH / R2**
+- [x] **D.2** Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; RAR-M78's deficit verdict was measured in a packed slot and is superseded (RAR-M82), the sibling-free comparison is RAR-M83 — DONE 2026-11-04
+    - [x] **D.2.1** The premise re-scoped: no four-thread deficit against the field (RAR-M46), so self-relative scaling against modern engines becomes the instrument — DONE 2026-09-11
+    - [x] **D.2.2** The four-thread speed loss: measured (RAR-P46, RAR-P47, RAR-M77), located in the shared search (RAR-P48, RAR-P49), bisected with no single holder (RAR-P50) — DONE 2026-10-30
+    - [x] **D.2.3** The four-thread card opened: RAR-M78's self-relative comparison read deficient (later superseded), the engine review's mechanisms, six hypotheses and their tests — DONE 2026-11-01
+    - [x] **D.2.4** The card's zero-game reads: H1 kept as `e057d84`, H2 refuted, H3 and H4 hold, the games' depth deficit not reproduced, RAR-M79's host-state episode — DONE 2026-11-02
+    - [x] **D.2.5** The slow state located: the audit, the night (RAR-M80, RAR-M81), Windows packing four threads on SMT siblings; restored in a sibling-free slot (RAR-M82, RAR-P54) — DONE 2026-11-03
+    - [x] **D.2.6** RAR-M83: the self-relative comparison in the sibling-free slot, the maintainer's night run — DONE 2026-11-04
+    - [x] **D.2.7** The four-thread engine card, by RAR-M83's outcome: what the helpers' entries do to the main thread, then a gate — NO_CHANGE 2026-11-04
+- [x] **D.3** Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — DONE 2026-11-04
+    - [x] **D.3.1** A zero, negative or unparsable own clock searches without limit — DONE 2026-11-03
+    - [x] **D.3.2** `setoption` during a search wedges the input thread — DONE 2026-11-03
+    - [x] **D.3.3** End of input never ends `go infinite` or a finished ponder search — DONE 2026-11-03
+    - [x] **D.3.4** A closed stdout panics every `println!` — DONE 2026-11-03
+    - [x] **D.3.5** A non-UTF-8 input line reads as end of input — DONE 2026-11-03
+    - [x] **D.3.6** `stop` during `bench` or `wac` prints an ordinary-looking summary — DONE 2026-11-03
+    - [x] **D.3.7** A refused `Hash` is retried on every later `setoption` — DONE 2026-11-03
+    - [x] **D.3.8** The forced-move shortcut fires for a one-move `searchmoves` — DONE 2026-11-03
+    - [x] **D.3.9** The score-normalisation card, the `src/uci/` (planned) move and the protocol decisions — DONE 2026-11-04
+    - [x] **D.3.10** `tests/uci_process.rs` times out under the full suite's load — DONE 2026-11-03
+    - [x] **D.3.11** `first_kpk_search_in_a_fresh_process_costs_what_a_warm_one_does` fails under CPU load — DONE 2026-11-03
+- [ ] **D.4** Instruments from the Triumviratus review: the measurement-integrity reads, a search-path perft, pruning and reduction pricing, the loss table by cell, an identical-tree counter read — **R2**
+    - [x] **D.4.1** Wall-clock overhead read — DONE 2026-11-03
+    - [x] **D.4.2** SPSA schedule read — DONE 2026-11-03
+    - [ ] **D.4.3** A search-path perft — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.4.4** Pruning and reduction pricing — **RESEARCH / R2**
+    - [ ] **D.4.5** The loss table by cell — **READY_FOR_IMPLEMENTATION / V**
+    - [ ] **D.4.6** An identical-tree counter read — **RESEARCH / R2**
+- [ ] **D.5** Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, the `Hash` notice, dead code, test and CI gaps — **I1**
+    - [ ] **D.5.1** The table handle — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.2** A `Hash` change at `Threads > 1` fills the table twice — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.3** The fixed-depth vote — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.4** Helper start-up — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.5** The `Hash` rounding notice — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.6** The dead quiescence type parameter — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.7** The root `searchmoves` filter — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.8** Dead Syzygy code — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.9** The slider-table `unsafe` and the timer — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.10** Stack-built tables — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.11** The Fathom FFI layout guard — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.12** The PEXT tier in CI — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.13** The `texel` and `tune` evaluation tests in CI — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.14** The KPK bitbase at compile time — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.15** `Move::from_uci` into `make_move` — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.16** Names and comments that mislead — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.17** Tests the review found missing — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.18** A record corrected — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.19** The KPK evaluation and every hard draw verdict against Syzygy — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.20** CI hygiene — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.5.21** Basilisk's behaviour tests run against Rarog — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.5.22** Measurement and gating methods from Basilisk — DONE 2026-11-02
+    - [ ] **D.5.23** The correction bonus overflows `i32` at extreme depth and residual — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.5.24** A `Hash` larger than the machine's physical memory is refused on every platform — DONE 2026-11-04
+- [ ] **D.6** Strength candidates from the engine review: kernel and evaluation deviations from the donor, each behind a zero-game screen and a registered gate — **R2**
+    - [ ] **D.6.1** Castling is neither quiet nor noisy — **RESEARCH / R2**
+    - [ ] **D.6.2** Quiescence cannot see a non-capturing queen promotion — **RESEARCH / R2**
+    - [ ] **D.6.3** Null-move and ProbCut children typed `cut_node = true` — **RESEARCH / R2**
+    - [ ] **D.6.4** A fail-low node stores its least-bad move as the TT move — **RESEARCH / R2**
+    - [ ] **D.6.5** The exclusion search uses the table-refined estimate — **RESEARCH / R2**
+    - [ ] **D.6.6** Captures generated and scored before the TT move — **RESEARCH / R2**
+    - [ ] **D.6.7** The ply cap — **RESEARCH / R2**
+    - [ ] **D.6.8** A depth-0 entry is counted as two nodes — **RESEARCH / R2**
+    - [ ] **D.6.9** The endgame scale's target — **RESEARCH / R2**
+    - [ ] **D.6.10** The pawnless default factor — **RESEARCH / R2**
+    - [ ] **D.6.11** Piece-term definitions no experiment read — **RESEARCH / R2**
+    - [ ] **D.6.12** `Hash` at any size — **RESEARCH / R2**
+    - [ ] **D.6.13** The aspiration fail-low window — **RESEARCH / R2**
+    - [ ] **D.6.14** Low-value notes — **RESEARCH / R2**
+    - [x] **D.6.15** The correction is added to the evaluator's draw verdicts — DONE 2026-11-03
+    - [ ] **D.6.16** Quiescence prunes by gain against a decisive material edge — **RESEARCH / R2**
+    - [ ] **D.6.17** Underpromotions and Saavedra's study — **RESEARCH / R2**
+    - [ ] **D.6.18** Stockfish 19 mechanisms Basilisk adopted that Rarog lacks — **RESEARCH / R2**
+    - [ ] **D.6.19** Root and in-check reductions never read apart — **RESEARCH / R2**
+    - [ ] **D.6.20** The fail-high stop's hole — **RESEARCH / R2**
+    - [ ] **D.6.21** Won KPK positions read at or below 0 — **RESEARCH / R2**
+    - [ ] **D.6.22** `krpkr_scale`'s hard zeros on won positions — **RESEARCH / R2**
+    - [ ] **D.6.23** Wrong-bishop draws still misread through leaves the recogniser does not cover — **RESEARCH / R2**
+- [ ] **D.7** Large pages on Linux: transparent huge pages for the big tables — **READY_FOR_IMPLEMENTATION / I1**
+- [ ] **D.8** Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — **I1**
+    - [ ] **D.8.1** P0: the census as a tool — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.2** P1: in-file tests into child files — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.3** P2: one `score` module — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.4** P3: geometry into one board module — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.5** P4: split `board/board.rs` — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.6** P5: delete `trace_decision!` — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.7** P6: the `diag` blocks into probe functions — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.8** P7: visibility follows use, second pass — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.9** P8: delete the family masks — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.10** P9: one `ArrayList<T, N>` — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.11** P10: one `Compiled<T>` — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.12** P11: split `search/mod.rs`, after D.2 — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.8.13** P12: the adapter boundary, inside D.3 — DONE 2026-11-04
+    - [ ] **D.8.14** P13: one iterative-deepening driver — **RESEARCH / R2**
+    - [ ] **D.8.15** P14: bench and WAC under one suite runner — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.16** P15: the evaluation's shape — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.17** P16: comments — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.18** P17: lints — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.19** P18: the node frame — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.20** P19: evaluation terms computed for a constant — **READY_FOR_IMPLEMENTATION / I1**
+- [ ] **D.9** Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — **RESEARCH / R2**
 
 ## Phase E — Classical checkpoint and release
 
@@ -78,6 +174,13 @@ field, about 3,475 on CCRL's Blitz scale.
 - [ ] **G.1** High-thread and NUMA: 8/16/32T, TT and net placement, large pages, affinity policy — **R2**
 - [ ] **G.2** Platform and product: Chess960 on demand, distributed testing, and the OPTIONAL universal binary (`analysis/universal_binary_2026-09.md`) — **I1**
 - [ ] **G.3** Frontier: larger nets, data scaling, LTC search fit; CCRL top-50 gate — **R3**
+
+## Phase H — Refinements after the big gains
+
+- [ ] **H.1** Triage: every deferred small gain re-ranked on the network head — **R2**
+- [ ] **H.2** Search refinements — **R2**
+- [ ] **H.3** Time-management refinements — **R2**
+- [ ] **H.4** Throughput at an identical tree on the network head — **R2**
 <!-- end of generated board -->
 
 ## Current checkpoint
@@ -86,7 +189,7 @@ field, about 3,475 on CCRL's Blitz scale.
 |---|---|
 | Next release | **2.7.0** at E.3 after Phases D and E, cut only after **E.3.0**'s originality disclosure (maintainer decision 2026-10-23; `analysis/originality_review_2.6.0_2026-10-22.md`) (maintainer decision 2026-10-22: 3.0.0 is reserved for the first NNUE release, F.9; E.2's four targets already pass at 1T and 4T, RAR-M73, RAR-M74, and its result is recorded, not a version). Later classical gains (E.4, F.2.1) release as 2.8.0 onward under Phase F's rule |
 | Released baseline | **2.6.0** on `master`, released 2026-10-22 from the `v2.6.0` tag; fingerprint **13,987,223 / EBF 2.565**. Over 2.5.0: +153.4 ± 10.7 at `3+0.03` 1T, +149.3 ± 15.1 at `10+0.1`, +149.7 ± 14.7 at 4T (RAR-M76). 2.5.0 (2026-10-05, 11,171,726 / EBF 2.512) was +272.4 over 2.4.0 at `3+0.03` (RAR-M64) |
-| Development head | `d1` from `master` at `0127e58` (the 2.6.0 release, PR #11, 2026-10-22), version **2.7.0-dev**: the 2.5.0 search with Phase C's evaluation, C.12's speed pass and large pages, and C.10's search tune, plus D.1.3's clock cluster at its seeds (`5fec0d7`, the cross-move trend `1f185cb`; clock-only, its closing read is D.1.5) and the fail-high stop at twice the soft target (`a79efe4`, RAR-R25), with D.1.6's research instruments removed (`42b001f`); the classical evaluation frozen at engine source `9fb525e`; fingerprint **13,987,223 / EBF 2.565**; `rustc 1.99.1` (RAR-P36–P38, kept by maintainer decision). A registration names the revision it builds from and this fingerprint. Change records: PLAN D.3's change log, `docs/HISTORY.md`, `docs/archive/PLAN-closed-2026-10-22.md` |
+| Development head | `d2` from `master` at `703fe78` (D.1's squash, "Rework time management", PR #12, 2026-10-26; the 2.6.0 release is `0127e58`, PR #11), version **2.7.0-dev**: the 2.5.0 search with Phase C's evaluation, C.12's speed pass and large pages, and C.10's search tune, plus D.1.3's clock cluster at its seeds (`5fec0d7`, the cross-move trend `1f185cb`; clock-only, its closing read is D.1.5) and the fail-high stop at twice the soft target (`a79efe4`, RAR-R25), with D.1.6's research instruments removed (`42b001f`), and the search poll taken as a trait object so one PGO-trained kernel copy serves every thread (`e057d84`, behaviour-neutral, kept by RAR-P52: four-thread NPS +2.4%); the classical evaluation frozen at engine source `9fb525e`; fingerprint **14,749,043 / EBF 2.564** since D.6.15 (`3a16fbb`; 13,987,223 / EBF 2.565 before); `rustc 1.99.1` (RAR-P36–P38, kept by maintainer decision). A registration names the revision it builds from and this fingerprint. Change records: PLAN D.3's change log, `docs/HISTORY.md`, `docs/archive/PLAN-closed-2026-10-22.md` |
 | Pool position, `3+0.03` 1T | **3,428.8 ± 19.2** (RAR-M73, the C head, 2026-10-21), **+142.3 ± 24.8 over the B.9 head's 3,286.5 ± 15.7** (RAR-M64; 2.4.0 rates 3,001): Houdini 3 +172.8, Critter 1.6a +231.5, Fritz 16 +256.2, Rybka 4.1 +330.2, so all four E.2 targets pass at 1T; Rarog 2.4.0 +363.2 |
 | Pool position, `3+0.03` 4T | **3,433.7 ± 19.3** (RAR-M74, the C head, 2026-10-21), **+93.7 ± 25.5 over the B.9 head's 3,340.0 ± 16.7** (RAR-M66): Houdini 3 +171.7, Critter 1.6a +242.2, Fritz 16 +249.1, Rybka 4.1 +350.3, all four E.2 targets pass at 4T. **Thread scaling fell:** in games the C head is 9.2% slower than the B.9 head at 4T while 29.8% faster at 1T (4T/1T 2.60 against 3.72; Colosseum CLI 0.4.0's figures), and its 4T performance is only +4.9 over its 1T rating (B.9 +53.5); held for D.2 |
 | Pool position, wider field, `3+0.03` 1T | **3,478.9 ± 15.1** (RAR-M75, the C head, 2026-10-22): fourth in a round robin of nine with Houdini 3 and Critter held; Dragon 1 3,628.7, Stockfish 11 3,568.2, Houdini 6.03 3,498.5 (head −9 ± 32), Komodo 13.3 3,416.6 (head +53), Komodo 10.4 3,387.4, Houdini 4 3,303.2 (held 3,310). **CCRL-equivalent:** Blitz 1CPU **3,475 ± 82** (the held scale near 1:1 with it here; about 70 below CCRL Blitz's top-100 cut), 40/15 1CPU 3,407 ± 78 |
@@ -94,16 +197,15 @@ field, about 3,475 on CCRL's Blitz scale.
 | Evaluation deficit | **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21): Stockfish's classical HCE over Rarog's frozen evaluation inside Stockfish's search, from +181.7 ± 19.0 at Phase C's start (RAR-O05), 82.5 ± 25.2 closed. The donor's remaining king signal is the index's structure (RAR-E72, RAR-E73); Phase F supersedes the classical evaluation, and an evaluation change under a fitted search follows PROCESS |
 | Speed | The C head (2026-10-21/22): **+28.92%** pooled-PGO bench NPS over the B.9 head (RAR-P39; `rustc 1.99.1`'s −1.63% included, RAR-P37, its code generation −3.6% without PGO, RAR-P38); in games (Colosseum CLI 0.4.0) +29.8% at 1T and −9.2% at 4T over the B.9 head (RAR-M73, RAR-M74), and −8.6% at 1T and −19.1% at 4T against Rarog 2.4.0 in the same games; the evaluation 21.1% of search samples, B.9's 24.3% (RAR-P40) |
 | Conversion | **13.8 draws and 0.0 losses per 1,000 games** after a persistent piece-up (RAR-M73's games, the C head; Poisson 95% 9.5–19.3 and 0–1.5), against the B.9 head's 15.8 and 0.8 (RAR-M64) and 2.4.0's 24.4 and 5.3: the draw rate's fall is not resolved |
-| Active experiment | None running. **D.1.6 closed 2026-10-26.** The won-ending stalls end on the fail-high stop at twice the target (`a79efe4`; RAR-R25 no harm: +4.3 ± 8.3 Elo at `3+0.03`, +4.9 ± 9.8 at `10+0.1`; every probed stall under the maximum). No repair in the search or evaluation landed (RAR-R22 H0, RAR-R23 harm at `10+0.1`, RAR-R27 H0 at −1.2 ± 3.0), and the instruments are removed (`42b001f`). **D.1.5 closed 2026-10-26 (RAR-R28): no harm.** `d1`'s head against 2.6.0 read +1.2 ± 8.9 Elo at `3+0.03`, −0.2 ± 7.8 at `10+0.1` and −8.0 ± 11.3 at four threads, with 0 time losses, rec2 in 5 ms and no game under 100 ms of clock. D.1's clock work is kept and D.1.2.2 ticks. **D.1.2.1:** won moves at ≥ 0.9 × the maximum are 0.24% and 0.85% (bar 0.2%), every such game won. Its residue read finds no cost: none in a game not won, no clock under 100 ms after, conversion within 13%, and a third of 2.6.0's rate at `10+0.1`. **D.1 closed 2026-10-26** by maintainer decision, the residue accepted. |
+| Active experiment | **D.2's night, read 2026-11-03** (RAR-M80, RAR-M81): the four-thread slow state is the scheduler's packing inside the slot. On one quiet host Rarog's four-thread side ran at 2.62–2.66 times its one-thread side in every leg and every fifth for 9.5 hours; Reckless's ran at 3.36–3.48 beside it. RAR-M81 reads UNRESOLVED by its rule (Rarog's leg in the slow state); in that state four threads are worth 0.82 doublings of Rarog's own time against Reckless's 1.28 and Stockfish's 1.31. RAR-M80: one game at a time costs nothing. The host sampler excludes core parking, frequency and scheduling; Rarog's threads get the same CPU time as Reckless's and do a third less with it. **Corrected 2026-11-03** (the audit, section 10): the sampler shows Windows packing both engines' four threads on two or three cores' siblings inside the eight-logical-CPU slot, Rarog's harder; neither engine places its threads on Windows. **RAR-M82, read 2026-11-03: RESTORED**: in a sibling-free slot (one logical CPU per physical core, 200 games each) Rarog's four threads run at 4.03 times one, every fifth 3.94–4.11, Reckless's at 4.45 (its night was packed too, 3.46); RAR-M81's and RAR-M78's deficit verdicts were measured in the packed state and are superseded, the explicit placement is the policy for rated multi-thread reads, and the self-relative comparison was run sibling-free as **RAR-M83, read 2026-11-04: NOT DEFICIENT**: four threads are worth 1.37 doublings of Rarog's own time against Reckless's 1.49 and Stockfish's 1.54, both differences' upper bounds above zero, all three legs valid; **D.2 is done**, its four-thread target closed `NO_CHANGE`, the open items (the four-thread holds among them) G.1's priors. **RAR-P54**, read 2026-11-03: REFUTED, both engines keep 0.63–0.65 beside a sibling, so the night's gap is placement alone and the sibling-free slot is the only fair multi-thread read. **D.6.15 done 2026-11-03** (`3a16fbb`): the search no longer adds its correction to the evaluator's draw verdicts; the per-FEN differential is confined to positions that reach a verdict, but 7 of 28 wrong-bishop draws still misread from cleared tables, so the rest is **D.6.23**. **D.3.1–D.3.8 done 2026-11-03** (`46ddf56`): eight protocol and shell defects repaired, each with its process test, fingerprint unchanged. **D.3.10 done 2026-11-03** (`fec05ef`): every `uci_process` session now completes the `isready` handshake UCI requires before the first search, so no search budget includes the engine's construction (8 ms alone, about 300 ms with 36 processes starting at once); the episodes that stretched it past 2 s did not reproduce under any load tried, and a recurrence reopens the leaf. **D.3.11 done 2026-11-03** (`0c970d9`): the KPK cold-start test failed under load on one scheduler delay landing on its single cold search, not on a cold-only cost; it now compares the fastest cold search of three fresh processes with the fastest warm one (0 of 240 loaded runs failed, against 3 of 240) and still fails when the bitbase is made lazy. **Triumviratus registered 2026-11-03** as a third donor, for mechanisms only (PROCESS; `analysis/triumviratus_review_2026-11-03.md`, RAR-X10–X14): Rarog passed its fifteen checks except a latent `i32` overflow in the correction bonus (**D.5.23**) and a FEN input for D.3.9; the Zobrist keys have full rank, now a test (`b028d52`). Its instruments are **D.4**: the wall-clock read (D.4.1) and the SPSA schedule read (D.4.2) are done and clean, and the search-path perft, pruning and reduction pricing, the loss table by cell and an identical-tree counter read follow. Phase F opens with seven requirements from its network path (own self-play only). Its gains of about +5 Elo or less wait in a new **Phase H** after the network, by the maintainer's placement rule. **Renumbered 2026-11-03** (maintainer): from D.4 on the numbering is the order of work, sub-step numbers kept: D.4 the instruments (was D.9), D.5 the repairs (was D.4), D.6 the strength candidates (was D.5), D.7 Linux large pages (was D.8), D.8 the simplification programme (was D.6), D.9 the tablebase policy (was D.7); HISTORY's number map resolves the old numbers. D.2 now has sub-steps: D.2.1–D.2.5 are its record, done; D.2.6 is RAR-M83 and D.2.7 the engine card or the close by its outcome. **D.3 done 2026-11-04** with D.3.9 (`8656ed0` to `d0759b9`): ordinary scores print below every tablebase win; a `position` that cannot be read lets a running search answer before the exit; a helper's panic and a terminal root under `go infinite` are tested; the parsers moved to `src/uci/` behind one option table and the search reports records the protocol writes (D.8.13, done with it), output unchanged and fingerprint exact; score normalisation is closed `NO_CHANGE` here and fitted per network in F.6. **D.5.24 done 2026-11-04** (`db4e9ae`): a `Hash` above the machine's physical memory is refused on every platform with a notice, the setting kept, and the option advertises that memory as its maximum; macOS had granted such a table lazily and stalled filling it. The unsafe floor is 24 (maintainer decision). Next: D.4.3, the search-path perft. The history of D.2's reads is in PLAN D.2; D.1's in PLAN D.1 |
 
 ## Holds and obligations
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
 | Originality disclosure (2026-10-23 review of 2.6.0): Stockfish's time-budget constants and Reckless's move-ordering and history constants were copied unchanged, the evaluation design is Stockfish 11's, Fathom is not named, and the README credits only "inspiration". The code and the evaluation weights are Rarog's own, and the move-similarity screen reads Rarog like an unrelated engine against both donors (56.4% Stockfish 11, 54.2% Reckless; related controls 67–69%) | **E.3.0**: rerun the scans on the release head, the maintainer settles the licence (Reckless is AGPL-3.0), then README, PROCESS's boundary and the binaries' notices | E.3.2, the 2.7.0 release cut |
-| RAR-M74's finding: the C head's thread scaling fell (in-game NPS 4T/1T 2.60 against the B.9 head's 3.72; −9.2% against B.9 at 4T) | A zero-game bench read at 1T and 4T on both heads (`tools/nps_scaling.ps1`) locates it in the engine or in the games' conditions | D.2 (Lazy SMP quality at 4T/8T), whose premise RAR-M46 had contradicted for 2.4.0 |
 
-Follow the earliest unblocked leaf in PLAN's register order, which the board's Now shows (the order can differ from the numbering). Held items stay unticked in place.
+Follow the earliest unblocked leaf in PLAN's register order, which the board's Now shows; the register is in ascending order, which is the order of work (maintainer decision 2026-11-03). Held items stay unticked in place.
 
 ## Model mapping
 

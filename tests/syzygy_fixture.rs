@@ -7,8 +7,8 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use rarog::board::{Board, Move};
-use rarog::search::{InfoSink, SearchEvent, Searcher};
-use rarog::search_options::SearchOptions;
+use rarog::search::options::SearchOptions;
+use rarog::search::{InfoReport, InfoSink, SearchEvent, Searcher};
 use rarog::syzygy::{self, Wdl};
 
 fn fixture_path() -> String {
@@ -20,6 +20,9 @@ struct Recorder(Arc<Mutex<Vec<String>>>);
 impl InfoSink for Recorder {
     fn line(&self, line: &str) {
         self.0.lock().expect("recorder lock").push(line.to_string());
+    }
+    fn report(&self, report: &InfoReport<'_>) {
+        self.line(&rarog::uci::info::report_line(report));
     }
 }
 
@@ -35,7 +38,7 @@ fn search(fen: &str, configure: impl FnOnce(&mut SearchOptions)) -> (Vec<String>
     };
     options.engine.syzygy.path = fixture_path();
     configure(&mut options);
-    searcher.configure(&options.engine);
+    searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
     assert_eq!(syzygy::largest(), 3, "the fixture holds 3-man tables");
     let result = searcher.search(board, &options, true, || SearchEvent::None);
     let raw = output.lock().expect("recorder lock").clone();

@@ -34,7 +34,7 @@ Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md
      completed iterations whose cost no longer grows.
 - **Baseline:** the 2.6.0 engine, `rarog-d15head-pext-pgo.exe` (`468ed7b`,
   `273FEDF4…`, bench 13,987,223), the same binary RAR-R16–R19 used.
-- **Candidate:** the throwaway branch `d16-arm2` at `6fd195e` on `097ea5d`,
+- **Candidate:** the throwaway branch `d16-arm2` at 6fd195e on `097ea5d`,
   recipe `analysis/arm_patches/6fd195e-rar-r20-d16fix4.patch` (SHA-256
   `f45cfa24…483bfa`; applied to `097ea5d` through a temporary index it
   reproduces the arm's tree `3678a90f…`), version `2.7.0-dev+d16fix4`.

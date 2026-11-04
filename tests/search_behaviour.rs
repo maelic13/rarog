@@ -1,9 +1,10 @@
 //! Search behaviour through the public API: root edge cases, `searchmoves`, node limits, quit and ponderhit, disabled tablebases.
 
 use rarog::board::{Board, Move};
+use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, SearchExit, Searcher};
-use rarog::search_options::SearchOptions;
 use rarog::syzygy;
+use rarog::uci::go;
 
 fn args(parts: &[&str]) -> Vec<String> {
     parts.iter().map(|part| (*part).to_string()).collect()
@@ -115,8 +116,10 @@ fn search_respects_searchmoves_root_filter() {
     let board = Board::default();
     let forced = board.parse_move("a2a3").expect("legal root move");
     let mut searcher = Searcher::default();
-    let mut options = SearchOptions::default();
-    options.set_search_parameters(&args(&["depth", "2", "searchmoves", "a2a3"]));
+    let options = SearchOptions {
+        limits: go::parse(&args(&["depth", "2", "searchmoves", "a2a3"])).limits,
+        ..SearchOptions::default()
+    };
 
     let result = searcher.search(board, &options, false, || SearchEvent::None);
 
@@ -128,8 +131,10 @@ fn search_uses_matching_searchmoves_when_some_requested_moves_are_illegal() {
     let board = Board::default();
     let forced = board.parse_move("a2a3").expect("legal root move");
     let mut searcher = Searcher::default();
-    let mut options = SearchOptions::default();
-    options.set_search_parameters(&args(&["depth", "2", "searchmoves", "a7a6", "a2a3"]));
+    let options = SearchOptions {
+        limits: go::parse(&args(&["depth", "2", "searchmoves", "a7a6", "a2a3"])).limits,
+        ..SearchOptions::default()
+    };
 
     let result = searcher.search(board, &options, false, || SearchEvent::None);
 
@@ -140,8 +145,10 @@ fn search_uses_matching_searchmoves_when_some_requested_moves_are_illegal() {
 fn search_falls_back_when_searchmoves_match_no_root_move() {
     let board = Board::default();
     let mut searcher = Searcher::default();
-    let mut options = SearchOptions::default();
-    options.set_search_parameters(&args(&["depth", "1", "searchmoves", "a7a6"]));
+    let options = SearchOptions {
+        limits: go::parse(&args(&["depth", "1", "searchmoves", "a7a6"])).limits,
+        ..SearchOptions::default()
+    };
 
     let result = searcher.search(board, &options, false, || SearchEvent::None);
 

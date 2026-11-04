@@ -22,8 +22,8 @@
 #![cfg(not(feature = "texel"))]
 
 use rarog::board::Board;
+use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
-use rarog::search_options::SearchOptions;
 use rarog::wac::{move_matches_any, wac_positions};
 
 const TEST_DEPTH: u32 = 6;

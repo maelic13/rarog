@@ -1,0 +1,31 @@
+diff --git a/src/eval/endgame/mod.rs b/src/eval/endgame/mod.rs
+index 84b2fc0..8019726 100644
+--- a/src/eval/endgame/mod.rs
++++ b/src/eval/endgame/mod.rs
+@@ -1038,3 +1038,26 @@ mod endgame_311c_tests {
+         }
+     }
+ }
++
++#[cfg(test)]
++mod scratch_verdict_classify {
++    use super::*;
++
++    /// One line per candidate: the FEN, a tab, 1 for a draw verdict else 0.
++    #[test]
++    #[ignore]
++    fn classify() {
++        let input = std::env::var("VERDICT_IN").expect("VERDICT_IN");
++        let output = std::env::var("VERDICT_OUT").expect("VERDICT_OUT");
++        let text = std::fs::read_to_string(input).expect("readable input");
++        let mut out = String::new();
++        for fen in text.lines() {
++            let board = Board::from_fen(fen).unwrap_or_else(|e| panic!("{fen}: {e}"));
++            out.push_str(fen);
++            out.push('\t');
++            out.push(if is_draw_verdict(&board) { '1' } else { '0' });
++            out.push('\n');
++        }
++        std::fs::write(output, out).expect("writable output");
++    }
++}

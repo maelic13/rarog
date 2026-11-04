@@ -10,17 +10,50 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ## [Unreleased]
 
+### Added
+
+- **`LargePages` option (Windows).** Large pages, on by default where
+  Windows allows them, can now be turned off without changing the account's
+  rights.
+
 ### Changed
 
 - **Time management reworked.** The engine stops thinking once it has proved a
   forced mate, keeps more of its clock in reserve when the clock runs low, and
   weighs how settled the best move is when deciding how long to think.
+- **Building from source: leave out `--native`.** The build instructions no
+  longer recommend it: on AMD Zen 3 it makes a slower engine than the same
+  build without it.
 
 ### Fixed
 
 - **No more full-time-limit thinks in won endings.** In some won endings
   the engine could spend its whole time limit on a single move. It now
   plays the move once the search has run well past its target.
+- **Recognised draws keep their verdict.** Endings the engine knows are dead
+  draws, such as a rook pawn with a bishop of the wrong colour, were often
+  scored as clearly winning during a search. The engine now keeps its draw
+  verdict for them.
+- **No endless think on an empty clock.** A `go` with a zero, negative or
+  unreadable clock now moves at once instead of searching until `stop`.
+- **The engine follows its GUI.** `setoption` during analysis no longer
+  stops the engine from answering `stop`; closing the engine's input ends an
+  infinite or ponder search; a closed output ends the engine normally
+  instead of crashing it; and an input line that is not valid text no longer
+  makes it exit.
+- **Smaller protocol fixes.** `stop` during `bench` or `wac` says the run was
+  interrupted instead of printing a short, normal-looking summary; a `Hash`
+  size the system cannot allocate is reported once, not after every later
+  option change; `searchmoves` with a single move searches it to the
+  requested depth; and a `position` the engine cannot read, sent during a
+  search, now lets that search give its move before the engine exits.
+- **Scores no longer look decided when they are not.** A position the
+  engine has not proved won could be reported with a score above every
+  tablebase win; ordinary scores now stay below the tablebase range.
+- **A `Hash` larger than the machine's memory is refused.** The engine
+  says so and keeps its current table, on every system; on macOS such a
+  setting used to stall the engine. The `Hash` option's maximum is now
+  the machine's memory.
 
 ## [2.6.0] - 2026-10-22
 

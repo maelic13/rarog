@@ -91,3 +91,45 @@ const fn sm64_next(state: &mut u64) -> u64 {
     z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
     z ^ (z >> 31)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ZOBRIST;
+
+    /// Every hash is an XOR of these keys, so the hashes can only reach the
+    /// subspace the keys span. A narrower generator (32 random bits widened
+    /// to 64 spans 32) makes unrelated positions share a key and the table
+    /// return false hits. Full rank also gives the table index and the tag,
+    /// which are bit slices of the hash, their full ranges.
+    #[test]
+    fn the_hash_keys_span_all_64_bits() {
+        let keys = ZOBRIST
+            .piece_keys
+            .iter()
+            .flatten()
+            .flatten()
+            .chain([&ZOBRIST.side_key])
+            .chain(&ZOBRIST.castling_keys)
+            .chain(&ZOBRIST.ep_keys);
+        let mut basis = [0u64; 64];
+        let mut rank = 0;
+        let mut count = 0;
+        for &key in keys {
+            count += 1;
+            let mut v = key;
+            for bit in (0..64).rev() {
+                if (v >> bit) & 1 == 0 {
+                    continue;
+                }
+                if basis[bit] == 0 {
+                    basis[bit] = v;
+                    rank += 1;
+                    break;
+                }
+                v ^= basis[bit];
+            }
+        }
+        assert_eq!(count, 2 * 6 * 64 + 1 + 16 + 8);
+        assert_eq!(rank, 64);
+    }
+}

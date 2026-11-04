@@ -4,14 +4,17 @@
 use std::sync::{Arc, Mutex};
 
 use rarog::board::{Board, Move};
-use rarog::search::{InfoSink, SearchEvent, Searcher};
-use rarog::search_options::SearchOptions;
+use rarog::search::options::SearchOptions;
+use rarog::search::{InfoReport, InfoSink, SearchEvent, Searcher};
 
 struct Recorder(Arc<Mutex<Vec<String>>>);
 
 impl InfoSink for Recorder {
     fn line(&self, line: &str) {
         self.0.lock().expect("recorder lock").push(line.to_string());
+    }
+    fn report(&self, report: &InfoReport<'_>) {
+        self.line(&rarog::uci::info::report_line(report));
     }
 }
 
@@ -75,7 +78,7 @@ fn search_lines(
     };
     options.limits.depth = Some(depth);
     configure(&mut options);
-    searcher.configure(&options.engine);
+    searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
     let result = searcher.search(board, &options, true, || SearchEvent::None);
     let raw = lines.lock().expect("recorder lock").clone();
     let parsed: Vec<Line> = raw.iter().filter_map(|line| parse(line)).collect();

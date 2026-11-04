@@ -18,7 +18,7 @@ Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md
   - Built clean in a worktree at `D:/code/rarog-d15head`, `cargo xtask build
     --arch pext --pgo`, `rustc 1.99.1`; bench **13,987,223**; `id name
     Rarog 2.7.0-dev`.
-- **Candidate:** the throwaway branch `d15-arm` at `082a780`, on `b96a9c1`.
+- **Candidate:** the throwaway branch `d15-arm` at 082a780 (recipe `analysis/arm_patches/082a780-rar-r16-d15gate.patch`), on `b96a9c1`.
   - `bake_d15gate.py` (`3ae073a9…`) rewrote the thirteen defaults in
     `src/search/params.rs` from `tools/results/d14-spsa-block1/result.json`,
     each anchor matched once and each current default asserted equal to the

@@ -1,0 +1,129 @@
+diff --git a/src/diag.rs b/src/diag.rs
+index 15267a8..a021a7d 100644
+--- a/src/diag.rs
++++ b/src/diag.rs
+@@ -106,6 +106,20 @@ pub mod counters {
+         // |residual| is `corr_resid_quiet_sum / corr_resid_quiet_n`.
+         corr_resid_quiet_n,
+         corr_resid_quiet_sum,
++        // Static-eval sites whose raw value is a hard draw verdict, by family,
++        // and those whose corrected value left 0 (D.5 item 15 probe).
++        verdict_leaf_kpk,
++        verdict_moved_kpk,
++        verdict_leaf_kbp,
++        verdict_moved_kbp,
++        verdict_leaf_minor,
++        verdict_moved_minor,
++        verdict_leaf_knnk,
++        verdict_moved_knnk,
++        verdict_leaf_other,
++        verdict_moved_other,
++        verdict_moved_abs_sum,
++        verdict_moved_ge50,
+         // Residual by HALFMOVE-CLOCK context. A new correction context needs
+         // held-out unique signal, so the measurement comes before any proposal.
+         // Rule-50 proximity is the
+diff --git a/src/eval/endgame/mod.rs b/src/eval/endgame/mod.rs
+index 5506d53..56ecc7d 100644
+--- a/src/eval/endgame/mod.rs
++++ b/src/eval/endgame/mod.rs
+@@ -645,6 +645,38 @@ pub(super) fn has_only_knights(board: &Board, color: Color, count: u32) -> bool
+         && board.pieces(color, Piece::Knight).count() == count
+ }
+ 
++/// The hard draw verdict `scale_endgame` returns for `board`, by family: 0 the
++/// drawn KPK, 1 the wrong-corner KBP, 2 a pawnless minor-material draw, 3 KNNK,
++/// 4 any other recogniser's zero scale; `None` when the value is no verdict.
++#[cfg(feature = "diag")]
++pub(crate) fn draw_verdict_kind(board: &Board) -> Option<usize> {
++    let bare_king = has_only_king(board, Color::White) || has_only_king(board, Color::Black);
++    if board.occupied_count() > 5 && !bare_king {
++        return None;
++    }
++    if knnkp_adjustment(board).is_some() {
++        return None;
++    }
++    if let Some((white_to_move, wk, bk, p)) = kpk_normalized(board) {
++        return (!kpk::probe(white_to_move, wk, bk, p)).then_some(0);
++    }
++    if kbp_wrong_corner_draw(board) {
++        return Some(1);
++    }
++    match specialized_endgame_scale(board) {
++        Some(0) => {
++            let pawnless = board.pieces(Color::White, Piece::Pawn).is_empty()
++                && board.pieces(Color::Black, Piece::Pawn).is_empty();
++            return Some(if pawnless { 2 } else { 4 });
++        }
++        Some(_) => return None,
++        None => {}
++    }
++    let knnk = (has_only_king(board, Color::White) && has_only_knights(board, Color::Black, 2))
++        || (has_only_king(board, Color::Black) && has_only_knights(board, Color::White, 2));
++    knnk.then_some(3)
++}
++
+ #[cfg(test)]
+ mod endgame_311c_tests {
+     use super::*;
+diff --git a/src/search/node.rs b/src/search/node.rs
+index 9b61499..a414af3 100644
+--- a/src/search/node.rs
++++ b/src/search/node.rs
+@@ -705,6 +705,8 @@ impl Searcher {
+                 ev.raw_static_eval
+             };
+             let (eval, correction) = self.corrected_eval_parts(board, raw, ply);
++            #[cfg(feature = "diag")]
++            probe_verdict(board, raw, eval);
+             (eval, raw, correction)
+         };
+         self.td.stack[ply].static_eval = static_eval;
+@@ -2230,7 +2232,10 @@ impl Searcher {
+                 } else {
+                     ev.raw_static_eval
+                 };
+-                (self.corrected_eval_from_raw(board, raw, ply), raw)
++                let eval = self.corrected_eval_from_raw(board, raw, ply);
++                #[cfg(feature = "diag")]
++                probe_verdict(board, raw, eval);
++                (eval, raw)
+             };
+             q_raw_static_eval = raw_stand_pat;
+             // Refine the stand pat with a bound-consistent TT score, as the
+@@ -2498,6 +2503,35 @@ impl Searcher {
+     }
+ }
+ 
++/// D.5 item 15 probe: a static eval whose raw value is a hard draw verdict,
++/// counted by family, and whether the correction moved it off 0.
++#[cfg(feature = "diag")]
++fn probe_verdict(board: &Board, raw: i32, eval: i32) {
++    use crate::diag::counters as c;
++    use std::sync::atomic::Ordering::Relaxed;
++    if raw != 0 {
++        return;
++    }
++    let Some(kind) = crate::eval::endgame::draw_verdict_kind(board) else {
++        return;
++    };
++    let (leaf, moved) = match kind {
++        0 => (&c::verdict_leaf_kpk, &c::verdict_moved_kpk),
++        1 => (&c::verdict_leaf_kbp, &c::verdict_moved_kbp),
++        2 => (&c::verdict_leaf_minor, &c::verdict_moved_minor),
++        3 => (&c::verdict_leaf_knnk, &c::verdict_moved_knnk),
++        _ => (&c::verdict_leaf_other, &c::verdict_moved_other),
++    };
++    leaf.fetch_add(1, Relaxed);
++    if eval != 0 {
++        moved.fetch_add(1, Relaxed);
++        c::verdict_moved_abs_sum.fetch_add(u64::from(eval.unsigned_abs()), Relaxed);
++        if eval.abs() >= 50 {
++            c::verdict_moved_ge50.fetch_add(1, Relaxed);
++        }
++    }
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;

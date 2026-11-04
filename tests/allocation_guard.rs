@@ -16,8 +16,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use rarog::bench::BENCH_FENS;
 use rarog::board::Board;
+use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
-use rarog::search_options::SearchOptions;
 
 static ALLOCATIONS: AtomicU64 = AtomicU64::new(0);
 
@@ -138,7 +138,7 @@ fn allocations_grow_per_iteration_never_per_node() {
             options.engine.threads = threads;
 
             let mut searcher = Searcher::default();
-            searcher.configure(&options.engine);
+            searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
             // The first search pays one-time set-up (lazy tables, the helper
             // pool's first jobs); it is not what this test is about.
             measured_search(&mut searcher, &options, SHALLOW_DEPTH);

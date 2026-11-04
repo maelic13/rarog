@@ -7,7 +7,7 @@ use rarog::crash_report;
 use rarog::engine::Engine;
 use rarog::engine_command::{EngineCommandQueue, EngineControl};
 use rarog::infra::{THREAD_STACK_SIZE, capitalize_first_letter};
-use rarog::uci_protocol::{CommandOutcome, UciProtocol};
+use rarog::uci::{CommandOutcome, UciProtocol};
 
 // The big tables in large pages where Windows grants them; see `large_pages`.
 #[cfg(windows)]
@@ -30,7 +30,7 @@ fn main() {
     crash_report::install_stdout_reporter();
     request_fine_grained_scheduling();
 
-    println!(
+    rarog::uci_println!(
         "{} {} by {}",
         capitalize_first_letter(env!("CARGO_PKG_NAME")),
         rarog::VERSION,
@@ -40,7 +40,7 @@ fn main() {
     // Say so when this CPU would be better served by a different asset.
     // Silent when the choice is already right, which is the common case.
     if let Some(advice) = cpu_advice::startup_advice() {
-        println!("{advice}");
+        rarog::uci_println!("{advice}");
     }
 
     // Before any input is read: `go` is timestamped as it is parsed, so a table
@@ -74,17 +74,20 @@ fn main() {
     let mut protocol = UciProtocol::new(commands, control);
     let outcome = if args.is_empty() {
         // No arguments: a GUI's path, byte-identical to before.
-        protocol.uci_loop();
-        CommandOutcome::Handled
+        protocol.uci_loop()
     } else {
         protocol.run_once(&args.join(" "))
     };
     engine_thread.join().expect("Engine thread failed.");
 
-    if outcome == CommandOutcome::Unknown {
+    match outcome {
         // Non-zero so a script can tell a typo from a result. The message came
         // from `unknown_command`, which has already printed and flushed.
-        process::exit(2);
+        CommandOutcome::Unknown => process::exit(2),
+        // The critical error is printed; the engine thread has answered any
+        // search it was given.
+        CommandOutcome::Fatal => process::exit(1),
+        CommandOutcome::Handled | CommandOutcome::Quit => {}
     }
 }
 

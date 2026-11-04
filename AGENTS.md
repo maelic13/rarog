@@ -199,7 +199,7 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   value and require the numbers to move. Proving the engine responds is not
   proving the instrument reports it.
 - A behaviour-neutral engine change reproduces the immediate development
-  fingerprint (currently **13,987,223 / EBF 2.565**) plus targeted checks
+  fingerprint (currently **14,749,043 / EBF 2.564**) plus targeted checks
   for behaviour the suite does not reach: an identical bench does not prove a
   narrow feature neutral (RAR-E10). Investigate a cross-platform mismatch
   (RAR-P14, RAR-P16). Docs-only work verifies the diff has no engine inputs.
@@ -288,19 +288,17 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   most a pointer beside that information, never its only carrier (RAR-S54;
   on 2026-09-27, 71 cited commits were on no ref,
   `analysis/ledger_commits_2026-09-27.md`).
-- Only where exactness is needed and a recipe is impractical (an
-  implementation too large to be a patch, or the base a patch applies to)
-  is a commit preserved, and then by an annotated tag named
-  `<purpose>/<name>` (as `arm/*`, `oracle/*`), never by a kept branch, and
-  only once the maintainer agrees: an agent proposes such a tag and never
-  creates one alone (maintainer decision 2026-10-09). The
-  citing document names the tag, why it exists and the condition that
-  retires it. Neither a plain `git push` nor `--follow-tags` sends a tag on a
-  commit outside the pushed branches: after creating one, tell the
-  maintainer and give `git push origin <tag>`; pushing stays theirs.
+- A commit is preserved by its recipe in Git, never by a kept branch or a
+  new tag: a few lines of values in the citing record, or a small patch
+  file in `analysis/arm_patches/` proved to reproduce the commit's tree from
+  a base on a kept ref; the citing document then names the recipe, not the
+  hash (maintainer decision 2026-11-04, replacing the annotated tags of
+  2026-10-09). The tags kept are the releases (`v*`) and the oracle's three
+  (`oracle/*`, a vendored Stockfish tree too large for a patch), which
+  retire by the conditions their records state; an agent creates no tag.
 - No mess: a throwaway work branch is deleted once its information is
-  recorded or its commit tagged, and at each phase close tags and branches
-  are reviewed and any whose retirement condition fired are removed. Before
+  recorded, and at each phase close tags and branches are reviewed and any
+  whose retirement condition fired are removed. Before
   removing one, check what still cites it and whether anything else holds
   its commits (`git for-each-ref --contains <sha>`; empty means it would
   dangle). Deleting a remote tag or branch is the maintainer's command.
@@ -334,6 +332,16 @@ never by eyeballing, and never by assuming a tool did what its name says.**
      configuration, or could be large either way, keeps the symmetric
      `[-5,5]` with its cap (RAR-S62; about 12,000 games), which excludes
      harm near −5.
+- A repair's registration states its measured exposure: the share of
+  recent gate games that reach the repair's domain, from Colosseum's
+  database, so its cap and harm rule are read against how often it can
+  matter (maintainer decision 2026-11-02).
+- A correct repair that fails its harm rule leaves `master` by the gate,
+  but the revert never closes its defect: the defect stays open in its
+  owner leaf, and a rework is registered as a new experiment, the repair
+  with the named constants that were tuned around the defect refitted.
+  That is a new registration, not a rescue inside the failed one
+  (maintainer decision 2026-11-02).
 - Both harnesses run the pentanomial GSPRT (`model=normalized`); the gap to
   fishtest is bounds and budget, not the test. A registered experiment names
   its runner and never changes it mid-way.

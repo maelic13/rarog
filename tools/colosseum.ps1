@@ -26,8 +26,10 @@
         and a Core* surface requires a tune build that advertises them;
       - the configuration Colosseum resolves is Rarog's policy, field by field:
         no adjudication, the registered clock and margin, Hash and Threads, the
-        UHO book in random order, automatic placement with a core of headroom,
-        never CPU 0, and the registered concurrency;
+        UHO book in random order, placement automatic with a core of headroom
+        or an explicit list of game cores (one logical CPU per physical core,
+        no SMT sibling, a game core left free), never CPU 0, and the
+        registered concurrency;
       - the run directory is described by a manifest that hashes every input,
         and by the dry run that produced the configuration;
       - after the run, the CLI's own record shows no fault and no excess time
@@ -45,6 +47,24 @@
     spsa      -> a tune. Needs -ConfigGroup, -Iterations and -TotalGames;
                  -SeedFrom <run dir> starts a block from a finished tune (PLAN rule 7c).
     gauntlet  -> a rating gauntlet; participants are passed in -ExtraArgs.
+
+.PARAMETER NameA
+    Arm A's name, passed to the runner as its label (--a-label), so it names
+    the side in the PGN, the run record and Colosseum's search statistics.
+    -NameB is arm B's. The two must differ: with one executable on both sides
+    the runner would otherwise merge the two sides' statistics under one name.
+
+.PARAMETER ThreadsB
+    Arm B's thread count, when it differs from arm A's (-Threads): a
+    self-relative scaling match plays one engine at four threads against
+    itself at one. A sprt or match only. Each game slot needs a physical core
+    per thread of the larger side (--cores-per-game).
+
+.PARAMETER BaseMsB
+    Arm B's clock base, when it differs from arm A's (-BaseMs): a time-odds
+    match plays one engine at twice the time against itself. -IncrementMsB is
+    arm B's increment; each defaults to arm A's when not given. A sprt or
+    match on a clock only.
 
 .PARAMETER Bracket
     Which SPRT run file: default [0,3], removal [-1.75,0.25], repair [-5,5],
@@ -114,6 +134,9 @@ param(
     [string[]]$OptionsB = @(),
     [int]$Hash = 64,
     [int]$Threads = 1,
+    [ValidateRange(1, 64)][int]$ThreadsB = 0,
+    [ValidateRange(1, 3600000)][int]$BaseMsB = 0,
+    [ValidateRange(0, 60000)][int]$IncrementMsB = 0,
     [int]$BaseMs = 3000,
     [int]$IncrementMs = 30,
     [int]$MarginMs = 20,
@@ -172,6 +195,9 @@ $modeIgnores = switch ($Mode) {
                      Iterations = "-Iterations is a tune horizon" } }
     "calibrate" { @{ MaxPairs = "-MaxPairs caps an SPRT; a null pair is sized by -Games"
                      Bracket = "-Bracket selects SPRT bounds; a null pair has none"
+                     ThreadsB = "-ThreadsB gives arm B its own thread count; a null pair's arms are identical"
+                     BaseMsB = "-BaseMsB gives arm B its own clock; a null pair's arms are identical"
+                     IncrementMsB = "-IncrementMsB gives arm B its own clock; a null pair's arms are identical"
                      TotalGames = "-TotalGames is a tune budget"
                      ConfigGroup = "-ConfigGroup names a tune surface"
                      SeedFrom = "-SeedFrom seeds a tune from a finished one"
@@ -180,7 +206,10 @@ $modeIgnores = switch ($Mode) {
                      Games = "-Games sizes a fixed match; a tune is sized by -TotalGames"
                      Bracket = "-Bracket selects SPRT bounds; a tune has none"
                      EngineA = "a tune has one engine: pass -Engine"
-                     EngineB = "a tune has one engine: pass -Engine" } }
+                     EngineB = "a tune has one engine: pass -Engine"
+                     ThreadsB = "-ThreadsB gives arm B its own thread count; a tune has one engine"
+                     BaseMsB = "-BaseMsB gives arm B its own clock; a tune has one engine"
+                     IncrementMsB = "-IncrementMsB gives arm B its own clock; a tune has one engine" } }
     "gauntlet"  { @{ MaxPairs = "-MaxPairs caps an SPRT"
                      Bracket = "-Bracket selects SPRT bounds"
                      TotalGames = "-TotalGames is a tune budget"
@@ -188,7 +217,10 @@ $modeIgnores = switch ($Mode) {
                      SeedFrom = "-SeedFrom seeds a tune from a finished one"
                      Iterations = "-Iterations is a tune horizon"
                      EngineA = "gauntlet participants are passed in -ExtraArgs"
-                     EngineB = "gauntlet participants are passed in -ExtraArgs" } }
+                     EngineB = "gauntlet participants are passed in -ExtraArgs"
+                     ThreadsB = "-ThreadsB gives arm B its own thread count; gauntlet participants carry their own"
+                     BaseMsB = "-BaseMsB gives arm B its own clock; a gauntlet has one clock"
+                     IncrementMsB = "-IncrementMsB gives arm B its own clock; a gauntlet has one clock" } }
 }
 $ignored = @($modeIgnores.Keys | Where-Object { $PSBoundParameters.ContainsKey($_) })
 if ($ignored.Count -gt 0) {
@@ -199,6 +231,13 @@ if ($ignored.Count -gt 0) {
 
 # ─── Mode-specific requirements ───────────────────────────────────────────
 $twoArmModes = @("sprt", "match", "calibrate")
+# Arm B plays at -ThreadsB and on -BaseMsB/-IncrementMsB when they are given,
+# otherwise at arm A's count and on arm A's clock.
+$threadsB = if ($ThreadsB -gt 0) { $ThreadsB } else { $Threads }
+$baseMsB = if ($PSBoundParameters.ContainsKey('BaseMsB')) { $BaseMsB } else { $BaseMs }
+$incrementMsB = if ($PSBoundParameters.ContainsKey('IncrementMsB')) { $IncrementMsB } else { $IncrementMs }
+$clockOdds = $baseMsB -ne $BaseMs -or $incrementMsB -ne $IncrementMs
+if ($clockOdds -and $Nodes -gt 0) { throw "-BaseMsB and -IncrementMsB set a clock; a fixed-node read (-Nodes) has none." }
 if ($twoArmModes -contains $Mode) {
     if (-not $EngineA -or -not $EngineB) { throw "-Mode $Mode needs -EngineA and -EngineB." }
 }
@@ -241,6 +280,7 @@ $RunFile = (Resolve-Path -LiteralPath $RunFile).Path
 
 $engines = @()
 if ($twoArmModes -contains $Mode) {
+    if ($NameA -eq $NameB) { throw "-NameA and -NameB are both '$NameA'; the arms need distinct names." }
     $engines = @(
         [pscustomobject]@{ Path = $EngineA; Label = $NameA; Options = $OptionsA }
         [pscustomobject]@{ Path = $EngineB; Label = $NameB; Options = $OptionsB }
@@ -308,21 +348,23 @@ if ($twoArmModes -contains $Mode) {
         # One binary on both sides is legitimate when the arms differ by UCI
         # options: it removes the ~0.36% per-build PGO offset. Refuse only when
         # binary AND options match, because then the test is a null in disguise.
-        if (($OptionsA -join '|') -eq ($OptionsB -join '|')) {
+        if (($OptionsA -join '|') -eq ($OptionsB -join '|') -and $threadsB -eq $Threads -and -not $clockOdds) {
             throw ("Identical binaries AND options require -Mode calibrate; an SPRT " +
                    "centred on zero is not a valid null calibration.")
         }
-        Write-Host "  NOTE: one binary on both sides, differing only by UCI options." -ForegroundColor Yellow
+        Write-Host "  NOTE: one binary on both sides, differing only by UCI options, threads or clock." -ForegroundColor Yellow
     }
 }
 
 # ─── Guard 7: every requested option is advertised ────────────────────────
 $advertised = @{}
-foreach ($arm in $engines) {
+for ($i = 0; $i -lt $engines.Count; $i++) {
+    $arm = $engines[$i]
     $details = @(Get-EngineUciOptions -Path $arm.Path -Detailed)
     $advertised[$arm.Label] = $details
     Assert-AdvertisedOptions -Advertised $details -Wanted $arm.Options -Label $arm.Label
-    Assert-AdvertisedOptions -Advertised $details -Wanted @("Hash=$Hash", "Threads=$Threads") -Label $arm.Label
+    $armThreads = if ($i -eq 1) { $threadsB } else { $Threads }
+    Assert-AdvertisedOptions -Advertised $details -Wanted @("Hash=$Hash", "Threads=$armThreads") -Label $arm.Label
 }
 
 # ─── Guard 8: the tune surface belongs to this binary and this horizon ────
@@ -432,22 +474,30 @@ switch ($Mode) {
     "spsa"      { $commandArgs += @($engines[0].Path, '--total-games', "$TotalGames") }
 }
 if ($Mode -eq "spsa" -and $SeedFrom) { $commandArgs += @('--seed-from', $SeedFrom) }
+# Without labels the runner names each side after its executable, and a
+# same-binary A/B becomes `name (A)` and `name (B)`; the labels give every
+# report and the PGN the arms' registered names instead.
+if ($twoArmModes -contains $Mode) { $commandArgs += @('--a-label', $NameA, '--b-label', $NameB) }
 # A side-specific option list on the command line REPLACES the run file's list
 # for that side (Colosseum's command-line-over-run-file rule applies to the
 # whole key), so a bare `-OptionsA CoreX=1` would play arm A without Hash and
 # Threads. The shared options are therefore restated ahead of the arm's own,
 # unless the arm sets them itself; the policy check reads the result.
-$sharedOptions = @("Hash=$Hash", "Threads=$Threads")
-function Get-SideOptions { param([string[]]$Own)
+# Every side states its own list, always: the run file's lists carry the run
+# file's Hash and Threads, so -Hash alone would otherwise never reach the
+# engines (a time-odds leg at -Hash 256 resolved to the run file's 64).
+function Get-SideOptions { param([string[]]$Own, [int]$SideThreads)
+    $shared = @("Hash=$Hash", "Threads=$SideThreads")
     $names = @($Own | ForEach-Object { ($_ -split '=', 2)[0].Trim().ToLowerInvariant() })
-    @($sharedOptions | Where-Object { $names -notcontains ($_ -split '=', 2)[0].ToLowerInvariant() }) + @($Own)
+    @($shared | Where-Object { $names -notcontains ($_ -split '=', 2)[0].ToLowerInvariant() }) + @($Own)
 }
 if ($Mode -ne "spsa" -and $Mode -ne "gauntlet") {
-    if ($OptionsA.Count -gt 0) { foreach ($option in (Get-SideOptions $OptionsA)) { $commandArgs += @('--a-option', $option) } }
-    if ($OptionsB.Count -gt 0) { foreach ($option in (Get-SideOptions $OptionsB)) { $commandArgs += @('--b-option', $option) } }
+    foreach ($option in (Get-SideOptions $OptionsA $Threads)) { $commandArgs += @('--a-option', $option) }
+    foreach ($option in (Get-SideOptions $OptionsB $threadsB)) { $commandArgs += @('--b-option', $option) }
 }
 if ($Concurrency -gt 0) { $commandArgs += @('--concurrency', "$Concurrency") }
 if ($Nodes -gt 0) { $commandArgs += @('--a-nodes', "$Nodes", '--b-nodes', "$Nodes") }
+if ($clockOdds) { $commandArgs += @('--b-base-ms', "$baseMsB", '--b-increment-ms', "$incrementMsB") }
 $commandArgs += @('--seed', "$Seed", '--dir', $Dir)
 if ($ExtraArgs.Count -gt 0) { $commandArgs += $ExtraArgs }
 
@@ -509,14 +559,16 @@ foreach ($pair in $controls) {
             Add-Violation "$name is $($control.control.Nodes.nodes) nodes a move, expected $Nodes"
         }
     } else {
+        $expectedBase = if ($name -eq 'engine_b_time_control') { $baseMsB } else { $BaseMs }
+        $expectedIncrement = if ($name -eq 'engine_b_time_control') { $incrementMsB } else { $IncrementMs }
         if ($kind -ne 'Increment') {
-            Add-Violation "$name is a '$kind' control, expected the clock ${BaseMs}+${IncrementMs} ms (pass -Nodes for a fixed-node read)"
+            Add-Violation "$name is a '$kind' control, expected the clock ${expectedBase}+${expectedIncrement} ms (pass -Nodes for a fixed-node read)"
         } else {
-            if ([int]$control.control.Increment.base_ms -ne $BaseMs) {
-                Add-Violation "$name base is $($control.control.Increment.base_ms) ms, expected $BaseMs"
+            if ([int]$control.control.Increment.base_ms -ne $expectedBase) {
+                Add-Violation "$name base is $($control.control.Increment.base_ms) ms, expected $expectedBase"
             }
-            if ([int]$control.control.Increment.inc_ms -ne $IncrementMs) {
-                Add-Violation "$name increment is $($control.control.Increment.inc_ms) ms, expected $IncrementMs"
+            if ([int]$control.control.Increment.inc_ms -ne $expectedIncrement) {
+                Add-Violation "$name increment is $($control.control.Increment.inc_ms) ms, expected $expectedIncrement"
             }
         }
     }
@@ -531,7 +583,8 @@ foreach ($field in @('engine_a', 'engine_b', 'engine')) {
 foreach ($pair in $optionSets) {
     $name = $pair[0]; $options = $pair[1]
     if ([int]$options.Hash.value -ne $Hash) { Add-Violation "$name Hash is $($options.Hash.value), expected $Hash" }
-    if ([int]$options.Threads.value -ne $Threads) { Add-Violation "$name Threads is $($options.Threads.value), expected $Threads" }
+    $expectedThreads = if ($name -eq 'engine_b') { $threadsB } else { $Threads }
+    if ([int]$options.Threads.value -ne $expectedThreads) { Add-Violation "$name Threads is $($options.Threads.value), expected $expectedThreads" }
 }
 # Tablebases: a side that probes must probe the same tables as the other, and
 # the tables must be there, or the two sides play different games without a
@@ -589,15 +642,10 @@ if ([int]$resolved.execution.concurrency -ne $expectedConcurrency) {
 # four-thread engines on one core, and nothing refused it (RAR-M76 passed
 # `--cores-per-game 4` by hand).
 $coresPerGame = [int]$resolved.execution.allocation.cores_per_game
-if ($Threads -gt 1 -and $coresPerGame -lt $Threads) {
-    Add-Violation ("cores_per_game is $coresPerGame for Threads $Threads, so the engines' threads share " +
-        "fewer physical cores than they run; pass -ExtraArgs @('--cores-per-game', '$Threads')")
-}
-if ("$($resolved.execution.placement_policy.mode)" -ne "auto") {
-    Add-Violation "placement is '$($resolved.execution.placement_policy.mode)', expected auto (RAR-M48: unpinned games carry a hidden per-run offset)"
-}
-if ([int]$resolved.execution.placement_policy.headroom_physical_cores -lt 1) {
-    Add-Violation "placement leaves no physical core of headroom"
+$maxThreads = [Math]::Max($Threads, $threadsB)
+if ($maxThreads -gt 1 -and $coresPerGame -lt $maxThreads) {
+    Add-Violation ("cores_per_game is $coresPerGame for Threads $maxThreads, so the engines' threads share " +
+        "fewer physical cores than they run; pass -ExtraArgs @('--cores-per-game', '$maxThreads')")
 }
 # Every run keeps each slot's engine processes between games. A command's
 # default has changed between runner versions, so the resolved value is read.
@@ -607,8 +655,7 @@ if (-not $processes -or "$($processes.Value)" -ne 'per-slot') {
 }
 if ([int]$resolved.master_seed -ne $Seed) {
     Add-Violation "resolved seed is $($resolved.master_seed), expected $Seed"
-}
-if ($Mode -eq "sprt") {
+}if ($Mode -eq "sprt") {
     if ("$($resolved.design.parameters.model)" -ne "normalized") {
         Add-Violation "SPRT model is '$($resolved.design.parameters.model)', expected normalized"
     }
@@ -663,6 +710,35 @@ if ($slotCpus.Count -gt 0 -and $offGameCores.Count -gt 0) {
     Add-Violation ("slots use physical cores outside the game-core set (" +
         ($offGameCores -join ',') + "); CPU 0 is reserved for the operating system")
 }
+# Placement is automatic with a core of headroom (RAR-M48: unpinned games
+# carry a hidden per-run offset), or an explicit list of game cores: one
+# logical CPU per physical core and no SMT sibling, so a multi-thread engine
+# measures with each thread on its own core (Windows packs four threads on two
+# cores' siblings inside an auto slot, RAR-M81's sampler), and a game core
+# left free as headroom.
+$placement = $resolved.execution.placement_policy
+switch ("$($placement.mode)") {
+    'auto' {
+        if ([int]$placement.headroom_physical_cores -lt 1) {
+            Add-Violation "placement leaves no physical core of headroom"
+        }
+    }
+    'explicit' {
+        $listed = @($placement.cpus | ForEach-Object { [int]$_.number } | Sort-Object -Unique)
+        $notGame = @($listed | Where-Object { $gameCpus -notcontains $_ })
+        if ($notGame.Count -gt 0) {
+            Add-Violation ("explicit placement names logical CPUs outside the game-core set (" +
+                ($notGame -join ',') + "): one logical CPU per physical core, never CPU 0, no SMT sibling")
+        }
+        $freeGameCores = @($gameCpus | Where-Object { $slotCpus -notcontains $_ })
+        if ($freeGameCores.Count -lt 1) {
+            Add-Violation "explicit placement leaves no game core free as headroom"
+        }
+    }
+    default {
+        Add-Violation "placement is '$($placement.mode)', expected auto or an explicit game-core list (RAR-M48: unpinned games carry a hidden per-run offset)"
+    }
+}
 
 if ($violations.Count -gt 0) {
     Write-Host ""
@@ -711,17 +787,25 @@ $lines.Add("book:             $Book")
 $lines.Add("book_sha256:      $(Get-HarnessSha256 $Book)")
 $lines.Add("opening_order:    $($resolved.openings.order)")
 $lines.Add("opening_seed:     $Seed")
-$lines.Add("time_control:     $(if ($Nodes -gt 0) { "$Nodes nodes a move (fixed nodes; no clock, no time management)" } else { "${BaseMs}ms + ${IncrementMs}ms" }); margin ${MarginMs}ms")
+$clockText = if ($Nodes -gt 0) { "$Nodes nodes a move (fixed nodes; no clock, no time management)" }
+             elseif ($clockOdds) { "A ${BaseMs}ms + ${IncrementMs}ms, B ${baseMsB}ms + ${incrementMsB}ms" }
+             else { "${BaseMs}ms + ${IncrementMs}ms" }
+$lines.Add("time_control:     $clockText; margin ${MarginMs}ms")
 $lines.Add("adjudication:     none (games play to a rules result)")
 $lines.Add("hash_mb:          $Hash")
-$lines.Add("threads:          $Threads")
+$lines.Add("threads:          $(if ($threadsB -ne $Threads) { "A $Threads, B $threadsB" } else { $Threads })")
 $lines.Add("concurrency:      $($resolved.execution.concurrency)")
-$lines.Add("placement:        $($resolved.execution.placement_policy.mode), headroom $($resolved.execution.placement_policy.headroom_physical_cores) physical core(s)")
+$placementText = if ("$($placement.mode)" -eq 'explicit') {
+    "explicit (" + (@($placement.cpus | ForEach-Object { [int]$_.number }) -join ',') + "), one logical CPU per physical core"
+} else {
+    "$($placement.mode), headroom $($placement.headroom_physical_cores) physical core(s)"
+}
+$lines.Add("placement:        $placementText")
 $lines.Add("slot_cpus:        $($slotCpus -join ',')")
 if ($Mode -eq "sprt") {
     $design = $resolved.design.parameters
     $lines.Add("test_design:      SPRT elo0=$($design.elo0) elo1=$($design.elo1) alpha=$($design.alpha) beta=$($design.beta) model=$($design.model)")
-    $lines.Add("game_budget:      $($resolved.design.max_pairs) pairs = $([int]$resolved.design.max_pairs * 2) games")
+    $lines.Add("game_budget:      $([int]$resolved.design.max_pairs * 2) games ($($resolved.design.max_pairs) colour-reversed pairs)")
 }
 if ($Mode -eq "spsa") {
     $lines.Add("tune_surface:     $ConfigGroup, $($resolved.tune.parameters.Count) coordinates")
@@ -746,9 +830,9 @@ Write-Host "  Colosseum $Mode$(if ($Mode -eq 'sprt') { " [$Bracket]" }): $(($eng
 if ($Mode -eq "sprt") {
     $design = $resolved.design.parameters
     Write-Host "  H0: nElo<=$($design.elo0)   H1: nElo>=$($design.elo1)   alpha=$($design.alpha)  beta=$($design.beta)"
-    Write-Host "  Cap: $($resolved.design.max_pairs) pairs; no boundary at the cap is unresolved, not an acceptance"
+    Write-Host "  Cap: $([int]$resolved.design.max_pairs * 2) games; no boundary at the cap is unresolved, not an acceptance"
 }
-Write-Host "  TC: $(if ($Nodes -gt 0) { "$Nodes nodes/move (fixed; speed and time management removed)" } else { "${BaseMs}+${IncrementMs}ms" })  Margin: ${MarginMs}ms  Hash: ${Hash}  Threads: $Threads  Conc: $($resolved.execution.concurrency)"
+Write-Host "  TC: $(if ($Nodes -gt 0) { "$Nodes nodes/move (fixed; speed and time management removed)" } elseif ($clockOdds) { "A ${BaseMs}+${IncrementMs}ms, B ${baseMsB}+${incrementMsB}ms" } else { "${BaseMs}+${IncrementMs}ms" })  Margin: ${MarginMs}ms  Hash: ${Hash}  Threads: $(if ($threadsB -ne $Threads) { "A $Threads, B $threadsB" } else { $Threads })  Conc: $($resolved.execution.concurrency)"
 Write-Host "  Adjudication: none    Book: $(Split-Path $Book -Leaf) (random, seed $Seed)"
 Write-Host "  Runner: $($cli.Version), sha256 $($cli.Sha256.Substring(0,8))..., pinned at $($cli.Pin.revision.Substring(0,7))"
 Write-Host "  Manifest: $manifestPath"
@@ -831,7 +915,7 @@ $exit = Resolve-ColosseumExit -Mode $Mode -ExitCode $runExit
 $completion.Add("exit_code:        $runExit ($(if ($exit.Verdict) { $exit.Verdict } else { $exit.Kind }))")
 $completion.Add("run_status:       $($record.status)")
 $completion.Add("scored_games:     $scored")
-$completion.Add("completed_pairs:  $($record.official_sample.completed_pairs)")
+$completion.Add("completed_pairs:  $($record.official_sample.completed_pairs) ($([int]$record.official_sample.completed_pairs * 2) paired games)")
 $completion.Add("pentanomial:      $pentanomial")
 $completion.Add("faults:           $faults")
 if ($Mode -eq 'spsa') {
@@ -841,7 +925,11 @@ if ($Mode -eq 'spsa') {
 } else {
     foreach ($line in (Format-ColosseumResults -Record $record)) { $completion.Add($line) }
 }
-foreach ($artifact in @('result.json', 'run-record.json', 'games.pgn', 'resolved-config.json')) {
+# The runner writes its end-of-run results to results.txt rather than the
+# console; the manifest quotes the same figures from the run record above.
+$resultsText = Join-Path $Dir "results.txt"
+if (Test-Path -LiteralPath $resultsText) { $completion.Add("results_file:     $resultsText") }
+foreach ($artifact in @('result.json', 'results.txt', 'run-record.json', 'games.pgn', 'resolved-config.json')) {
     $path = Join-Path $Dir $artifact
     if (Test-Path -LiteralPath $path) { $completion.Add("$($artifact)_sha256: $(Get-HarnessSha256 $path)") }
 }
@@ -873,6 +961,7 @@ Write-Host ""
 Write-Host "Run finished: status '$($record.status)', outcome '$($exit.Verdict)', $scored scored games."
 Write-Host "  Manifest: $manifestPath"
 Write-Host "  Log:      $logPath"
+if (Test-Path -LiteralPath $resultsText) { Write-Host "  Results:  $resultsText" }
 Write-Host "  Evidence: $Dir"
 if ($Mode -eq "sprt") {
     Write-Host "  Only an H1 boundary promotes the candidate; a cap stop is unresolved and must be parked or reverted."

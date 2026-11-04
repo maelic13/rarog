@@ -13,9 +13,10 @@
     Native (-Native switch): runs `cargo xtask build --arch pext --native --pgo` —
     produces a PGO-optimised binary built with `-C target-cpu=native` for the
     exact host CPU (e.g. znver3 on a 5950X), instead of the portable
-    x86-64-v3 baseline.  Use for local/own-match testing and deployment on the
-    machine that built it; do NOT distribute this binary, since it is not
-    guaranteed to run on other CPUs.
+    x86-64-v3 baseline.  It is not the fast build: on the 5950X it read 3.8%
+    slower than the normal mode (RAR-P51), so match and pool binaries use the
+    normal mode.  Do NOT distribute this binary, since it is not guaranteed to
+    run on other CPUs.
 
     Tune (-Tune switch): runs `cargo build --release --features tune` — produces
     a non-PGO pext binary with search-parameter UCI options exposed.  Use ONLY

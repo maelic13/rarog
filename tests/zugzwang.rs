@@ -28,8 +28,8 @@
 //! status and score are stated in comments as observed at depth 12.
 
 use rarog::board::{Board, Move};
+use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
-use rarog::search_options::SearchOptions;
 
 fn search(fen: &str, depth: u32) -> (Move, i32) {
     search_with(fen, depth, |_| {})

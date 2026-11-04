@@ -6,8 +6,8 @@ use crate::bench::BENCH_FENS;
 use crate::board::Board;
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl, SearchControl};
 use crate::infra::flush_stdout;
-use crate::search::{InfoSink, SearchEvent, SearchExit, SearchResult, Searcher};
-use crate::search_options::SearchOptions;
+use crate::search::options::SearchOptions;
+use crate::search::{InfoReport, InfoSink, SearchEvent, SearchExit, SearchResult, Searcher};
 use crate::wac::{move_matches_any, wac_positions};
 
 pub struct Engine {
@@ -22,7 +22,10 @@ struct StdoutSink;
 
 impl InfoSink for StdoutSink {
     fn line(&self, line: &str) {
-        println!("{line}");
+        crate::uci_println!("{line}");
+    }
+    fn report(&self, report: &InfoReport<'_>) {
+        self.line(&crate::uci::info::report_line(report));
     }
 }
 
@@ -41,7 +44,9 @@ impl Engine {
     }
 
     pub fn start(&mut self) {
-        while self.handle(self.commands.wait_pop()) == SearchExit::Stop {}
+        while self.handle(self.commands.wait_pop()) == SearchExit::Stop
+            && !crate::infra::stdout_closed()
+        {}
     }
 
     /// Run one command. `Quit` from here ends the engine thread.
@@ -67,8 +72,8 @@ impl Engine {
                 self.control.finish_search_if_current(epoch);
                 SearchExit::Quit
             }
-            EngineCommand::Configure(options) => {
-                self.searcher.configure(&options);
+            EngineCommand::Configure { options, hash } => {
+                self.searcher.configure(&options, hash);
                 SearchExit::Stop
             }
             EngineCommand::ClearHash => {
@@ -79,7 +84,6 @@ impl Engine {
                 self.searcher.new_game();
                 SearchExit::Stop
             }
-            EngineCommand::PonderHit => SearchExit::Stop,
             EngineCommand::Ready(ready) => {
                 let _ = ready.send(());
                 SearchExit::Stop
@@ -111,18 +115,16 @@ impl Engine {
 
     fn search(&mut self, options: &SearchOptions, emit_info: bool, epoch: u64) -> SearchResult {
         let control = Arc::clone(&self.control);
+        let unbounded = options.limits.infinite || options.limits.ponder;
         self.searcher
-            .search(
-                options.board.clone(),
-                options,
-                emit_info,
-                || match control.poll_search(epoch) {
+            .search(options.board.clone(), options, emit_info, || {
+                match poll(&control, epoch, unbounded) {
                     SearchControl::Quit => SearchEvent::Quit,
                     SearchControl::Stop => SearchEvent::Stop,
                     SearchControl::PonderHit => SearchEvent::PonderHit,
                     SearchControl::None => SearchEvent::None,
-                },
-            )
+                }
+            })
     }
 
     fn wait_until_bestmove_allowed(
@@ -137,7 +139,7 @@ impl Engine {
         }
 
         loop {
-            match self.control.poll_search(epoch) {
+            match poll(&self.control, epoch, true) {
                 SearchControl::Quit => return SearchExit::Quit,
                 SearchControl::Stop | SearchControl::PonderHit => return SearchExit::Stop,
                 SearchControl::None => thread::sleep(Duration::from_millis(1)),
@@ -156,10 +158,7 @@ impl Engine {
         base_options: &SearchOptions,
         epoch: u64,
     ) -> SearchExit {
-        if epoch != 0 && self.control.current_epoch() != epoch {
-            return SearchExit::Stop;
-        }
-        if !self.control.prepare_search(epoch) {
+        if !self.start_suite(epoch) {
             return SearchExit::Stop;
         }
         let repeats = repeats.max(1);
@@ -175,8 +174,23 @@ impl Engine {
         let mut total_ms_first = 0u128;
         let mut nps_samples: Vec<u128> = Vec::with_capacity(repeats as usize);
 
-        println!("Large pages     : {}", crate::large_pages::large_pages());
-        println!();
+        let positions: Vec<SuitePosition<'_>> = BENCH_FENS
+            .iter()
+            .enumerate()
+            .map(|(index, fen)| SuitePosition {
+                label: format!("position {}", index + 1),
+                fen,
+            })
+            .collect();
+        let suite = Suite {
+            name: "bench",
+            depth,
+            options: base_options,
+            epoch,
+            tables: SuiteTables::Shared,
+        };
+        crate::uci_println!("Large pages     : {}", crate::large_pages::large_pages());
+        crate::uci_println!();
         for repeat in 0..repeats {
             // Clean, identical starting state each repeat (TT + histories + eval
             // caches) so every run is the same deterministic workload — the only
@@ -189,31 +203,7 @@ impl Engine {
             let mut ln_ebf_sum = 0f64;
             let mut ebf_count = 0usize;
 
-            for (index, fen) in BENCH_FENS.iter().enumerate() {
-                if epoch != 0 && self.control.current_epoch() != epoch {
-                    self.control.finish_search_if_current(epoch);
-                    return SearchExit::Stop;
-                }
-                let board = match Board::from_fen(fen) {
-                    Ok(board) => board,
-                    Err(err) => {
-                        crate::info_string!(
-                            "bench position {} failed to parse: {}",
-                            index + 1,
-                            err
-                        );
-                        self.control.finish_search_if_current(epoch);
-                        return SearchExit::Stop;
-                    }
-                };
-                let mut options = SearchOptions {
-                    board,
-                    ..SearchOptions::default()
-                };
-                options.limits.depth = Some(u32::from(depth));
-                options.engine = base_options.engine.clone();
-
-                let result = self.search(&options, false, epoch);
+            let run = self.run_suite(&suite, &positions, |index, _, result| {
                 total_nodes += result.nodes;
                 total_ms += result.elapsed_ms;
                 per_position_nodes.push(result.nodes);
@@ -233,7 +223,7 @@ impl Engine {
                     // Floored at 1 ms like the `info` lines: a position solved
                     // inside the first millisecond printed its node count.
                     let nps = result.nodes as u128 * 1000 / result.elapsed_ms.max(1);
-                    println!(
+                    crate::uci_println!(
                         "bench {}/{}  depth {}  score {}  nodes {}  ebf {:.2}  time {}ms  nps {}",
                         index + 1,
                         BENCH_FENS.len(),
@@ -246,15 +236,9 @@ impl Engine {
                     );
                     flush_stdout();
                 }
-
-                if result.exit == SearchExit::Quit {
-                    self.control.finish_search_if_current(epoch);
-                    return SearchExit::Quit;
-                }
-                if epoch != 0 && self.control.current_epoch() != epoch {
-                    self.control.finish_search_if_current(epoch);
-                    return SearchExit::Stop;
-                }
+            });
+            if let Err(exit) = run {
+                return exit;
             }
 
             let run_nps = total_nodes as u128 * 1000 / total_ms.max(1);
@@ -274,7 +258,7 @@ impl Engine {
                 max_nodes = per_position_nodes.iter().copied().max().unwrap_or(0);
             }
             if !detailed {
-                println!(
+                crate::uci_println!(
                     "run {}/{}  nodes {}  time {}ms  nps {}",
                     repeat + 1,
                     repeats,
@@ -300,7 +284,7 @@ impl Engine {
         let min_nps = nps_samples.first().copied().unwrap_or(0);
         let median_nps = nps_samples.get(nps_samples.len() / 2).copied().unwrap_or(0);
 
-        println!(
+        crate::uci_println!(
             "\n=========================\n\
              Nodes searched  : {fingerprint_nodes}\n\
              Geomean EBF     : {geomean_ebf:.3}\n\
@@ -310,9 +294,9 @@ impl Engine {
         // Keep a line beginning "Nodes/second" for the single-run case — the PGO
         // training harness (xtask) waits for it as the completion marker.
         if repeats == 1 {
-            println!("Total time (ms) : {total_ms_first}\nNodes/second    : {best_nps}");
+            crate::uci_println!("Total time (ms) : {total_ms_first}\nNodes/second    : {best_nps}");
         } else {
-            println!(
+            crate::uci_println!(
                 "Nodes/second    : {best_nps}   (best of {repeats}; median {median_nps}, min {min_nps})"
             );
         }
@@ -327,46 +311,37 @@ impl Engine {
     /// deterministic and comparable across candidates (a tactical-regression
     /// telltale for search-selectivity work — not a strength metric).
     fn run_wac(&mut self, depth: u16, base_options: &SearchOptions, epoch: u64) -> SearchExit {
-        if epoch != 0 && self.control.current_epoch() != epoch {
-            return SearchExit::Stop;
-        }
-        if !self.control.prepare_search(epoch) {
+        if !self.start_suite(epoch) {
             return SearchExit::Stop;
         }
 
-        let positions = wac_positions();
+        let wac = wac_positions();
+        let positions: Vec<SuitePosition<'_>> = wac
+            .iter()
+            .map(|pos| SuitePosition {
+                label: pos.id.clone(),
+                fen: &pos.fen,
+            })
+            .collect();
         let mut solved = 0usize;
         let mut failed: Vec<String> = Vec::new();
         let mut total_nodes = 0u64;
         let mut total_ms = 0u128;
 
-        println!();
-        for (index, pos) in positions.iter().enumerate() {
-            if epoch != 0 && self.control.current_epoch() != epoch {
-                self.control.finish_search_if_current(epoch);
-                return SearchExit::Stop;
-            }
-            let board = match Board::from_fen(&pos.fen) {
-                Ok(board) => board,
-                Err(err) => {
-                    crate::info_string!("wac {} failed to parse: {}", pos.id, err);
-                    self.control.finish_search_if_current(epoch);
-                    return SearchExit::Stop;
-                }
-            };
-            self.searcher.new_game();
-            let mut options = SearchOptions {
-                board: board.clone(),
-                ..SearchOptions::default()
-            };
-            options.limits.depth = Some(u32::from(depth));
-            options.engine = base_options.engine.clone();
-
-            let result = self.search(&options, false, epoch);
+        crate::uci_println!();
+        let suite = Suite {
+            name: "wac",
+            depth,
+            options: base_options,
+            epoch,
+            tables: SuiteTables::ClearedEachPosition,
+        };
+        let run = self.run_suite(&suite, &positions, |index, board, result| {
+            let pos = &wac[index];
             total_nodes += result.nodes;
             total_ms += result.elapsed_ms;
 
-            if move_matches_any(&board, result.bestmove, &pos.best_moves) {
+            if move_matches_any(board, result.bestmove, &pos.best_moves) {
                 solved += 1;
             } else {
                 failed.push(format!(
@@ -376,49 +351,157 @@ impl Engine {
                     pos.best_moves.join(" ")
                 ));
             }
-            println!(
+            crate::uci_println!(
                 "wac {}/{}  {}  nodes {}  time {}ms  (solved {})",
                 index + 1,
-                positions.len(),
+                wac.len(),
                 pos.id,
                 result.nodes,
                 result.elapsed_ms,
                 solved
             );
             flush_stdout();
-
-            if result.exit == SearchExit::Quit {
-                self.control.finish_search_if_current(epoch);
-                return SearchExit::Quit;
-            }
+        });
+        if let Err(exit) = run {
+            return exit;
         }
 
-        println!(
+        crate::uci_println!(
             "\n=========================\n\
              WAC solved      : {}/{} at depth {}\n\
              Nodes searched  : {}\n\
              Total time (ms) : {}",
             solved,
-            positions.len(),
+            wac.len(),
             depth,
             total_nodes,
             total_ms
         );
         if !failed.is_empty() {
-            println!("Failed: {}", failed.join(", "));
+            crate::uci_println!("Failed: {}", failed.join(", "));
         }
         flush_stdout();
 
         self.control.finish_search_if_current(epoch);
         SearchExit::Stop
     }
+
+    /// Claim the search slot for a suite command, unless a later command has
+    /// already replaced it.
+    fn start_suite(&self, epoch: u64) -> bool {
+        (epoch == 0 || self.control.current_epoch() == epoch) && self.control.prepare_search(epoch)
+    }
+
+    /// Search each position of a suite to its depth, handing every result to
+    /// `report`. `Err` carries how the suite ended early, with the search slot
+    /// already released: `quit`; a later command replacing it, silently; or
+    /// `stop`, which says so, since a summary of the positions searched so far
+    /// would read as an ordinary result.
+    fn run_suite(
+        &mut self,
+        suite: &Suite<'_>,
+        positions: &[SuitePosition<'_>],
+        mut report: impl FnMut(usize, &Board, &SearchResult),
+    ) -> Result<(), SearchExit> {
+        let epoch = suite.epoch;
+        let replaced = |control: &EngineControl| epoch != 0 && control.current_epoch() != epoch;
+        for (index, position) in positions.iter().enumerate() {
+            if replaced(&self.control) {
+                self.control.finish_search_if_current(epoch);
+                return Err(SearchExit::Stop);
+            }
+            let board = match Board::from_fen(position.fen) {
+                Ok(board) => board,
+                Err(err) => {
+                    crate::info_string!(
+                        "{} {} failed to parse: {}",
+                        suite.name,
+                        position.label,
+                        err
+                    );
+                    self.control.finish_search_if_current(epoch);
+                    return Err(SearchExit::Stop);
+                }
+            };
+            if suite.tables == SuiteTables::ClearedEachPosition {
+                self.searcher.new_game();
+            }
+            let mut options = SearchOptions {
+                board: board.clone(),
+                ..SearchOptions::default()
+            };
+            options.limits.depth = Some(u32::from(suite.depth));
+            options.engine = suite.options.engine.clone();
+
+            let result = self.search(&options, false, epoch);
+            report(index, &board, &result);
+
+            if result.exit == SearchExit::Quit {
+                self.control.finish_search_if_current(epoch);
+                return Err(SearchExit::Quit);
+            }
+            if replaced(&self.control) {
+                self.control.finish_search_if_current(epoch);
+                return Err(SearchExit::Stop);
+            }
+            if self.control.stop_requested(epoch) {
+                report_interrupted(suite.name);
+                self.control.finish_search_if_current(epoch);
+                return Err(SearchExit::Stop);
+            }
+        }
+        Ok(())
+    }
+}
+
+/// A suite command's fixed conditions.
+struct Suite<'a> {
+    /// The command, as its messages name it.
+    name: &'static str,
+    depth: u16,
+    /// The engine options every position is searched with.
+    options: &'a SearchOptions,
+    epoch: u64,
+    tables: SuiteTables,
+}
+
+/// What a suite's positions share. Bench's fingerprint is a run over shared
+/// tables, cleared once per run; WAC's solved set is per position.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SuiteTables {
+    Shared,
+    ClearedEachPosition,
+}
+
+/// One position of a suite: its name in messages and its FEN.
+struct SuitePosition<'a> {
+    label: String,
+    fen: &'a str,
+}
+
+/// The control's word for one search. `go infinite` and a ponder search end
+/// only on `stop` or `ponderhit`, so once standard input has ended, when
+/// neither can arrive, they stop; every other search runs to its limit, as a
+/// piped `go depth` must.
+fn poll(control: &EngineControl, epoch: u64, unbounded: bool) -> SearchControl {
+    if unbounded && control.input_closed() {
+        return SearchControl::Stop;
+    }
+    control.poll_search(epoch)
+}
+
+/// A suite cut short by `stop` says so and prints no summary: its node count
+/// would read as an ordinary result, and the PGO trainer waits for that line.
+fn report_interrupted(suite: &str) {
+    crate::uci_println!("\n{suite} interrupted by stop: no summary");
+    flush_stdout();
 }
 
 fn print_bestmove(result: &SearchResult) {
     if result.pondermove.is_null() {
-        println!("bestmove {}", result.bestmove);
+        crate::uci_println!("bestmove {}", result.bestmove);
     } else {
-        println!("bestmove {} ponder {}", result.bestmove, result.pondermove);
+        crate::uci_println!("bestmove {} ponder {}", result.bestmove, result.pondermove);
     }
     flush_stdout();
 }
@@ -426,7 +509,7 @@ fn print_bestmove(result: &SearchResult) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::search_options::EngineOptions;
+    use crate::search::options::EngineOptions;
     use std::sync::mpsc;
     use std::time::Duration;
 
@@ -454,12 +537,14 @@ mod tests {
             ..EngineOptions::default()
         };
         assert_eq!(
-            engine.handle(EngineCommand::Configure(options)),
+            engine.handle(EngineCommand::Configure {
+                options,
+                hash: crate::search::options::HashRequest::Sent,
+            }),
             SearchExit::Stop
         );
         assert_eq!(engine.handle(EngineCommand::ClearHash), SearchExit::Stop);
         assert_eq!(engine.handle(EngineCommand::NewGame), SearchExit::Stop);
-        assert_eq!(engine.handle(EngineCommand::PonderHit), SearchExit::Stop);
 
         let quit = EngineCommand::Quit {
             epoch: control.request_quit(),

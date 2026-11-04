@@ -188,6 +188,36 @@ mod tests {
         assert!(lines[0].contains("crash_report.rs:"), "{}", lines[0]);
     }
 
+    /// A helper thread's panic reaches the same report: the hook is the
+    /// process's, not the installing thread's (an engine whose handler was
+    /// kept per thread lost its helpers' crashes), and the line names the
+    /// helper.
+    #[test]
+    fn a_panic_on_a_helper_thread_is_reported_with_its_name() {
+        let _guard = hook_guard();
+        captured()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clear();
+
+        install_with(capture_sink);
+        let joined = std::thread::Builder::new()
+            .name("rarog-search-1".to_string())
+            .spawn(|| panic!("helper probe"))
+            .expect("the probe thread starts")
+            .join();
+        let _ = panic::take_hook();
+
+        assert!(joined.is_err(), "the probe thread must actually panic");
+        let lines = captured()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone();
+        assert_eq!(lines.len(), 1, "exactly one report per panic: {lines:?}");
+        assert!(lines[0].contains("thread=rarog-search-1"), "{}", lines[0]);
+        assert!(lines[0].contains("helper probe"), "{}", lines[0]);
+    }
+
     /// Chaining, not replacing: the default hook still runs, so stderr and
     /// `RUST_BACKTRACE` keep working. Proved by installing twice and requiring
     /// both sinks to see the same panic.

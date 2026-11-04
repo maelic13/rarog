@@ -7,7 +7,7 @@ Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md
   wire check the agent's.
 - **Kind:** PLAN D.1.6.3's gate, in the form RAR-R20 registered and
   RAR-R21's Stage 3 deferred to a rebuilt arm. RAR-R20's own gate on the
-  unfitted seeds (`6fd195e`) was never run; this supersedes it.
+  unfitted seeds (6fd195e, recipe `analysis/arm_patches/6fd195e-rar-r20-d16fix4.patch`) was never run; this supersedes it.
 - **Hypothesis:** the cascade cluster (RAR-R19's device: a known-win offset
   for bare-king endings, a score-scaled first aspiration window, deeper
   reduced searches charged to the line budget, a deepening freeze past part
@@ -17,7 +17,7 @@ Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md
   endings it repairs are worth more.
 - **Baseline:** the 2.6.0 engine, `rarog-d15head-pext-pgo.exe` (`468ed7b`,
   bench 13,987,223), as in RAR-R20.
-- **Candidate:** the throwaway branch `d16-gate2` at **`584c02d`** on `d1`
+- **Candidate:** the throwaway branch `d16-gate2` at **584c02d** on `d1`
   (`f12661d`; engine source identical to `2f17467`): the fifteen tuned
   coordinates at their rounded block-1 values and `CoreLmrDeeperBudget` 1
   as the search defaults, version `2.7.0-dev+d16gate2`. Recipe
@@ -201,7 +201,7 @@ a stall is a move at 90% of the hard maximum or more):
 | RAR-R22 gate, `3+0.03`, 2,790 | 2.6.0 head | 623 | 18.5% | 419 cp, ply 65 | 91 / 119 / 306 |
 | | fitted arm (d1 clock) | 939 | 27.6% | 125 cp, ply 29 | 108 / 310 / 353 |
 | RAR-R20 wire, `3+0.03`, 200 | 2.6.0 head | 33 | 15.0% | 418 cp, ply 73 | 8 / 8 / 14 |
-| | arm `6fd195e` (d1 clock) | 49 | 22.0% | 141 cp, ply 28 | 3 / 18 / 23 |
+| | arm 6fd195e (recipe `analysis/arm_patches/6fd195e-rar-r20-d16fix4.patch`) (d1 clock) | 49 | 22.0% | 141 cp, ply 28 | 3 / 18 / 23 |
 | RAR-R22 `10+0.1`, 1,000 | 2.6.0 head | 680 | 36.2% | 905 cp, ply 103 | 94 / 50 / 218 |
 | | fitted arm | 885 | 36.4% | 524 cp, ply 90 | 32 / 107 / 225 |
 | RAR-R21 Stage 1, one d1 tune build, 2,000 each | defaults | 1,054 | 40.9% | 114 cp, ply 25 | 147 / 370 / 300 |

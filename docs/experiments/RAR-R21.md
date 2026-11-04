@@ -19,7 +19,7 @@ Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md
   (`2f17467`, the `d1` head with every switch at its neutral default, bench
   13,987,223), both arms the same binary, arm A by UCI options, so speed is
   equal. Stage 2 runs on `tools/test_engines/rarog-d16fit-tune.exe`
-  (`217125b` on `2f17467`, the throwaway branch `d16-fit`: the four parts
+  (217125b on `2f17467`, the throwaway branch `d16-fit`: the four parts
   baked as the search defaults, so the tune starts at the cluster's seeds as
   the harness requires; recipe
   `analysis/arm_patches/217125b-rar-r21-d16fit.patch`, SHA-256

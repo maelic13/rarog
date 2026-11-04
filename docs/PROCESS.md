@@ -174,9 +174,22 @@ presented as mature.
 ### The independence boundary
 
 Donors: **Reckless** for search, threading, time management and NNUE;
-**Stockfish 11** for the classical evaluation; **Stockfish 19** for NNUE and
+**Stockfish 11** for the classical evaluation (tag `sf_11`; the king-safety and
+threat fixtures, and the forms fitted from them, follow `9587eeeb` of
+2020-07-30: `analysis/engine_review_2026-11-01.md`, EVAL-4); **Stockfish 19**
+for NNUE and
 SMP details where Reckless is silent (maintainer decision 2026-09-09; PLAN
 rule 1 points here).
+
+**Triumviratus** (Francesco Torsello, GPL-3.0; `github.com/Tors3/Triumviratus`
+at `0c18907`, its networks repository at `5f3dc60`) is a third donor, for
+mechanisms only (maintainer decision 2026-11-03). Its mechanisms, failure
+modes and measurement methods may cross; its code and its tuned values do not;
+Phase F's own-data rule excludes its data recipe. Its verdicts were measured
+on a Stockfish-19-shaped search with a material-expert network, on one host
+and often by early-stopped SPRTs, so they order Rarog's tests and never accept
+anything. The snapshot, the checks run against Rarog and the placements are
+`analysis/triumviratus_review_2026-11-03.md`.
 
 - May cross: architecture, mechanisms, population choices, contracts, failure
   modes and constants. A constant is a seed on the donor's scale: converted
@@ -277,15 +290,25 @@ quotes what that version reports at the end of a run:
   and, at launch, the coordinates whose first arms already leave the range
   (`rail_warnings:`). Both are warnings, not refusals; RAR-S104 named them.
 
+CLI 0.5.0, pinned 2026-11-01, changes how these are delivered, not what
+they are: the console keeps the command's short report and names
+`results.txt` in the run directory, which holds the lines above as text,
+and every count is in games, an SPRT's cap and terminal point included.
+The manifest still quotes the figures from `run-record.json` and hashes
+`results.txt` beside the other artifacts. Each side's search is its own line
+even when both sides carry one name.
+
 A hand parser of `games.pgn` is not written for any of these. A one-off
 PGN regex skipped 16% of move comments and corrupted four ledger rows'
-in-game NPS. Still computed from the run directory, and named as gaps:
-conversion after a persistent advantage (`tools/diag/conversion_audit.py`),
-and per-arm search and time a game in a one-binary categorical match, whose
-PGN names both sides alike (D.1.3's `tm_wire_read.py` relabels by arm from
-`games.jsonl`). `tools/diag/colosseum_recount.py` stays as the cross-check
-of a reporter change. It runs inside every wrapper run and agreed on the
-0.4.0 re-pin's smoke match; it is not run again per row.
+in-game NPS. Still computed from the run directory, and named as a gap:
+conversion after a persistent advantage (`tools/diag/conversion_audit.py`).
+Per-arm search in a one-binary categorical match is no longer one: the
+wrapper names each arm by its label (since 2026-10-29), and 0.5.0 keeps
+two sides of one name apart as `name (A)` and `name (B)`, so D.1.3's
+`tm_wire_read.py` relabelling from `games.jsonl` is not needed for a new
+run. `tools/diag/colosseum_recount.py` stays as the cross-check of a
+reporter change. It runs inside every wrapper run and agreed on the 0.5.0
+re-pin's smoke runs; it is not run again per row.
 
 **Faults, stops and estimates** (rule added 2026-10-11 from RAR-E29 and
 RAR-E32). A registration adopts the runner's fault policy by reference
@@ -361,7 +384,14 @@ triple, so it cannot catch this — check `rustup show active-toolchain` first.
 
 Games are pinned to physical cores on both paths, because unpinned Zen 3 runs
 carry a hidden per-run offset of roughly ±10 nElo (RAR-M48). Colosseum does it
-with `--placement auto` and one physical core of headroom; fastchess needs
+with `--placement auto` and one physical core of headroom at one thread. A
+multi-thread read names its game cores instead, one logical CPU per physical
+core (`--cores-per-game 4 --placement 2,4,6,8,16,18,20,22,24,26,28,30`, the
+wrapper refusing a sibling or a list with no free core): an auto slot holds
+both SMT siblings of its cores, Windows packs a four-thread side on two or
+three of them, and a thread beside its sibling keeps about 0.63 of its work
+for any engine, so Rarog's four threads read 2.65 times one in the auto slot
+and 4.03 sibling-free (RAR-P54, RAR-M82, 2026-11-03). fastchess needs
 `-use-affinity` with concurrency 14, and its list never contains CPU 0
 (`Get-HarnessGameCpus`), because Windows services most interrupts there. The
 two resolve to the same fourteen cores, checked field by field rather than by
@@ -390,6 +420,10 @@ the per-build medians.
   change is accepted; at +0.1% or less it closes `NO_CHANGE`.
 - **Step 2, only in between: four more cycles, six in all, about 8 more
   minutes (±0.3%).** Accepted at +0.5% or more with the lower bound above 0.
+  On a change that moves code, an accept below +1% is recorded as
+  possibly code layout, because builds of one source can share a
+  placement (Basilisk's BAS-P20 read −0.58% with identical hot code,
+  gone with 64-byte function alignment; maintainer decision 2026-11-02).
 - **A no-regression check** on a neutral change uses the same steps against
   −0.5%: step 1 passes at −0.1% or above and fails at −0.9% or below.
 - **Disturbance:** load moves whole cycles by 2% to 4%. In step 1 the two
@@ -407,7 +441,14 @@ and is not quoted as one; that tool is kept only to compare with earlier rows.
 The read refuses a busy host before step 1 and step 2 by the harness's own
 measure (`--allow-busy-host` waives it, archived), and its per-cycle CPU
 figure is that measure; the one-shot `LoadPercentage` it replaced read its own
-start-up, 12–14% on an idle host. An idle start does not make a read clean:
+start-up, 12–14% on an idle host. That measure is the kernel's
+`GetSystemTimes`: WMI's raw processor counters, used before, read −35% to
++23% on a quiet host when Basilisk's identical reader was checked on
+2026-10-29. Fresh executables are scanned by antivirus (RAR-M48), so a new
+read first runs one short `bench 8 1` per build, which sets the scan off,
+and then step 1 and step 2 both wait for 60 s under 10% load with no
+competing process (`--quiet-seconds`); a scan still running holds the wait,
+and a host never quiet in 30 minutes is refused. An idle start does not make a read clean:
 the host's level wanders by about 3% in half an hour, and two of six reads
 started idle were disturbed and wrong (RAR-P37), so the disturbance rule
 stands and a disturbed read is repeated. Two pools of one source and
@@ -674,7 +715,16 @@ Before any SPSA:
    coordinate's step inside its range.
 9. Theta is the last completed block's rounded final centres, without
    post-hoc checkpoint selection; bake it into a fresh clean PGO binary
-   and run a paired SPRT, then LTC/4T where appropriate.
+   and run a paired SPRT, then LTC/4T where appropriate. Before the
+   bake, `python tools/spsa_theta_audit.py <run dir> <config>` (with
+   `--movement-config` naming the b43 steps when the run's were scaled)
+   lists the coordinates that moved a full step, finished at or near a
+   range end, or turned against their finish by a full step. The tune's
+   analysis gives each a line on what it shows: a term tuned toward
+   off, two terms moving to cancel, a margin compensating for a
+   mis-scaled input, a rail hiding a wanted value. The analysis never
+   changes theta; a finding becomes a registration of its own
+   (maintainer decision 2026-11-02).
 
 ### Branches and pull requests
 

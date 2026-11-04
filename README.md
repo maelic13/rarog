@@ -89,8 +89,10 @@ right. To grant it:
 
 Without the right, Rarog runs normally with ordinary pages. To check, run
 `bench`: its first line, `Large pages`, reads `on`, `off` (the right is not
-held) or `partial` (Windows could not find enough contiguous memory for every
-table; restarting the engine or the computer often helps).
+held), `partial` (Windows could not find enough contiguous memory for every
+table; restarting the engine or the computer often helps) or `disabled`
+(the `LargePages` option is off). Setting `LargePages` to `false` turns large
+pages off without removing the right.
 
 ---
 
@@ -108,6 +110,7 @@ table; restarting the engine or the computer often helps).
 | `SyzygyProbeDepth` | `1` | Minimum depth at which tablebases are probed. |
 | `SyzygyProbeLimit` | `7` | Largest tablebase to probe. `0` disables probing. |
 | `Syzygy50MoveRule` | `true` | Whether tablebase results respect the fifty-move rule. |
+| `LargePages` | `true` | Windows only. Use large pages when Windows allows them; see [Large pages](#large-pages-windows). |
 
 `SyzygyPath` accepts several folders separated by `;` on Windows or `:`
 elsewhere, and the value `<empty>` means no path at all, which is what a GUI
@@ -156,10 +159,10 @@ build and writes the finished engine to `target/dist`.
    ```
 
 3. In the repository folder, build the engine. For most modern x86-64 CPUs
-   this is the fastest build for the computer you are on:
+   this is the fastest build:
 
    ```bash
-   cargo xtask build --arch pext --native --pgo
+   cargo xtask build --arch pext --pgo
    ```
 
    On an AMD Zen 1, Zen 2 or Excavator CPU use `--arch avx2` instead of
@@ -180,10 +183,11 @@ measure how it runs on `bench`, then again using what it measured.
 | `--native` | Also tunes the build for the exact CPU you are building on. |
 | `--pgo` | Profile-guided optimization, as used for every published build. |
 
-`--arch` and `--native` combine freely. A `--native` build is usually a little
-faster on the computer that built it but may not run on any other, so its
-file name ends in `-native`. Leave `--native` out to build an engine that runs
-on every CPU its `--arch` supports, like the published ones:
+`--arch` and `--native` combine freely. On the AMD Zen 3 it was measured on,
+a `--native` build is clearly slower than the same build without it. It also
+may not run on any other computer, so its file name ends in `-native`.
+Leave `--native` out to build an engine that runs on every CPU its `--arch`
+supports, like the published ones:
 
 ```bash
 cargo xtask build --arch pext --pgo

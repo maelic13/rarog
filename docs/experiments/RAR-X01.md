@@ -1,6 +1,6 @@
 # RAR-X01 — TT-bound-aware pruning evaluation gained +7.18 Elo while preserving raw/corrected eval for learning
 
-Indexed under *8. Cross-engine evidence imported from Basilisk* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+Indexed under *8. Cross-engine evidence imported from other engines › From Basilisk* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 ## Basilisk evidence
 

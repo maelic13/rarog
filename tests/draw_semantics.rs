@@ -14,8 +14,8 @@
 
 use rarog::board::{Board, GameResult, Move};
 use rarog::eval::MATE_SCORE;
+use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
-use rarog::search_options::SearchOptions;
 
 /// Find the legal move with the given UCI string.
 fn mv(board: &Board, uci: &str) -> Move {

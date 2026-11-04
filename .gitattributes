@@ -8,6 +8,9 @@ analysis/artifacts/see-normalized-20260907/** -text -whitespace
 # Stored arm recipes must stay byte-exact: a CRLF round-trip breaks `git apply`.
 analysis/arm_patches/*.patch -text -whitespace
 
+# Donor snapshot manifests: `sha256sum -c` reads them only with LF endings.
+analysis/triumviratus_snapshot/*.sha256 -text
+
 # Committed Syzygy tables are binary test fixtures; never convert them.
 tests/fixtures/syzygy/*.rtbw -text -diff
 tests/fixtures/syzygy/*.rtbz -text -diff

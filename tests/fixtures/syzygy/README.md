@@ -1,4 +1,4 @@
-# Syzygy fixture: KQvK and KRvK
+# Syzygy fixture: KQvK, KRvK and KPvK
 
 The four smallest Syzygy files Rarog's tablebase tests need, committed so CI
 can run them (`tests/syzygy_fixture.rs`). Added for PLAN B.5.2.1 by
@@ -10,6 +10,7 @@ maintainer decision on 2026-10-01.
 | `KQvK.rtbz` | 5328 | `ad20819e947f38bf06865a888dbde488ee4a34d2aa64b5727e1882313b1273a3` |
 | `KRvK.rtbw` | 208 | `37f8601644113dc83be9822913d6ecf75e5c8b7eeb11b7689c38a3ff986d2a48` |
 | `KRvK.rtbz` | 8272 | `9ce83c0f6204fcca761c4203a4644ad2993462749fa39ac27815a29dee740b20` |
+| `KPvK.rtbw` | 7824 | `63ad9e15cd0f5e91e42e6f669a9f6116ae9f9eabd85757e9fb28d2be6074aed9` |
 
 Provenance: copied byte for byte from the maintainer's local 3-6-man set
 (`D:/chess/tablebases/syzygy3456`), which holds the standard Syzygy
@@ -20,5 +21,7 @@ byte-exact.
 
 KQvK and KRvK are pawnless three-man tables, where distance to zeroing is
 distance to mate, so a line extended through them must end in mate in exactly
-the tables' distance. The six-man checks stay local and read
+the tables' distance. `KPvK.rtbw` (WDL only) was added on 2026-11-02 for PLAN
+D.5 item 19: `tests/kpk_syzygy.rs` reads every legal KPK position's static
+evaluation against it. The six-man checks stay local and read
 `RAROG_SYZYGY_PATH` (`tests/multipv_syzygy.rs`).

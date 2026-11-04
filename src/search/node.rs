@@ -2793,9 +2793,9 @@ mod tests {
         let board =
             Board::from_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
                 .expect("valid FEN");
-        let mut options = crate::search_options::SearchOptions {
+        let mut options = crate::search::options::SearchOptions {
             board: board.clone(),
-            ..crate::search_options::SearchOptions::default()
+            ..crate::search::options::SearchOptions::default()
         };
         options.limits.depth = Some(7);
         let result = searcher.search(board, &options, false, || SearchEvent::None);
@@ -3047,10 +3047,10 @@ mod tests {
         assert_eq!(searcher.td.nmp_min_ply, 0);
 
         searcher.td.nmp_min_ply = 7;
-        let mut options = crate::search_options::EngineOptions::default();
+        let mut options = crate::search::options::EngineOptions::default();
         options.proof_params.nmp_verify_depth = 4;
         searcher.reset_search_state(
-            &crate::search_options::SearchLimits::default(),
+            &crate::search::options::SearchLimits::default(),
             &options,
             board.side_to_move(),
             0,

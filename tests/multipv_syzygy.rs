@@ -1,13 +1,14 @@
 //! MultiPV against a tablebase-filtered root. Tablebase state is global to
-//! the process, so these tests live in their own binary. They need tables:
-//! set `RAROG_SYZYGY_PATH` to a directory holding at least the 4-man set, or
-//! they skip.
+//! the process, so these tests live in their own binary. They need tables,
+//! so they are ignored by default and fail rather than pass when run without
+//! them: set `RAROG_SYZYGY_PATH` to a directory holding at least the 4-man set
+//! (the 6-man set for the record positions) and pass `--ignored`.
 
 use std::sync::{Arc, Mutex};
 
 use rarog::board::Board;
-use rarog::search::{InfoSink, SearchEvent, Searcher};
-use rarog::search_options::SearchOptions;
+use rarog::search::options::SearchOptions;
+use rarog::search::{InfoReport, InfoSink, SearchEvent, Searcher};
 use rarog::syzygy::{self, Wdl};
 
 struct Recorder(Arc<Mutex<Vec<String>>>);
@@ -16,15 +17,21 @@ impl InfoSink for Recorder {
     fn line(&self, line: &str) {
         self.0.lock().expect("recorder lock").push(line.to_string());
     }
+    fn report(&self, report: &InfoReport<'_>) {
+        self.line(&rarog::uci::info::report_line(report));
+    }
 }
 
-fn tables() -> Option<String> {
-    let path = std::env::var("RAROG_SYZYGY_PATH").ok()?;
-    if syzygy::initialize(&path) < 4 {
-        eprintln!("skipped: RAROG_SYZYGY_PATH={path} holds no 4-man tables");
-        return None;
-    }
-    Some(path)
+/// The table directory, loaded; a test that needs tables and finds none fails.
+fn tables(men: usize) -> String {
+    let path = std::env::var("RAROG_SYZYGY_PATH")
+        .expect("set RAROG_SYZYGY_PATH to a Syzygy directory to run this test");
+    let largest = syzygy::initialize(&path);
+    assert!(
+        largest >= men,
+        "RAROG_SYZYGY_PATH={path} holds tables up to {largest} men; this test needs {men}"
+    );
+    path
 }
 
 /// Search `fen` at `lines` lines and return the first moves of the deepest
@@ -40,7 +47,7 @@ fn search(path: &str, fen: &str, lines: usize) -> (Vec<String>, Vec<String>, Str
     options.engine.syzygy.path = path.to_string();
     options.engine.multi_pv = lines;
     options.limits.depth = Some(5);
-    searcher.configure(&options.engine);
+    searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
     let result = searcher.search(board, &options, true, || SearchEvent::None);
     let raw = output.lock().expect("recorder lock").clone();
     // A single root move stops early, so read the deepest depth reported.
@@ -64,8 +71,9 @@ fn search(path: &str, fen: &str, lines: usize) -> (Vec<String>, Vec<String>, Str
 }
 
 #[test]
+#[ignore = "needs RAROG_SYZYGY_PATH with the 4-man set"]
 fn a_won_tablebase_root_reports_its_best_ranked_group() {
-    let Some(path) = tables() else { return };
+    let path = tables(4);
     // KQ v K: distance to zeroing is distance to mate, so the root keeps the
     // fastest wins only, a strict subset of the winning moves, and reports
     // one line per kept move however many lines are asked for.
@@ -103,8 +111,9 @@ fn a_won_tablebase_root_reports_its_best_ranked_group() {
 }
 
 #[test]
+#[ignore = "needs RAROG_SYZYGY_PATH with the 4-man set"]
 fn a_drawn_tablebase_root_reports_only_the_drawing_moves() {
-    let Some(path) = tables() else { return };
+    let path = tables(4);
     // KR v KR: rook moves that hang the rook lose, the rest hold the draw.
     let fen = "4k3/8/8/8/8/8/r7/4K2R w - - 0 1";
     let board = Board::from_fen(fen).expect("valid FEN");
@@ -139,12 +148,9 @@ fn a_drawn_tablebase_root_reports_only_the_drawing_moves() {
 /// The record's six-man positions (B.5.2): each reports a tablebase win, a
 /// ponder move and a PV legal to its end. Local only: needs the 6-man set.
 #[test]
+#[ignore = "needs RAROG_SYZYGY_PATH with the 6-man set"]
 fn the_six_man_record_positions_report_a_win_a_ponder_move_and_a_legal_line() {
-    let Some(path) = tables() else { return };
-    if syzygy::largest() < 6 {
-        eprintln!("skipped: RAROG_SYZYGY_PATH={path} holds no 6-man tables");
-        return;
-    }
+    let path = tables(6);
     for fen in [
         "7r/5R2/8/2k1PB2/8/4K3/8/8 w - - 0 86",
         "8/P4k2/8/1N6/1P2B1K1/8/8/8 w - - 7 81",
@@ -159,7 +165,7 @@ fn the_six_man_record_positions_report_a_win_a_ponder_move_and_a_legal_line() {
         };
         options.engine.syzygy.path = path.clone();
         options.limits.depth = Some(10);
-        searcher.configure(&options.engine);
+        searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
         let result = searcher.search(board.clone(), &options, true, || SearchEvent::None);
         let raw = output.lock().expect("recorder lock").clone();
         let line = raw

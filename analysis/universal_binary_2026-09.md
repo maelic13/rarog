@@ -36,6 +36,8 @@ n/s in RUN2 and 3,132,586 n/s in RUN3 minutes later — +1.46% for identical
 bytes, from thermal and boost settling. Within-run interleaving absorbs it, so
 each row above stands, but the compounded `base`→`pext` figure of about +7.2%
 is an **estimate**. It needs its own direct run before anyone quotes it.
+RAR-P22 made that run: `pext` over `base` **+6.65%** [+6.48%, +6.89%], so
+chaining overstated the ladder by half a point.
 
 ## 3. What was proven on this machine
 
@@ -174,7 +176,124 @@ or `arm64`, the README states exact requirements, and release tooling
 disassembles each asset to enforce the promise. If a single universal binary
 becomes a product goal, G.2 may add a Stockfish-style baseline dispatcher.
 
-## 9. Sources
+## 9. Leads from Basilisk's built universal binary (2026-10-29)
+
+Basilisk (C++, clang, lld) built the fat binary of section 5 (a) and shipped
+it after two pooled NPS reads on this 5950X. Its record is
+`D:/code/basilisk/analysis/universal_binary_2026-10.md` (sections 12 and 13
+describe the form it built) and its BAS-P20 and BAS-P21. What follows are leads for G.2, not
+evidence for Rarog: a different language, compiler and linker. Each needs
+checking here before it is relied on.
+
+- **The hot path is free only once function placement is controlled.**
+  - BAS-P20: the universal binary read **−0.58%** [−0.82%, −0.33%] against
+    the `pext` asset and failed its no-regression gate.
+  - The `pext` tier's hot code was byte-identical in both: `negamax` was
+    the same 4,713 instructions, and 8 adjacent inversions separated the
+    function orders of 560 functions.
+  - The cause was placement. lld's call-graph sort put a shared 16-byte
+    runtime stub (`operator delete`) inside the tier build's hot cluster.
+    In the universal link the three tiers share that stub and it landed
+    elsewhere, so every hot function after it moved 16 bytes, from offset 0
+    to 48 of a cache line.
+  - BAS-P21 aligned every tier function to 64 bytes
+    (`-falign-functions=64`, +44 KB). Then:
+    - the relink alone (universal against its own tier build): −0.13%
+      [−0.51%, +0.26%];
+    - the alignment alone: −0.16% [−0.56%, +0.24%];
+    - the gate: −0.29% [−0.73%, +0.16%] at six cycles, PASS.
+  - The Rust analogue to try is LLVM's `-C llvm-args=-align-all-functions=6`
+    (log2 of the alignment) or nightly `-Z min-function-alignment=64`.
+    Neither has been checked on this toolchain.
+- **A pool of builds does not randomise link layout.**
+  - Builds of one source differ only in their PGO profile. Basilisk's four
+    builds all shared one placement, so the pool's interval did not cover
+    layout.
+  - A change that relinks code needs a layout control, such as an alignment
+    or padding sweep, not more builds.
+  - Read it as separate contrasts, each between two pools:
+    - **hot:** universal against the per-tier asset, the gate;
+    - **tier:** the tier build against the asset (Basilisk +0.04%);
+    - **place:** universal against its own tier build;
+    - **align:** the alignment on its own.
+  - Basilisk's `nps_read` reads three pools with named contrasts in one
+    pass, about 9 minutes at step 1 against 30 to 65 for separate reads
+    (`875ec6e`). Rarog's `tools/nps_read.py` reads two arms only.
+- **The diagnosis that found it** compared the two images directly, in
+  three steps:
+  - each hot function's instructions, modulo addresses;
+  - the function order;
+  - each hot function's start offset modulo 64.
+
+  It is cheap, and it separates codegen from placement before any pooled
+  read.
+- **Symbol isolation leaks through LTO.**
+  - After ThinLTO, every function one module calls in another is promoted
+    to a global (407 in Basilisk's Windows `pext` tier). About 48 runtime
+    template functions also stay global COMDATs.
+  - Each would resolve first-wins across tiers, silently: the C-symbol trap
+    of section 3, from another route.
+  - Basilisk renamed every symbol each tier defines, in its post-LTO
+    objects, to `__basilisk_<tier>_<name>`, and the script fails if
+    anything else stays global. Only type identities and identical
+    section-named data stay shared.
+  - Lead for Rust: list each tier staticlib's defined external symbols
+    (`llvm-nm --defined-only --extern-only`) and intersect them across
+    tiers. Any name defined in two tiers with tier-dependent code is the
+    same hazard, whatever `-C metadata` does to mangling. Generic
+    instantiations of `std` code are the suspects.
+- **Renaming after PGO removes this record's first trap.**
+  - Basilisk trains and links each tier as its ordinary PGO build, under
+    unchanged names in its own build directory. It renames only the kept
+    post-LTO objects (`-Wl,--Xlink=-lldsavetemps` on Windows,
+    `-plugin-opt=save-temps` with gold on Linux).
+  - So no profile is ever matched against renamed symbols. That removes
+    section 7's `-C metadata` trap instead of guarding against it.
+  - The tier build then read +0.04% [−0.12%, +0.19%] against the asset: the
+    tier object is the measured binary's code.
+  - Whether rustc's fat-LTO output can be kept per tier in this way is the
+    first thing for G.2 to establish.
+- **The ladder agrees with ours.**
+  - Basilisk, hand-crafted evaluation, no intrinsics:
+    - `avx2` over `portable` +5.04%;
+    - `pext` over `avx2` +2.82%;
+    - `pext` over `portable` +8.49%, read directly.
+  - Rarog: +4.59% and +2.45% (RAR-P20), +6.65% direct (RAR-P22).
+  - For an engine of this kind, the ladder is worth 7 to 8.5% on Zen 3,
+    before NNUE.
+- **Dispatcher details Basilisk settled:**
+  - `pext` only where it is fast: not AMD family 15h or 17h (Excavator,
+    Zen 1 and 2), read from CPUID leaf 1, since MSVC has no
+    `__builtin_cpu_is`.
+  - An environment override (`BASILISK_ISA`) forces a tier, for a
+    forced-tier bench identity test and for measuring every tier on one
+    host. An unsupported forced tier exits 1 with an `info string`.
+  - The start-up banner names the tier, and `id name` does not change,
+    because rating lists key on it.
+  - Intel SDE selection runs on CI cover Intel models only. The Zen rule
+    gets a truth-table unit test instead.
+- **The ISA floor matches ours.**
+  - LLVM emits `tzcnt` on the baseline, and it runs as `bsf` before BMI1.
+    Rarog already allows it (`TZCNT_IS_BASELINE_SAFE` in `xtask`).
+  - Basilisk's portable floor is SSE3, because MSYS2's static libc++ is
+    built for `nocona`. Rust's precompiled `std` targets plain x86-64, so
+    Rarog's floor need not move.
+  - Basilisk checks the image by symbol once every tier function carries its
+    tier's name, which works the same with lld and GNU ld. That answers
+    section 7's "`verify-isa` cannot express this region is baseline".
+- **Size and shape.**
+  - Size: 3.5 MB on Windows (2.2 MB per tier asset), 5.1 MB static on Linux.
+  - When the first read failed, the release went back to per-tier assets
+    while the build stayed in the tree (`d601807`).
+  - A CPU refused by an asset is told which per-tier asset it should run
+    (`a575ab8`).
+
+None of this fires section 6's triggers. It lowers the expected cost and
+risk of the design. It also names the first two checks if G.2 starts:
+whether Rust's post-LTO tier objects can be kept and renamed, and whether
+function alignment makes the relink placement-neutral here.
+
+## 10. Sources
 
 RAR-P20 (tier value, and the frozen decision rule it resolved); RAR-P19 (the
 `cc` macOS `-fprofile-use` gap found alongside); RAR-M20 (~2 Elo per 1% NPS);

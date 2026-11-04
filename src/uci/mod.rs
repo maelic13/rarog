@@ -1,12 +1,22 @@
-use std::io;
-use std::process;
+//! The UCI protocol: the input loop, dispatch, and the text the engine
+//! answers with. Parsing is in `position`, `go` and `options`, which return
+//! their notices; this module prints them.
+
+pub mod go;
+pub mod info;
+pub mod options;
+pub mod position;
+
+use std::io::{self, BufRead};
 use std::sync::{Arc, mpsc};
 
 use crate::bench::DEFAULT_BENCH_DEPTH;
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl};
 use crate::infra::{capitalize_first_letter, flush_stdout};
-use crate::search_options::{GoRequest, OptionUpdate, SearchOptions};
+use crate::search::options::{HashRequest, SearchOptions};
 use crate::wac::DEFAULT_WAC_DEPTH;
+use go::GoRequest;
+use options::OptionUpdate;
 
 /// What one command line did, so a caller knows whether to keep reading and
 /// what to exit with.
@@ -18,6 +28,10 @@ pub enum CommandOutcome {
     Quit,
     /// Not a command. A message has already been printed.
     Unknown,
+    /// A command the session cannot continue past, a `position` that does
+    /// not parse among them. A message has already been printed; no later
+    /// line is read, and the process exits with status 1.
+    Fatal,
 }
 
 pub struct UciProtocol {
@@ -35,21 +49,47 @@ impl UciProtocol {
         }
     }
 
-    pub fn uci_loop(&mut self) {
+    /// Read and dispatch commands until `quit`, the end of input or a fatal
+    /// command; returns `Fatal` for the last, `Handled` otherwise.
+    pub fn uci_loop(&mut self) -> CommandOutcome {
+        let mut input = Vec::new();
         loop {
-            let mut input = String::new();
-            // A read error means stdin is gone (pipe closed / GUI
-            // exited) — treated exactly like EOF, which the next branch
-            // already handles, rather than panicking.
-            let bytes_read = io::stdin().read_line(&mut input).unwrap_or_default();
+            input.clear();
+            // Only the end of input, or a read error (the pipe is gone), ends
+            // the loop. A line that is not UTF-8 is still a line: read as
+            // text it would be an error, and the engine would exit silently.
+            let bytes_read = io::stdin()
+                .lock()
+                .read_until(b'\n', &mut input)
+                .unwrap_or(0);
             if bytes_read == 0 {
-                self.commands.push(EngineCommand::Quit { epoch: 0 });
-                break;
+                self.end_input();
+                return CommandOutcome::Handled;
             }
-            if self.handle_command(input.trim()) == CommandOutcome::Quit {
-                break;
+            let line = String::from_utf8_lossy(&input);
+            match self.handle_command(line.trim()) {
+                CommandOutcome::Quit => return CommandOutcome::Handled,
+                CommandOutcome::Fatal => {
+                    // As at the end of input, so a search already asked for
+                    // still answers its `bestmove` before the process exits.
+                    self.end_input();
+                    return CommandOutcome::Fatal;
+                }
+                CommandOutcome::Handled | CommandOutcome::Unknown => {}
+            }
+            if crate::infra::stdout_closed() {
+                // Nobody reads the engine any more.
+                self.quit();
+                return CommandOutcome::Handled;
             }
         }
+    }
+
+    /// No more input: an ordinary FIFO quit, so that a piped `bench`
+    /// completes; a search only `stop` can end sees the closed input instead.
+    fn end_input(&self) {
+        self.control.close_input();
+        self.commands.push(EngineCommand::Quit { epoch: 0 });
     }
 
     /// Run one command line and shut down, as `rarog bench 13` does.
@@ -88,7 +128,14 @@ impl UciProtocol {
             "stop" => self.stop(),
             "setoption" => self.set_option(args),
             "ucinewgame" => self.new_game(),
-            "position" => self.position_with_command(args, command_line),
+            "position" => match position::parse(args) {
+                Ok(Some(board)) => self.search_options.board = board,
+                Ok(None) => {}
+                Err(message) => {
+                    report_critical_error(command_line, &message);
+                    return CommandOutcome::Fatal;
+                }
+            },
             "bench" => self.bench(args),
             "wac" => self.wac(args),
             #[cfg(feature = "tune")]
@@ -108,16 +155,16 @@ impl UciProtocol {
     }
 
     fn uci(&self) {
-        println!(
+        crate::uci_println!(
             "id name {} {}",
             capitalize_first_letter(env!("CARGO_PKG_NAME")),
             crate::VERSION
         );
-        println!("id author {}", env!("CARGO_PKG_AUTHORS").replace(':', ", "));
-        for option in SearchOptions::get_uci_options() {
-            println!("{option}");
+        crate::uci_println!("id author {}", env!("CARGO_PKG_AUTHORS").replace(':', ", "));
+        for option in options::advertised() {
+            crate::uci_println!("{option}");
         }
-        println!("uciok");
+        crate::uci_println!("uciok");
         flush_stdout();
     }
 
@@ -127,7 +174,7 @@ impl UciProtocol {
             self.commands.push(EngineCommand::Ready(ready_tx));
             let _ = ready_rx.recv();
         }
-        println!("readyok");
+        crate::uci_println!("readyok");
         flush_stdout();
     }
 
@@ -137,7 +184,12 @@ impl UciProtocol {
     }
 
     fn go(&mut self, args: &[String]) {
-        if let GoRequest::Perft(depth) = self.search_options.set_search_parameters(args) {
+        let go = go::parse(args);
+        for notice in &go.notices {
+            crate::info_string!("{notice}");
+        }
+        self.search_options.limits = go.limits;
+        if let GoRequest::Perft(depth) = go.request {
             self.run_perft(depth);
             return;
         }
@@ -154,26 +206,37 @@ impl UciProtocol {
         self.commands.push(EngineCommand::Stop { epoch });
     }
 
+    /// Applied when the engine thread reaches it: the queue orders the change
+    /// after any search already running, so this thread need not wait, and
+    /// must not, since it alone reads the `stop` that ends a `go infinite`.
+    /// A rejected value changes nothing, so it queues nothing. Only a `Hash`
+    /// the GUI sends asks the engine thread for a table.
     fn set_option(&mut self, args: &[String]) {
-        self.wait_for_search_finished();
-        match self.search_options.set_option(args) {
-            OptionUpdate::Engine => self
-                .commands
-                .push(EngineCommand::Configure(self.search_options.engine.clone())),
-            OptionUpdate::ClearHash => self.commands.push(EngineCommand::ClearHash),
-            OptionUpdate::Unknown => {}
-        }
+        let hash = match options::apply(&mut self.search_options.engine, args) {
+            OptionUpdate::HashApplied => HashRequest::Sent,
+            OptionUpdate::Applied => HashRequest::NotSent,
+            OptionUpdate::ClearHash => {
+                self.commands.push(EngineCommand::ClearHash);
+                return;
+            }
+            OptionUpdate::Rejected { notice } => {
+                crate::info_string!("{notice}");
+                return;
+            }
+            OptionUpdate::Unknown { name } => {
+                crate::info_string!("No such option: {name}");
+                return;
+            }
+        };
+        self.commands.push(EngineCommand::Configure {
+            options: self.search_options.engine.clone(),
+            hash,
+        });
     }
 
     fn new_game(&mut self) {
         self.search_options.reset();
         self.commands.push(EngineCommand::NewGame);
-    }
-
-    fn position_with_command(&mut self, args: &[String], full_command: &str) {
-        if let Err(message) = self.search_options.set_position(args) {
-            terminate_on_critical_error(full_command, &message);
-        }
     }
 
     fn bench(&mut self, args: &[String]) {
@@ -224,25 +287,17 @@ impl UciProtocol {
         flush_stdout();
     }
 
-    fn ponderhit(&mut self) {
+    /// Only the flag: the running search polls it, and nothing waits in the
+    /// queue behind a search for it.
+    fn ponderhit(&self) {
         self.control.request_ponderhit();
-        self.commands.push(EngineCommand::PonderHit);
     }
 
     fn run_perft(&self, depth: u32) {
         let mut board = self.search_options.board.clone();
         let nodes = board.perft(depth);
-        println!("\nNodes searched: {nodes}\n");
+        crate::uci_println!("\nNodes searched: {nodes}\n");
         flush_stdout();
-    }
-
-    fn wait_for_search_finished(&self) {
-        if !self.control.is_searching() {
-            return;
-        }
-        let (ready_tx, ready_rx) = mpsc::channel();
-        self.commands.push(EngineCommand::Ready(ready_tx));
-        let _ = ready_rx.recv();
     }
 
     /// `help` — orientation, not a manual.
@@ -256,7 +311,7 @@ impl UciProtocol {
     /// and the fact that they work as arguments — someone who reached this text
     /// by typing `rarog help` at a shell is exactly who needs telling.
     fn help(&self) {
-        println!("{}", help_text());
+        crate::uci_println!("{}", help_text());
         flush_stdout();
     }
 
@@ -264,7 +319,7 @@ impl UciProtocol {
         if command_line.is_empty() || command_line.starts_with('#') {
             return;
         }
-        println!("Unknown command: '{command_line}'. Type help for more information.");
+        crate::uci_println!("Unknown command: '{command_line}'. Type help for more information.");
         flush_stdout();
     }
 }
@@ -302,10 +357,9 @@ const fn help_text() -> &'static str {
     )
 }
 
-fn terminate_on_critical_error(full_command: &str, message: &str) -> ! {
+fn report_critical_error(full_command: &str, message: &str) {
     crate::info_string!("CRITICAL ERROR: Command `{full_command}` failed. Reason: {message}");
     flush_stdout();
-    process::exit(1);
 }
 
 #[cfg(test)]
@@ -410,9 +464,9 @@ mod tests {
     fn go_sends_current_position_with_search_parameters() {
         let (mut protocol, commands) = protocol_fixture();
 
-        protocol.position_with_command(
-            &args(&["startpos", "moves", "e2e4"]),
-            "position startpos moves e2e4",
+        assert_eq!(
+            protocol.handle_command("position startpos moves e2e4"),
+            CommandOutcome::Handled
         );
         protocol.go(&args(&["depth", "3", "nodes", "123"]));
 
@@ -433,12 +487,16 @@ mod tests {
     fn setoption_sends_configure_and_clear_hash_sends_its_own_command() {
         let (mut protocol, commands) = protocol_fixture();
         let configured = |command: EngineCommand| match command {
-            EngineCommand::Configure(options) => options,
+            EngineCommand::Configure { options, hash } => (options, hash),
             _ => panic!("setoption must configure the engine"),
         };
 
         protocol.set_option(&args(&["name", "Hash", "value", "8"]));
-        assert_eq!(configured(commands.wait_pop()).hash_mb, 8);
+        let (options, hash) = configured(commands.wait_pop());
+        assert_eq!((options.hash_mb, hash), (8, HashRequest::Sent));
+        // The same value again is still a request: the engine thread tries it.
+        protocol.set_option(&args(&["name", "Hash", "value", "8"]));
+        assert_eq!(configured(commands.wait_pop()).1, HashRequest::Sent);
 
         protocol.set_option(&args(&["name", "Clear", "Hash"]));
         assert!(matches!(commands.wait_pop(), EngineCommand::ClearHash));
@@ -451,12 +509,14 @@ mod tests {
             "MixedCase",
         ]));
         assert_eq!(
-            configured(commands.wait_pop()).syzygy.path,
+            configured(commands.wait_pop()).0.syzygy.path,
             "D:\\TB MixedCase"
         );
 
         protocol.set_option(&args(&["name", "Ponder", "value", "true"]));
-        assert!(configured(commands.wait_pop()).ponder);
+        let (options, hash) = configured(commands.wait_pop());
+        assert!(options.ponder);
+        assert_eq!(hash, HashRequest::NotSent);
     }
 
     #[test]
@@ -486,9 +546,9 @@ mod tests {
     fn newgame_resets_position_and_sends_marker_command() {
         let (mut protocol, commands) = protocol_fixture();
 
-        protocol.position_with_command(
-            &args(&["startpos", "moves", "e2e4"]),
-            "position startpos moves e2e4",
+        assert_eq!(
+            protocol.handle_command("position startpos moves e2e4"),
+            CommandOutcome::Handled
         );
         assert_eq!(
             protocol.search_options.board.piece_at(Square::E4),
@@ -510,11 +570,9 @@ mod tests {
         let (mut protocol, commands) = protocol_fixture();
 
         protocol.stop();
-        protocol.ponderhit();
         protocol.quit();
 
         assert!(matches!(commands.wait_pop(), EngineCommand::Quit { .. }));
         assert!(matches!(commands.wait_pop(), EngineCommand::Stop { .. }));
-        assert!(matches!(commands.wait_pop(), EngineCommand::PonderHit));
     }
 }
