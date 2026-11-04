@@ -1595,7 +1595,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       needs nothing installed (macOS cannot), and xtask refuses one that
       does not (RAR-P57: Windows +0.13%, a pass; the WSL read of Linux was
       too noisy to resolve, its speed question open for a native host).
-      Left: the SDE matrix, which only the first `Release` run reads.
+      Both universal binaries are static and pass every check (Windows
+      `dac14c5`; Linux `dc66f27`, 9,435,472 bytes, no loader): the first
+      static Linux link crashed before `main` because it passed the C
+      libraries again after rustc's own static group, and the universal
+      check caught it. Left: the SDE matrix, which only the first `Release`
+      run reads.
     - **E.3.4 Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
       E.3.1 closed (2026-10-05), numbered E.3.2 until 2026-11-04: the version from `2.7.0-dev` to 2.7.0,
       behaviour-neutral with the fingerprint

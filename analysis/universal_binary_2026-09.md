@@ -390,3 +390,17 @@ brings into each of the five objects (14,083,904 bytes); cargo's own link
 strips it (`-Wl,--strip-debug`), and the universal link now does the same
 (8,346,928 bytes, about four times a 2,056,248-byte tier). Its floor is
 glibc 2.34, with only libc, libm and libgcc_s.
+
+**A static runtime (2026-11-04, RAR-P57).** By the maintainer's decision
+every Windows and Linux build links its C runtime statically. The Windows
+universal binary needed nothing new. The Linux one first linked and then
+crashed before `main` (a segfault even when the dispatcher would refuse the
+tier): the universal link passed the base tier's C libraries (`-lc`,
+`-lpthread`, `-lgcc_eh`, …) again, after the static group rustc already
+links for the dispatcher's std. Linked by hand, the same objects ran without
+those libraries and crashed with them, as a static PIE and as a static non-PIE
+alike, so the order of a second C runtime, not position independence, was
+the fault. A static ELF link now leaves the libraries to rustc. The universal
+check, which runs the shipped file, is what caught it: the static-runtime
+check alone had passed. The static Linux binary is 9,435,472 bytes, with no
+dynamic loader and no needed library.
