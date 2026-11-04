@@ -5,7 +5,7 @@
 # resolve a sub-1% effect. Producing them by hand invites the two failure
 # modes this file exists to prevent:
 #
-#   1. Measuring the same bytes twice. `cargo xtask build --pgo` overwrites one
+#   1. Measuring the same bytes twice. `cargo xtask build` overwrites one
 #      asset path, so copies must be taken between builds. If two copies hash
 #      the same, the PGO profile did not actually vary and pooling them is
 #      meaningless - this script FAILS instead of silently averaging duplicates.
@@ -23,9 +23,10 @@
 # plain binary's processes differ by up to 6% here (RAR-P38), so a plain arm
 # is read as a pool like any other.
 #
-# -Native builds the tier with `target-cpu=native` (xtask `--native`); the
-# files and manifest keep the tier's name, so `nps_read.py` reads a native
-# pool against its portable tier directly. -Toolchain and -Target build with
+# -Native builds with `target-cpu=native` (xtask `--native`), which is the
+# host's best tier tuned for this CPU, so it needs -Arch pext (the 5950X's
+# best tier); the files and manifest keep the tier's name, so `nps_read.py`
+# reads a native pool against its portable tier directly. -Toolchain and -Target build with
 # another rustup toolchain and triple (`cargo +<toolchain> xtask build
 # --target <triple>`), for a toolchain comparison such as the GNU
 # (MinGW-linked) build against the MSVC one; PGO needs the triple to be that
@@ -34,7 +35,7 @@
 # manifest with the toolchain's `rustc -vV`.
 
 param(
-    [Parameter(Mandatory = $true)][ValidateSet("base", "x86-64", "avx2", "pext")][string]$Arch,
+    [Parameter(Mandatory = $true)][ValidateSet("base", "sse42", "avx2", "pext")][string]$Arch,
     [int]$Builds = 4,
     [Parameter(Mandatory = $true)][string]$OutDir,
     # The source's `bench 13` node count (GUIDE's checkpoint, or the arm's
@@ -109,13 +110,16 @@ function Get-PeContentHash {
     ([BitConverter]::ToString($sha.ComputeHash($b))).Replace("-", "")
 }
 
+if ($Native -and $Arch -ne "pext") {
+    throw "-Native builds the host's best tier (xtask --native takes no --tier); pass -Arch pext"
+}
 if ($Toolchain -and -not $Target) {
     throw "-Toolchain needs -Target: xtask picks the MSVC triple on Windows whatever the toolchain"
 }
 # Typed arrays: an `if` yielding one element unrolls to a bare string, and
 # splatting a string hands cargo its characters one by one.
 [string[]]$toolchainArgs = if ($Toolchain) { @("+$Toolchain") } else { @() }
-[string[]]$nativeArgs = if ($Native) { @("--native") } else { @() }
+[string[]]$tierArgs = if ($Native) { @("--native") } else { @("--tier", $Arch) }
 [string[]]$targetArgs = if ($Target) { @("--target", $Target) } else { @() }
 $rustcVersion = (& rustc @toolchainArgs -vV) -join "; "
 if ($LASTEXITCODE -ne 0) { throw "rustc $toolchainArgs -vV failed (exit $LASTEXITCODE)" }
@@ -130,11 +134,11 @@ for ($i = 1; $i -le $Builds; $i++) {
     Write-Host "== $Arch build $i/$Builds =="
     $log = Join-Path $OutDir "build-$Arch-$i.log"
     [string[]]$featureArgs = if ($Features) { @("--features", $Features) } else { @() }
-    [string[]]$pgoArgs = if ($NoPgo) { @() } else { @("--pgo") }
+    [string[]]$pgoArgs = if ($NoPgo) { @("--nopgo") } else { @() }
     # A plain build of an unchanged tree is cargo's no-op; the touch makes
     # the determinism check compare two real compiles.
     if ($NoPgo -and $i -gt 1) { (Get-Item src/lib.rs).LastWriteTime = Get-Date }
-    & cargo @toolchainArgs xtask build --arch $Arch @nativeArgs @targetArgs @pgoArgs @featureArgs *> $log
+    & cargo @toolchainArgs xtask build @tierArgs @targetArgs @pgoArgs @featureArgs *> $log
     if ($LASTEXITCODE -ne 0) { throw "build $i failed (exit $LASTEXITCODE); see $log" }
 
     # Take the artifact path from xtask itself rather than reconstructing the

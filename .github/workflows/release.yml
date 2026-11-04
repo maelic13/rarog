@@ -7,7 +7,7 @@ run-name: ${{ github.ref_type == 'tag' && github.ref_name || format('release can
 # on master. The workflow validates first (the tag names Cargo.toml's version,
 # the tagged commit is on master or such a patch, CHANGELOG.md has a dated
 # section for it), builds the
-# nine PGO assets read-only, benches every one and asserts a single `bench 13`
+# eleven PGO assets read-only, benches every one and asserts a single `bench 13`
 # fingerprint across the matrix equal to the one GUIDE's checkpoint declares,
 # and only then one job with write permission publishes the release with every
 # asset and the notes taken from that CHANGELOG section. Nothing exists on
@@ -49,6 +49,7 @@ jobs:
     outputs:
       mode: ${{ steps.meta.outputs.mode }}
       version: ${{ steps.meta.outputs.version }}
+      name: ${{ steps.meta.outputs.name }}
       expected_nodes: ${{ steps.meta.outputs.expected_nodes }}
     steps:
       - uses: actions/checkout@v7
@@ -94,10 +95,15 @@ jobs:
           # cross-platform mismatch is investigated, never waived.
           expected="$(cargo xtask declared-fingerprint)"
           test -n "$expected"
+          # What `id name` and every file name carry: the version at a
+          # release, `dev-<date>-<hash>` for a development build.
+          name="$(cargo xtask version)"
+          test -n "$name"
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "expected_nodes=$expected" >> "$GITHUB_OUTPUT"
-          echo "mode $mode, version $version, expected bench 13 nodes $expected"
+          echo "mode $mode, version $version, name $name, expected bench 13 nodes $expected"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -106,7 +112,7 @@ jobs:
           if-no-files-found: error
 
   build:
-    name: Build ${{ matrix.os_name }} ${{ matrix.asset_arch }}
+    name: Build ${{ matrix.os_name }} ${{ matrix.arch }} ${{ matrix.tier }}
     needs: prepare
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -115,57 +121,24 @@ jobs:
         include:
           # Every cell is a NATIVE runner (host triple == target), which PGO
           # requires: the instrumented binary runs its training bench locally.
-          - runner: ubuntu-latest
-            os_name: linux
-            asset_arch: x86-64
-            target: x86_64-unknown-linux-gnu
-            ext: ""
-          - runner: ubuntu-latest
-            os_name: linux
-            asset_arch: avx2
-            target: x86_64-unknown-linux-gnu
-            ext: ""
-          - runner: ubuntu-latest
-            os_name: linux
-            asset_arch: pext
-            target: x86_64-unknown-linux-gnu
-            ext: ""
-          - runner: ubuntu-24.04-arm
-            os_name: linux
-            asset_arch: arm64
-            target: aarch64-unknown-linux-gnu
-            ext: ""
-          - runner: windows-latest
-            os_name: windows
-            asset_arch: x86-64
-            target: x86_64-pc-windows-msvc
-            ext: ".exe"
-          - runner: windows-latest
-            os_name: windows
-            asset_arch: avx2
-            target: x86_64-pc-windows-msvc
-            ext: ".exe"
-          - runner: windows-latest
-            os_name: windows
-            asset_arch: pext
-            target: x86_64-pc-windows-msvc
-            ext: ".exe"
+          # An x64 cell names its tier; arm64 has none.
+          - { runner: ubuntu-latest, os_name: linux, arch: x64, tier: base, target: x86_64-unknown-linux-gnu, ext: "" }
+          - { runner: ubuntu-latest, os_name: linux, arch: x64, tier: sse42, target: x86_64-unknown-linux-gnu, ext: "" }
+          - { runner: ubuntu-latest, os_name: linux, arch: x64, tier: avx2, target: x86_64-unknown-linux-gnu, ext: "" }
+          - { runner: ubuntu-latest, os_name: linux, arch: x64, tier: pext, target: x86_64-unknown-linux-gnu, ext: "" }
+          - { runner: ubuntu-24.04-arm, os_name: linux, arch: arm64, tier: "", target: aarch64-unknown-linux-gnu, ext: "" }
+          - { runner: windows-latest, os_name: windows, arch: x64, tier: base, target: x86_64-pc-windows-msvc, ext: ".exe" }
+          - { runner: windows-latest, os_name: windows, arch: x64, tier: sse42, target: x86_64-pc-windows-msvc, ext: ".exe" }
+          - { runner: windows-latest, os_name: windows, arch: x64, tier: avx2, target: x86_64-pc-windows-msvc, ext: ".exe" }
+          - { runner: windows-latest, os_name: windows, arch: x64, tier: pext, target: x86_64-pc-windows-msvc, ext: ".exe" }
           # PGO here depends on a WORKAROUND, not on stock toolchain support:
           # linked with MSVC link.exe the instrumented binary emits .profraw
           # files with an empty symbol-name table and llvm-profdata refuses
           # them. xtask forces LLD for this target (`linker_flags` in
           # xtask/src/main.rs, rust-lang/rust#156675) — when that lands, drop
           # the override and re-test.
-          - runner: windows-11-arm
-            os_name: windows
-            asset_arch: arm64
-            target: aarch64-pc-windows-msvc
-            ext: ".exe"
-          - runner: macos-latest
-            os_name: macos
-            asset_arch: arm64
-            target: aarch64-apple-darwin
-            ext: ""
+          - { runner: windows-11-arm, os_name: windows, arch: arm64, tier: "", target: aarch64-pc-windows-msvc, ext: ".exe" }
+          - { runner: macos-latest, os_name: macos, arch: arm64, tier: "", target: aarch64-apple-darwin, ext: "" }
     steps:
       - uses: actions/checkout@v7
         with:
@@ -185,23 +158,24 @@ jobs:
       - name: Install llvm-tools
         run: rustup component add llvm-tools
 
+      # xtask names the file (`rarog-<name>-<os>-<arch>[-<tier>]`, the name a
+      # PGO build with the default features ships under) and checks the
+      # built engine reports it. A cross-runner tier the CPU cannot run is
+      # refused there, since PGO trains by running the engine.
       - name: Build the PGO asset
+        shell: bash
         run: >
-          cargo xtask build --arch ${{ matrix.asset_arch }}
-          --target ${{ matrix.target }} --pgo
+          cargo xtask build --target ${{ matrix.target }}
+          ${{ matrix.tier && format('--tier {0}', matrix.tier) || '' }}
 
-      # xtask appends `-pgo` locally so PGO and non-PGO builds can coexist.
-      # Released assets are not labelled: every shipped binary is PGO, and the
-      # names `rarog-vX.Y.Z-<os>-<arch>[.exe]` are what README and existing
-      # download links use.
-      - name: Name the asset
+      - name: Take the asset
         id: asset
         shell: bash
         run: |
           set -euo pipefail
-          version='${{ needs.prepare.outputs.version }}'
-          built="target/dist/rarog-v${version}-${{ matrix.os_name }}-${{ matrix.asset_arch }}-pgo${{ matrix.ext }}"
-          name="rarog-v${version}-${{ matrix.os_name }}-${{ matrix.asset_arch }}${{ matrix.ext }}"
+          tier='${{ matrix.tier }}'
+          name="rarog-${{ needs.prepare.outputs.name }}-${{ matrix.os_name }}-${{ matrix.arch }}${tier:+-$tier}${{ matrix.ext }}"
+          built="target/dist/$name"
           test -f "$built" || { echo "::error::expected artifact not found: $built"; ls -la target/dist || true; exit 1; }
           mkdir -p asset
           mv "$built" "asset/$name"
@@ -213,13 +187,13 @@ jobs:
       - name: Verify the ISA contract
         shell: bash
         run: >
-          cargo xtask verify-isa --arch ${{ matrix.asset_arch }}
-          --target ${{ matrix.target }}
+          cargo xtask verify-isa --target ${{ matrix.target }}
+          ${{ matrix.tier && format('--tier {0}', matrix.tier) || '' }}
           --exe "asset/${{ steps.asset.outputs.name }}"
 
-      # The UCI handshake, the version string and the fingerprint. The node
-      # count must equal the one GUIDE declares for the tagged source; a
-      # stale or wrong source cannot ship with a plausible count.
+      # The UCI handshake, the name and the fingerprint. The node count must
+      # equal the one GUIDE declares for the tagged source; a stale or wrong
+      # source cannot ship with a plausible count.
       - name: Smoke-test and fingerprint the asset
         shell: bash
         run: |
@@ -228,8 +202,8 @@ jobs:
           chmod +x "$bin" 2>/dev/null || true
           out="$({ echo uci; echo quit; } | "$bin")"
           echo "$out" | grep -q '^uciok' || { echo "::error::no uciok in the UCI handshake"; exit 1; }
-          echo "$out" | grep -q "^id name Rarog ${{ needs.prepare.outputs.version }}\$" \
-            || { echo "::error::id name does not read 'Rarog ${{ needs.prepare.outputs.version }}'"; echo "$out" | grep '^id name'; exit 1; }
+          echo "$out" | grep -q "^id name Rarog ${{ needs.prepare.outputs.name }}\$" \
+            || { echo "::error::id name does not read 'Rarog ${{ needs.prepare.outputs.name }}'"; echo "$out" | grep '^id name'; exit 1; }
           nodes="$("$bin" bench 13 | grep -i 'Nodes searched' | grep -oE '[0-9]+' | head -1)"
           expected='${{ needs.prepare.outputs.expected_nodes }}'
           echo "bench 13: $nodes nodes (declared $expected)"
@@ -238,7 +212,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: asset-${{ matrix.os_name }}-${{ matrix.asset_arch }}
+          name: asset-${{ matrix.os_name }}-${{ matrix.arch }}${{ matrix.tier && format('-{0}', matrix.tier) || '' }}
           path: asset/*
           if-no-files-found: error
 
@@ -253,27 +227,27 @@ jobs:
           merge-multiple: true
           path: bundle
 
-      - name: Nine assets, one fingerprint
+      - name: Eleven assets, one fingerprint
         shell: bash
         run: |
           set -euo pipefail
           cd bundle
-          version='${{ needs.prepare.outputs.version }}'
-          expected=(
-            "rarog-v${version}-linux-x86-64" "rarog-v${version}-linux-avx2" "rarog-v${version}-linux-pext"
-            "rarog-v${version}-linux-arm64"
-            "rarog-v${version}-windows-x86-64.exe" "rarog-v${version}-windows-avx2.exe"
-            "rarog-v${version}-windows-pext.exe" "rarog-v${version}-windows-arm64.exe"
-            "rarog-v${version}-macos-arm64"
-          )
+          name='${{ needs.prepare.outputs.name }}'
+          expected=()
+          for os in linux windows; do
+            ext=""; [ "$os" = windows ] && ext=".exe"
+            for tier in base sse42 avx2 pext; do expected+=("rarog-${name}-${os}-x64-${tier}${ext}"); done
+            expected+=("rarog-${name}-${os}-arm64${ext}")
+          done
+          expected+=("rarog-${name}-macos-arm64")
           for f in "${expected[@]}"; do test -f "$f" || { echo "::error::missing asset $f"; exit 1; }; done
-          test "$(ls | grep -vc '\.nodes$')" -eq 9
+          test "$(ls | grep -vc '\.nodes$')" -eq 11
           nodes="$(cat *.nodes | sort -u)"
           test "$(wc -l <<<"$nodes")" -eq 1 || { echo "::error::the assets disagree on bench 13: $nodes"; exit 1; }
           test "$nodes" = '${{ needs.prepare.outputs.expected_nodes }}'
           rm -f *.nodes
           sha256sum "${expected[@]}" | tee SHA256SUMS
-          echo "nine assets at bench 13 = $nodes"
+          echo "eleven assets at bench 13 = $nodes"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -331,6 +305,6 @@ jobs:
           body_path: notes/release-notes.md
           make_latest: true
           fail_on_unmatched_files: true
-          files: bundle/rarog-v*
+          files: bundle/rarog-*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

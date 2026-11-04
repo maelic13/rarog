@@ -156,23 +156,23 @@ jobs:
         include:
           - os: ubuntu-latest
             label: linux-x86-64
-            isa_arch: base
+            isa_tier: base
             ext: ""
           - os: windows-latest
             label: windows-x86-64
-            isa_arch: base
+            isa_tier: base
             ext: ".exe"
           - os: ubuntu-24.04-arm
             label: linux-arm64
-            isa_arch: arm64
+            isa_tier: ""
             ext: ""
           - os: windows-11-arm
             label: windows-arm64
-            isa_arch: arm64
+            isa_tier: ""
             ext: ".exe"
           - os: macos-latest
             label: macos-arm64
-            isa_arch: arm64
+            isa_tier: ""
             ext: ""
     steps:
       - uses: actions/checkout@v7
@@ -203,7 +203,8 @@ jobs:
       - name: Verify the baseline ISA contract
         shell: bash
         run: >
-          cargo xtask verify-isa --arch ${{ matrix.isa_arch }} --default-cpu
+          cargo xtask verify-isa --default-cpu
+          ${{ matrix.isa_tier && format('--tier {0}', matrix.isa_tier) || '' }}
           --exe "target/release/rarog${{ matrix.ext }}"
 
       # NOTE: no expected value is hardcoded anywhere. The invariant checked in

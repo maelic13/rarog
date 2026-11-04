@@ -5,21 +5,21 @@
 .DESCRIPTION
     Three modes:
 
-    Normal (default): runs `cargo xtask build --arch pext --pgo` — produces a
+    Normal (default): runs `cargo xtask build --tier pext` — produces a
     PGO-optimised pext binary.  Use for SPRT and gauntlet testing.  PGO changes
     hot-path timing enough to affect measured Elo comparisons; always use this
     for match testing.
 
-    Native (-Native switch): runs `cargo xtask build --arch pext --native --pgo` —
-    produces a PGO-optimised binary built with `-C target-cpu=native` for the
-    exact host CPU (e.g. znver3 on a 5950X), instead of the portable
+    Native (-Native switch): runs `cargo xtask build --native` — produces a
+    PGO-optimised binary of the host's best tier built with
+    `-C target-cpu=native` for the exact host CPU (e.g. znver3 on a 5950X), instead of the portable
     x86-64-v3 baseline.  It is not the fast build: on the 5950X it read 3.8%
     slower than the normal mode (RAR-P51), so match and pool binaries use the
     normal mode.  Do NOT distribute this binary, since it is not guaranteed to
     run on other CPUs.
 
-    Tune (-Tune switch): runs `cargo build --release --features tune` — produces
-    a non-PGO pext binary with search-parameter UCI options exposed.  Use ONLY
+    Tune (-Tune switch): runs `cargo xtask build --tier pext --nopgo --features tune`
+    — produces a non-PGO pext binary with search-parameter UCI options exposed.  Use ONLY
     for weather-factory SPSA runs.  PGO is skipped because SPSA accuracy does
     not depend on absolute NPS — both sides of each mini-match use the same
     binary.  With -Features (a candidate arm compiled behind a flag) it builds
@@ -40,8 +40,9 @@
     Tune:    rarog-<Suffix>-tune.exe
 
 .PARAMETER Native
-    Build with `--arch pext --native --pgo` instead of `--arch pext --pgo`.
-    Same PEXT code path; only the codegen baseline changes.  Local-only.
+    Build with `--native` instead of `--tier pext`: the host's best tier (pext
+    on a 5950X, so the same PEXT code path) with `target-cpu=native` in place
+    of the portable baseline.  Local-only.
 
 .PARAMETER Tune
     Build with --features tune instead of PGO.  Use for SPSA binaries only.
@@ -187,6 +188,25 @@ function Write-EngineManifest {
     }
 }
 
+# Build through xtask, which names the file and checks the built engine
+# reports that name, and return the file it reports as built. The path comes
+# from xtask's own `Built <path>` line, never from a glob, so the naming rules
+# stay in one place and a stale file cannot be picked up.
+function Invoke-XtaskBuild {
+    param([Parameter(Mandatory)][string[]]$Arguments)
+    $log = [IO.Path]::GetTempFileName()
+    try {
+        & cargo xtask build @Arguments *> $log
+        $exit = $LASTEXITCODE
+        Get-Content -LiteralPath $log | Write-Host
+        if ($exit -ne 0) { throw "cargo xtask build $($Arguments -join ' ') failed (exit $exit)" }
+        $built = Select-String -LiteralPath $log -Pattern '^Built (.+)$' | Select-Object -Last 1
+        if (-not $built) { throw "xtask printed no 'Built <path>' line; cannot identify the binary." }
+        return Get-Item -LiteralPath $built.Matches[0].Groups[1].Value.Trim()
+    } finally {
+        Remove-Item -LiteralPath $log -Force -ErrorAction SilentlyContinue
+    }
+}
 
 $repoRoot = if ($SourceRoot) {
     (Resolve-Path -LiteralPath $SourceRoot).Path
@@ -207,74 +227,41 @@ try {
         Write-Host "NOTE: Use this binary only for SPSA, never for SPRT."
         Write-Host ""
 
-        # pext RUSTFLAGS matching xtask's pext arch (rarog_pext cfg + BMI2 target features).
-        $savedRustFlags = $env:RUSTFLAGS
-        try {
-            $env:RUSTFLAGS = "--cfg rarog_pext -C target-cpu=x86-64-v3 -C target-feature=+bmi2"
-            cargo build --release --features $tuneFeatures
-            if ($LASTEXITCODE -ne 0) { throw "cargo build --features $tuneFeatures failed (exit $LASTEXITCODE)" }
-        } finally {
-            $env:RUSTFLAGS = $savedRustFlags
-        }
-
-        $src = Join-Path $repoRoot "target\release\rarog.exe"
-        if (-not (Test-Path $src)) { throw "Binary not found at: $src" }
+        $tuneArgs = @("--tier", "pext", "--nopgo", "--features", $tuneFeatures)
+        $built = Invoke-XtaskBuild -Arguments $tuneArgs
 
         if (-not (Test-Path $TestEnginesDir)) {
             New-Item -ItemType Directory -Path $TestEnginesDir | Out-Null
         }
 
         $dest = Join-Path $TestEnginesDir "rarog-$Suffix-tune.exe"
-        Copy-Item $src $dest -Force
+        Copy-Item $built.FullName $dest -Force
         Write-EngineManifest -BinaryPath $dest -Suffix $Suffix -Flavor $tuneFlavor `
-            -RepositoryRoot $repoRoot -BuildCommand "cargo build --release --features $tuneFeatures" `
+            -RepositoryRoot $repoRoot -BuildCommand "cargo xtask build $($tuneArgs -join ' ')" `
             -Depth $BenchDepth -SkipBench:$BuildOnly
         Write-Host ""
         Write-Host "Done: $dest"
         Write-Host ""
     } else {
-        # `--native` is now ORTHOGONAL to `--arch`. Both flavours build
-        # the PEXT code path; -Native only swaps the portable x86-64-v3 baseline
-        # for `target-cpu=native`. Gate binaries deliberately stay portable, so
-        # what we SPRT matches the shipped pext asset (PLAN S3).
-        $arch = "pext"
-        $label = if ($Native) { "pext+native" } else { "pext" }
+        # Gate binaries stay portable, so what we SPRT matches the shipped pext
+        # build. -Native builds the host's best tier with `target-cpu=native`.
+        $label = if ($Native) { "native" } else { "pext" }
         Write-Host ""
         Write-Host "Building $label+PGO binary (suffix: $Suffix) ..."
         Write-Host ""
 
-        $featureArgs = if ($Features) { @("--features", $Features) } else { @() }
-        $buildStarted = Get-Date
-        if ($Native) {
-            cargo xtask build --arch $arch --native --pgo @featureArgs
-        } else {
-            cargo xtask build --arch $arch --pgo @featureArgs
-        }
-        if ($LASTEXITCODE -ne 0) { throw "xtask build failed (exit $LASTEXITCODE)" }
-
-        # The flavour decides the artifact name. A `*-$arch-pgo.exe` glob does
-        # not match `*-$arch-native-pgo.exe`, so a native build used to pick up
-        # the newest portable binary and label it native.
-        $distFlavor = if ($Native) { "$arch-native-pgo" } else { "$arch-pgo" }
-        $dist = Get-ChildItem "target/dist/rarog-*-windows-$distFlavor.exe" |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
-
-        if (-not $dist) {
-            throw "No $distFlavor binary found in target/dist/ — check xtask output above."
-        }
-        if ($dist.LastWriteTime -lt $buildStarted) {
-            throw "Newest $distFlavor binary ($($dist.Name)) predates this build; xtask did not write it."
-        }
+        [string[]]$xtaskArgs = if ($Native) { @("--native") } else { @("--tier", "pext") }
+        if ($Features) { $xtaskArgs += @("--features", $Features) }
+        $dist = Invoke-XtaskBuild -Arguments $xtaskArgs
 
         if (-not (Test-Path $TestEnginesDir)) {
             New-Item -ItemType Directory -Path $TestEnginesDir | Out-Null
         }
 
-        $fileFlavor = if ($Native) { "$arch-native-pgo" } else { "$arch-pgo" }
+        $fileFlavor = if ($Native) { "pext-native-pgo" } else { "pext-pgo" }
         $dest = Join-Path $TestEnginesDir "rarog-$Suffix-$fileFlavor.exe"
         Copy-Item $dist.FullName $dest -Force
-        $buildCommand = "cargo xtask build --arch $arch$(if ($Native) { ' --native' }) --pgo$(if ($Features) { " --features $Features" })"
+        $buildCommand = "cargo xtask build $($xtaskArgs -join ' ')"
         Write-EngineManifest -BinaryPath $dest -Suffix $Suffix -Flavor $fileFlavor `
             -RepositoryRoot $repoRoot -BuildCommand $buildCommand -Depth $BenchDepth `
             -SkipBench:$BuildOnly
