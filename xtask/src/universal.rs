@@ -281,11 +281,20 @@ impl SharedInputs {
             })
             .cloned()
             .collect();
+        // A static ELF link (`-static-pie`) carries the C runtime itself:
+        // rustc links the same libraries for the dispatcher's std, inside
+        // its own `-Bstatic` group. Passed again after that group they made
+        // a binary that crashed before `main` (2026-11-04), so they are left
+        // to rustc. MSVC's `.lib` inputs and a dynamic link's `-l` are
+        // order-insensitive and are passed.
+        let static_elf = line
+            .iter()
+            .any(|arg| arg == "-static-pie" || arg == "-static");
         let mut libraries: Vec<String> = line
             .iter()
             .filter(|arg| {
                 arg.to_ascii_lowercase().ends_with(".lib")
-                    || (arg.starts_with("-l") && arg.len() > 2)
+                    || (!static_elf && arg.starts_with("-l") && arg.len() > 2)
             })
             .cloned()
             .collect();
@@ -720,6 +729,25 @@ mod tests {
         let mut unix = line.clone();
         unix.push("-Wl,--strip-debug".to_string());
         assert!(SharedInputs::from_base_line(&unix).unwrap().strip_debuginfo);
+        // A dynamic ELF link passes its libraries; a static one leaves them
+        // to rustc, whose own static group already holds them.
+        let mut elf = vec![
+            "cc".to_string(),
+            r"/t/deps/rustcAb/librarog-6a3bb779a354820a.rlib".to_string(),
+            "-lpthread".to_string(),
+            "-lc".to_string(),
+        ];
+        assert_eq!(
+            SharedInputs::from_base_line(&elf).unwrap().libraries,
+            ["-lpthread", "-lc"]
+        );
+        elf.push("-static-pie".to_string());
+        assert!(
+            SharedInputs::from_base_line(&elf)
+                .unwrap()
+                .libraries
+                .is_empty()
+        );
         let two_engines = [line.clone(), line].concat();
         assert!(SharedInputs::from_base_line(&two_engines).is_err());
     }
