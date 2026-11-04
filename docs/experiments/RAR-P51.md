@@ -204,6 +204,11 @@ Both reads closed in step 1, with no disturbed cycle and host CPU at 0.4% to
     `02df47c5…`. The ledger rows above still cite them. They went to the
     Recycle Bin, and once it is emptied they are gone: a PGO build cannot be
     rebuilt byte for byte.
+  - **Found 2026-11-04,** clearing `target/`: copies of 2.6.0's native
+    build (`02df47c5…`) and of the 2.7.0-dev native build cited above
+    (`cc1c1e8d…`) were still in `target/dist/`. Both are kept in
+    `tools/test_engines/` (`rarog-v2.6.0-windows-pext-native-pgo.exe`,
+    `rarog-v2.7.0-dev-windows-pext-native-pgo-cc1c1e8d.exe`), hashes checked.
   - Their place is taken by the published Windows pext assets of each tag,
     downloaded from the GitHub releases and checked against GitHub's
     digests. They are PGO builds by the release workflow, which drops
