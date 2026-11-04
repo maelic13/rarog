@@ -2026,6 +2026,32 @@ mod tests {
         }
     }
 
+    /// A `Hash` the allocator refuses keeps the table it had and is announced
+    /// once, not again on every later `setoption` that resends the option set.
+    /// `usize::MAX` MiB is a reservation `try_reserve_exact` rejects before any
+    /// memory is touched, so the refusal is the same on every platform.
+    #[test]
+    fn a_hash_the_allocator_refuses_keeps_the_table_and_is_announced_once() {
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        let refused = EngineOptions {
+            hash_mb: usize::MAX,
+            ..EngineOptions::default()
+        };
+        searcher.configure(&refused);
+        searcher.configure(&EngineOptions {
+            threads: 2,
+            ..refused
+        });
+        let printed = lines.lock().unwrap().clone();
+        let refusals = printed
+            .iter()
+            .filter(|line| line.contains("Unable to allocate Hash"))
+            .count();
+        assert_eq!(refusals, 1, "{printed:?}");
+        assert_eq!(searcher.shared.hash_mb, 64);
+    }
+
     /// `bestmove` must be the move the last `info` line names. A stopped
     /// iteration can leave another move's bound line last, as can a vote for
     /// a helper: the result's own line is printed then, and only then.

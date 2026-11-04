@@ -55,6 +55,7 @@ pub mod engine_command;
 pub mod eval;
 pub mod infra;
 pub mod large_pages;
+pub mod physical_memory;
 pub mod search;
 pub mod syzygy;
 pub mod tt;

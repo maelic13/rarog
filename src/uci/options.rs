@@ -8,6 +8,7 @@ use std::str::FromStr;
 #[cfg(feature = "tune")]
 use crate::eval::{FAMILY_MASKS, MaskedFamily};
 use crate::infra::to_i32;
+use crate::physical_memory;
 use crate::search::options::{EngineOptions, MAX_MULTI_PV, MAX_THREADS};
 #[cfg(feature = "tune")]
 use crate::search::params::{CoreParams, ProofParams, QuietParams, SearchParams};
@@ -26,9 +27,46 @@ pub enum OptionUpdate {
     Unknown { name: String },
 }
 
-/// Holds `value` to `range` and stores it, at its field's own type; false when
-/// the value does not read at that type.
-type SpinApply = fn(&mut EngineOptions, &str, &RangeInclusive<i32>) -> bool;
+/// Why a spin's value was not taken.
+enum Refusal {
+    /// It does not read at the option's type.
+    Unreadable,
+    /// It reads, but is more than the machine can hold; the notice says so.
+    TooLarge(String),
+}
+
+/// Holds `value` to `range` and stores it, at its field's own type.
+type SpinApply = fn(&mut EngineOptions, &str, &RangeInclusive<i32>) -> Result<(), Refusal>;
+
+/// The largest `Hash` the protocol takes on any machine, in MiB.
+const MAX_HASH_MB: i32 = 33_554_432;
+
+/// The largest `Hash` this machine can hold, in MiB: its physical memory, or
+/// `MAX_HASH_MB` where the platform does not report it.
+pub(crate) fn hash_limit_mb(physical_bytes: Option<u64>) -> i32 {
+    physical_bytes.map_or(MAX_HASH_MB, |bytes| {
+        i32::try_from(bytes >> 20).map_or(MAX_HASH_MB, |mb| mb.clamp(1, MAX_HASH_MB))
+    })
+}
+
+/// A `Hash` above the limit is refused, not held to it: a table the size of
+/// the whole machine cannot be held either, and a GUI that sent more meant a
+/// setting the engine cannot honour, so it is told. Below the limit the
+/// allocator may still refuse, and the engine thread says so.
+fn apply_hash(
+    engine: &mut EngineOptions,
+    value: &str,
+    range: &RangeInclusive<i32>,
+) -> Result<(), Refusal> {
+    let mb: usize = value.parse().map_err(|_| Refusal::Unreadable)?;
+    if i128::try_from(mb).unwrap_or(i128::MAX) > i128::from(*range.end()) {
+        return Err(Refusal::TooLarge(format!(
+            "Hash value {mb} is above the {} MiB this machine can hold; the setting is unchanged.",
+            range.end()
+        )));
+    }
+    store(&mut engine.hash_mb, clamped(value, range))
+}
 
 enum Kind {
     Spin {
@@ -79,9 +117,12 @@ fn check(name: &'static str, default: bool, apply: fn(&mut EngineOptions, bool))
 fn table() -> Vec<UciOption> {
     #[allow(unused_mut, reason = "LargePages is pushed only on Windows")]
     let mut options = vec![
-        spin("Hash", 64, 1..=33_554_432, |engine, value, range| {
-            store(&mut engine.hash_mb, clamped(value, range))
-        }),
+        spin(
+            "Hash",
+            64,
+            1..=hash_limit_mb(physical_memory::total_bytes()),
+            apply_hash,
+        ),
         UciOption {
             name: "Clear Hash",
             kind: Kind::Button,
@@ -99,9 +140,9 @@ fn table() -> Vec<UciOption> {
                         && (f64::from(*range.start())..=f64::from(*range.end())).contains(&ms) =>
                 {
                     engine.move_overhead = ms;
-                    true
+                    Ok(())
                 }
-                _ => false,
+                _ => Err(Refusal::Unreadable),
             },
         ),
         spin(
@@ -168,14 +209,9 @@ where
     T::try_from(wide.clamp(i128::from(*range.start()), i128::from(*range.end()))).ok()
 }
 
-fn store<T>(field: &mut T, value: Option<T>) -> bool {
-    match value {
-        Some(value) => {
-            *field = value;
-            true
-        }
-        None => false,
-    }
+fn store<T>(field: &mut T, value: Option<T>) -> Result<(), Refusal> {
+    *field = value.ok_or(Refusal::Unreadable)?;
+    Ok(())
 }
 
 /// The `option` lines `uci` prints.
@@ -240,26 +276,26 @@ pub fn apply(engine: &mut EngineOptions, args: &[String]) -> OptionUpdate {
         Kind::Check { apply, .. } => match value.as_str() {
             "true" => {
                 apply(engine, true);
-                true
+                Ok(())
             }
             "false" => {
                 apply(engine, false);
-                true
+                Ok(())
             }
-            _ => false,
+            _ => Err(Refusal::Unreadable),
         },
         Kind::Text { apply } => {
             apply(engine, value_raw);
-            true
+            Ok(())
         }
         Kind::Button => return OptionUpdate::ClearHash,
     };
-    if taken {
-        OptionUpdate::Applied
-    } else {
-        OptionUpdate::Rejected {
+    match taken {
+        Ok(()) => OptionUpdate::Applied,
+        Err(Refusal::Unreadable) => OptionUpdate::Rejected {
             notice: format!("Invalid {} value.", option.name),
-        }
+        },
+        Err(Refusal::TooLarge(notice)) => OptionUpdate::Rejected { notice },
     }
 }
 
@@ -349,8 +385,12 @@ mod tests {
     /// line for line.
     #[test]
     fn the_table_advertises_the_engine_s_option_list() {
+        let hash = format!(
+            "option name Hash type spin default 64 min 1 max {}",
+            hash_limit_mb(physical_memory::total_bytes())
+        );
         let mut expected = vec![
-            "option name Hash type spin default 64 min 1 max 33554432",
+            hash.as_str(),
             "option name Clear Hash type button",
             "option name Ponder type check default false",
             "option name Move Overhead type spin default 10 min 0 max 5000",
@@ -366,6 +406,45 @@ mod tests {
         }
         let advertised: Vec<String> = table().iter().map(UciOption::advertised).collect();
         assert_eq!(advertised, expected);
+    }
+
+    /// The limit is the machine's memory in whole MiB, held to the protocol's
+    /// largest, and the protocol's largest where the memory is unknown.
+    #[test]
+    fn the_hash_limit_is_the_machine_s_memory() {
+        assert_eq!(hash_limit_mb(Some(32 << 30)), 32_768);
+        assert_eq!(hash_limit_mb(Some((32 << 30) + (1 << 19))), 32_768);
+        assert_eq!(hash_limit_mb(None), MAX_HASH_MB);
+        assert_eq!(hash_limit_mb(Some(u64::MAX)), MAX_HASH_MB);
+        assert_eq!(hash_limit_mb(Some(1 << 10)), 1);
+    }
+
+    /// Above the limit a `Hash` is refused with a notice that says why and the
+    /// setting is kept; at the limit it is taken; below 1 it is held to 1.
+    #[test]
+    fn a_hash_above_the_machine_s_memory_is_refused_not_held_to_it() {
+        let range = 1..=32_768;
+        let mut engine = EngineOptions::default();
+        match apply_hash(&mut engine, "32769", &range) {
+            Err(Refusal::TooLarge(notice)) => assert_eq!(
+                notice,
+                "Hash value 32769 is above the 32768 MiB this machine can hold; the setting is unchanged."
+            ),
+            _ => panic!("32769 MiB on a 32 GiB machine must be refused"),
+        }
+        assert_eq!(engine.hash_mb, 64);
+        assert!(matches!(
+            apply_hash(&mut engine, "99999999999999999999", &range),
+            Err(Refusal::Unreadable)
+        ));
+        assert!(apply_hash(&mut engine, "32768", &range).is_ok());
+        assert_eq!(engine.hash_mb, 32_768);
+        assert!(apply_hash(&mut engine, "0", &range).is_ok());
+        assert_eq!(engine.hash_mb, 1);
+        assert!(matches!(
+            apply_hash(&mut engine, "-5", &range),
+            Err(Refusal::Unreadable)
+        ));
     }
 
     /// Each advertised default is the engine's default: setting it changes

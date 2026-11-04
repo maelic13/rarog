@@ -50,6 +50,10 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 - **Scores no longer look decided when they are not.** A position the
   engine has not proved won could be reported with a score above every
   tablebase win; ordinary scores now stay below the tablebase range.
+- **A `Hash` larger than the machine's memory is refused.** The engine
+  says so and keeps its current table, on every system; on macOS such a
+  setting used to stall the engine. The `Hash` option's maximum is now
+  the machine's memory.
 
 ## [2.6.0] - 2026-10-22
 

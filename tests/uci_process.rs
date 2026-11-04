@@ -243,7 +243,13 @@ fn uci_advertises_ponder_and_core_options() {
     let out = stdout(&output);
     assert!(out.contains("id name Rarog"));
     assert!(out.contains("option name Ponder type check default false"));
-    assert!(out.contains("option name Hash type spin default 64 min 1 max 33554432"));
+    // The largest Hash is this machine's memory, at most the protocol's 32 TiB.
+    let hash_max: u64 = out
+        .lines()
+        .find_map(|line| line.strip_prefix("option name Hash type spin default 64 min 1 max "))
+        .and_then(|max| max.trim().parse().ok())
+        .unwrap_or_else(|| panic!("the Hash option line: {out}"));
+    assert!((1..=33_554_432).contains(&hash_max), "{hash_max}");
     assert!(out.contains("uciok"));
 }
 
@@ -393,29 +399,48 @@ fn stop_during_bench_reports_an_interruption_not_a_summary() {
     session.quit();
 }
 
-/// A `Hash` the allocator refuses is announced once, not again on every later
-/// `setoption` that resends the option set.
+/// The largest `Hash` is what this machine can hold, and one MiB more is
+/// refused at once with a notice, on every platform, the setting kept: no
+/// allocation is attempted, and a later `setoption` says nothing more. (A
+/// platform that reserves lazily, as macOS does, would otherwise grant the
+/// table and spend the session filling it.)
 #[test]
-#[cfg_attr(
-    target_os = "macos",
-    ignore = "macOS reserves a 32 TiB table lazily, so no Hash is refused and the engine fills it instead"
-)]
-fn a_refused_hash_is_announced_once() {
-    let mut session = UciSession::ready();
-    session.send("setoption name Hash value 33554432");
+fn a_hash_above_this_machine_s_memory_is_refused_at_once() {
+    let mut session = UciSession::start();
+    session.send("uci");
+    let advertised = session.collect_until_line_containing("uciok", wait(15));
+    let max: u64 = advertised
+        .iter()
+        .find(|line| line.starts_with("option name Hash type spin"))
+        .and_then(|line| line.rsplit(' ').next())
+        .and_then(|max| max.parse().ok())
+        .unwrap_or_else(|| panic!("the Hash option advertises a maximum: {advertised:?}"));
+    session.send("isready");
+    session.expect_line_containing("readyok", wait(15));
+
+    session.send(&format!("setoption name Hash value {}", max + 1));
     session.send("isready");
     let first = session.collect_until_line_containing("readyok", wait(15));
-    let refusals = |lines: &[String]| {
-        lines
-            .iter()
-            .filter(|line| line.contains("Unable to allocate Hash"))
-            .count()
-    };
-    assert_eq!(refusals(&first), 1, "{first:?}");
+    let notice = format!(
+        "info string Hash value {} is above the {max} MiB this machine can hold; the setting is unchanged.",
+        max + 1
+    );
+    assert_eq!(
+        first.iter().filter(|line| **line == notice).count(),
+        1,
+        "{first:?}"
+    );
+    assert!(
+        !first.iter().any(|line| line.contains("Unable to allocate")),
+        "{first:?}"
+    );
     session.send("setoption name Threads value 2");
     session.send("isready");
     let second = session.collect_until_line_containing("readyok", wait(15));
-    assert_eq!(refusals(&second), 0, "{second:?}");
+    assert!(
+        !second.iter().any(|line| line.contains("Hash")),
+        "{second:?}"
+    );
     session.quit();
 }
 
