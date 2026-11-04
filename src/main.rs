@@ -74,17 +74,20 @@ fn main() {
     let mut protocol = UciProtocol::new(commands, control);
     let outcome = if args.is_empty() {
         // No arguments: a GUI's path, byte-identical to before.
-        protocol.uci_loop();
-        CommandOutcome::Handled
+        protocol.uci_loop()
     } else {
         protocol.run_once(&args.join(" "))
     };
     engine_thread.join().expect("Engine thread failed.");
 
-    if outcome == CommandOutcome::Unknown {
+    match outcome {
         // Non-zero so a script can tell a typo from a result. The message came
         // from `unknown_command`, which has already printed and flushed.
-        process::exit(2);
+        CommandOutcome::Unknown => process::exit(2),
+        // The critical error is printed; the engine thread has answered any
+        // search it was given.
+        CommandOutcome::Fatal => process::exit(1),
+        CommandOutcome::Handled | CommandOutcome::Quit => {}
     }
 }
 

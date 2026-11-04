@@ -724,6 +724,39 @@ fn invalid_position_fen_is_a_critical_exit() {
 }
 
 #[test]
+fn a_bad_position_during_a_search_answers_the_search_then_exits() {
+    let mut session = UciSession::ready();
+    session.send("position startpos");
+    session.send("go infinite");
+    session.expect_line_containing("info depth 1", wait(2));
+    session.send("position fen invalid");
+    let lines = session.collect_until_line_containing("bestmove", wait(2));
+    assert!(
+        lines.iter().any(|line| line.contains("CRITICAL ERROR")),
+        "{lines:?}"
+    );
+    assert_eq!(session.wait_for_exit(wait(5)).code(), Some(1));
+}
+
+/// Castling rights the rooks do not support and a halfmove clock beyond the
+/// board's counter are refused like any malformed FEN: the session ends
+/// rather than playing a position other than the one the GUI sent.
+#[test]
+fn an_unsupported_fen_field_is_a_critical_exit() {
+    for fen in [
+        "4k3/8/8/8/8/8/8/R3K3 w KQkq - 0 1",
+        "4k3/8/8/8/8/8/8/R3K3 w - - 300 1",
+    ] {
+        let output = run_rarog(&format!("position fen {fen}\n"));
+        assert_eq!(output.status.code(), Some(1), "{fen}: {:?}", output.status);
+        assert!(
+            stdout(&output).contains("info string CRITICAL ERROR"),
+            "{fen}"
+        );
+    }
+}
+
+#[test]
 fn a_triple_check_fen_is_a_critical_exit_before_any_search() {
     let output = run_rarog("position fen 4k3/8/3N4/8/B7/8/8/K3R3 b - - 0 1\ngo depth 1\n");
 

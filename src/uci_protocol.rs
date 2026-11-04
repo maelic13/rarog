@@ -1,5 +1,4 @@
 use std::io::{self, BufRead};
-use std::process;
 use std::sync::{Arc, mpsc};
 
 use crate::bench::DEFAULT_BENCH_DEPTH;
@@ -18,6 +17,10 @@ pub enum CommandOutcome {
     Quit,
     /// Not a command. A message has already been printed.
     Unknown,
+    /// A command the session cannot continue past, a `position` that does
+    /// not parse among them. A message has already been printed; no later
+    /// line is read, and the process exits with status 1.
+    Fatal,
 }
 
 pub struct UciProtocol {
@@ -35,7 +38,9 @@ impl UciProtocol {
         }
     }
 
-    pub fn uci_loop(&mut self) {
+    /// Read and dispatch commands until `quit`, the end of input or a fatal
+    /// command; returns `Fatal` for the last, `Handled` otherwise.
+    pub fn uci_loop(&mut self) -> CommandOutcome {
         let mut input = Vec::new();
         loop {
             input.clear();
@@ -47,22 +52,33 @@ impl UciProtocol {
                 .read_until(b'\n', &mut input)
                 .unwrap_or(0);
             if bytes_read == 0 {
-                // An ordinary FIFO quit, so that a piped `bench` completes;
-                // a search only `stop` can end sees the closed input instead.
-                self.control.close_input();
-                self.commands.push(EngineCommand::Quit { epoch: 0 });
-                break;
+                self.end_input();
+                return CommandOutcome::Handled;
             }
             let line = String::from_utf8_lossy(&input);
-            if self.handle_command(line.trim()) == CommandOutcome::Quit {
-                break;
+            match self.handle_command(line.trim()) {
+                CommandOutcome::Quit => return CommandOutcome::Handled,
+                CommandOutcome::Fatal => {
+                    // As at the end of input, so a search already asked for
+                    // still answers its `bestmove` before the process exits.
+                    self.end_input();
+                    return CommandOutcome::Fatal;
+                }
+                CommandOutcome::Handled | CommandOutcome::Unknown => {}
             }
             if crate::infra::stdout_closed() {
                 // Nobody reads the engine any more.
                 self.quit();
-                break;
+                return CommandOutcome::Handled;
             }
         }
+    }
+
+    /// No more input: an ordinary FIFO quit, so that a piped `bench`
+    /// completes; a search only `stop` can end sees the closed input instead.
+    fn end_input(&self) {
+        self.control.close_input();
+        self.commands.push(EngineCommand::Quit { epoch: 0 });
     }
 
     /// Run one command line and shut down, as `rarog bench 13` does.
@@ -101,7 +117,12 @@ impl UciProtocol {
             "stop" => self.stop(),
             "setoption" => self.set_option(args),
             "ucinewgame" => self.new_game(),
-            "position" => self.position_with_command(args, command_line),
+            "position" => {
+                if let Err(message) = self.search_options.set_position(args) {
+                    report_critical_error(command_line, &message);
+                    return CommandOutcome::Fatal;
+                }
+            }
             "bench" => self.bench(args),
             "wac" => self.wac(args),
             #[cfg(feature = "tune")]
@@ -183,12 +204,6 @@ impl UciProtocol {
     fn new_game(&mut self) {
         self.search_options.reset();
         self.commands.push(EngineCommand::NewGame);
-    }
-
-    fn position_with_command(&mut self, args: &[String], full_command: &str) {
-        if let Err(message) = self.search_options.set_position(args) {
-            terminate_on_critical_error(full_command, &message);
-        }
     }
 
     fn bench(&mut self, args: &[String]) {
@@ -308,10 +323,9 @@ const fn help_text() -> &'static str {
     )
 }
 
-fn terminate_on_critical_error(full_command: &str, message: &str) -> ! {
+fn report_critical_error(full_command: &str, message: &str) {
     crate::info_string!("CRITICAL ERROR: Command `{full_command}` failed. Reason: {message}");
     flush_stdout();
-    process::exit(1);
 }
 
 #[cfg(test)]
@@ -416,9 +430,9 @@ mod tests {
     fn go_sends_current_position_with_search_parameters() {
         let (mut protocol, commands) = protocol_fixture();
 
-        protocol.position_with_command(
-            &args(&["startpos", "moves", "e2e4"]),
-            "position startpos moves e2e4",
+        assert_eq!(
+            protocol.handle_command("position startpos moves e2e4"),
+            CommandOutcome::Handled
         );
         protocol.go(&args(&["depth", "3", "nodes", "123"]));
 
@@ -492,9 +506,9 @@ mod tests {
     fn newgame_resets_position_and_sends_marker_command() {
         let (mut protocol, commands) = protocol_fixture();
 
-        protocol.position_with_command(
-            &args(&["startpos", "moves", "e2e4"]),
-            "position startpos moves e2e4",
+        assert_eq!(
+            protocol.handle_command("position startpos moves e2e4"),
+            CommandOutcome::Handled
         );
         assert_eq!(
             protocol.search_options.board.piece_at(Square::E4),

@@ -44,8 +44,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 - **Smaller protocol fixes.** `stop` during `bench` or `wac` says the run was
   interrupted instead of printing a short, normal-looking summary; a `Hash`
   size the system cannot allocate is reported once, not after every later
-  option change; and `searchmoves` with a single move searches it to the
-  requested depth.
+  option change; `searchmoves` with a single move searches it to the
+  requested depth; and a `position` the engine cannot read, sent during a
+  search, now lets that search give its move before the engine exits.
 - **Scores no longer look decided when they are not.** A position the
   engine has not proved won could be reported with a score above every
   tablebase win; ordinary scores now stay below the tablebase range.
