@@ -30,8 +30,14 @@ fn main() {
     crash_report::install_stdout_reporter();
     request_fine_grained_scheduling();
 
+    // The tier and kinds stay out of `id name`, which rating lists key on.
+    let label = if rarog::BUILD_LABEL.is_empty() {
+        String::new()
+    } else {
+        format!(" ({})", rarog::BUILD_LABEL)
+    };
     rarog::uci_println!(
-        "{} {} by {}",
+        "{} {} by {}{label}",
         capitalize_first_letter(env!("CARGO_PKG_NAME")),
         rarog::VERSION,
         env!("CARGO_PKG_AUTHORS").replace(':', ", ")
