@@ -332,7 +332,7 @@ maintainer decision 2026-11-04; both are done.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.4.4 | READY_FOR_IMPLEMENTATION | I2 | Card 2026-11-04: a `pricing` feature, probes isolated in the running search; V2, the main tree's nodes unchanged with sampling on, is its proof |
+| D.4.4 | RESEARCH | R2 | Built (`7c2fec0`): isolation, reproducibility and the futility plant pass; the LMR plant did not separate and a global plant shifts the depth mix, so the card designs a plant test valid for every rule |
 | D.4.5 | READY_FOR_IMPLEMENTATION | V | The tool first, then the judge run's sample registered; maintainer-run |
 | D.4.6 | RESEARCH | R2 | The tool on the 5950X, validated on a patch of known effect; before D.8's NPS guards |
 | D.5.1 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value: the table handle and the helper lifecycle first |
@@ -552,6 +552,20 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       no decision to re-search. If the isolation proof fails and the leak
       is not closed, the leaf returns to `RESEARCH` with a scratch
       `Searcher` as the next form.
+      Built 2026-11-04 in `7c2fec0`, read by `tools/diag/pricing_table.py`
+      (`8a5fb6a`; the card's section 12). With sampling on the main search
+      still benches 14,749,043 beside 317,670 probes, two runs write
+      identical records, and the default build is unchanged. The futility
+      plant separates (0.13% to 1.95%); the registered LMR plant does not
+      (1.60% to 1.94% on quiets), nor does a reverse-futility plant run
+      beyond the registration. Read by depth, both plants are higher in
+      every band: a global option moves the depth mix and acts inside the
+      probe's own subtree, so V4's premise holds only for rules whose
+      probes contain none of their own decisions. Back to `RESEARCH`, the
+      question narrowed to a plant test valid for every rule (a plant
+      confined to the measured search, compared within depth bands,
+      registered first). Until it passes, only futility's label is
+      plant-validated and no screen reads the LMR or node-level labels.
     - **D.4.5 The loss table by cell — `V`.**
       Where Rarog loses, from games already played (TT-1): the pool
       tournaments' and the latest gates' games in Colosseum's database, every

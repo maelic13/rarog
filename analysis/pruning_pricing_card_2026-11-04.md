@@ -262,3 +262,72 @@ takes `&self` and writes nothing; the search's thread state is
 `ThreadData`'s fields, all covered by section 3; node counting and the
 2,048-node poll read `td.nodes`, which the probe restores, so the main
 search reads the same counts after a probe.
+
+## 12. Implementation and first read, 2026-11-04
+
+Built in `7c2fec0` (the `pricing` feature: `src/search/pricing.rs`, the
+table helpers and sixteen probe sites in `node.rs`, the freeze flags in
+`history.rs` and `correction.rs`) and read with `tools/diag/pricing_table.py`
+(`8a5fb6a`). Recipe: `cargo build --release --features pricing --target-dir
+target/pricing`, then `python tools/diag/pricing_table.py run --exe
+target/pricing/release/rarog.exe --out <file> --expect-nodes 14749043`; the
+plants add `tune` and `--set`. Raw records and tables:
+`analysis/artifacts/d44-pricing/r2/` (the honest read `v2.tsv`, SHA-256
+`55138be08d104de7…`; pricing binary `a6d142b2adde681e…`, pricing and tune
+`247c0158a745ae51…`). A record carries one field more than section 4 lists:
+whether the priced move was quiet, which V4's LMR read needs.
+
+| Check | Result |
+|---|---|
+| V1, sampling off | 14,749,043, pass |
+| V2, sampling on | main search 14,749,043 with 317,670 probes of 1,338,960 nodes (0.09 times the main nodes, so the rates stand), pass |
+| V3, two runs | byte-identical records, pass; every pending record closed |
+| V5, default build | 14,749,043; clippy zero in the default, `pricing` and all-feature builds; debug, release and release `pricing` suites pass |
+| V4, futility plant (`CoreFpBase` −100) | 0.13% [0.08, 0.20] to 1.95% [1.84, 2.07]: **separated**, pass |
+| V4, LMR plant (`CoreLmrQuiet` 2,956), quiets as registered | 1.60% [1.35, 1.89] to 1.94% [1.64, 2.31]: **not separated**, fail; all moves alike |
+| Beyond the registration, reverse-futility plant (`CoreRfpSquare` 40) | 6.09% [5.69, 6.53] to 6.04% [5.65, 6.46]: not separated |
+
+Every label was printed once, in the per-rule summary that checked V2's
+probe cost, before V3 and V4 ran; no rate, label or definition changed after.
+
+**The contradiction.** V4 assumed a planted option reads higher in a rule's
+all-depth share. Read by depth (after the fail, so a diagnosis, not a pass),
+the reverse-futility plant is higher in every resolved band (depth 1 and
+below 7.9% to 8.6%, 2: 4.8% to 6.3%, 3: 2.8% to 3.7%, 4–5: 0.9% to 2.3%),
+but it cuts many more deep nodes (1,532 probes at depth 4–5 against 663, at
+the same rate),
+where wrong cuts are rarer, so the all-depth share stays flat. The LMR plant
+is higher in every band too, inside the intervals. A global option also runs
+inside the probe's own subtree, where it moves the probe's result as well as
+the decision. The futility plant escapes both: its probes are mostly one ply
+of quiescence (2.3 nodes on average) with no futility inside. So the premise
+holds only for rules whose probes contain none of their own decisions. The
+section 9 falsifier fires for the LMR label, which stays out of every screen;
+the node-level verdicts have no passing plant either. Isolation and
+reproducibility hold for every label; only futility's is plant-validated.
+
+D.4.4 returns to `RESEARCH` with one question: a plant test that is valid
+for every rule. The candidate, for the next card to judge before any run: a
+plant confined to the measured search (active only outside probes, so a
+probe keeps the honest rule), compared within depth bands and pooled
+(Mantel–Haenszel), with the comparison and its threshold registered first.
+
+**Calibration against section 7** (predictions unchanged above):
+
+| Rule | Predicted | Read | Miss |
+|---|---|---|---|
+| LMR fail-lows | 1–4% | 1.63% | none (Triumviratus 1.7%) |
+| LMP | 2–6% | 2.46% | none |
+| Quiet futility | 1–4% | 0.13% | magnitude: the margin is far safer than assumed |
+| SEE, quiet / noisy | 1–5% / 2–8% | 0.42% / 1.08% | magnitude, both low |
+| Reverse futility | 1–4% | 6.09% | magnitude, high: 7.9% at depth 1 and below, 12.2% in all nodes |
+| Null move | 0.5–3% | 1.99% | none overall; 18.8% in all nodes and 22.7% at depth 3 (both under 400 probes) |
+| ProbCut | 0.5–3% | 0.34% | magnitude, low, as its 98% verification rate implied |
+| Razoring | 3–10% | 7.03% | none |
+| Quiescence move rules | 1–5% | 1.31–4.51% | none |
+| Shares fall with depth | yes | reverse futility, null move, ProbCut, LMR above depth 3; LMP and history flat | partial |
+| Result changes in under half of the raises | yes | 83–99% outside PV nodes, about half in them | sign and mechanism: pruned moves sit mostly in nodes that fail low, so a hidden raise would flip the node |
+
+These are screens: the null move's all-node and the reverse futility's
+shallow wrong rates are candidates for D.6.3's and D.6's cards, not findings
+(section 9), and the node-level labels are not yet plant-validated.
