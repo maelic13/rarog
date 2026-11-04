@@ -13,6 +13,9 @@
 #      expected bench fingerprint before it is accepted into the pool.
 #
 # Output: $OutDir\<tier>-<n>.exe plus a manifest.txt of hashes and fingerprints.
+# -Arch universal builds the universal x86-64 binary (`cargo xtask build
+# --universal`, four PGO tiers each): a pool of it is read against the
+# single-tier pext pool.
 #
 # -NoPgo builds the plain tier instead, to separate a compiler's code
 # generation from its use of the profile. A plain build has no profile to
@@ -35,7 +38,7 @@
 # manifest with the toolchain's `rustc -vV`.
 
 param(
-    [Parameter(Mandatory = $true)][ValidateSet("base", "sse42", "avx2", "pext")][string]$Arch,
+    [Parameter(Mandatory = $true)][ValidateSet("base", "sse42", "avx2", "pext", "universal")][string]$Arch,
     [int]$Builds = 4,
     [Parameter(Mandatory = $true)][string]$OutDir,
     # The source's `bench 13` node count (GUIDE's checkpoint, or the arm's
@@ -110,6 +113,9 @@ function Get-PeContentHash {
     ([BitConverter]::ToString($sha.ComputeHash($b))).Replace("-", "")
 }
 
+if ($Arch -eq "universal" -and ($Native -or $NoPgo -or $Features -or $Target)) {
+    throw "-Arch universal is the release build: PGO, default features, this host"
+}
 if ($Native -and $Arch -ne "pext") {
     throw "-Native builds the host's best tier (xtask --native takes no --tier); pass -Arch pext"
 }
@@ -119,7 +125,9 @@ if ($Toolchain -and -not $Target) {
 # Typed arrays: an `if` yielding one element unrolls to a bare string, and
 # splatting a string hands cargo its characters one by one.
 [string[]]$toolchainArgs = if ($Toolchain) { @("+$Toolchain") } else { @() }
-[string[]]$tierArgs = if ($Native) { @("--native") } else { @("--tier", $Arch) }
+[string[]]$tierArgs = if ($Native) { @("--native") }
+    elseif ($Arch -eq "universal") { @("--universal") }
+    else { @("--tier", $Arch) }
 [string[]]$targetArgs = if ($Target) { @("--target", $Target) } else { @() }
 $rustcVersion = (& rustc @toolchainArgs -vV) -join "; "
 if ($LASTEXITCODE -ne 0) { throw "rustc $toolchainArgs -vV failed (exit $LASTEXITCODE)" }

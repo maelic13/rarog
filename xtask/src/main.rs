@@ -1,4 +1,5 @@
 mod release;
+mod universal;
 
 // The naming rules and the tier ladder are the engine's, compiled here too so
 // the file name and the CPU detection cannot drift from what the engine says.
@@ -21,13 +22,15 @@ const PGO_TRAINING_TIMEOUT: Duration = Duration::from_secs(20 * 60);
 
 type Result<T> = std::result::Result<T, String>;
 
-/// What a build targets: one x86-64 tier, or arm64, which has none.
+/// What a build targets: one x86-64 tier, the universal x86-64 binary that
+/// holds every tier, or arm64, which has none.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Arch {
     Base,
     Sse42,
     Avx2,
     Pext,
+    Universal,
     Arm64,
 }
 
@@ -47,9 +50,19 @@ impl Arch {
             Arch::Sse42 => Some(cpu_tier::Tier::Sse42),
             Arch::Avx2 => Some(cpu_tier::Tier::Avx2),
             Arch::Pext => Some(cpu_tier::Tier::Pext),
-            Arch::Arm64 => None,
+            Arch::Universal | Arch::Arm64 => None,
         }
     }
+}
+
+/// What a PGO build is for.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Purpose {
+    /// The binary is the product.
+    Binary,
+    /// One tier of the universal binary: every function aligned to 64 bytes,
+    /// and the post-LTO object and the link line kept for the universal link.
+    UniversalTier,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -58,14 +71,14 @@ enum CommandKind {
     VerifyIsa,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Config {
     command: CommandKind,
     /// Artifact to verify, when `command` is `VerifyIsa`. Defaults to the
     /// dist file for the requested build, PGO or not.
     exe: Option<PathBuf>,
     /// The artifact was built with the TARGET's default `target-cpu` rather
-    /// than the tier's â€” i.e. a plain `cargo build --release`. See
+    /// than the tier's — i.e. a plain `cargo build --release`. See
     /// [`tier_features`] for why this cannot be inferred.
     default_cpu: bool,
     arch: Arch,
@@ -121,16 +134,24 @@ fn run() -> Result<()> {
     ensure_rust_target(&config.target)?;
     let version = build_name::display_version(&package_version()?, Path::new("."))?;
 
-    let binary = if config.pgo {
-        build_with_pgo(&config)?
+    let binary = if config.arch == Arch::Universal {
+        universal::build(&config, &version)?
+    } else if config.pgo {
+        build_with_pgo(&config, Purpose::Binary)?
     } else {
         let target_dir = target_dir("release", config.arch, config.native, &config.target);
-        cargo_build(&config, &target_dir, &[])?;
+        cargo_build(&config, &target_dir, &[], None)?;
         binary_path(&target_dir, &config.target)
     };
     let asset = copy_dist_binary(&binary, &config, &version)?;
-    if host_runs(&config)? {
-        if let Err(err) = check_reported_name(&asset, &version, &config) {
+    if config.arch == Arch::Universal {
+        if let Err(err) = universal::check(&asset, &version) {
+            let _ = fs::remove_file(&asset);
+            return Err(err);
+        }
+    } else if host_runs(&config)? {
+        let label = build_name::label(config.tier_word(), &config.kinds());
+        if let Err(err) = check_reported_name(&asset, &version, &label, None) {
             // A file whose name the engine contradicts must not be picked up.
             let _ = fs::remove_file(&asset);
             return Err(err);
@@ -186,11 +207,10 @@ fn parse_args() -> Result<Config> {
         }
     };
 
-    let mut tier: Option<cpu_tier::Tier> = None;
+    let mut request: Option<Request> = None;
     let mut target: Option<String> = None;
     let mut exe: Option<PathBuf> = None;
     let mut pgo = true;
-    let mut native = false;
     let mut default_cpu = false;
     let mut bench_depth = 13u16;
     let mut features = Vec::new();
@@ -200,26 +220,30 @@ fn parse_args() -> Result<Config> {
             args.next()
                 .ok_or_else(|| format!("`{name}` requires a value"))
         };
+        let mut ask = |wanted: Request| -> Result<()> {
+            if request.replace(wanted).is_some() {
+                return Err(
+                    "`--tier`, `--native` and `--universal` exclude one another".to_string()
+                );
+            }
+            Ok(())
+        };
         match arg.as_str() {
             // The default; spelled out for symmetry with `--universal`.
             "--release" => {}
-            "--tier" => tier = Some(parse_tier(&value("--tier")?)?),
+            "--tier" => ask(Request::Tier(parse_tier(&value("--tier")?)?))?,
+            "--universal" => ask(Request::Universal)?,
+            "--native" => ask(Request::Native)?,
             "--features" => features = parse_features(&value("--features")?)?,
             "--target" | "-t" => target = Some(value("--target")?),
             "--exe" => exe = Some(PathBuf::from(value("--exe")?)),
             "--default-cpu" => default_cpu = true,
             "--nopgo" => pgo = false,
-            "--native" => native = true,
             "--bench-depth" => {
                 let depth = value("--bench-depth")?;
                 bench_depth = depth
                     .parse::<u16>()
                     .map_err(|_| format!("invalid bench depth `{depth}`"))?;
-            }
-            "--universal" => {
-                return Err(
-                    "the universal x86-64 binary is PLAN E.3.3 and is not built yet".to_string(),
-                );
             }
             "--arch" | "-a" => {
                 return Err(
@@ -241,13 +265,19 @@ fn parse_args() -> Result<Config> {
 
     let host = host_triple()?;
     let target = target.unwrap_or_else(|| host.clone());
-    let arch = resolve_arch(tier, native, &target, &host)?;
+    let request = request.unwrap_or(Request::Best);
+    let arch = resolve_arch(request, &target, &host)?;
+    if arch == Arch::Universal && command == CommandKind::Build && (!pgo || !features.is_empty()) {
+        return Err(
+            "the universal binary is the release build: PGO, with the default features".to_string(),
+        );
+    }
     let config = Config {
         command,
         exe,
         default_cpu,
         arch,
-        native,
+        native: request == Request::Native,
         target,
         pgo,
         bench_depth,
@@ -259,42 +289,49 @@ fn parse_args() -> Result<Config> {
     Ok(config)
 }
 
-/// The build a request names: `tier` on an x86-64 target, the host's best
-/// tier when it names none, arm64 on an aarch64 target.
-fn resolve_arch(
-    tier: Option<cpu_tier::Tier>,
-    native: bool,
-    target: &str,
-    host: &str,
-) -> Result<Arch> {
-    if native && target != host {
+/// What the command line asks for.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Request {
+    /// The host's best tier, or arm64 on an aarch64 target.
+    Best,
+    /// One x86-64 tier.
+    Tier(cpu_tier::Tier),
+    /// The host's best tier, tuned for this exact CPU.
+    Native,
+    /// The universal x86-64 binary.
+    Universal,
+}
+
+/// The build a request names on `target`.
+fn resolve_arch(request: Request, target: &str, host: &str) -> Result<Arch> {
+    if request == Request::Native && target != host {
         return Err(format!(
             "`--native` builds for this host, so it cannot target `{target}` from `{host}`"
         ));
     }
     if target.starts_with("aarch64-") {
-        return match tier {
-            Some(tier) => Err(format!(
+        return match request {
+            Request::Tier(tier) => Err(format!(
                 "`--tier {}` is an x86-64 tier; an aarch64 target has none",
                 tier.name()
             )),
-            None => Ok(Arch::Arm64),
+            Request::Universal => {
+                Err("the universal binary is x86-64; an aarch64 target has no tiers".to_string())
+            }
+            Request::Best | Request::Native => Ok(Arch::Arm64),
         };
     }
     if !target.starts_with("x86_64-") {
         return Err(format!("unsupported target `{target}`"));
     }
-    match (tier, native) {
-        (Some(_), true) => Err(
-            "`--native` builds this host's best tier tuned for this CPU; it takes no `--tier`"
-                .to_string(),
-        ),
-        (Some(tier), false) => Ok(Arch::from_tier(tier)),
-        (None, _) if target != host => Err(format!(
+    match request {
+        Request::Tier(tier) => Ok(Arch::from_tier(tier)),
+        Request::Universal => Ok(Arch::Universal),
+        Request::Best | Request::Native if target != host => Err(format!(
             "a build for `{target}` from `{host}` names its `--tier`: this host's CPU says \
              nothing about the target's"
         )),
-        (None, _) => Ok(Arch::from_tier(host_best_tier()?)),
+        Request::Best | Request::Native => Ok(Arch::from_tier(host_best_tier()?)),
     }
 }
 
@@ -449,7 +486,7 @@ fn ensure_arch_target_pair(arch: Arch, target: &str) -> Result<()> {
         )),
         Arch::Arm64 => Ok(()),
         _ if !target.starts_with("x86_64-") => Err(format!(
-            "the `{}` tier requires an x86_64 target, got `{target}`",
+            "the `{}` build requires an x86_64 target, got `{target}`",
             arch_arg_name(arch)
         )),
         _ => Ok(()),
@@ -457,13 +494,17 @@ fn ensure_arch_target_pair(arch: Arch, target: &str) -> Result<()> {
 }
 
 fn arch_arg_name(arch: Arch) -> &'static str {
-    arch.tier().map_or("arm64", cpu_tier::Tier::name)
+    match arch {
+        Arch::Universal => "universal",
+        Arch::Arm64 => "arm64",
+        tier => tier.tier().map_or("arm64", cpu_tier::Tier::name),
+    }
 }
 
 /// Directory tag for an (arch, native) pair.
 ///
 /// Native and portable builds of the same arch are DIFFERENT binaries, so they
-/// must not share a PGO profile directory or an intermediate target dir â€”
+/// must not share a PGO profile directory or an intermediate target dir —
 /// otherwise switching flavours silently reuses the other's layout. Cargo
 /// fingerprints RUSTFLAGS so it would rebuild rather than emit a stale binary,
 /// but keying the paths keeps the artifact tree unambiguous and stops the two
@@ -499,7 +540,8 @@ fn rustflags(arch: Arch, native: bool) -> Vec<String> {
         ]
     };
     match arch {
-        Arch::Base => cpu("x86-64"),
+        // The universal binary's own code is its dispatcher, at the baseline.
+        Arch::Base | Arch::Universal => cpu("x86-64"),
         Arch::Sse42 => cpu("x86-64-v2"),
         Arch::Avx2 => cpu("x86-64-v3"),
         Arch::Pext => {
@@ -748,6 +790,14 @@ fn isa_contract(arch: Arch) -> IsaContract {
             also_forbidden: &[],
             required: &[],
         },
+        // The whole image holds every tier, so it is held to their union:
+        // the pext tier's contract. Each tier, the dispatcher and Fathom are
+        // held to their own before the link (`universal::build`).
+        Arch::Universal => IsaContract {
+            classes: X86_CLASSES,
+            also_forbidden: &[],
+            required: &["avx", "popcnt", "bmi2", "pext"],
+        },
         // The hardware popcount is most of what this tier is for.
         Arch::Sse42 => IsaContract {
             classes: X86_CLASSES,
@@ -803,7 +853,14 @@ fn tier_features(arch: Arch, target: &str, default_cpu: bool) -> Result<Vec<Stri
     if !default_cpu {
         // Reuse the very flags the build uses, minus `--cfg`, which selects a
         // source path rather than an instruction set.
-        let flags = rustflags(arch, false);
+        let flags = rustflags(
+            if arch == Arch::Universal {
+                Arch::Pext
+            } else {
+                arch
+            },
+            false,
+        );
         let mut index = 0;
         while index < flags.len() {
             if flags[index] == "--cfg" {
@@ -887,19 +944,25 @@ fn verify_isa(config: &Config) -> Result<()> {
         }
         None => resolve_dist_artifact(config)?,
     };
+    check_isa(&exe, config.arch, &config.target, config.default_cpu)
+}
+
+/// Hold `exe` (an executable, an object or an archive of objects) to the
+/// contract of `arch`.
+fn check_isa(exe: &Path, arch: Arch, target: &str, default_cpu: bool) -> Result<()> {
     let objdump = find_llvm_tool("llvm-objdump").ok_or_else(|| {
         "llvm-objdump not found. Install it with `rustup component add llvm-tools`.".to_string()
     })?;
 
-    let features = tier_features(config.arch, &config.target, config.default_cpu)?;
+    let features = tier_features(arch, target, default_cpu)?;
     println_flush(format_args!(
         "Verifying {} against the `{}` ISA contract",
         exe.display(),
-        arch_arg_name(config.arch)
+        arch_arg_name(arch)
     ));
     println_flush(format_args!(
         "  rustc enables ({}): {}",
-        if config.default_cpu {
+        if default_cpu {
             "target default cpu"
         } else {
             "tier baseline"
@@ -915,7 +978,7 @@ fn verify_isa(config: &Config) -> Result<()> {
         ],
     )?;
 
-    let contract = isa_contract(config.arch);
+    let contract = isa_contract(arch);
     let mut counts: Vec<(&str, u64)> = contract
         .classes
         .iter()
@@ -976,7 +1039,7 @@ fn verify_isa(config: &Config) -> Result<()> {
                 "FORBIDDEN `{}` appears {count} times, but the `{}` tier does not enable \
                  `{}` — this artifact cannot run on every CPU the tier promises",
                 class.name,
-                arch_arg_name(config.arch),
+                arch_arg_name(arch),
                 class.feature
             ));
         } else if banned_by_tier {
@@ -984,7 +1047,7 @@ fn verify_isa(config: &Config) -> Result<()> {
                 "FORBIDDEN `{}` appears {count} times — the `{}` asset must not carry \
                  that source path, or the two assets are the same binary",
                 class.name,
-                arch_arg_name(config.arch)
+                arch_arg_name(arch)
             ));
         }
     }
@@ -993,7 +1056,7 @@ fn verify_isa(config: &Config) -> Result<()> {
             failures.push(format!(
                 "REQUIRED `{class}` never appears — the `{}` tier is not actually \
                  emitting the path it is built for",
-                arch_arg_name(config.arch)
+                arch_arg_name(arch)
             ));
         }
     }
@@ -1131,8 +1194,9 @@ fn find_rust_lld() -> Option<PathBuf> {
 }
 
 /// Instrument, train on the bench suite, merge, and build with the profile;
-/// returns the built binary.
-fn build_with_pgo(config: &Config) -> Result<PathBuf> {
+/// returns the built binary. A universal tier also keeps its post-LTO object
+/// and the link line, in [`link_line_path`] of its use build's directory.
+fn build_with_pgo(config: &Config, purpose: Purpose) -> Result<PathBuf> {
     let host = host_triple()?;
     if config.target != host {
         return Err(format!(
@@ -1145,7 +1209,11 @@ fn build_with_pgo(config: &Config) -> Result<PathBuf> {
     let pgo_dir = PathBuf::from("target")
         .join("pgo")
         .join(sanitize(&config.target))
-        .join(flavour_name(config.arch, config.native));
+        .join(format!(
+            "{}{}",
+            flavour_name(config.arch, config.native),
+            purpose_tag(purpose)
+        ));
     let raw_dir = pgo_dir.join("raw");
     if raw_dir.exists() {
         fs::remove_dir_all(&raw_dir)
@@ -1159,9 +1227,15 @@ fn build_with_pgo(config: &Config) -> Result<PathBuf> {
         format!("profile-generate={}", raw_dir.display()),
     ];
     generate_flags.extend(rustflags(config.arch, config.native));
+    generate_flags.extend(purpose_flags(purpose));
 
-    let gen_target_dir = target_dir("pgo-gen", config.arch, config.native, &config.target);
-    cargo_build(config, &gen_target_dir, &generate_flags)?;
+    let gen_target_dir = target_dir(
+        &format!("pgo-gen{}", purpose_tag(purpose)),
+        config.arch,
+        config.native,
+        &config.target,
+    );
+    cargo_build(config, &gen_target_dir, &generate_flags, None)?;
 
     let instrumented = binary_path(&gen_target_dir, &config.target);
     run_training_bench(&instrumented, &raw_dir, config.bench_depth)?;
@@ -1174,13 +1248,57 @@ fn build_with_pgo(config: &Config) -> Result<PathBuf> {
         format!("profile-use={}", profdata.display()),
     ];
     use_flags.extend(rustflags(config.arch, config.native));
+    use_flags.extend(purpose_flags(purpose));
 
-    let use_target_dir = target_dir("pgo-use", config.arch, config.native, &config.target);
-    cargo_build(config, &use_target_dir, &use_flags)?;
+    let use_target_dir = target_dir(
+        &format!("pgo-use{}", purpose_tag(purpose)),
+        config.arch,
+        config.native,
+        &config.target,
+    );
+    let keep = (purpose == Purpose::UniversalTier).then(|| link_line_path(&use_target_dir));
+    cargo_build(config, &use_target_dir, &use_flags, keep.as_deref())?;
     Ok(binary_path(&use_target_dir, &config.target))
 }
 
-fn cargo_build(config: &Config, target_dir: &Path, override_flags: &[String]) -> Result<()> {
+/// Keeps a universal tier's profile and build directories apart from the
+/// ordinary build of the same tier, whose code is not aligned the same way.
+fn purpose_tag(purpose: Purpose) -> &'static str {
+    match purpose {
+        Purpose::Binary => "",
+        Purpose::UniversalTier => "-universal",
+    }
+}
+
+/// Codegen flags a purpose adds to both PGO phases.
+fn purpose_flags(purpose: Purpose) -> Vec<String> {
+    match purpose {
+        Purpose::Binary => Vec::new(),
+        // Every function on a cache line, so the universal link's placement
+        // cannot move a hot function off one (Basilisk's unaligned relink
+        // read -0.58%). Applied to the training build too, so the profile is
+        // of the same code.
+        Purpose::UniversalTier => vec![
+            "-C".to_string(),
+            format!("llvm-args=-align-all-functions={}", universal::ALIGN_LOG2),
+        ],
+    }
+}
+
+/// Where a universal tier's use build writes rustc's printed link line.
+fn link_line_path(use_target_dir: &Path) -> PathBuf {
+    use_target_dir.join("link-line.txt")
+}
+
+/// `keep_link_line`: build the engine binary with `cargo rustc`, keeping
+/// rustc's temporary files (the post-LTO object among them) and writing the
+/// link line it prints to that path.
+fn cargo_build(
+    config: &Config,
+    target_dir: &Path,
+    override_flags: &[String],
+    keep_link_line: Option<&Path>,
+) -> Result<()> {
     let target = config.target.as_str();
     let mut flags = if override_flags.is_empty() {
         rustflags(config.arch, config.native)
@@ -1205,8 +1323,12 @@ fn cargo_build(config: &Config, target_dir: &Path, override_flags: &[String]) ->
     ));
 
     let mut command = Command::new("cargo");
+    command.arg(if keep_link_line.is_some() {
+        "rustc"
+    } else {
+        "build"
+    });
     command
-        .arg("build")
         .arg("--release")
         .arg("--target")
         .arg(target)
@@ -1214,6 +1336,12 @@ fn cargo_build(config: &Config, target_dir: &Path, override_flags: &[String]) ->
         .arg(target_dir);
     if !config.features.is_empty() {
         command.arg("--features").arg(config.features.join(","));
+    }
+    if let Some(path) = keep_link_line {
+        // Only the engine binary's own rustc links, so only it prints a line.
+        command
+            .args(["--bin", "rarog", "--", "-C", "save-temps", "--print"])
+            .arg(format!("link-args={}", path.display()));
     }
     let status = command
         .env("CARGO_ENCODED_RUSTFLAGS", flags.join(RUSTFLAGS_SEPARATOR))
@@ -1591,28 +1719,48 @@ fn asset_name(config: &Config, pgo: bool, version: &str) -> String {
     name
 }
 
-/// Run the built engine and require it to report the name its file carries:
-/// `id name Rarog <version>`, and the start-up line's tier and kinds. A
-/// stale binary, or a `build.rs` that read the build differently, fails here.
-fn check_reported_name(binary: &Path, version: &str, config: &Config) -> Result<()> {
-    let mut child = Command::new(binary)
+/// Run `binary` with `input` on stdin, `RAROG_ISA` set to `forced` if given;
+/// returns its exit status and stdout.
+fn run_engine(binary: &Path, input: &str, forced: Option<&str>) -> Result<(i32, String)> {
+    let mut command = Command::new(binary);
+    command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::null());
+    match forced {
+        Some(tier) => command.env(cpu_tier::FORCE_VARIABLE, tier),
+        None => command.env_remove(cpu_tier::FORCE_VARIABLE),
+    };
+    let mut child = command
         .spawn()
         .map_err(|err| format!("failed to run `{}`: {err}", binary.display()))?;
     child
         .stdin
         .take()
         .ok_or("no stdin for the engine")?
-        .write_all(b"uci\nquit\n")
+        .write_all(input.as_bytes())
         .map_err(|err| format!("failed to talk to `{}`: {err}", binary.display()))?;
     let output = child
         .wait_with_output()
         .map_err(|err| format!("failed to read `{}`: {err}", binary.display()))?;
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok((
+        output.status.code().unwrap_or(-1),
+        String::from_utf8_lossy(&output.stdout).into_owned(),
+    ))
+}
+
+/// Run the built engine and require it to report the name its file carries:
+/// `id name Rarog <version>`, and `label` (the start-up line's tier and
+/// kinds). A stale binary, or a `build.rs` that read the build differently,
+/// fails here. `forced` sets the universal binary's tier.
+fn check_reported_name(
+    binary: &Path,
+    version: &str,
+    label: &str,
+    forced: Option<&str>,
+) -> Result<()> {
+    let (_, stdout) = run_engine(binary, "uci\nquit\n", forced)?;
     let banner = stdout.lines().next().unwrap_or_default();
-    let label = build_name::label(config.tier_word(), &config.kinds());
     let banner_prefix = format!("Rarog {version} by ");
     let banner_ok = banner.starts_with(&banner_prefix)
         && if label.is_empty() {
@@ -1682,7 +1830,14 @@ fn sanitize(value: &str) -> String {
 mod tests {
     use super::*;
 
-    const ALL_ARCHES: [Arch; 5] = [Arch::Base, Arch::Sse42, Arch::Avx2, Arch::Pext, Arch::Arm64];
+    const ALL_ARCHES: [Arch; 6] = [
+        Arch::Base,
+        Arch::Sse42,
+        Arch::Avx2,
+        Arch::Pext,
+        Arch::Universal,
+        Arch::Arm64,
+    ];
     const WINDOWS: &str = "x86_64-pc-windows-msvc";
     const LINUX: &str = "x86_64-unknown-linux-gnu";
 
@@ -1980,6 +2135,18 @@ mod tests {
             ),
             "rarog-2.7.0-windows-arm64-native.exe"
         );
+        assert_eq!(
+            name(
+                &config(Arch::Universal, WINDOWS, false, true, &[]),
+                true,
+                "2.7.0"
+            ),
+            "rarog-2.7.0-windows-x64.exe"
+        );
+        assert_eq!(
+            name(&config(Arch::Universal, LINUX, false, true, &[]), true, dev),
+            "rarog-dev-20261104-209b555a-linux-x64"
+        );
         // No file is named after a guessed release, and none carries a `v`.
         let release = name(
             &config(Arch::Avx2, WINDOWS, false, true, &[]),
@@ -2028,31 +2195,33 @@ mod tests {
 
     #[test]
     fn a_request_resolves_to_one_build() {
+        let tier = |t| Request::Tier(t);
         // A named tier on an x86-64 target, from any host.
         assert_eq!(
-            resolve_arch(Some(cpu_tier::Tier::Avx2), false, LINUX, WINDOWS).unwrap(),
+            resolve_arch(tier(cpu_tier::Tier::Avx2), LINUX, WINDOWS).unwrap(),
             Arch::Avx2
         );
-        // An aarch64 target is arm64 and takes no tier.
         assert_eq!(
-            resolve_arch(None, false, "aarch64-apple-darwin", "aarch64-apple-darwin").unwrap(),
+            resolve_arch(Request::Universal, WINDOWS, WINDOWS).unwrap(),
+            Arch::Universal
+        );
+        // An aarch64 target is arm64 and takes no tier, nor the universal binary.
+        assert_eq!(
+            resolve_arch(
+                Request::Best,
+                "aarch64-apple-darwin",
+                "aarch64-apple-darwin"
+            )
+            .unwrap(),
             Arch::Arm64
         );
-        assert!(
-            resolve_arch(
-                Some(cpu_tier::Tier::Pext),
-                false,
-                "aarch64-apple-darwin",
-                WINDOWS
-            )
-            .is_err()
-        );
+        assert!(resolve_arch(tier(cpu_tier::Tier::Pext), "aarch64-apple-darwin", WINDOWS).is_err());
+        assert!(resolve_arch(Request::Universal, "aarch64-apple-darwin", WINDOWS).is_err());
         // A cross build names its tier; this host's CPU says nothing about it.
-        assert!(resolve_arch(None, false, LINUX, WINDOWS).is_err());
-        // Native is this host's best tier, so it takes no tier and no other target.
-        assert!(resolve_arch(Some(cpu_tier::Tier::Avx2), true, WINDOWS, WINDOWS).is_err());
-        assert!(resolve_arch(None, true, LINUX, WINDOWS).is_err());
-        assert!(resolve_arch(None, false, "riscv64gc-unknown-linux-gnu", WINDOWS).is_err());
+        assert!(resolve_arch(Request::Best, LINUX, WINDOWS).is_err());
+        // Native builds for this host only.
+        assert!(resolve_arch(Request::Native, LINUX, WINDOWS).is_err());
+        assert!(resolve_arch(Request::Best, "riscv64gc-unknown-linux-gnu", WINDOWS).is_err());
     }
 
     #[test]
@@ -2061,7 +2230,11 @@ mod tests {
         let host = host_triple().unwrap();
         let best = host_best_tier().unwrap();
         assert_eq!(
-            resolve_arch(None, false, &host, &host).unwrap(),
+            resolve_arch(Request::Best, &host, &host).unwrap(),
+            Arch::from_tier(best)
+        );
+        assert_eq!(
+            resolve_arch(Request::Native, &host, &host).unwrap(),
             Arch::from_tier(best)
         );
         assert!(host_runs(&config(Arch::from_tier(best), &host, false, true, &[])).unwrap());
