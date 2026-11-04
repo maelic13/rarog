@@ -1020,14 +1020,18 @@ fn check_isa(exe: &Path, arch: Arch, target: &str, default_cpu: bool) -> Result<
     }
 }
 
-/// The functions of a statically linked Linux executable that are the C
-/// runtime's own (`libc.a`, `libm.a`, `libgcc.a`, `libgcc_eh.a`), to be left
-/// out of its ISA check.
+/// The functions of a statically linked Linux executable that the C runtime
+/// (`libc.a`, `libm.a`, `libgcc.a`, `libgcc_eh.a`) runs only on a CPU that
+/// has their instructions, to be left out of its ISA check.
 ///
 /// glibc carries variants of its string and math functions for newer
 /// instruction sets (`__memmove_avx_unaligned`, SVE `memcpy` on arm64) and
 /// picks one for the CPU at run time; a dynamic build loads the same code
-/// from the system. Only an executable is affected: objects and archives are
+/// from the system. Only those variants and the few guarded functions
+/// [`is_dispatched_runtime_function`] names are left out: the rest of the
+/// runtime is checked like the engine, because a runtime built for a newer
+/// CPU (Ubuntu 26.04's `libc.a` runs AVX in `init_cpu_features`) breaks the
+/// tier's promise. Only an executable is affected: objects and archives are
 /// checked whole, and every other target links no C runtime in.
 fn static_runtime_functions(exe: &Path, target: &str) -> Result<HashSet<String>> {
     let is_object = exe
@@ -1068,11 +1072,34 @@ fn static_runtime_functions(exe: &Path, target: &str) -> Result<HashSet<String>>
                     .lines()
                     .map(str::trim)
                     .filter(|name| !name.is_empty() && !name.ends_with(':'))
+                    .filter(|name| is_dispatched_runtime_function(name))
                     .map(str::to_string),
             );
         }
     }
     Ok(functions)
+}
+
+/// Does the C runtime run `name` only on a CPU that has its instructions?
+///
+/// glibc names a run-time-picked variant by its instruction set
+/// (`__memset_avx2_unaligned_erms`, `__strchr_sse4_2`, `__memcpy_a64fx`).
+/// The named non-variants touch SVE or SME state only when the data says the
+/// CPU has it: GCC's aarch64 unwinder reads the vector length for the `VG`
+/// register, which only an SVE frame's unwind information names, and
+/// `__libc_arm_za_disable` acts only when an SME ZA state is live.
+fn is_dispatched_runtime_function(name: &str) -> bool {
+    const VARIANT_TAGS: [&str; 8] = [
+        "_avx", "_evex", "_sse4", "_ssse3", "_fma", "_rtm", "_sve", "_a64fx",
+    ];
+    const GUARDED: [&str; 5] = [
+        "_Unwind_GetGR",
+        "uw_update_context",
+        "uw_update_context_1",
+        "execute_stack_op",
+        "__libc_arm_za_disable",
+    ];
+    VARIANT_TAGS.iter().any(|tag| name.contains(tag)) || GUARDED.contains(&name)
 }
 
 /// The archives `path` stands for: itself, or the ones a GNU ld script
@@ -2768,6 +2795,55 @@ mod tests {
         let planted = disassembly.replace("  401000: \tmovq", "  401000: \tvmovdqu");
         let judgement = judge_disassembly(&planted, Arch::Base, &features, &runtime);
         assert!(fails_naming(&judgement.failures, "avx"));
+    }
+
+    /// Only run-time-picked variants and the guarded unwinder and SME
+    /// functions are left out; the runtime's other code is checked, so a
+    /// `libc.a` built for a newer CPU fails.
+    #[test]
+    fn only_the_runtimes_dispatched_functions_are_left_out() {
+        for name in [
+            "__memset_avx2_unaligned",
+            "__memmove_avx_unaligned_erms",
+            "__memcpy_evex_unaligned",
+            "__strchr_sse4_2",
+            "__strcasecmp_ssse3",
+            "__sin_fma",
+            "__memcpy_sve",
+            "__memmove_a64fx",
+            "_Unwind_GetGR",
+            "execute_stack_op",
+            "__libc_arm_za_disable",
+        ] {
+            assert!(is_dispatched_runtime_function(name), "{name}");
+        }
+        for name in [
+            "init_cpu_features.constprop.0",
+            "init_cpu_features",
+            "__libc_start_main",
+            "memset",
+            "__memset_sse2_unaligned",
+            "_Unwind_RaiseException",
+        ] {
+            assert!(!is_dispatched_runtime_function(name), "{name}");
+        }
+        // The 26.04 runtime's AVX in a non-variant fails the base tier.
+        let features = tier_features(Arch::Base, LINUX, false).unwrap();
+        let disassembly = "
+0000000000401000 <init_cpu_features.constprop.0>:
+  401000: \tvpinsrd\t$0x1, %ecx, %xmm1, %xmm0
+";
+        let runtime: HashSet<String> = ["init_cpu_features.constprop.0"]
+            .into_iter()
+            .filter(|name| is_dispatched_runtime_function(name))
+            .map(str::to_string)
+            .collect();
+        let judgement = judge_disassembly(disassembly, Arch::Base, &features, &runtime);
+        assert!(
+            fails_naming(&judgement.failures, "avx"),
+            "{:?}",
+            judgement.failures
+        );
     }
 
     #[test]

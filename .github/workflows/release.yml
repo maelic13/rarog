@@ -124,8 +124,10 @@ jobs:
           # Every cell is a NATIVE runner (host triple == target), which PGO
           # requires: the instrumented binary runs its training bench locally.
           # An x64 cell builds the universal binary, every tier trained on
-          # this runner; arm64 has no tiers.
-          - { runner: ubuntu-latest, os_name: linux, arch: x64, universal: true, target: x86_64-unknown-linux-gnu, ext: "" }
+          # this runner; arm64 has no tiers. Linux stays on 24.04: the static
+          # binary carries glibc, and 26.04's `libc.a` runs AVX2 code outside
+          # its run-time dispatch, which the ISA check rejects.
+          - { runner: ubuntu-24.04, os_name: linux, arch: x64, universal: true, target: x86_64-unknown-linux-gnu, ext: "" }
           - { runner: ubuntu-24.04-arm, os_name: linux, arch: arm64, universal: false, target: aarch64-unknown-linux-gnu, ext: "" }
           - { runner: windows-latest, os_name: windows, arch: x64, universal: true, target: x86_64-pc-windows-msvc, ext: ".exe" }
           # PGO here depends on a WORKAROUND, not on stock toolchain support:
