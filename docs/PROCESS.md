@@ -861,8 +861,11 @@ cannot, so its binaries need only `libSystem` and macOS 11.0 or newer (the
 release checks that 11.0 is the minimum). A static Linux binary carries
 glibc's variants of its string and math functions for newer instruction sets
 (SVE `memcpy` on arm64, AVX `memmove`), which glibc picks at run time; the
-ISA check leaves out the functions `libc.a` and `libm.a` define and holds the
-rest to the contract. The release benches every
+ISA check leaves out only those variants, named by their instruction set, and
+GCC's aarch64 unwinder, which reads the SVE vector length only for an SVE
+frame, and holds the rest of the runtime to the contract. So the Linux release
+builds on `ubuntu-24.04`: 26.04's `libc.a` runs AVX2 code outside its
+dispatch, and its binary failed on every CPU below AVX2 under SDE. The release benches every
 forced tier on its runner and checks the selection under Intel SDE
 (`tools/diag/check_universal.py`). The start-up line names the tier and kinds;
 `id name` never does, since rating lists key on it. `RAROG_DEV_ID=<date>-<hash>`
