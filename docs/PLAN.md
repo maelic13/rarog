@@ -331,7 +331,6 @@ GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.3.9 | RESEARCH | R2 | After D.2 (maintainer order, 2026-11-03): the score-normalisation card and the protocol decisions; the `src/uci/` (planned) move with D.8.13, the adapter boundary |
 | D.4.3 | READY_FOR_IMPLEMENTATION | I1 | Before D.6.1, D.6.2 and D.8.4; a planted dropped move must fail it |
 | D.4.4 | RESEARCH | R2 | The card: how to re-search without perturbing the measured tree; before D.6's screens |
 | D.4.5 | READY_FOR_IMPLEMENTATION | V | The tool first, then the judge run's sample registered; maintainer-run |
@@ -393,7 +392,6 @@ GUIDE's Now (`guide_board.py`).
 | D.8.10 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.11 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.12 | READY_FOR_IMPLEMENTATION | I1 | After D.2 closes |
-| D.8.13 | READY_FOR_IMPLEMENTATION | I1 | Done inside D.3.9 and ticked with it |
 | D.8.14 | RESEARCH | R2 | After D.2 closes; `R2` first on how aspiration and MultiPV share the driver |
 | D.8.15 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.16 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
@@ -2246,7 +2244,7 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
       for a RAR-R03 member (D.2.3's stop rule). RAR-M82's rule named an
       engine-side placement hint as a held leaf; it is G.1's, which owns
       the thread-affinity policy.
-- **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `I1` for the eight review-confirmed defects (2026-11-01), then `R2` for the cards.** UCI
+- **D.3 Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — `I1` for the eight review-confirmed defects (2026-11-01), then `R2` for the cards, DONE 2026-11-04.** UCI
   parsing and dispatch, stop/ponder/infinite semantics, new-game resets,
   malformed input, panic reporting, Syzygy probe policy and thread safety.
   **Found 2026-11-01 in D.2's checks:** in a full `cargo test` run,
@@ -2407,7 +2405,7 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
     remembered `Hash` request, the shortcut off under `searchmoves`);
     behaviour-neutral, the fingerprint 14,749,043 / EBF 2.564 reproduced;
     debug and release suites, fmt and clippy clean.
-    - **D.3.9 The score-normalisation card, the `src/uci/` (planned) move and the protocol decisions — `R2`.**
+    - **D.3.9 The score-normalisation card, the `src/uci/` (planned) move and the protocol decisions — `R2`, DONE 2026-11-04.**
       Decisions to record, not changes: a bad `position` ends the process with
       `process::exit(1)` from library code (both donors keep the previous
       position; the exit has one advantage, the message reaches the retained
@@ -2446,6 +2444,55 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
       would keep the position. For the score-normalisation card: Triumviratus
       calibrates its printed scale on self-play so that +1.00 is a 50% chance
       to win, refitted per network.
+      **Done 2026-11-04** (`8656ed0` to `d0759b9`):
+      - **The score-normalisation card: `NO_CHANGE`.** A printed scale with a
+        stated win probability needs a model fitted to the evaluation, and
+        Phase F replaces the evaluation and refits per network, as
+        Triumviratus does; the fit moves to F.6, and the formatter it changes
+        is `uci::info::format_score`. The defect beside it is fixed: an
+        ordinary score of 19,873 or more, the rule-50-downgraded mate
+        (`TB_WIN_SCORE - 1`, printed `cp 31743`) among them, read above every
+        tablebase win; ordinary scores now stop at `cp 19872` (`8656ed0`).
+      - **PROTO-6: the critical exit stays**, now through `main`: a `position`
+        that cannot be read returns `CommandOutcome::Fatal`, input stops at
+        that line and the engine shuts down as at the end of input, so a
+        search already running, `go infinite` and ponder included, answers
+        with its own `bestmove` before the exit with status 1. The decision's
+        `bestmove 0000` was not used: the search's move is legal for the
+        position the GUI asked about and needs no second shutdown path.
+        Castling rights the rooks do not support and a halfmove clock over
+        255 are covered by the same decision and pinned by a test
+        (`09e9c8f`). Retry trigger as recorded: a logged game in which a GUI
+        sends a recoverable bad `position`.
+      - **Basilisk H14 and H15** (`6c8f554`): a helper thread's panic reaches
+        the report with its name (the hook is the process's); a throwaway
+        release build that panicked helper 1 printed `info string PANIC
+        thread=rarog-search-0 ...` on stdout before exiting `0xC0000409`, so
+        the shipped binary gets no crash trigger for a process test. A mated
+        or stalemated root under `go infinite` reports one line and answers
+        `bestmove 0000` only on `stop`, at Threads 1 and 2.
+      - `multipv_syzygy`'s three tests are ignored with the tables they need
+        named and fail when run without them (`7c4b5d6`; with the 3–6-man
+        set all three pass); the queued `PonderHit` is gone (`9732e9b`);
+        `bench` and `wac` share one `run_suite`, and `wac` gains `bench`'s
+        check for a replacing command after each search (`27cd37e`).
+      - **The move, D.8.13:** `cef6e97` (the option types to
+        `search::options`, so the cycle is gone; `uci::position`, `uci::go`
+        and `uci::options` parse and return their notices, which `uci`
+        prints; one option table gives the advertised line and the range;
+        `OptionUpdate` is `Applied`, `ClearHash`, `Rejected { notice }` or
+        `Unknown { name }`, and a rejected value no longer queues a
+        reconfiguration), `d0759b9` (the search hands its sink an
+        `InfoReport`, an iteration's `InfoRecord` or `NoLegalMove`, and
+        `uci::info` builds the line once).
+      - `go mate N` as a fixed-depth search stays noted, low priority.
+      - Verified at each engine commit: `bench 13` = 14,749,043 on the base
+        and pext builds, debug and release suites, `cargo fmt --check`,
+        `cargo clippy --all-targets` with all and default features at zero;
+        the move's UCI output is the same before and after, timings masked,
+        for a 26-command session (45 lines), a MultiPV 3 search (34) and a
+        KQ-KR tablebase root at MultiPV 1 and 2 (30). Measurements in
+        `analysis/artifacts/d3-9/`.
     - **D.3.10 `tests/uci_process.rs` times out under the full suite's load — `I1`, DONE 2026-11-03.**
       Found 2026-11-01 in D.2's checks (D.3's text above): under a full
       `cargo test`, debug or release, 1 to 5 of the file's 28 tests time
@@ -3369,7 +3416,7 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
       `lazy_margin`).
     - **D.8.12 P11: split `search/mod.rs`, after D.2 — `I1`.** Split `search/mod.rs` into `root`, `report`, `tb` after D.2
       closes. Neutral.
-    - **D.8.13 P12: the adapter boundary, inside D.3 — `I1`.** The adapter boundary, inside D.3: the option types to
+    - **D.8.13 P12: the adapter boundary, inside D.3 — `I1`, DONE 2026-11-04.** Done inside D.3.9 (`cef6e97`, `d0759b9`; the sink's method is `report(&InfoReport)`, which also carries the no-legal-move line). The adapter boundary, inside D.3: the option types to
       `search/options.rs`, the parser and its notices to `src/uci/` (planned),
       `InfoSink::info(&InfoRecord)` so `format_score` and the bound and mate
       strings leave the search and the `info` line is built once; removes the
@@ -3851,7 +3898,10 @@ this phase meets them, each is now a requirement of the leaf named:
   hits in 2.5M lookups there).
 - **F.6 Search re-fit for the network — `V`.** Score scale, correction
   histories, margins, qsearch and SEE thresholds re-fitted on the new
-  evaluator (C.10's protocol).
+  evaluator (C.10's protocol). The printed score's scale is fitted here
+  too, per network, so that a stated score reads as a stated chance to win
+  (D.3.9's normalisation card, closed `NO_CHANGE` 2026-11-04 for this
+  phase; the formatter is `uci::info::format_score`).
   Triumviratus inputs, to settle before this tune's registration (2026-11-03;
   TD-8, TM-3, TM-5, TM-8, the review's check 15). The scale per piece-count
   bucket recalibrated for each net by games (matching the raw ratio to the
