@@ -1,6 +1,11 @@
 # Universal x86-64 binary — design record and deferral
 
-**Status: OPTIONAL, not scheduled, may never be done.** Owner: PLAN `G.2`.
+**Status (2026-11-04): scheduled as PLAN `E.3.3`, moved from `G.2` by
+maintainer decision.** Section 6's third trigger is taken as fired:
+unattended testers pick an asset without reading start-up output, and
+2.7.0 is the release CCRL will test. Where the text below says G.2, read
+E.3.3. Until 2026-11-04 the status was: OPTIONAL, not scheduled, may never
+be done; owner PLAN `G.2`.
 Written 2026-09-10 from the A.4 investigation. Nothing here is a
 commitment to build it; it exists so the work does not have to be redone if the
 triggers in section 6 ever fire.

@@ -57,6 +57,7 @@ leaf continues here, this is the mapping; everything else is history.
 | Phase 8 (scaling) | G | |
 | Phase 9 (classical fallback) | dropped | the classical evaluation stays as datagen baseline and fallback by construction |
 | D.4 (tablebase policy, numbered so until 2026-11-01) | D.7, then D.9 | renumbered when D.4, D.5 and D.6 were added from `analysis/engine_review_2026-11-01.md`, and again on 2026-11-03 (next row); a record from before 2026-11-01 that names D.4 means the tablebase leaf |
+| E.3.2 (the 2.7.0 release cut, numbered so until 2026-11-04) | E.3.4 | renumbered when E.3.2 (build names) and E.3.3 (the universal binary, from G.2) were placed before the cut (maintainer decision 2026-11-04); `analysis/basilisk_crosscheck_2026-11-02.md` keeps the old number |
 | D.4–D.9 as numbered 2026-11-01 to 2026-11-03: D.4 repairs, D.5 strength candidates, D.6 simplification, D.7 tablebase policy, D.8 Linux large pages, D.9 instruments | D.5, D.6, D.8, D.9, D.7, D.4, every sub-step number kept (D.4.19 is D.5.19, D.5.15 is D.6.15, D.6.13 is D.8.13, D.9.3 is D.4.3) | renumbered 2026-11-03 so that the numbering is the order of work (maintainer decision). The tracked documents were rewritten to the new numbers in the same commit, except this file's dated records, the archives, the records from before 2026-11-01 and `analysis/d5_item15_verdict_probe.patch` (a recipe, kept byte for byte); the old numbers also survive in commit messages, PR texts and untracked artifacts' notes |
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)

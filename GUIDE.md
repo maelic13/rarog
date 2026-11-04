@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.4.3** (`I1`): A search-path perft.
+**Now: E.3.2** (`I1`): Build names: one scheme for `id name`, the start-up line, the files and the build command, and an `sse42` tier.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -121,7 +121,9 @@ field, about 3,475 on CCRL's Blitz scale.
 - [ ] **E.3** Release 2.7.0 through the tag-driven flow; 3.0.0 is reserved for the first NNUE release — **M**
     - [ ] **E.3.0** Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — **R2**
     - [x] **E.3.1** Tag-driven release flow — DONE 2026-10-05
-    - [ ] **E.3.2** Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — **M**
+    - [ ] **E.3.2** Build names: one scheme for `id name`, the start-up line, the files and the build command, and an `sse42` tier — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **E.3.3** The universal x86-64 binary: one release file per OS that picks its tier at start-up, at the single-tier build's speed — **RESEARCH / R2**
+    - [ ] **E.3.4** Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — **M**
 - [ ] **E.4** The king-danger index rebuilt in the donor's structure; the classical line's next release if it wins — **R2**
 
 ## Phase F — NNUE (own data only)
@@ -142,7 +144,7 @@ field, about 3,475 on CCRL's Blitz scale.
 ## Phase G — Scaling, platforms and the top 50
 
 - [ ] **G.1** High-thread and NUMA: 8/16/32T, TT and net placement, large pages, affinity policy — **R2**
-- [ ] **G.2** Platform and product: Chess960 on demand, distributed testing, and the OPTIONAL universal binary (`analysis/universal_binary_2026-09.md`) — **I1**
+- [ ] **G.2** Platform and product: Chess960 on demand and distributed testing — **I1**
 - [ ] **G.3** Frontier: larger nets, data scaling, LTC search fit; CCRL top-50 gate — **R3**
 
 ## Phase H — Refinements after the big gains
@@ -167,13 +169,13 @@ field, about 3,475 on CCRL's Blitz scale.
 | Evaluation deficit | **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21): Stockfish's classical HCE over Rarog's frozen evaluation inside Stockfish's search, from +181.7 ± 19.0 at Phase C's start (RAR-O05), 82.5 ± 25.2 closed. The donor's remaining king signal is the index's structure (RAR-E72, RAR-E73); Phase F supersedes the classical evaluation, and an evaluation change under a fitted search follows PROCESS |
 | Speed | The C head (2026-10-21/22): **+28.92%** pooled-PGO bench NPS over the B.9 head (RAR-P39; `rustc 1.99.1`'s −1.63% included, RAR-P37, its code generation −3.6% without PGO, RAR-P38); in games (Colosseum CLI 0.4.0) +29.8% at 1T and −9.2% at 4T over the B.9 head (RAR-M73, RAR-M74), and −8.6% at 1T and −19.1% at 4T against Rarog 2.4.0 in the same games; the evaluation 21.1% of search samples, B.9's 24.3% (RAR-P40) |
 | Conversion | **13.8 draws and 0.0 losses per 1,000 games** after a persistent piece-up (RAR-M73's games, the C head; Poisson 95% 9.5–19.3 and 0–1.5), against the B.9 head's 15.8 and 0.8 (RAR-M64) and 2.4.0's 24.4 and 5.3: the draw rate's fall is not resolved |
-| Active experiment | None running. **Landed 2026-11-04 as `c69761d` (PR #13):** D.2 closed `NO_CHANGE` (RAR-M83: four threads are worth 1.37 doublings of Rarog's own time against Reckless's 1.49 and Stockfish's 1.54; one logical CPU per physical core is the placement for every rated multi-thread read); D.3 done, with the protocol behind `src/uci/`; D.5.24's `Hash` bound and D.6.15's draw verdicts. Triumviratus is registered as a mechanisms-only donor and its small gains wait in Phase H. Next: D.4, the instruments (D.4.3, the search-path perft, first), then D.5's repairs and D.6's candidates. Finished steps' records: PLAN and `docs/archive/PLAN-phaseD-done-2026-11-04.md` |
+| Active experiment | None running. **Landed 2026-11-04 as `c69761d` (PR #13):** D.2 closed `NO_CHANGE` (RAR-M83: four threads are worth 1.37 doublings of Rarog's own time against Reckless's 1.49 and Stockfish's 1.54; one logical CPU per physical core is the placement for every rated multi-thread read); D.3 done, with the protocol behind `src/uci/`; D.5.24's `Hash` bound and D.6.15's draw verdicts. Triumviratus is registered as a mechanisms-only donor and its small gains wait in Phase H. Next: E.3.2, the build names, then E.3.3, the universal binary (maintainer decision 2026-11-04: settled before Phase D continues); then D.4, the instruments (D.4.3, the search-path perft, first), then D.5's repairs and D.6's candidates. Finished steps' records: PLAN and `docs/archive/PLAN-phaseD-done-2026-11-04.md` |
 
 ## Holds and obligations
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
-| Originality disclosure (2026-10-23 review of 2.6.0): Stockfish's time-budget constants and Reckless's move-ordering and history constants were copied unchanged, the evaluation design is Stockfish 11's, Fathom is not named, and the README credits only "inspiration". The code and the evaluation weights are Rarog's own, and the move-similarity screen reads Rarog like an unrelated engine against both donors (56.4% Stockfish 11, 54.2% Reckless; related controls 67–69%) | **E.3.0**: rerun the scans on the release head, the maintainer settles the licence (Reckless is AGPL-3.0), then README, PROCESS's boundary and the binaries' notices | E.3.2, the 2.7.0 release cut |
+| Originality disclosure (2026-10-23 review of 2.6.0): Stockfish's time-budget constants and Reckless's move-ordering and history constants were copied unchanged, the evaluation design is Stockfish 11's, Fathom is not named, and the README credits only "inspiration". The code and the evaluation weights are Rarog's own, and the move-similarity screen reads Rarog like an unrelated engine against both donors (56.4% Stockfish 11, 54.2% Reckless; related controls 67–69%) | **E.3.0**: rerun the scans on the release head, the maintainer settles the licence (Reckless is AGPL-3.0), then README, PROCESS's boundary and the binaries' notices | E.3.4, the 2.7.0 release cut |
 
 Follow the earliest unblocked leaf in PLAN's register order, which the board's Now shows; the register is in ascending order, which is the order of work (maintainer decision 2026-11-03). Held items stay unticked in place.
 

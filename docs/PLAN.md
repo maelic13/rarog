@@ -327,10 +327,14 @@ class until they open. The rows are in ascending order, which is the order
 of work (maintainer decision 2026-11-03): a leaf added later takes the next
 free number of the step it belongs to, and one that must run earlier is
 placed by renumbering, never by moving its row. The first open row is
-GUIDE's Now (`guide_board.py`).
+GUIDE's Now (`guide_board.py`). E.3.2 and E.3.3 head the register out of
+order (maintainer decision 2026-11-04): the build names and the universal
+binary are settled before Phase D continues.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
+| E.3.2 | READY_FOR_IMPLEMENTATION | I1 | Now, before D.4 (maintainer decision 2026-11-04); behaviour-neutral, every tier at the fingerprint |
+| E.3.3 | RESEARCH | R2 | After E.3.2; the card's four checks first, each able to stop it |
 | D.4.3 | READY_FOR_IMPLEMENTATION | I1 | Before D.6.1, D.6.2 and D.8.4; a planted dropped move must fail it |
 | D.4.4 | RESEARCH | R2 | The card: how to re-search without perturbing the measured tree; before D.6's screens |
 | D.4.5 | READY_FOR_IMPLEMENTATION | V | The tool first, then the judge run's sample registered; maintainer-run |
@@ -727,8 +731,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       recorded and the runner labels pinned instead of `-latest` (a static
       build is G.2's, with an NPS read); Miri on the unit tests that reach
       the `unsafe` sites outside the FFI (TT cluster, slider tables), as a
-      nightly job; a development build's `id name` carrying its commit and
-      a dirty mark, as Stockfish's does, so a stale binary names itself.
+      nightly job. A development build's `id name` carrying its commit and a
+      dirty mark moved to E.3.2 on 2026-11-04.
     - **D.5.21 Basilisk's behaviour tests run against Rarog — `I1`.** (§D of the
       cross-check; about 20, among them shortest mate rather than the
       first mate, an injected illegal TT move never searched, every
@@ -1374,7 +1378,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   matrix) and may land any time earlier.
     - **E.3.0 Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — `R2`, then `M`.** A
       small research step with its implementation. Added 2026-10-23 by
-      maintainer decision. E.3.2 does not cut until it closes. Known
+      maintainer decision. E.3.4 does not cut until it closes. Known
       evidence (`analysis/originality_review_2.6.0_2026-10-22.md`, on the
       2.6.0 source):
       - The code is Rarog's own. Raw shared token runs with Reckless cover
@@ -1446,8 +1450,116 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is
       `docs/PROCESS.md` *Release*; the leaf's text is in `docs/archive/PLAN-closed-2026-10-05.md`.
-    - **E.3.2 Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
-      E.3.1 closed (2026-10-05): the version from `2.7.0-dev` to 2.7.0,
+    - **E.3.2 Build names: one scheme for `id name`, the start-up line, the files and the build command, and an `sse42` tier — `I1`.** Added
+      2026-11-04 by maintainer decision, with E.3.3, ahead of Phase D's
+      remaining work. The form is Basilisk's
+      (`D:/code/basilisk/cmake/git-version.cmake`,
+      `D:/code/basilisk/src/version.cpp`,
+      `D:/code/basilisk/cmake/dist-copy.cmake`), so the maintainer's engines name their
+      builds alike. The contract:
+      - `id name` is `Rarog X.Y.Z` at a release and, while `Cargo.toml`
+        holds a `-dev` version, `Rarog dev-<commit date, yyyymmdd>-<8 hash
+        characters>`, with `-m` before the hash when the tree differs from
+        its commit (Stockfish's form). `RAROG_DEV_ID=<date>-<hash>` fixes
+        that part for a byte-identity comparison, since the name is in the
+        binary. `id name` never names a tier, a kind or a feature: rating
+        lists key on it, and of the library's engines read on 2026-11-04
+        Stockfish 12 onward, Reckless, Beast and Basilisk name none of
+        them (Ethereal 13.07, Fire 8.3 and Stockfish 10 and 11 named the
+        tier).
+      - The start-up line names what `id name` does not: the tier and any
+        kind or feature (`(pext)`, `(pext, nopgo)`, `(native)`,
+        `(pext, tune)`).
+      - A file is `rarog-<version>-<os>-<arch>[-<tier>][-<kind>]`: the
+        version as `id name` gives it, without a `v` (the git tag keeps
+        `vX.Y.Z`); `windows`, `linux` or `macos`; `x64` or `arm64`; on a
+        single-tier x64 build its tier (`base`, `sse42`, `avx2`, `pext`,
+        or `native` in its place), and no tier on arm64 or the universal
+        binary; then `nopgo`, `tune` or `diag`, in that order, on anything
+        but a PGO build with the default features. The release's
+        `rarog-v2.6.0-windows-pext.exe` becomes
+        `rarog-2.7.0-windows-x64-pext.exe`, and today's
+        `rarog-v2.7.0-dev-windows-pext-pgo.exe` becomes
+        `rarog-dev-20261104-209b555a-windows-x64-pext.exe`.
+      - The tiers are the x86-64 levels: `base` x86-64; `sse42` x86-64-v2,
+        new (SSE4.2, SSSE3 and POPCNT: Nehalem to Ivy Bridge and AMD
+        Bulldozer to Steamroller, the CPUs Basilisk's `sse41-popcnt` tier
+        serves); `avx2` x86-64-v3; `pext` x86-64-v3 with the PEXT slider
+        path. `sse42` is a single-tier build and asset and a tier of
+        E.3.3's universal binary (maintainer decision 2026-11-04), with its
+        own `verify-isa` contract. Until E.3.3 ships, the release carries
+        each x64 tier for Windows and Linux and the three arm64 assets.
+      - `cargo xtask build`, the same as `cargo xtask build --release`,
+        builds the best tier this host runs, with PGO and that tier's
+        portable code generation, never `native` (RAR-P51: −3.8% here).
+        `--tier` picks another tier the host runs (PGO trains by running
+        the build, so a tier above the host is refused); `--nopgo`,
+        `--native` and `--features` make the other kinds; `--universal` is
+        E.3.3's. A plain `cargo build` stays the unnamed development and
+        test build.
+      - The callers follow: `tools/build_test.ps1`, `release.yml` and
+        `release-check` (which assert the name), PROCESS *Build* and
+        *Release* step 6, the README's download table, a CHANGELOG entry
+        for the new file names, and AGENTS' pool-identity rule (the dev
+        name identifies the commit; a feature arm is named in its file
+        name and its sidecar). Testing a dirty build stays refused
+        (`harness_common.ps1`).
+      Verification: every tier benches the declared fingerprint, so the
+      change is behaviour-neutral; unit tests of the name for a release, a
+      development build, a dirty tree and a fixed id; `verify-isa` fails a
+      planted `popcnt` in `base` and an AVX instruction in `sse42`; one
+      pooled NPS read of `sse42` over `base` on the 5950X, indicative of
+      what older CPUs gain. Not in this leaf: whole-number releases
+      (`Rarog 3`, `Rarog 3.1`), perhaps by dropping trailing zeros from the
+      shown version, an idea for F.9 still to be discussed.
+    - **E.3.3 The universal x86-64 binary: one release file per OS that picks its tier at start-up, at the single-tier build's speed — `R2` card, then `I2`/`V`.** Moved
+      from G.2 on 2026-11-04 by maintainer decision. Its record
+      (`analysis/universal_binary_2026-09.md`) deferred it at about zero
+      Elo against a correctly chosen asset; its third trigger is taken as
+      fired: unattended testers pick an asset without reading start-up
+      output, a `base` asset on a `pext` CPU gives up 6.65% (RAR-P22,
+      about 13 Elo at RAR-M20's rate), `pext` on Zen 1 or 2 is the slowest
+      engine, and 2.7.0 is the release CCRL will test. The design is the
+      record's section 5 (a): every tier its own complete PGO build, linked
+      behind a dispatcher in baseline code. Basilisk built and shipped it
+      (the record's section 9). The card settles the Rust route with the
+      cheapest checks first, in this order, each able to stop it:
+      1. rustc keeps the post-LTO object of a tier's ordinary PGO build
+         (`-C save-temps`), and that object linked alone reproduces the
+         fingerprint with its hot functions byte for byte the tier
+         build's. This is Basilisk's route: symbols are renamed after PGO,
+         so no profile is matched against renamed symbols, and section 7's
+         metadata trap does not arise.
+      2. Every symbol a tier defines is renamed or made local except its
+         entry, what fat LTO pulls in from `std` included, and no defined
+         symbol is shared between tiers (`llvm-nm`, intersected).
+      3. `std`'s own initialisers in each tier (the Windows TLS callback,
+         the Linux `.init_array` argument capture) are listed, and each is
+         shown harmless when every tier runs it, or removed.
+      4. `-C llvm-args=-align-all-functions=6` reaches LTO code generation,
+         so every tier function starts on a 64-byte line (Basilisk's
+         unaligned relink read −0.58%).
+      If check 1 fails, the fallback is four `staticlib` tiers trained
+      inside one instrumented universal build, each through the
+      forced-tier override; if that fails too, the leaf closes `NO_CHANGE`
+      and E.3.2's per-tier assets ship. The build then: the dispatcher from
+      `cpu_advice` (feature bits with the OS's YMM state; AMD family 15h
+      and 17h kept off `pext`); `RAROG_ISA` forcing a tier and refusing one
+      the CPU cannot run (exit 1 with an `info string`); the start-up line
+      naming the chosen tier, `id name` unchanged; Fathom linked once in
+      baseline code; `cargo xtask build --universal`; every trap of the
+      record's sections 3, 7 and 9 checked and seen to fail on a planted
+      fault; every forced tier benched for the fingerprint; an Intel SDE
+      selection matrix in `release.yml`. The gate, its threshold frozen in
+      the card before the read: a pooled NPS read of the universal binary
+      against the single-tier `pext` build, no regression, with Basilisk's
+      separate placement and alignment contrasts. On a pass the x64
+      release is `rarog-<version>-windows-x64.exe` and
+      `rarog-<version>-linux-x64`, with no per-tier x64 asset (maintainer
+      decision 2026-11-04): five assets with the three arm64. Measurements
+      stay on the single-tier `pext` build.
+    - **E.3.4 Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
+      E.3.1 closed (2026-10-05), numbered E.3.2 until 2026-11-04: the version from `2.7.0-dev` to 2.7.0,
       behaviour-neutral with the fingerprint
       held; `CHANGELOG.md`'s `[Unreleased]`, kept as changes landed,
       reviewed and dated; fmt, clippy, debug and release suites, feature
@@ -1754,30 +1866,12 @@ this phase meets them, each is now a requirement of the leaf named:
   of one logical CPU per physical core Rarog's four threads keep 4.03 times
   one; hard affinity inside an engine fights the tester's mask, and no donor
   sets it.
-- **G.2 Platform and product: Chess960 on demand, distributed testing, and the OPTIONAL universal binary (`analysis/universal_binary_2026-09.md`) — `I1`.** Chess960 on demand, distributed
-  testing when typical gains reach 1–3 Elo, and the **optional universal
-  x86-64 binary**. The universal work is fully designed and deliberately
-  unscheduled: `analysis/universal_binary_2026-09.md` carries the measured
-  tier value, the link prototype's two findings (Rust symbols isolate under
-  `-C metadata`; C symbols silently collapse to whichever copy links first),
-  Stockfish's mechanism read from its source, the four candidate designs with
-  their runtime costs, and the traps — chiefly that a `-C metadata` mismatch
-  makes PGO apply **no profile at all**, without an error. It may never be
-  done. The triggers that would revive it are recorded in that document, the
-  strongest being NNUE in Phase F, which is what makes a wider tier ladder pay
-  (196 of Stockfish's 249 ISA-specific lines are NNUE inference). Basilisk
-  built and shipped the same design on 2026-10-29. It found that the relink
-  costs nothing only once every tier function is 64-byte aligned (−0.58%
-  unaligned, from placement alone), that symbols leak across tiers through
-  LTO, and that renaming the kept post-LTO objects of each tier's ordinary
-  PGO build avoids the profile trap. These are recorded as leads in that
-  document's section 9, and they fire no trigger. Also from Basilisk (H37,
-  H4): an SSE4.1-plus-POPCNT tier took most of AVX2's gain on pre-Haswell
-  CPUs (+5.6% against +6.0%, indicative); its universal binary is checked
-  under Intel SDE (each emulated CPU runs the right tier and reproduces
-  bench, a forced tier it cannot run is refused); a statically linked
-  Linux asset removes the glibc floor (Basilisk's +5% is one WSL read, so
-  a pooled NPS read decides).
+- **G.2 Platform and product: Chess960 on demand and distributed testing — `I1`.** Chess960 on demand, and distributed
+  testing when typical gains reach 1–3 Elo. The universal x86-64 binary
+  was G.2's until 2026-11-04, when the maintainer moved it to E.3.3
+  (`analysis/universal_binary_2026-09.md`). Also from Basilisk (H4): a
+  statically linked Linux asset removes the glibc floor (Basilisk's +5%
+  is one WSL read, so a pooled NPS read decides).
   Triumviratus inputs (TB-9, TB-14, TA-1, TA-3;
   `analysis/triumviratus_review_2026-11-03.md` §6, §13): its Chess960 contract
   and FRC perft suite, per-variant profiles merged into one universal build,
