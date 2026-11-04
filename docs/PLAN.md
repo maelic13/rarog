@@ -327,13 +327,11 @@ class until they open. The rows are in ascending order, which is the order
 of work (maintainer decision 2026-11-03): a leaf added later takes the next
 free number of the step it belongs to, and one that must run earlier is
 placed by renumbering, never by moving its row. The first open row is
-GUIDE's Now (`guide_board.py`). E.3.3 heads the register out of order
-(maintainer decision 2026-11-04): the universal binary is settled before
-Phase D continues, after E.3.2's build names (done 2026-11-04).
+GUIDE's Now (`guide_board.py`). E.3.2 and E.3.3 ran ahead of Phase D by
+maintainer decision 2026-11-04; both are done.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| E.3.3 | LOCAL_QUALIFIED | I2 | Gate passed (RAR-P56 +0.45%), the release switched, Linux verified in WSL; the SDE matrix waits for the first `Release` run |
 | D.4.3 | READY_FOR_IMPLEMENTATION | I1 | Before D.6.1, D.6.2 and D.8.4; a planted dropped move must fail it |
 | D.4.4 | RESEARCH | R2 | The card: how to re-search without perturbing the measured tree; before D.6's screens |
 | D.4.5 | READY_FOR_IMPLEMENTATION | V | The tool first, then the judge run's sample registered; maintainer-run |
@@ -1527,7 +1525,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       The pooled NPS read (RAR-P55): `sse42` **+8.06%** [+7.57%, +8.55%]
       over `base` on the 5950X, indicative of what older CPUs gain;
       `nps_read.py` now reads a pool of any tier (`145ab14`).
-    - **E.3.3 The universal x86-64 binary: one release file per OS that picks its tier at start-up, at the single-tier build's speed — `R2` card, then `I2`/`V`.** Moved
+    - **E.3.3 The universal x86-64 binary: one release file per OS that picks its tier at start-up, at the single-tier build's speed — `R2` card, then `I2`/`V`, DONE 2026-11-04.** Moved
       from G.2 on 2026-11-04 by maintainer decision. Its record
       (`analysis/universal_binary_2026-09.md`) deferred it at about zero
       Elo against a correctly chosen asset; its third trigger is taken as
@@ -1599,8 +1597,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `dac14c5`; Linux `dc66f27`, 9,435,472 bytes, no loader): the first
       static Linux link crashed before `main` because it passed the C
       libraries again after rustc's own static group, and the universal
-      check caught it. Left: the SDE matrix, which only the first `Release`
-      run reads.
+      check caught it. The first `Release` run (41896823228, on PR #14's
+      head `2fb6df1`, Linux built on ubuntu-24.04) passed the SDE matrix:
+      every emulated CPU chose its expected tier and benched 14,749,043,
+      eight on Linux and six on Windows, and `pext` forced on Sandy Bridge
+      was refused. SDE emulates only Intel parts, so the `avx2` tier's
+      selection (AMD Zen 1 and 2) is not exercised there; the forced-tier
+      benches run that tier. Landed with E.3.2 as `5efe16f` (PR #14). The
+      static Linux runtime's speed stays open for a native host (RAR-P57).
     - **E.3.4 Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
       E.3.1 closed (2026-10-05), numbered E.3.2 until 2026-11-04: the version from `2.7.0-dev` to 2.7.0,
       behaviour-neutral with the fingerprint
