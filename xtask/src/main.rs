@@ -8,6 +8,7 @@ mod build_name;
 #[path = "../../src/cpu_tier.rs"]
 mod cpu_tier;
 
+use std::collections::HashSet;
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
@@ -982,7 +983,8 @@ fn check_isa(exe: &Path, arch: Arch, target: &str, default_cpu: bool) -> Result<
         ],
     )?;
 
-    let judgement = judge_disassembly(&disassembly, arch, &features);
+    let runtime = static_runtime_functions(exe, target)?;
+    let judgement = judge_disassembly(&disassembly, arch, &features, &runtime);
     if judgement.instructions == 0 {
         return Err(format!(
             "llvm-objdump produced no instructions for {} — it is probably not an \
@@ -1003,6 +1005,13 @@ fn check_isa(exe: &Path, arch: Arch, target: &str, default_cpu: bool) -> Result<
             "tzcnt", judgement.tzcnt, TZCNT_IS_BASELINE_SAFE
         ));
     }
+    if judgement.runtime_instructions > 0 {
+        println_flush(format_args!(
+            "  {} instructions of the static C runtime's own functions left out: it picks \
+             its variants (SSE, AVX, SVE) for the CPU at run time",
+            judgement.runtime_instructions
+        ));
+    }
     if judgement.failures.is_empty() {
         println_flush(format_args!("  contract holds"));
         Ok(())
@@ -1011,18 +1020,127 @@ fn check_isa(exe: &Path, arch: Arch, target: &str, default_cpu: bool) -> Result<
     }
 }
 
+/// The functions of a statically linked Linux executable that are the C
+/// runtime's own (`libc.a`, `libm.a`), to be left out of its ISA check.
+///
+/// glibc carries variants of its string and math functions for newer
+/// instruction sets (`__memmove_avx_unaligned`, SVE `memcpy` on arm64) and
+/// picks one for the CPU at run time; a dynamic build loads the same code
+/// from the system. Only an executable is affected: objects and archives are
+/// checked whole, and every other target links no C runtime in.
+fn static_runtime_functions(exe: &Path, target: &str) -> Result<HashSet<String>> {
+    let is_object = exe
+        .extension()
+        .is_some_and(|ext| ext == "o" || ext == "a" || ext == "rlib");
+    if is_object || !target.ends_with("-linux-gnu") || !links_runtime_statically(target) {
+        return Ok(HashSet::new());
+    }
+    let nm = find_llvm_tool("llvm-nm").ok_or_else(|| {
+        "llvm-nm not found. Install it with `rustup component add llvm-tools`.".to_string()
+    })?;
+    let mut functions = HashSet::new();
+    for archive in ["libc.a", "libm.a"] {
+        let path = PathBuf::from(command_output(
+            "cc",
+            &[&format!("-print-file-name={archive}")],
+        )?);
+        if !path.is_file() {
+            return Err(format!(
+                "`cc -print-file-name={archive}` found no archive (`{}`), so the \
+                 static C runtime's functions cannot be told apart",
+                path.display()
+            ));
+        }
+        for member in archive_members(&path)? {
+            let names = command_output(
+                nm.to_str().ok_or("llvm-nm path is not UTF-8")?,
+                &[
+                    "--defined-only",
+                    "--format=just-symbols",
+                    member.to_str().ok_or("archive path is not UTF-8")?,
+                ],
+            )?;
+            functions.extend(
+                names
+                    .lines()
+                    .map(str::trim)
+                    .filter(|name| !name.is_empty() && !name.ends_with(':'))
+                    .map(str::to_string),
+            );
+        }
+    }
+    Ok(functions)
+}
+
+/// The archives `path` stands for: itself, or the ones a GNU ld script
+/// names (Ubuntu's `libm.a` is `GROUP ( …/libm-2.39.a …/libmvec.a )`).
+fn archive_members(path: &Path) -> Result<Vec<PathBuf>> {
+    let bytes =
+        fs::read(path).map_err(|err| format!("failed to read `{}`: {err}", path.display()))?;
+    if bytes.starts_with(b"!<arch>") {
+        return Ok(vec![path.to_path_buf()]);
+    }
+    let script = String::from_utf8_lossy(&bytes);
+    let dir = path.parent().unwrap_or(Path::new("."));
+    let members = linker_script_archives(&script)
+        .into_iter()
+        .map(|name| {
+            let named = PathBuf::from(&name);
+            if named.is_absolute() {
+                named
+            } else {
+                dir.join(named)
+            }
+        })
+        .collect::<Vec<_>>();
+    if members.is_empty() {
+        return Err(format!(
+            "`{}` is neither an archive nor a linker script naming one",
+            path.display()
+        ));
+    }
+    Ok(members)
+}
+
+/// The `.a` files a GNU ld script's `GROUP`/`INPUT` names.
+fn linker_script_archives(script: &str) -> Vec<String> {
+    script
+        .split(|c: char| c.is_whitespace() || c == '(' || c == ')')
+        .filter(|token| token.ends_with(".a"))
+        .map(str::to_string)
+        .collect()
+}
+
+/// The function a `llvm-objdump -d` label line opens: `0000000000401000 <name>:`.
+fn function_label(line: &str) -> Option<&str> {
+    let line = line.trim();
+    let (address, rest) = line.split_once(" <")?;
+    if address.is_empty() || !address.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return None;
+    }
+    rest.strip_suffix(">:")
+}
+
 /// What a disassembly holds against a tier's contract.
 struct IsaJudgement {
     instructions: u64,
     counts: Vec<(&'static str, u64)>,
     tzcnt: u64,
+    /// Instructions of `runtime` functions, left out of the contract.
+    runtime_instructions: u64,
     failures: Vec<String>,
 }
 
 /// Hold `disassembly` (`llvm-objdump -d` output) to the contract of `arch`,
-/// whose code generation enables `features`. Pure, so a planted instruction
-/// can be shown to fail.
-fn judge_disassembly(disassembly: &str, arch: Arch, features: &[String]) -> IsaJudgement {
+/// whose code generation enables `features`, leaving out the functions in
+/// `runtime` (see [`static_runtime_functions`]). Pure, so a planted
+/// instruction can be shown to fail.
+fn judge_disassembly(
+    disassembly: &str,
+    arch: Arch,
+    features: &[String],
+    runtime: &HashSet<String>,
+) -> IsaJudgement {
     let contract = isa_contract(arch);
     let mut counts: Vec<(&'static str, u64)> = contract
         .classes
@@ -1031,11 +1149,21 @@ fn judge_disassembly(disassembly: &str, arch: Arch, features: &[String]) -> IsaJ
         .collect();
     let mut instructions = 0u64;
     let mut tzcnt = 0u64;
+    let mut runtime_instructions = 0u64;
+    let mut in_runtime = false;
     for line in disassembly.lines() {
+        if let Some(function) = function_label(line) {
+            in_runtime = runtime.contains(function);
+            continue;
+        }
         let Some(mnemonic) = disassembled_mnemonic(line) else {
             continue;
         };
         instructions += 1;
+        if in_runtime {
+            runtime_instructions += 1;
+            continue;
+        }
         if strip_operand_suffix(mnemonic) == "tzcnt" {
             tzcnt += 1;
             continue;
@@ -1091,6 +1219,7 @@ fn judge_disassembly(disassembly: &str, arch: Arch, features: &[String]) -> IsaJ
         instructions,
         counts,
         tzcnt,
+        runtime_instructions,
         failures,
     }
 }
@@ -2482,7 +2611,7 @@ mod tests {
     /// features rustc really enables for it.
     fn isa_failures(arch: Arch, target: &str, mnemonics: &[&str]) -> Vec<String> {
         let features = tier_features(arch, target, false).expect("rustc --print cfg");
-        judge_disassembly(&listing(mnemonics), arch, &features).failures
+        judge_disassembly(&listing(mnemonics), arch, &features, &HashSet::new()).failures
     }
 
     fn fails_naming(failures: &[String], class: &str) -> bool {
@@ -2581,10 +2710,78 @@ mod tests {
         }
     }
 
+    /// A static Linux binary carries glibc's run-time-picked variants: they
+    /// are left out by name, and the same instruction in engine code still
+    /// fails (Basilisk's `test_a_runtime_archive_function_is_left_out`).
+    #[test]
+    fn the_static_runtimes_own_functions_are_left_out_and_only_they() {
+        let features = tier_features(Arch::Base, LINUX, false).unwrap();
+        let disassembly = "
+0000000000401000 <_ZN5rarog6search7negamax>:
+  401000: \tmovq\t%rdi, %rax
+0000000000402000 <__memmove_avx_unaligned>:
+  402000: \tvmovdqu\t(%rsi), %ymm0
+  402004: \tvmovdqu\t%ymm0, (%rdi)
+";
+        let runtime: HashSet<String> = ["__memmove_avx_unaligned".to_string()].into();
+        let judgement = judge_disassembly(disassembly, Arch::Base, &features, &runtime);
+        assert!(judgement.failures.is_empty(), "{:?}", judgement.failures);
+        assert_eq!(
+            (judgement.instructions, judgement.runtime_instructions),
+            (3, 2)
+        );
+        // Nothing is left out without the runtime's names.
+        let judgement = judge_disassembly(disassembly, Arch::Base, &features, &HashSet::new());
+        assert!(fails_naming(&judgement.failures, "avx"));
+        // The same instruction in an engine function still fails.
+        let planted = disassembly.replace("  401000: \tmovq", "  401000: \tvmovdqu");
+        let judgement = judge_disassembly(&planted, Arch::Base, &features, &runtime);
+        assert!(fails_naming(&judgement.failures, "avx"));
+    }
+
+    #[test]
+    fn a_linker_script_names_its_archives() {
+        let script = "/* GNU ld script\n*/\nOUTPUT_FORMAT(elf64-x86-64)\n\
+                      GROUP ( /usr/lib/x86_64-linux-gnu/libm-2.39.a /usr/lib/x86_64-linux-gnu/libmvec.a )\n";
+        assert_eq!(
+            linker_script_archives(script),
+            [
+                "/usr/lib/x86_64-linux-gnu/libm-2.39.a",
+                "/usr/lib/x86_64-linux-gnu/libmvec.a"
+            ]
+        );
+        assert!(linker_script_archives("INPUT ( -lfoo )").is_empty());
+    }
+
+    #[test]
+    fn function_labels_are_read_and_nothing_else() {
+        assert_eq!(
+            function_label("0000000000402000 <__memmove_avx_unaligned>:"),
+            Some("__memmove_avx_unaligned")
+        );
+        assert_eq!(function_label("  402000: \tvmovdqu\t(%rsi), %ymm0"), None);
+        assert_eq!(function_label("Disassembly of section .text:"), None);
+        assert!(
+            static_runtime_functions(Path::new("x.o"), LINUX)
+                .unwrap()
+                .is_empty()
+        );
+        assert!(
+            static_runtime_functions(Path::new("rarog.exe"), WINDOWS)
+                .unwrap()
+                .is_empty()
+        );
+    }
+
     #[test]
     fn an_empty_listing_is_not_a_pass() {
         let features = tier_features(Arch::Base, LINUX, false).unwrap();
-        let judgement = judge_disassembly("Disassembly of section .text:\n", Arch::Base, &features);
+        let judgement = judge_disassembly(
+            "Disassembly of section .text:\n",
+            Arch::Base,
+            &features,
+            &HashSet::new(),
+        );
         assert_eq!(judgement.instructions, 0);
     }
 

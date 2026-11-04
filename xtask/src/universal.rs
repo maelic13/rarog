@@ -251,12 +251,9 @@ struct SharedInputs {
 
 impl SharedInputs {
     fn from_base_line(line: &[String]) -> Result<SharedInputs> {
-        let file_name = |arg: &str| {
-            Path::new(arg)
-                .file_name()
-                .map(|name| name.to_string_lossy().into_owned())
-                .unwrap_or_default()
-        };
+        // The name after the last separator of either kind: a link line's
+        // paths are its own platform's, and the tests read both kinds.
+        let file_name = |arg: &str| arg.rsplit(['/', '\\']).next().unwrap_or(arg).to_string();
         let engine: Vec<&String> = line
             .iter()
             .filter(|arg| {
@@ -717,10 +714,12 @@ mod tests {
         .map(String::from)
         .to_vec();
         let shared = SharedInputs::from_base_line(&line).unwrap();
+        // As text: a Windows path is one component on a Unix host.
         assert!(
             shared
                 .engine_archive
-                .ends_with("librarog-6a3bb779a354820a.rlib")
+                .to_string_lossy()
+                .ends_with(r"rustcAb\librarog-6a3bb779a354820a.rlib")
         );
         assert_eq!(shared.archives.len(), 2);
         assert_eq!(shared.libraries, ["kernel32.lib", "advapi32.lib"]);
