@@ -25,6 +25,8 @@ mod movepick;
 mod node;
 pub mod options;
 pub mod params;
+#[cfg(test)]
+mod path_perft;
 mod shared;
 mod stack;
 mod thread;
