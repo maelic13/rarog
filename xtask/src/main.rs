@@ -1,5 +1,14 @@
 mod release;
+mod universal;
 
+// The naming rules and the tier ladder are the engine's, compiled here too so
+// the file name and the CPU detection cannot drift from what the engine says.
+#[path = "../../src/build_name.rs"]
+mod build_name;
+#[path = "../../src/cpu_tier.rs"]
+mod cpu_tier;
+
+use std::collections::HashSet;
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
@@ -14,12 +23,47 @@ const PGO_TRAINING_TIMEOUT: Duration = Duration::from_secs(20 * 60);
 
 type Result<T> = std::result::Result<T, String>;
 
+/// What a build targets: one x86-64 tier, the universal x86-64 binary that
+/// holds every tier, or arm64, which has none.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Arch {
     Base,
+    Sse42,
     Avx2,
     Pext,
+    Universal,
     Arm64,
+}
+
+impl Arch {
+    const fn from_tier(tier: cpu_tier::Tier) -> Arch {
+        match tier {
+            cpu_tier::Tier::Base => Arch::Base,
+            cpu_tier::Tier::Sse42 => Arch::Sse42,
+            cpu_tier::Tier::Avx2 => Arch::Avx2,
+            cpu_tier::Tier::Pext => Arch::Pext,
+        }
+    }
+
+    const fn tier(self) -> Option<cpu_tier::Tier> {
+        match self {
+            Arch::Base => Some(cpu_tier::Tier::Base),
+            Arch::Sse42 => Some(cpu_tier::Tier::Sse42),
+            Arch::Avx2 => Some(cpu_tier::Tier::Avx2),
+            Arch::Pext => Some(cpu_tier::Tier::Pext),
+            Arch::Universal | Arch::Arm64 => None,
+        }
+    }
+}
+
+/// What a PGO build is for.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Purpose {
+    /// The binary is the product.
+    Binary,
+    /// One tier of the universal binary: every function aligned to 64 bytes,
+    /// and the post-LTO object and the link line kept for the universal link.
+    UniversalTier,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -28,34 +72,51 @@ enum CommandKind {
     VerifyIsa,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Config {
     command: CommandKind,
     /// Artifact to verify, when `command` is `VerifyIsa`. Defaults to the
-    /// dist asset for the requested tier, either PGO flavour.
+    /// dist file for the requested build, PGO or not.
     exe: Option<PathBuf>,
     /// The artifact was built with the TARGET's default `target-cpu` rather
     /// than the tier's — i.e. a plain `cargo build --release`. See
     /// [`tier_features`] for why this cannot be inferred.
     default_cpu: bool,
     arch: Arch,
-    /// Tune codegen for the exact host CPU instead of the arch's portable
-    /// baseline. ORTHOGONAL to `arch`: it swaps `-C target-cpu=<baseline>` for
-    /// `-C target-cpu=native` and changes nothing else, so `--arch base
-    /// --native` is a valid, correct build for a CPU with no BMI2 or AVX2.
-    ///
-    /// A flag, not an arch: an arch that hardcoded the PEXT code path would
-    /// leave a non-BMI2 x86_64 host no native build, only a binary emitting
-    /// `_pext_u64` against a `target-cpu` that does not enable the feature.
+    /// Tune codegen for the exact host CPU instead of the tier's portable
+    /// baseline. It keeps the host's best tier's source path (PEXT or not)
+    /// and swaps `-C target-cpu=<baseline>` for `-C target-cpu=native`; the
+    /// file names `native` in the tier's place.
     native: bool,
     target: String,
+    /// Profile-guided: the default, and what every published build is.
     pgo: bool,
     bench_depth: u16,
-    /// Cargo features, comma-separated. Needed so a candidate arm behind a
-    /// feature can be PGO-built: a non-PGO arm runs shallower, and a
-    /// depth-dependent mechanism's measured delta would be understated
-    /// at that shallower operating point.
-    features: String,
+    /// Cargo features, each a build kind the file and start-up line name
+    /// (`build_name::kinds`). A candidate arm behind a feature is PGO-built
+    /// like any other, since a non-PGO arm runs shallower.
+    features: Vec<String>,
+}
+
+impl Config {
+    fn feature_list(&self) -> Vec<&str> {
+        self.features.iter().map(String::as_str).collect()
+    }
+
+    /// The tier word of the file name and start-up line: the tier, `native`
+    /// in its place, or nothing for a portable arm64 build.
+    fn tier_word(&self) -> Option<&'static str> {
+        if self.native {
+            Some("native")
+        } else {
+            self.arch.tier().map(cpu_tier::Tier::name)
+        }
+    }
+
+    /// The kinds the build carries: `nopgo`, then its features.
+    fn kinds(&self) -> Vec<String> {
+        build_name::kinds(self.pgo, false, &self.feature_list())
+    }
 }
 
 fn main() {
@@ -72,27 +133,40 @@ fn run() -> Result<()> {
         return verify_isa(&config);
     }
     ensure_rust_target(&config.target)?;
+    let version = build_name::display_version(&package_version()?, Path::new("."))?;
 
-    if config.pgo {
-        build_with_pgo(&config)
+    let binary = if config.arch == Arch::Universal {
+        universal::build(&config, &version)?
+    } else if config.pgo {
+        build_with_pgo(&config, Purpose::Binary)?
     } else {
         let target_dir = target_dir("release", config.arch, config.native, &config.target);
-        cargo_build(
-            &config.target,
-            config.arch,
-            config.native,
-            &target_dir,
-            &[],
-            &config.features,
-        )?;
-        copy_dist_binary(
-            &binary_path(&target_dir, &config.target),
-            config.arch,
-            config.native,
-            &config.target,
-            false,
-        )
+        cargo_build(&config, &target_dir, &[], None)?;
+        binary_path(&target_dir, &config.target)
+    };
+    let asset = copy_dist_binary(&binary, &config, &version)?;
+    if let Err(err) = check_static_runtime(&asset, &config.target) {
+        let _ = fs::remove_file(&asset);
+        return Err(err);
     }
+    if config.arch == Arch::Universal {
+        if let Err(err) = universal::check(&asset, &version) {
+            let _ = fs::remove_file(&asset);
+            return Err(err);
+        }
+    } else if host_runs(&config)? {
+        let label = build_name::label(config.tier_word(), &config.kinds());
+        if let Err(err) = check_reported_name(&asset, &version, &label, None) {
+            // A file whose name the engine contradicts must not be picked up.
+            let _ = fs::remove_file(&asset);
+            return Err(err);
+        }
+    } else {
+        println_flush(format_args!(
+            "  note: this host cannot run the build, so the name it reports is unchecked"
+        ));
+    }
+    Ok(())
 }
 
 fn parse_args() -> Result<Config> {
@@ -117,70 +191,74 @@ fn parse_args() -> Result<Config> {
         println!("{}", release::declared_fingerprint(&guide)?);
         std::process::exit(0);
     }
+    if command == "version" {
+        if let Some(extra) = args.next() {
+            return Err(format!("`version` takes no arguments, got `{extra}`"));
+        }
+        println!(
+            "{}",
+            build_name::display_version(&package_version()?, Path::new("."))?
+        );
+        std::process::exit(0);
+    }
     let command = match command.as_str() {
         "build" => CommandKind::Build,
         "verify-isa" => CommandKind::VerifyIsa,
         other => {
             return Err(format!(
-                "unknown command `{other}`; expected `build`, `verify-isa`, \
+                "unknown command `{other}`; expected `build`, `verify-isa`, `version`, \
                  `release-check` or `declared-fingerprint`. Run `cargo xtask help`."
             ));
         }
     };
 
-    let mut arch: Option<Arch> = None;
+    let mut request: Option<Request> = None;
     let mut target: Option<String> = None;
     let mut exe: Option<PathBuf> = None;
-    let mut pgo = false;
-    let mut native = false;
+    let mut pgo = true;
     let mut default_cpu = false;
     let mut bench_depth = 13u16;
-    let mut features = String::new();
+    let mut features = Vec::new();
 
     while let Some(arg) = args.next() {
-        match arg.as_str() {
-            "--features" => {
-                features = args
-                    .next()
-                    .ok_or_else(|| "`--features` requires a value".to_string())?;
-            }
-            "--arch" | "-a" => {
-                let value = args
-                    .next()
-                    .ok_or_else(|| "`--arch` requires a value".to_string())?;
-                if value.eq_ignore_ascii_case("native") {
-                    // Legacy spelling: `--arch native` meant "PEXT + host
-                    // tuning". Kept working, but it is now expressed as two
-                    // independent choices.
-                    eprintln!("note: `--arch native` is deprecated; use `--arch pext --native`");
-                    arch = Some(Arch::Pext);
-                    native = true;
-                } else {
-                    arch = Some(parse_arch(&value)?);
-                }
-            }
-            "--target" | "-t" => {
-                target = Some(
-                    args.next()
-                        .ok_or_else(|| "`--target` requires a value".to_string())?,
+        let mut value = |name: &str| -> Result<String> {
+            args.next()
+                .ok_or_else(|| format!("`{name}` requires a value"))
+        };
+        let mut ask = |wanted: Request| -> Result<()> {
+            if request.replace(wanted).is_some() {
+                return Err(
+                    "`--tier`, `--native` and `--universal` exclude one another".to_string()
                 );
             }
-            "--exe" => {
-                exe = Some(PathBuf::from(
-                    args.next()
-                        .ok_or_else(|| "`--exe` requires a value".to_string())?,
-                ));
-            }
+            Ok(())
+        };
+        match arg.as_str() {
+            // The default; spelled out for symmetry with `--universal`.
+            "--release" => {}
+            "--tier" => ask(Request::Tier(parse_tier(&value("--tier")?)?))?,
+            "--universal" => ask(Request::Universal)?,
+            "--native" => ask(Request::Native)?,
+            "--features" => features = parse_features(&value("--features")?)?,
+            "--target" | "-t" => target = Some(value("--target")?),
+            "--exe" => exe = Some(PathBuf::from(value("--exe")?)),
             "--default-cpu" => default_cpu = true,
-            "--pgo" => pgo = true,
-            "--native" => native = true,
+            "--nopgo" => pgo = false,
             "--bench-depth" => {
-                let value = args
-                    .next()
-                    .ok_or_else(|| "`--bench-depth` requires a value".to_string())?;
-                bench_depth = value
+                let depth = value("--bench-depth")?;
+                bench_depth = depth
                     .parse::<u16>()
-                    .map_err(|_| format!("invalid bench depth `{value}`"))?;
+                    .map_err(|_| format!("invalid bench depth `{depth}`"))?;
+            }
+            "--arch" | "-a" => {
+                return Err(
+                    "`--arch` is gone: `--tier base|sse42|avx2|pext` picks an x86-64 tier, \
+                     the default is this host's best, and an arm64 build follows its `--target`"
+                        .to_string(),
+                );
+            }
+            "--pgo" => {
+                return Err("PGO is the default now; `--nopgo` turns it off".to_string());
             }
             "--help" | "-h" => {
                 print_usage();
@@ -190,19 +268,114 @@ fn parse_args() -> Result<Config> {
         }
     }
 
-    let arch = arch.unwrap_or_else(default_arch);
-    let target = target.unwrap_or_else(|| default_target(arch));
-    ensure_native_is_buildable(arch, native, &target)?;
-    Ok(Config {
+    let host = host_triple()?;
+    let target = target.unwrap_or_else(|| host.clone());
+    let request = request.unwrap_or(Request::Best);
+    let arch = resolve_arch(request, &target, &host)?;
+    if arch == Arch::Universal && command == CommandKind::Build && (!pgo || !features.is_empty()) {
+        return Err(
+            "the universal binary is the release build: PGO, with the default features".to_string(),
+        );
+    }
+    let config = Config {
         command,
         exe,
         default_cpu,
         arch,
-        native,
+        native: request == Request::Native,
         target,
         pgo,
         bench_depth,
         features,
+    };
+    if config.command == CommandKind::Build && config.pgo {
+        ensure_host_trains(&config, &host)?;
+    }
+    Ok(config)
+}
+
+/// What the command line asks for.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Request {
+    /// The host's best tier, or arm64 on an aarch64 target.
+    Best,
+    /// One x86-64 tier.
+    Tier(cpu_tier::Tier),
+    /// The host's best tier, tuned for this exact CPU.
+    Native,
+    /// The universal x86-64 binary.
+    Universal,
+}
+
+/// The build a request names on `target`.
+fn resolve_arch(request: Request, target: &str, host: &str) -> Result<Arch> {
+    if request == Request::Native && target != host {
+        return Err(format!(
+            "`--native` builds for this host, so it cannot target `{target}` from `{host}`"
+        ));
+    }
+    if target.starts_with("aarch64-") {
+        return match request {
+            Request::Tier(tier) => Err(format!(
+                "`--tier {}` is an x86-64 tier; an aarch64 target has none",
+                tier.name()
+            )),
+            Request::Universal => {
+                Err("the universal binary is x86-64; an aarch64 target has no tiers".to_string())
+            }
+            Request::Best | Request::Native => Ok(Arch::Arm64),
+        };
+    }
+    if !target.starts_with("x86_64-") {
+        return Err(format!("unsupported target `{target}`"));
+    }
+    match request {
+        Request::Tier(tier) => Ok(Arch::from_tier(tier)),
+        Request::Universal => Ok(Arch::Universal),
+        Request::Best | Request::Native if target != host => Err(format!(
+            "a build for `{target}` from `{host}` names its `--tier`: this host's CPU says \
+             nothing about the target's"
+        )),
+        Request::Best | Request::Native => Ok(Arch::from_tier(host_best_tier()?)),
+    }
+}
+
+/// The fastest tier this host runs.
+fn host_best_tier() -> Result<cpu_tier::Tier> {
+    let level = cpu_tier::host_level()
+        .ok_or("this host is not x86-64, so it has no best x86-64 tier; name a `--tier`")?;
+    Ok(cpu_tier::best_tier(level, cpu_tier::host_has_slow_pext()))
+}
+
+/// Refuse a PGO build this host cannot train: PGO runs the instrumented
+/// build, so the target must be the host and the tier one the CPU runs.
+fn ensure_host_trains(config: &Config, host: &str) -> Result<()> {
+    if config.target != host {
+        return Err(format!(
+            "a PGO build trains by running the engine, so it cannot target `{}` from `{host}`; \
+             `--nopgo` builds it without training",
+            config.target
+        ));
+    }
+    if host_runs(config)? {
+        Ok(())
+    } else {
+        Err(format!(
+            "this CPU cannot run the `{}` tier, and a PGO build trains by running it; \
+             `--nopgo` builds it without training",
+            arch_arg_name(config.arch)
+        ))
+    }
+}
+
+/// Can this host run the build? Only a host build can be run at all.
+fn host_runs(config: &Config) -> Result<bool> {
+    if config.target != host_triple()? {
+        return Ok(false);
+    }
+    Ok(match config.arch.tier() {
+        Some(tier) => cpu_tier::host_level().is_some_and(|level| tier.level() <= level),
+        None => true,
     })
 }
 
@@ -237,19 +410,30 @@ fn parse_release_check(mut args: impl Iterator<Item = String>) -> Result<release
 fn print_usage() {
     println!(
         "Usage:
-  cargo xtask build [--arch base|x86-64|avx2|pext|arm64] [--native] [--target <triple>] [--pgo] [--bench-depth <n>]
-  cargo xtask verify-isa [--arch <same>] [--target <triple>] [--exe <path>] [--pgo] [--native] [--default-cpu]
+  cargo xtask build [--release] [--tier base|sse42|avx2|pext] [--native] [--nopgo]
+                    [--features tune|diag|texel] [--target <triple>] [--bench-depth <n>]
+  cargo xtask verify-isa [--tier <same>] [--target <triple>] [--exe <path>] [--native]
+                         [--nopgo] [--features <same>] [--default-cpu]
+  cargo xtask version
   cargo xtask release-check vX.Y.Z [--notes <path>] [--base <ref>]
   cargo xtask declared-fingerprint
 
-`--arch` picks the ISA contract: which source path compiles (PEXT vs portable
-magic bitboards) and which CPU features are required.
-`verify-isa` disassembles a finished artifact and holds it to that contract:
-no instruction the tier's `target-cpu` does not enable, and every instruction
-class the tier exists to emit. Needs `rustup component add llvm-tools`.
-`--native` is INDEPENDENT of it: it swaps the portable `target-cpu` baseline
-for this exact host CPU. LOCAL ONLY - such a binary is not guaranteed to run
-anywhere else, and is marked `-native` in its filename.
+`build` makes the best build this host runs: its fastest x86-64 tier (or
+arm64), profile-guided, with that tier's portable code generation. `--release`
+is the same. It writes target/dist/rarog-<version>-<os>-<x64|arm64>[-<tier>][-<kind>],
+the version being what `id name` reports (`2.7.0`, or `dev-<date>-<hash>`
+for a development build, `-m` before the hash when the tree differs from it),
+and checks the built engine reports that name.
+`--tier` picks another x86-64 tier; a PGO build trains by running the engine,
+so it must be one this CPU runs. `--nopgo` skips the training and names the
+file `-nopgo`; `--native` tunes for this exact CPU (LOCAL ONLY, named
+`-native`, not faster on a Zen 3); `--features` builds a kind named in the file.
+An aarch64 `--target` builds arm64; a cross build needs `--nopgo`, and an
+x86-64 one its `--tier`.
+`verify-isa` disassembles a finished artifact and holds it to its tier's
+contract: no instruction the tier's `target-cpu` does not enable, and every
+instruction class the tier exists to emit. Needs `rustup component add llvm-tools`.
+`version` prints the version a build of this tree reports.
 `release-check` refuses a tag that does not name Cargo.toml's version, a HEAD
 not reachable from `--base` (default origin/master) unless it is a patch
 descending from its line's `vX.Y.0` on `--base`, a CHANGELOG without a
@@ -259,91 +443,56 @@ that section as the notes. `declared-fingerprint` prints the `bench 13` node
 count GUIDE's Development head row declares, which every asset must reproduce.
 
 Examples:
-  cargo xtask build                              # portable x86-64
-  cargo xtask build --arch avx2
-  cargo xtask build --arch pext --pgo            # the shipped pext asset
-  cargo xtask build --arch pext --native --pgo   # tuned for this CPU; slower on Zen 3
-  cargo xtask build --arch base --native         # native on a pre-BMI2 CPU
-  cargo xtask build --arch arm64 --target aarch64-apple-darwin
-  cargo xtask verify-isa --arch base             # prove the baseline asset is baseline
-  cargo xtask release-check v2.5.0 --notes notes.md   # what the release workflow checks first"
+  cargo xtask build                               # this host's best tier, PGO
+  cargo xtask build --tier avx2                   # another tier
+  cargo xtask build --nopgo                       # no profile: rarog-...-x64-pext-nopgo
+  cargo xtask build --features tune               # the SPSA build: rarog-...-x64-pext-tune
+  cargo xtask build --native                      # tuned for this CPU
+  cargo xtask build --target aarch64-apple-darwin --nopgo
+  cargo xtask verify-isa --tier base              # prove the baseline build is baseline
+  cargo xtask release-check v2.7.0 --notes notes.md   # what the release workflow checks first"
     );
 }
 
-fn parse_arch(value: &str) -> Result<Arch> {
-    match value.to_ascii_lowercase().as_str() {
-        "base" | "x86-64" | "x86_64" | "x64" => Ok(Arch::Base),
-        "avx2" => Ok(Arch::Avx2),
-        "pext" | "bmi2" => Ok(Arch::Pext),
-        "arm64" | "aarch64" => Ok(Arch::Arm64),
-        _ => Err(format!(
-            "unknown arch `{value}`; expected base, avx2, pext, or arm64"
-        )),
-    }
+fn parse_tier(value: &str) -> Result<cpu_tier::Tier> {
+    cpu_tier::Tier::ALL
+        .into_iter()
+        .find(|tier| tier.name() == value)
+        .ok_or_else(|| format!("unknown tier `{value}`; expected base, sse42, avx2 or pext"))
 }
 
-/// Refuse a combination that cannot produce a working binary on this machine.
-///
-/// `--arch pext` compiles `_pext_u64` and demands BMI2. Asking for it *and*
-/// `--native` says "build this for the machine I am on", so if that machine has
-/// no BMI2 the result would be an illegal-instruction binary. Only checked when
-/// building for the host, since cross-builds legitimately target other CPUs.
-fn ensure_native_is_buildable(arch: Arch, native: bool, target: &str) -> Result<()> {
-    if !native || arch != Arch::Pext {
-        return Ok(());
-    }
-    let host = host_triple().unwrap_or_default();
-    if target != host {
-        return Ok(());
-    }
-    #[cfg(target_arch = "x86_64")]
-    if !std::arch::is_x86_feature_detected!("bmi2") {
-        return Err(
-            "`--arch pext --native` needs BMI2, which this CPU does not report.              Use `--arch avx2 --native` or `--arch base --native` for a native              build here, or drop `--native` to cross-build a portable pext asset."
-                .to_string(),
-        );
-    }
-    Ok(())
-}
-
-fn default_arch() -> Arch {
-    let host = host_triple().unwrap_or_default();
-    if host.starts_with("aarch64-") {
-        Arch::Arm64
-    } else {
-        Arch::Base
-    }
-}
-
-fn default_target(arch: Arch) -> String {
-    let host = host_triple().unwrap_or_default();
-    let os = if host.contains("windows") {
-        "windows"
-    } else if host.contains("apple-darwin") {
-        "macos"
-    } else {
-        "linux"
-    };
-
-    match (arch, os) {
-        (Arch::Arm64, "windows") => "aarch64-pc-windows-msvc",
-        (Arch::Arm64, "macos") => "aarch64-apple-darwin",
-        (Arch::Arm64, _) => "aarch64-unknown-linux-gnu",
-        (_, "windows") => "x86_64-pc-windows-msvc",
-        (_, "macos") => "x86_64-apple-darwin",
-        (_, _) => "x86_64-unknown-linux-gnu",
-    }
-    .to_string()
+/// The features of a build, each one a kind its name carries. A name word is
+/// lower-case letters, digits and `_`; cargo itself refuses an unknown one.
+fn parse_features(value: &str) -> Result<Vec<String>> {
+    value
+        .split(',')
+        .map(str::trim)
+        .filter(|feature| !feature.is_empty())
+        .map(|feature| {
+            let plain = feature
+                .bytes()
+                .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_');
+            if plain && feature != "default" {
+                Ok(feature.to_string())
+            } else {
+                Err(format!(
+                    "feature `{feature}` cannot be named in a file: a build's features \
+                     are lower-case letters, digits and `_`, and not `default`"
+                ))
+            }
+        })
+        .collect()
 }
 
 fn ensure_arch_target_pair(arch: Arch, target: &str) -> Result<()> {
     match arch {
-        Arch::Base | Arch::Avx2 | Arch::Pext if !target.starts_with("x86_64-") => Err(format!(
-            "`--arch {}` requires an x86_64 target, got `{target}`",
-            arch_arg_name(arch)
-        )),
         Arch::Arm64 if !target.starts_with("aarch64-") => Err(format!(
-            "`--arch arm64` requires an aarch64 target, got `{target}`"
+            "an arm64 build requires an aarch64 target, got `{target}`"
+        )),
+        Arch::Arm64 => Ok(()),
+        _ if !target.starts_with("x86_64-") => Err(format!(
+            "the `{}` build requires an x86_64 target, got `{target}`",
+            arch_arg_name(arch)
         )),
         _ => Ok(()),
     }
@@ -351,14 +500,13 @@ fn ensure_arch_target_pair(arch: Arch, target: &str) -> Result<()> {
 
 fn arch_arg_name(arch: Arch) -> &'static str {
     match arch {
-        Arch::Base => "base",
-        Arch::Avx2 => "avx2",
-        Arch::Pext => "pext",
+        Arch::Universal => "universal",
         Arch::Arm64 => "arm64",
+        tier => tier.tier().map_or("arm64", cpu_tier::Tier::name),
     }
 }
 
-/// Directory/filename tag for an (arch, native) pair.
+/// Directory tag for an (arch, native) pair.
 ///
 /// Native and portable builds of the same arch are DIFFERENT binaries, so they
 /// must not share a PGO profile directory or an intermediate target dir —
@@ -371,15 +519,6 @@ fn flavour_name(arch: Arch, native: bool) -> String {
         format!("{}-native", arch_arg_name(arch))
     } else {
         arch_arg_name(arch).to_string()
-    }
-}
-
-fn asset_arch_name(arch: Arch) -> &'static str {
-    match arch {
-        Arch::Base => "x86-64",
-        Arch::Avx2 => "avx2",
-        Arch::Pext => "pext",
-        Arch::Arm64 => "arm64",
     }
 }
 
@@ -406,7 +545,9 @@ fn rustflags(arch: Arch, native: bool) -> Vec<String> {
         ]
     };
     match arch {
-        Arch::Base => cpu("x86-64"),
+        // The universal binary's own code is its dispatcher, at the baseline.
+        Arch::Base | Arch::Universal => cpu("x86-64"),
+        Arch::Sse42 => cpu("x86-64-v2"),
         Arch::Avx2 => cpu("x86-64-v3"),
         Arch::Pext => {
             let mut flags = vec!["--cfg".into(), "rarog_pext".into()];
@@ -654,6 +795,20 @@ fn isa_contract(arch: Arch) -> IsaContract {
             also_forbidden: &[],
             required: &[],
         },
+        // The whole image holds every tier, so it is held to their union:
+        // the pext tier's contract. Each tier, the dispatcher and Fathom are
+        // held to their own before the link (`universal::build`).
+        Arch::Universal => IsaContract {
+            classes: X86_CLASSES,
+            also_forbidden: &[],
+            required: &["avx", "popcnt", "bmi2", "pext"],
+        },
+        // The hardware popcount is most of what this tier is for.
+        Arch::Sse42 => IsaContract {
+            classes: X86_CLASSES,
+            also_forbidden: &[],
+            required: &["popcnt"],
+        },
         Arch::Avx2 => IsaContract {
             classes: X86_CLASSES,
             also_forbidden: &["pext"],
@@ -703,7 +858,14 @@ fn tier_features(arch: Arch, target: &str, default_cpu: bool) -> Result<Vec<Stri
     if !default_cpu {
         // Reuse the very flags the build uses, minus `--cfg`, which selects a
         // source path rather than an instruction set.
-        let flags = rustflags(arch, false);
+        let flags = rustflags(
+            if arch == Arch::Universal {
+                Arch::Pext
+            } else {
+                arch
+            },
+            false,
+        );
         let mut index = 0;
         while index < flags.len() {
             if flags[index] == "--cfg" {
@@ -730,16 +892,16 @@ fn tier_features(arch: Arch, target: &str, default_cpu: bool) -> Result<Vec<Stri
 ///
 /// `--pgo` is a BUILD flag; it says nothing about which instructions an
 /// artifact contains, so requiring the caller to repeat it here bought nothing
-/// and cost a real failure: `cargo xtask build --arch arm64 --pgo` followed by
-/// the obvious `cargo xtask verify-isa --arch arm64` reported "artifact not
-/// found" while the artifact sat next to the name it looked for. Try the
-/// requested flavour, then the other, and only then fail — listing what IS
-/// there, because "not found" without the directory contents is the least
-/// useful thing a tool can say.
+/// and cost a real failure: a PGO arm64 build followed by the obvious
+/// `verify-isa` reported "artifact not found" while the artifact sat next to
+/// the name it looked for. Try the requested flavour, then the other, and only
+/// then fail — listing what IS there, because "not found" without the
+/// directory contents is the least useful thing a tool can say.
 fn resolve_dist_artifact(config: &Config) -> Result<PathBuf> {
     let dist = PathBuf::from("target").join("dist");
+    let version = build_name::display_version(&package_version()?, Path::new("."))?;
     for pgo in [config.pgo, !config.pgo] {
-        let candidate = dist.join(asset_name(config.arch, config.native, &config.target, pgo)?);
+        let candidate = dist.join(asset_name(config, pgo, &version));
         if candidate.is_file() {
             if pgo != config.pgo {
                 println_flush(format_args!(
@@ -769,11 +931,10 @@ fn resolve_dist_artifact(config: &Config) -> Result<PathBuf> {
             .join("\n")
     };
     Err(format!(
-        "no `{}` artifact in {}. Build it first, e.g. `cargo xtask build --arch {}`.\n\
+        "no `{}` artifact for {version} in {}. Build it first, e.g. `cargo xtask build`.\n\
          Present:\n{listing}",
         arch_arg_name(config.arch),
         dist.display(),
-        arch_arg_name(config.arch)
     ))
 }
 
@@ -788,19 +949,25 @@ fn verify_isa(config: &Config) -> Result<()> {
         }
         None => resolve_dist_artifact(config)?,
     };
+    check_isa(&exe, config.arch, &config.target, config.default_cpu)
+}
+
+/// Hold `exe` (an executable, an object or an archive of objects) to the
+/// contract of `arch`.
+fn check_isa(exe: &Path, arch: Arch, target: &str, default_cpu: bool) -> Result<()> {
     let objdump = find_llvm_tool("llvm-objdump").ok_or_else(|| {
         "llvm-objdump not found. Install it with `rustup component add llvm-tools`.".to_string()
     })?;
 
-    let features = tier_features(config.arch, &config.target, config.default_cpu)?;
+    let features = tier_features(arch, target, default_cpu)?;
     println_flush(format_args!(
         "Verifying {} against the `{}` ISA contract",
         exe.display(),
-        arch_arg_name(config.arch)
+        arch_arg_name(arch)
     ));
     println_flush(format_args!(
         "  rustc enables ({}): {}",
-        if config.default_cpu {
+        if default_cpu {
             "target default cpu"
         } else {
             "tier baseline"
@@ -816,19 +983,221 @@ fn verify_isa(config: &Config) -> Result<()> {
         ],
     )?;
 
-    let contract = isa_contract(config.arch);
-    let mut counts: Vec<(&str, u64)> = contract
+    let runtime = static_runtime_functions(exe, target)?;
+    let judgement = judge_disassembly(&disassembly, arch, &features, &runtime);
+    if judgement.instructions == 0 {
+        return Err(format!(
+            "llvm-objdump produced no instructions for {} — it is probably not an \
+             object file for this host's disassembler",
+            exe.display()
+        ));
+    }
+    println_flush(format_args!(
+        "  {} instructions disassembled",
+        judgement.instructions
+    ));
+    for (class, count) in &judgement.counts {
+        println_flush(format_args!("    {class:<10} {count}"));
+    }
+    if judgement.tzcnt > 0 {
+        println_flush(format_args!(
+            "    {:<10} {} (permitted: {})",
+            "tzcnt", judgement.tzcnt, TZCNT_IS_BASELINE_SAFE
+        ));
+    }
+    if judgement.runtime_instructions > 0 {
+        println_flush(format_args!(
+            "  {} instructions of the static C runtime's own functions left out: it picks \
+             its variants (SSE, AVX, SVE) for the CPU at run time",
+            judgement.runtime_instructions
+        ));
+    }
+    if judgement.failures.is_empty() {
+        println_flush(format_args!("  contract holds"));
+        Ok(())
+    } else {
+        Err(judgement.failures.join("\n       "))
+    }
+}
+
+/// The functions of a statically linked Linux executable that the C runtime
+/// (`libc.a`, `libm.a`, `libgcc.a`, `libgcc_eh.a`) runs only on a CPU that
+/// has their instructions, to be left out of its ISA check.
+///
+/// glibc carries variants of its string and math functions for newer
+/// instruction sets (`__memmove_avx_unaligned`, SVE `memcpy` on arm64) and
+/// picks one for the CPU at run time; a dynamic build loads the same code
+/// from the system. Only those variants and the few guarded functions
+/// [`is_dispatched_runtime_function`] names are left out: the rest of the
+/// runtime is checked like the engine, because a runtime built for a newer
+/// CPU (Ubuntu 26.04's `libc.a` runs AVX in `init_cpu_features`) breaks the
+/// tier's promise. Only an executable is affected: objects and archives are
+/// checked whole, and every other target links no C runtime in.
+fn static_runtime_functions(exe: &Path, target: &str) -> Result<HashSet<String>> {
+    let is_object = exe
+        .extension()
+        .is_some_and(|ext| ext == "o" || ext == "a" || ext == "rlib");
+    if is_object || !target.ends_with("-linux-gnu") || !links_runtime_statically(target) {
+        return Ok(HashSet::new());
+    }
+    let nm = find_llvm_tool("llvm-nm").ok_or_else(|| {
+        "llvm-nm not found. Install it with `rustup component add llvm-tools`.".to_string()
+    })?;
+    let mut functions = HashSet::new();
+    // libc and libm, and GCC's support libraries, which a static link also
+    // carries: its aarch64 unwinder reads the SVE vector length at run time.
+    for archive in ["libc.a", "libm.a", "libgcc.a", "libgcc_eh.a"] {
+        let path = PathBuf::from(command_output(
+            "cc",
+            &[&format!("-print-file-name={archive}")],
+        )?);
+        if !path.is_file() {
+            return Err(format!(
+                "`cc -print-file-name={archive}` found no archive (`{}`), so the \
+                 static C runtime's functions cannot be told apart",
+                path.display()
+            ));
+        }
+        for member in archive_members(&path)? {
+            let names = command_output(
+                nm.to_str().ok_or("llvm-nm path is not UTF-8")?,
+                &[
+                    "--defined-only",
+                    "--format=just-symbols",
+                    member.to_str().ok_or("archive path is not UTF-8")?,
+                ],
+            )?;
+            functions.extend(
+                names
+                    .lines()
+                    .map(str::trim)
+                    .filter(|name| !name.is_empty() && !name.ends_with(':'))
+                    .filter(|name| is_dispatched_runtime_function(name))
+                    .map(str::to_string),
+            );
+        }
+    }
+    Ok(functions)
+}
+
+/// Does the C runtime run `name` only on a CPU that has its instructions?
+///
+/// glibc names a run-time-picked variant by its instruction set
+/// (`__memset_avx2_unaligned_erms`, `__strchr_sse4_2`, `__memcpy_a64fx`).
+/// The named non-variants touch SVE or SME state only when the data says the
+/// CPU has it: GCC's aarch64 unwinder reads the vector length for the `VG`
+/// register, which only an SVE frame's unwind information names, and
+/// `__libc_arm_za_disable` acts only when an SME ZA state is live.
+fn is_dispatched_runtime_function(name: &str) -> bool {
+    const VARIANT_TAGS: [&str; 8] = [
+        "_avx", "_evex", "_sse4", "_ssse3", "_fma", "_rtm", "_sve", "_a64fx",
+    ];
+    const GUARDED: [&str; 5] = [
+        "_Unwind_GetGR",
+        "uw_update_context",
+        "uw_update_context_1",
+        "execute_stack_op",
+        "__libc_arm_za_disable",
+    ];
+    VARIANT_TAGS.iter().any(|tag| name.contains(tag)) || GUARDED.contains(&name)
+}
+
+/// The archives `path` stands for: itself, or the ones a GNU ld script
+/// names (Ubuntu's `libm.a` is `GROUP ( …/libm-2.39.a …/libmvec.a )`).
+fn archive_members(path: &Path) -> Result<Vec<PathBuf>> {
+    let bytes =
+        fs::read(path).map_err(|err| format!("failed to read `{}`: {err}", path.display()))?;
+    if bytes.starts_with(b"!<arch>") {
+        return Ok(vec![path.to_path_buf()]);
+    }
+    let script = String::from_utf8_lossy(&bytes);
+    let dir = path.parent().unwrap_or(Path::new("."));
+    let members = linker_script_archives(&script)
+        .into_iter()
+        .map(|name| {
+            let named = PathBuf::from(&name);
+            if named.is_absolute() {
+                named
+            } else {
+                dir.join(named)
+            }
+        })
+        .collect::<Vec<_>>();
+    if members.is_empty() {
+        return Err(format!(
+            "`{}` is neither an archive nor a linker script naming one",
+            path.display()
+        ));
+    }
+    Ok(members)
+}
+
+/// The `.a` files a GNU ld script's `GROUP`/`INPUT` names.
+fn linker_script_archives(script: &str) -> Vec<String> {
+    script
+        .split(|c: char| c.is_whitespace() || c == '(' || c == ')')
+        .filter(|token| token.ends_with(".a"))
+        .map(str::to_string)
+        .collect()
+}
+
+/// The function a `llvm-objdump -d` label line opens: `0000000000401000 <name>:`.
+fn function_label(line: &str) -> Option<&str> {
+    let line = line.trim();
+    let (address, rest) = line.split_once(" <")?;
+    if address.is_empty() || !address.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return None;
+    }
+    rest.strip_suffix(">:")
+}
+
+/// What a disassembly holds against a tier's contract.
+struct IsaJudgement {
+    instructions: u64,
+    counts: Vec<(&'static str, u64)>,
+    tzcnt: u64,
+    /// Instructions of `runtime` functions, left out of the contract.
+    runtime_instructions: u64,
+    failures: Vec<String>,
+}
+
+/// Hold `disassembly` (`llvm-objdump -d` output) to the contract of `arch`,
+/// whose code generation enables `features`, leaving out the functions in
+/// `runtime` (see [`static_runtime_functions`]). Pure, so a planted
+/// instruction can be shown to fail.
+fn judge_disassembly(
+    disassembly: &str,
+    arch: Arch,
+    features: &[String],
+    runtime: &HashSet<String>,
+) -> IsaJudgement {
+    let contract = isa_contract(arch);
+    let mut counts: Vec<(&'static str, u64)> = contract
         .classes
         .iter()
         .map(|class| (class.name, 0u64))
         .collect();
     let mut instructions = 0u64;
     let mut tzcnt = 0u64;
+    let mut runtime_instructions = 0u64;
+    let mut in_runtime = false;
+    let mut function = "";
+    // Per class, the first few functions it appears in, to name in a failure.
+    let mut seen_in: Vec<Vec<&str>> = vec![Vec::new(); contract.classes.len()];
     for line in disassembly.lines() {
+        if let Some(label) = function_label(line) {
+            in_runtime = runtime.contains(label);
+            function = label;
+            continue;
+        }
         let Some(mnemonic) = disassembled_mnemonic(line) else {
             continue;
         };
         instructions += 1;
+        if in_runtime {
+            runtime_instructions += 1;
+            continue;
+        }
         if strip_operand_suffix(mnemonic) == "tzcnt" {
             tzcnt += 1;
             continue;
@@ -836,16 +1205,22 @@ fn verify_isa(config: &Config) -> Result<()> {
         for (index, class) in contract.classes.iter().enumerate() {
             if class.matches(mnemonic) {
                 counts[index].1 += 1;
+                if seen_in[index].len() < 3 && !seen_in[index].contains(&function) {
+                    seen_in[index].push(function);
+                }
             }
         }
     }
-    if instructions == 0 {
-        return Err(format!(
-            "llvm-objdump produced no instructions for {} — it is probably not an \
-             object file for this host's disassembler",
-            exe.display()
-        ));
-    }
+    let named = |name: &str| -> String {
+        contract
+            .classes
+            .iter()
+            .position(|class| class.name == name)
+            .map(|index| &seen_in[index])
+            .filter(|functions| !functions.is_empty())
+            .map(|functions| format!(" (in {})", functions.join(", ")))
+            .unwrap_or_default()
+    };
 
     let count_of = |name: &str| -> u64 {
         counts
@@ -853,17 +1228,6 @@ fn verify_isa(config: &Config) -> Result<()> {
             .find_map(|(class, count)| (*class == name).then_some(*count))
             .unwrap_or(0)
     };
-    println_flush(format_args!("  {instructions} instructions disassembled"));
-    for (class, count) in &counts {
-        println_flush(format_args!("    {class:<10} {count}"));
-    }
-    if tzcnt > 0 {
-        println_flush(format_args!(
-            "    {:<10} {} (permitted: {})",
-            "tzcnt", tzcnt, TZCNT_IS_BASELINE_SAFE
-        ));
-    }
-
     let mut failures = Vec::new();
     for class in contract.classes {
         let count = count_of(class.name);
@@ -874,18 +1238,20 @@ fn verify_isa(config: &Config) -> Result<()> {
         let banned_by_tier = contract.also_forbidden.contains(&class.name);
         if !permitted_by_cpu {
             failures.push(format!(
-                "FORBIDDEN `{}` appears {count} times, but the `{}` tier does not enable \
+                "FORBIDDEN `{}` appears {count} times{}, but the `{}` tier does not enable \
                  `{}` — this artifact cannot run on every CPU the tier promises",
                 class.name,
-                arch_arg_name(config.arch),
+                named(class.name),
+                arch_arg_name(arch),
                 class.feature
             ));
         } else if banned_by_tier {
             failures.push(format!(
-                "FORBIDDEN `{}` appears {count} times — the `{}` asset must not carry \
+                "FORBIDDEN `{}` appears {count} times{} — the `{}` asset must not carry \
                  that source path, or the two assets are the same binary",
                 class.name,
-                arch_arg_name(config.arch)
+                named(class.name),
+                arch_arg_name(arch)
             ));
         }
     }
@@ -894,15 +1260,16 @@ fn verify_isa(config: &Config) -> Result<()> {
             failures.push(format!(
                 "REQUIRED `{class}` never appears — the `{}` tier is not actually \
                  emitting the path it is built for",
-                arch_arg_name(config.arch)
+                arch_arg_name(arch)
             ));
         }
     }
-    if failures.is_empty() {
-        println_flush(format_args!("  contract holds"));
-        Ok(())
-    } else {
-        Err(failures.join("\n       "))
+    IsaJudgement {
+        instructions,
+        counts,
+        tzcnt,
+        runtime_instructions,
+        failures,
     }
 }
 
@@ -995,6 +1362,93 @@ fn find_rustup_llvm_tool(name: &str) -> Option<PathBuf> {
 /// Applied to EVERY build of the target, not just `--pgo` ones, so the PGO and
 /// non-PGO binaries differ in exactly one variable — the profile — and a
 /// performance bisect never has to ask "which linker was that one?".
+/// The C runtime linked into the binary where the platform allows it, so a
+/// user needs nothing installed: the Visual C++ runtime and the UCRT on
+/// Windows, glibc on Linux (a static PIE, no glibc floor). macOS cannot:
+/// Apple supports no static `libSystem`, which every Mac has. `cc` follows,
+/// so Fathom's C is built against the same runtime.
+fn runtime_flags(target: &str) -> Vec<String> {
+    if links_runtime_statically(target) {
+        vec!["-C".to_string(), "target-feature=+crt-static".to_string()]
+    } else {
+        Vec::new()
+    }
+}
+
+fn links_runtime_statically(target: &str) -> bool {
+    target.ends_with("-windows-msvc") || target.ends_with("-linux-gnu")
+}
+
+/// Refuse a binary that still depends on a C runtime the system must
+/// provide: on Windows an import of the Visual C++ runtime or the UCRT, on
+/// Linux a dynamic loader or any needed library.
+fn check_static_runtime(binary: &Path, target: &str) -> Result<()> {
+    if !links_runtime_statically(target) {
+        println_flush(format_args!(
+            "  runtime: the system's own (no static runtime on this platform)"
+        ));
+        return Ok(());
+    }
+    let readobj = find_llvm_tool("llvm-readobj").ok_or_else(|| {
+        "llvm-readobj not found. Install it with `rustup component add llvm-tools`.".to_string()
+    })?;
+    let path = binary.to_str().ok_or("binary path is not UTF-8")?;
+    let readobj = readobj.to_str().ok_or("llvm-readobj path is not UTF-8")?;
+    let problems = if target.ends_with("-windows-msvc") {
+        runtime_imports(&command_output(readobj, &["--coff-imports", path])?)
+    } else {
+        elf_runtime_dependencies(&command_output(
+            readobj,
+            &["--program-headers", "--dynamic-table", path],
+        )?)
+    };
+    if problems.is_empty() {
+        println_flush(format_args!("  runtime: linked in, nothing to install"));
+        Ok(())
+    } else {
+        Err(format!(
+            "`{}` depends on a runtime the system must provide: {}",
+            binary.display(),
+            problems.join(", ")
+        ))
+    }
+}
+
+/// The C runtime DLLs among a PE file's imports (`llvm-readobj --coff-imports`).
+fn runtime_imports(imports: &str) -> Vec<String> {
+    imports
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("Name:"))
+        .map(str::trim)
+        .filter(|dll| {
+            let dll = dll.to_ascii_lowercase();
+            ["vcruntime", "msvcp", "ucrtbase", "api-ms-win-crt-"]
+                .iter()
+                .any(|runtime| dll.starts_with(runtime))
+        })
+        .map(str::to_string)
+        .collect()
+}
+
+/// A dynamic loader or a needed library in an ELF file
+/// (`llvm-readobj --program-headers --dynamic-table`).
+fn elf_runtime_dependencies(text: &str) -> Vec<String> {
+    text.lines()
+        .map(str::trim)
+        .filter_map(|line| {
+            if line.starts_with("Type: PT_INTERP") {
+                Some("a dynamic loader (PT_INTERP)".to_string())
+            } else if line.contains("NEEDED") {
+                line.split("Shared library:")
+                    .nth(1)
+                    .map(|lib| format!("needed {}", lib.trim()))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 fn linker_flags(target: &str) -> Result<Vec<String>> {
     if target != "aarch64-pc-windows-msvc" {
         return Ok(Vec::new());
@@ -1031,7 +1485,10 @@ fn find_rust_lld() -> Option<PathBuf> {
     candidate.exists().then_some(candidate)
 }
 
-fn build_with_pgo(config: &Config) -> Result<()> {
+/// Instrument, train on the bench suite, merge, and build with the profile;
+/// returns the built binary. A universal tier also keeps its post-LTO object
+/// and the link line, in [`link_line_path`] of its use build's directory.
+fn build_with_pgo(config: &Config, purpose: Purpose) -> Result<PathBuf> {
     let host = host_triple()?;
     if config.target != host {
         return Err(format!(
@@ -1044,7 +1501,11 @@ fn build_with_pgo(config: &Config) -> Result<()> {
     let pgo_dir = PathBuf::from("target")
         .join("pgo")
         .join(sanitize(&config.target))
-        .join(flavour_name(config.arch, config.native));
+        .join(format!(
+            "{}{}",
+            flavour_name(config.arch, config.native),
+            purpose_tag(purpose)
+        ));
     let raw_dir = pgo_dir.join("raw");
     if raw_dir.exists() {
         fs::remove_dir_all(&raw_dir)
@@ -1058,16 +1519,15 @@ fn build_with_pgo(config: &Config) -> Result<()> {
         format!("profile-generate={}", raw_dir.display()),
     ];
     generate_flags.extend(rustflags(config.arch, config.native));
+    generate_flags.extend(purpose_flags(purpose));
 
-    let gen_target_dir = target_dir("pgo-gen", config.arch, config.native, &config.target);
-    cargo_build(
-        &config.target,
+    let gen_target_dir = target_dir(
+        &format!("pgo-gen{}", purpose_tag(purpose)),
         config.arch,
         config.native,
-        &gen_target_dir,
-        &generate_flags,
-        &config.features,
-    )?;
+        &config.target,
+    );
+    cargo_build(config, &gen_target_dir, &generate_flags, None)?;
 
     let instrumented = binary_path(&gen_target_dir, &config.target);
     run_training_bench(&instrumented, &raw_dir, config.bench_depth)?;
@@ -1080,35 +1540,60 @@ fn build_with_pgo(config: &Config) -> Result<()> {
         format!("profile-use={}", profdata.display()),
     ];
     use_flags.extend(rustflags(config.arch, config.native));
+    use_flags.extend(purpose_flags(purpose));
 
-    let use_target_dir = target_dir("pgo-use", config.arch, config.native, &config.target);
-    cargo_build(
-        &config.target,
-        config.arch,
-        config.native,
-        &use_target_dir,
-        &use_flags,
-        &config.features,
-    )?;
-    copy_dist_binary(
-        &binary_path(&use_target_dir, &config.target),
+    let use_target_dir = target_dir(
+        &format!("pgo-use{}", purpose_tag(purpose)),
         config.arch,
         config.native,
         &config.target,
-        true,
-    )
+    );
+    let keep = (purpose == Purpose::UniversalTier).then(|| link_line_path(&use_target_dir));
+    cargo_build(config, &use_target_dir, &use_flags, keep.as_deref())?;
+    Ok(binary_path(&use_target_dir, &config.target))
 }
 
+/// Keeps a universal tier's profile and build directories apart from the
+/// ordinary build of the same tier, whose code is not aligned the same way.
+fn purpose_tag(purpose: Purpose) -> &'static str {
+    match purpose {
+        Purpose::Binary => "",
+        Purpose::UniversalTier => "-universal",
+    }
+}
+
+/// Codegen flags a purpose adds to both PGO phases.
+fn purpose_flags(purpose: Purpose) -> Vec<String> {
+    match purpose {
+        Purpose::Binary => Vec::new(),
+        // Every function on a cache line, so the universal link's placement
+        // cannot move a hot function off one (Basilisk's unaligned relink
+        // read -0.58%). Applied to the training build too, so the profile is
+        // of the same code.
+        Purpose::UniversalTier => vec![
+            "-C".to_string(),
+            format!("llvm-args=-align-all-functions={}", universal::ALIGN_LOG2),
+        ],
+    }
+}
+
+/// Where a universal tier's use build writes rustc's printed link line.
+fn link_line_path(use_target_dir: &Path) -> PathBuf {
+    use_target_dir.join("link-line.txt")
+}
+
+/// `keep_link_line`: build the engine binary with `cargo rustc`, keeping
+/// rustc's temporary files (the post-LTO object among them) and writing the
+/// link line it prints to that path.
 fn cargo_build(
-    target: &str,
-    arch: Arch,
-    native: bool,
+    config: &Config,
     target_dir: &Path,
     override_flags: &[String],
-    features: &str,
+    keep_link_line: Option<&Path>,
 ) -> Result<()> {
+    let target = config.target.as_str();
     let mut flags = if override_flags.is_empty() {
-        rustflags(arch, native)
+        rustflags(config.arch, config.native)
     } else {
         override_flags.to_vec()
     };
@@ -1117,10 +1602,11 @@ fn cargo_build(
     // through that branch, and the generate build is precisely the one that
     // must be LLD-linked for the profile to be mergeable.
     flags.extend(linker_flags(target)?);
+    flags.extend(runtime_flags(target));
 
     println_flush(format_args!(
         "Building Rarog {} for {}{}",
-        asset_arch_name(arch),
+        flavour_name(config.arch, config.native),
         target,
         if override_flags.is_empty() {
             ""
@@ -1130,15 +1616,25 @@ fn cargo_build(
     ));
 
     let mut command = Command::new("cargo");
+    command.arg(if keep_link_line.is_some() {
+        "rustc"
+    } else {
+        "build"
+    });
     command
-        .arg("build")
         .arg("--release")
         .arg("--target")
         .arg(target)
         .arg("--target-dir")
         .arg(target_dir);
-    if !features.is_empty() {
-        command.arg("--features").arg(features);
+    if !config.features.is_empty() {
+        command.arg("--features").arg(config.features.join(","));
+    }
+    if let Some(path) = keep_link_line {
+        // Only the engine binary's own rustc links, so only it prints a line.
+        command
+            .args(["--bin", "rarog", "--", "-C", "save-temps", "--print"])
+            .arg(format!("link-args={}", path.display()));
     }
     let status = command
         .env("CARGO_ENCODED_RUSTFLAGS", flags.join(RUSTFLAGS_SEPARATOR))
@@ -1465,13 +1961,8 @@ fn binary_path(target_dir: &Path, target: &str) -> PathBuf {
         .join(format!("rarog{}", exe_suffix(target)))
 }
 
-fn copy_dist_binary(
-    binary: &Path,
-    arch: Arch,
-    native: bool,
-    target: &str,
-    pgo: bool,
-) -> Result<()> {
+/// Copy the build to `target/dist` under its name; returns the copy.
+fn copy_dist_binary(binary: &Path, config: &Config, version: &str) -> Result<PathBuf> {
     if !binary.exists() {
         return Err(format!(
             "expected binary `{}` does not exist",
@@ -1481,7 +1972,7 @@ fn copy_dist_binary(
     let dist = PathBuf::from("target").join("dist");
     fs::create_dir_all(&dist)
         .map_err(|err| format!("failed to create `{}`: {err}", dist.display()))?;
-    let asset = dist.join(asset_name(arch, native, target, pgo)?);
+    let asset = dist.join(asset_name(config, config.pgo, version));
     fs::copy(binary, &asset).map_err(|err| {
         format!(
             "failed to copy `{}` to `{}`: {err}",
@@ -1490,7 +1981,7 @@ fn copy_dist_binary(
         )
     })?;
     println_flush(format_args!("Built {}", asset.display()));
-    Ok(())
+    Ok(asset)
 }
 
 fn println_flush(args: std::fmt::Arguments<'_>) {
@@ -1498,19 +1989,97 @@ fn println_flush(args: std::fmt::Arguments<'_>) {
     io::stdout().flush().expect("stdout flush failed");
 }
 
-fn asset_name(arch: Arch, native: bool, target: &str, pgo: bool) -> Result<String> {
-    let pgo_suffix = if pgo { "-pgo" } else { "" };
-    Ok(format!(
-        "rarog-v{}-{}-{}{}{}{}",
-        package_version()?,
-        os_name(target),
-        asset_arch_name(arch),
-        // A native build is host-specific and must never be mistaken for a
-        // distributable asset, so it is marked in the filename.
-        if native { "-native" } else { "" },
-        pgo_suffix,
-        exe_suffix(target)
+/// `rarog-<version>-<os>-<x64|arm64>[-<tier>][-<kind>...]`: the version as
+/// `id name` reports it, the tier word (`native` in its place), then the
+/// kinds. A PGO build with the default features names no kind.
+fn asset_name(config: &Config, pgo: bool, version: &str) -> String {
+    let arch = if config.arch == Arch::Arm64 {
+        "arm64"
+    } else {
+        "x64"
+    };
+    let mut name = format!("rarog-{version}-{}-{arch}", os_name(&config.target));
+    let kinds = build_name::kinds(pgo, false, &config.feature_list());
+    for word in config
+        .tier_word()
+        .into_iter()
+        .chain(kinds.iter().map(String::as_str))
+    {
+        name.push('-');
+        name.push_str(word);
+    }
+    name.push_str(exe_suffix(&config.target));
+    name
+}
+
+/// Run `binary` with `input` on stdin, `RAROG_ISA` set to `forced` if given;
+/// returns its exit status and stdout.
+fn run_engine(binary: &Path, input: &str, forced: Option<&str>) -> Result<(i32, String)> {
+    let mut command = Command::new(binary);
+    command
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    match forced {
+        Some(tier) => command.env(cpu_tier::FORCE_VARIABLE, tier),
+        None => command.env_remove(cpu_tier::FORCE_VARIABLE),
+    };
+    let mut child = command
+        .spawn()
+        .map_err(|err| format!("failed to run `{}`: {err}", binary.display()))?;
+    child
+        .stdin
+        .take()
+        .ok_or("no stdin for the engine")?
+        .write_all(input.as_bytes())
+        .map_err(|err| format!("failed to talk to `{}`: {err}", binary.display()))?;
+    let output = child
+        .wait_with_output()
+        .map_err(|err| format!("failed to read `{}`: {err}", binary.display()))?;
+    Ok((
+        output.status.code().unwrap_or(-1),
+        String::from_utf8_lossy(&output.stdout).into_owned(),
     ))
+}
+
+/// Run the built engine and require it to report the name its file carries:
+/// `id name Rarog <version>`, and `label` (the start-up line's tier and
+/// kinds). A stale binary, or a `build.rs` that read the build differently,
+/// fails here. `forced` sets the universal binary's tier.
+fn check_reported_name(
+    binary: &Path,
+    version: &str,
+    label: &str,
+    forced: Option<&str>,
+) -> Result<()> {
+    let (_, stdout) = run_engine(binary, "uci\nquit\n", forced)?;
+    let banner = stdout.lines().next().unwrap_or_default();
+    let banner_prefix = format!("Rarog {version} by ");
+    let banner_ok = banner.starts_with(&banner_prefix)
+        && if label.is_empty() {
+            !banner.ends_with(')')
+        } else {
+            banner.ends_with(&format!(" ({label})"))
+        };
+    let id_line = format!("id name Rarog {version}");
+    let id_ok = stdout.lines().any(|line| line == id_line);
+    if banner_ok && id_ok {
+        println_flush(format_args!(
+            "  reports `{id_line}`, start-up line `{banner}`"
+        ));
+        Ok(())
+    } else {
+        Err(format!(
+            "`{}` does not report the name its file carries: expected `{id_line}` and a \
+             start-up line `{banner_prefix}...{}`, got:\n{stdout}",
+            binary.display(),
+            if label.is_empty() {
+                String::new()
+            } else {
+                format!(" ({label})")
+            }
+        ))
+    }
 }
 
 fn package_version() -> Result<String> {
@@ -1554,8 +2123,33 @@ fn sanitize(value: &str) -> String {
 mod tests {
     use super::*;
 
+    const ALL_ARCHES: [Arch; 6] = [
+        Arch::Base,
+        Arch::Sse42,
+        Arch::Avx2,
+        Arch::Pext,
+        Arch::Universal,
+        Arch::Arm64,
+    ];
+    const WINDOWS: &str = "x86_64-pc-windows-msvc";
+    const LINUX: &str = "x86_64-unknown-linux-gnu";
+
     fn flags(arch: Arch, native: bool) -> String {
         rustflags(arch, native).join(" ")
+    }
+
+    fn config(arch: Arch, target: &str, native: bool, pgo: bool, features: &[&str]) -> Config {
+        Config {
+            command: CommandKind::Build,
+            exe: None,
+            default_cpu: false,
+            arch,
+            native,
+            target: target.to_string(),
+            pgo,
+            bench_depth: 13,
+            features: features.iter().map(|f| (*f).to_string()).collect(),
+        }
     }
 
     /// The parser has to pick out mnemonics from real `llvm-objdump` output and
@@ -1666,7 +2260,9 @@ mod tests {
     fn only_the_avx2_tier_bans_a_capability_its_cpu_allows() {
         assert_eq!(isa_contract(Arch::Avx2).also_forbidden, &["pext"]);
         assert!(isa_contract(Arch::Base).also_forbidden.is_empty());
+        assert!(isa_contract(Arch::Sse42).also_forbidden.is_empty());
         assert!(isa_contract(Arch::Pext).also_forbidden.is_empty());
+        assert!(isa_contract(Arch::Sse42).required.contains(&"popcnt"));
         assert!(isa_contract(Arch::Pext).required.contains(&"pext"));
     }
 
@@ -1676,7 +2272,7 @@ mod tests {
     #[test]
     fn native_is_orthogonal_to_arch() {
         // Non-PEXT archs must NEVER pull in the PEXT path or BMI2, native or not.
-        for arch in [Arch::Base, Arch::Avx2, Arch::Arm64] {
+        for arch in [Arch::Base, Arch::Sse42, Arch::Avx2, Arch::Arm64] {
             for native in [false, true] {
                 let f = flags(arch, native);
                 assert!(
@@ -1690,7 +2286,7 @@ mod tests {
             }
         }
         // ...and every arch must honour `--native` by targeting the host CPU.
-        for arch in [Arch::Base, Arch::Avx2, Arch::Pext, Arch::Arm64] {
+        for arch in ALL_ARCHES {
             assert!(
                 flags(arch, true).contains("target-cpu=native"),
                 "{arch:?} --native must target the host CPU"
@@ -1707,6 +2303,7 @@ mod tests {
     #[test]
     fn portable_baselines_are_pinned() {
         assert_eq!(flags(Arch::Base, false), "-C target-cpu=x86-64");
+        assert_eq!(flags(Arch::Sse42, false), "-C target-cpu=x86-64-v2");
         assert_eq!(flags(Arch::Avx2, false), "-C target-cpu=x86-64-v3");
         assert_eq!(
             flags(Arch::Pext, false),
@@ -1754,7 +2351,7 @@ mod tests {
     /// the arch/native flags untouched, in both phases.
     #[test]
     fn pgo_flags_compose_with_every_flavour() {
-        for arch in [Arch::Base, Arch::Avx2, Arch::Pext, Arch::Arm64] {
+        for arch in ALL_ARCHES {
             for native in [false, true] {
                 for phase in ["profile-generate=/tmp/raw", "profile-use=/tmp/x.profdata"] {
                     let mut composed = vec!["-C".to_string(), phase.to_string()];
@@ -1772,53 +2369,603 @@ mod tests {
         }
     }
 
-    /// A host-tuned binary must never be mistaken for a distributable asset,
-    /// and native/portable builds must not share PGO or intermediate dirs.
+    /// The names the maintainer agreed (PLAN E.3.2): the version as `id name`
+    /// gives it, `x64` or `arm64`, the tier word, then the kinds in order.
     #[test]
-    fn native_builds_are_tagged_everywhere() {
-        let portable = asset_name(Arch::Pext, false, "x86_64-pc-windows-msvc", true).unwrap();
-        let native = asset_name(Arch::Pext, true, "x86_64-pc-windows-msvc", true).unwrap();
-        assert!(!portable.contains("native"), "{portable}");
-        assert!(native.contains("-native"), "{native}");
-        assert!(portable.ends_with("-pgo.exe") && native.ends_with("-pgo.exe"));
-        assert_ne!(portable, native);
-
-        assert_eq!(flavour_name(Arch::Pext, false), "pext");
-        assert_eq!(flavour_name(Arch::Pext, true), "pext-native");
-        assert_ne!(
-            target_dir("pgo-gen", Arch::Pext, false, "x86_64-pc-windows-msvc"),
-            target_dir("pgo-gen", Arch::Pext, true, "x86_64-pc-windows-msvc"),
-            "native and portable PGO builds must not share an intermediate dir"
+    fn file_names_follow_the_scheme() {
+        let dev = "dev-20261104-209b555a";
+        let name = |c: &Config, pgo: bool, v: &str| asset_name(c, pgo, v);
+        assert_eq!(
+            name(
+                &config(Arch::Pext, WINDOWS, false, true, &[]),
+                true,
+                "2.7.0"
+            ),
+            "rarog-2.7.0-windows-x64-pext.exe"
+        );
+        assert_eq!(
+            name(&config(Arch::Pext, WINDOWS, false, true, &[]), true, dev),
+            "rarog-dev-20261104-209b555a-windows-x64-pext.exe"
+        );
+        assert_eq!(
+            name(&config(Arch::Sse42, LINUX, false, true, &[]), true, "2.7.0"),
+            "rarog-2.7.0-linux-x64-sse42"
+        );
+        assert_eq!(
+            name(
+                &config(Arch::Base, LINUX, false, false, &[]),
+                false,
+                "2.7.0"
+            ),
+            "rarog-2.7.0-linux-x64-base-nopgo"
+        );
+        assert_eq!(
+            name(&config(Arch::Pext, WINDOWS, true, true, &[]), true, dev),
+            "rarog-dev-20261104-209b555a-windows-x64-native.exe"
+        );
+        // Kinds keep their order whatever order they were asked in.
+        assert_eq!(
+            name(
+                &config(Arch::Pext, WINDOWS, false, false, &["diag", "tune"]),
+                false,
+                dev
+            ),
+            "rarog-dev-20261104-209b555a-windows-x64-pext-nopgo-tune-diag.exe"
+        );
+        assert_eq!(
+            name(
+                &config(Arch::Arm64, "aarch64-apple-darwin", false, true, &[]),
+                true,
+                "2.7.0"
+            ),
+            "rarog-2.7.0-macos-arm64"
+        );
+        assert_eq!(
+            name(
+                &config(Arch::Arm64, "aarch64-pc-windows-msvc", true, true, &[]),
+                true,
+                "2.7.0"
+            ),
+            "rarog-2.7.0-windows-arm64-native.exe"
+        );
+        assert_eq!(
+            name(
+                &config(Arch::Universal, WINDOWS, false, true, &[]),
+                true,
+                "2.7.0"
+            ),
+            "rarog-2.7.0-windows-x64.exe"
+        );
+        assert_eq!(
+            name(&config(Arch::Universal, LINUX, false, true, &[]), true, dev),
+            "rarog-dev-20261104-209b555a-linux-x64"
+        );
+        // No file is named after a guessed release, and none carries a `v`.
+        let release = name(
+            &config(Arch::Avx2, WINDOWS, false, true, &[]),
+            true,
+            "2.7.0",
+        );
+        assert!(
+            !release.contains("-v2") && !release.contains("pgo"),
+            "{release}"
         );
     }
 
-    /// `native` is no longer an arch; it is a flag. `parse_args` still accepts
-    /// the old spelling, but `parse_arch` itself must not.
+    /// The start-up line says what the file name says, in the same order.
     #[test]
-    fn native_is_not_an_arch() {
-        assert!(parse_arch("native").is_err());
-        assert_eq!(parse_arch("pext").unwrap(), Arch::Pext);
-        assert_eq!(parse_arch("bmi2").unwrap(), Arch::Pext);
-        assert_eq!(parse_arch("x86-64").unwrap(), Arch::Base);
-        assert_eq!(parse_arch("aarch64").unwrap(), Arch::Arm64);
+    fn the_label_matches_the_file_name() {
+        let c = config(Arch::Pext, WINDOWS, false, false, &["tune"]);
+        assert_eq!(
+            build_name::label(c.tier_word(), &c.kinds()),
+            "pext, nopgo, tune"
+        );
+        let c = config(Arch::Arm64, "aarch64-apple-darwin", false, true, &[]);
+        assert_eq!(build_name::label(c.tier_word(), &c.kinds()), "");
+        let c = config(Arch::Avx2, WINDOWS, true, true, &[]);
+        assert_eq!(build_name::label(c.tier_word(), &c.kinds()), "native");
+    }
+
+    #[test]
+    fn a_tier_is_named_by_its_word_only() {
+        assert_eq!(parse_tier("sse42").unwrap(), cpu_tier::Tier::Sse42);
+        assert_eq!(parse_tier("pext").unwrap(), cpu_tier::Tier::Pext);
+        for retired in ["x86-64", "bmi2", "native", "arm64", "PEXT"] {
+            assert!(parse_tier(retired).is_err(), "{retired}");
+        }
+    }
+
+    #[test]
+    fn features_are_build_kinds() {
+        assert_eq!(parse_features("tune").unwrap(), ["tune"]);
+        assert_eq!(parse_features("diag, tune").unwrap(), ["diag", "tune"]);
+        assert!(parse_features("").unwrap().is_empty());
+        // A candidate arm's own feature is named after the engine's kinds.
+        assert_eq!(parse_features("b2core").unwrap(), ["b2core"]);
+        assert!(parse_features("B2-core").is_err());
+        assert!(parse_features("default").is_err());
+    }
+
+    #[test]
+    fn a_request_resolves_to_one_build() {
+        let tier = |t| Request::Tier(t);
+        // A named tier on an x86-64 target, from any host.
+        assert_eq!(
+            resolve_arch(tier(cpu_tier::Tier::Avx2), LINUX, WINDOWS).unwrap(),
+            Arch::Avx2
+        );
+        assert_eq!(
+            resolve_arch(Request::Universal, WINDOWS, WINDOWS).unwrap(),
+            Arch::Universal
+        );
+        // An aarch64 target is arm64 and takes no tier, nor the universal binary.
+        assert_eq!(
+            resolve_arch(
+                Request::Best,
+                "aarch64-apple-darwin",
+                "aarch64-apple-darwin"
+            )
+            .unwrap(),
+            Arch::Arm64
+        );
+        assert!(resolve_arch(tier(cpu_tier::Tier::Pext), "aarch64-apple-darwin", WINDOWS).is_err());
+        assert!(resolve_arch(Request::Universal, "aarch64-apple-darwin", WINDOWS).is_err());
+        // A cross build names its tier; this host's CPU says nothing about it.
+        assert!(resolve_arch(Request::Best, LINUX, WINDOWS).is_err());
+        // Native builds for this host only.
+        assert!(resolve_arch(Request::Native, LINUX, WINDOWS).is_err());
+        assert!(resolve_arch(Request::Best, "riscv64gc-unknown-linux-gnu", WINDOWS).is_err());
+    }
+
+    #[test]
+    #[cfg(target_arch = "x86_64")]
+    fn the_default_build_is_this_hosts_best_tier() {
+        let host = host_triple().unwrap();
+        let best = host_best_tier().unwrap();
+        assert_eq!(
+            resolve_arch(Request::Best, &host, &host).unwrap(),
+            Arch::from_tier(best)
+        );
+        assert_eq!(
+            resolve_arch(Request::Native, &host, &host).unwrap(),
+            Arch::from_tier(best)
+        );
+        assert!(host_runs(&config(Arch::from_tier(best), &host, false, true, &[])).unwrap());
+        assert!(host_runs(&config(Arch::Base, &host, false, true, &[])).unwrap());
     }
 
     #[test]
     fn arch_and_target_must_agree() {
-        assert!(ensure_arch_target_pair(Arch::Pext, "x86_64-pc-windows-msvc").is_ok());
+        assert!(ensure_arch_target_pair(Arch::Pext, WINDOWS).is_ok());
+        assert!(ensure_arch_target_pair(Arch::Sse42, LINUX).is_ok());
         assert!(ensure_arch_target_pair(Arch::Pext, "aarch64-apple-darwin").is_err());
         assert!(ensure_arch_target_pair(Arch::Arm64, "aarch64-apple-darwin").is_ok());
-        assert!(ensure_arch_target_pair(Arch::Arm64, "x86_64-unknown-linux-gnu").is_err());
+        assert!(ensure_arch_target_pair(Arch::Arm64, LINUX).is_err());
     }
 
-    /// The BMI2 pre-flight only applies to a native PEXT build FOR THIS HOST;
-    /// every other combination must pass regardless of what CPU runs the tests.
+    /// Native and portable builds must not share PGO or intermediate dirs.
     #[test]
-    fn bmi2_guard_only_fires_for_native_pext_on_host() {
-        assert!(ensure_native_is_buildable(Arch::Pext, false, "x86_64-pc-windows-msvc").is_ok());
-        assert!(ensure_native_is_buildable(Arch::Base, true, "x86_64-pc-windows-msvc").is_ok());
-        assert!(ensure_native_is_buildable(Arch::Avx2, true, "x86_64-pc-windows-msvc").is_ok());
-        // Cross-build: the host's features say nothing about the target's.
-        assert!(ensure_native_is_buildable(Arch::Pext, true, "some-other-triple").is_ok());
+    fn native_builds_keep_their_own_directories() {
+        assert_eq!(flavour_name(Arch::Pext, false), "pext");
+        assert_eq!(flavour_name(Arch::Pext, true), "pext-native");
+        assert_ne!(
+            target_dir("pgo-gen", Arch::Pext, false, WINDOWS),
+            target_dir("pgo-gen", Arch::Pext, true, WINDOWS),
+            "native and portable PGO builds must not share an intermediate dir"
+        );
+    }
+
+    // `src/build_name.rs` has no test target of its own in the engine, which
+    // compiles it only into `build.rs`; its rules are tested here.
+
+    #[test]
+    fn a_release_reports_its_version_whatever_the_commit() {
+        let dirty = build_name::DevId::Commit {
+            date: "20261104".into(),
+            sha: "209b555a".into(),
+            modified: true,
+        };
+        assert_eq!(build_name::format_version("2.7.0", &dirty), "2.7.0");
+        assert!(!build_name::is_development("2.7.0"));
+        assert!(build_name::is_development("2.7.0-dev"));
+    }
+
+    #[test]
+    fn a_development_build_reports_its_commit() {
+        let commit = |modified| build_name::DevId::Commit {
+            date: "20261104".into(),
+            sha: "209b555a".into(),
+            modified,
+        };
+        assert_eq!(
+            build_name::format_version("2.7.0-dev", &commit(false)),
+            "dev-20261104-209b555a"
+        );
+        assert_eq!(
+            build_name::format_version("2.7.0-dev", &commit(true)),
+            "dev-20261104-m-209b555a"
+        );
+        assert_eq!(
+            build_name::format_version(
+                "2.7.0-dev",
+                &build_name::DevId::NoGit {
+                    date: "20261104".into()
+                }
+            ),
+            "dev-20261104-nogit"
+        );
+        let fixed = build_name::DevId::fixed("20261104-209b555a").unwrap();
+        assert_eq!(
+            build_name::format_version("2.7.0-dev", &fixed),
+            "dev-20261104-209b555a"
+        );
+    }
+
+    #[test]
+    fn a_fixed_id_is_a_plain_word() {
+        for bad in ["", "Bad", "has space", "20261104_209b555a", "v2.7.0"] {
+            assert!(build_name::DevId::fixed(bad).is_err(), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn this_tree_reports_a_well_formed_name() {
+        // Tests run in `xtask/`; the repository is its parent.
+        let version = build_name::display_version("2.7.0-dev", Path::new("..")).unwrap();
+        {
+            let rest = version.strip_prefix("dev-").expect(&version);
+            let (date, sha) = rest.split_once('-').expect(&version);
+            assert!(
+                date.len() == 8 && date.bytes().all(|b| b.is_ascii_digit()),
+                "{version}"
+            );
+            let sha = sha.strip_prefix("m-").unwrap_or(sha);
+            assert!(
+                sha == "nogit" || (sha.len() == 8 && sha.bytes().all(|b| b.is_ascii_hexdigit())),
+                "{version}"
+            );
+        }
+    }
+
+    #[test]
+    fn kinds_keep_their_order() {
+        assert!(build_name::kinds(true, false, &[]).is_empty());
+        assert_eq!(build_name::kinds(false, false, &[]), ["nopgo"]);
+        assert_eq!(
+            build_name::kinds(false, true, &["texel", "diag", "tune"]),
+            ["nopgo", "debug", "tune", "diag", "texel"]
+        );
+        // Other features follow, sorted, as a build script sees them.
+        assert_eq!(
+            build_name::kinds(true, false, &["zeta", "tune", "b2-core", "default"]),
+            ["tune", "b2_core", "zeta"]
+        );
+        assert_eq!(
+            build_name::label(Some("pext"), &["nopgo".to_string()]),
+            "pext, nopgo"
+        );
+        assert_eq!(build_name::label(None, &[]), "");
+    }
+
+    /// A listing in `llvm-objdump -d --no-show-raw-insn`'s form.
+    fn listing(mnemonics: &[&str]) -> String {
+        mnemonics
+            .iter()
+            .enumerate()
+            .map(|(i, m)| format!("  {:x}: \t{m}\t%rdi, %rax\n", 0x1000 + 4 * i))
+            .collect()
+    }
+
+    /// The failures a listing earns against `arch`'s contract, with the
+    /// features rustc really enables for it.
+    fn isa_failures(arch: Arch, target: &str, mnemonics: &[&str]) -> Vec<String> {
+        let features = tier_features(arch, target, false).expect("rustc --print cfg");
+        judge_disassembly(&listing(mnemonics), arch, &features, &HashSet::new()).failures
+    }
+
+    fn fails_naming(failures: &[String], class: &str) -> bool {
+        failures.iter().any(|f| f.contains(&format!("`{class}`")))
+    }
+
+    /// Every planted instruction above a tier's level fails, by name, and
+    /// the tier's own instructions pass (Basilisk's `test_verify_isa`).
+    #[test]
+    fn a_planted_instruction_above_the_tier_fails() {
+        // `tzcnt` runs as `bsf` before BMI1; SSE3 is above `x86-64` on Linux.
+        let base = ["movq", "addq", "tzcntq"];
+        assert!(isa_failures(Arch::Base, LINUX, &base).is_empty());
+        for (planted, class) in [
+            ("movddup", "sse3"),
+            ("popcntq", "popcnt"),
+            ("pshufb", "ssse3"),
+            ("ptest", "sse4.1"),
+            ("crc32q", "sse4.2"),
+            ("vpermq", "avx"),
+            ("andnq", "bmi1"),
+            ("shlxq", "bmi2"),
+            ("pextq", "pext"),
+            ("lzcntq", "lzcnt"),
+        ] {
+            let mut planted_listing = base.to_vec();
+            planted_listing.push(planted);
+            let failures = isa_failures(Arch::Base, LINUX, &planted_listing);
+            assert!(
+                fails_naming(&failures, class),
+                "base with {planted}: {failures:?}"
+            );
+        }
+
+        let sse42 = ["movq", "popcntq", "pshufb", "ptest", "crc32q"];
+        assert!(isa_failures(Arch::Sse42, LINUX, &sse42).is_empty());
+        for (planted, class) in [
+            ("vpermq", "avx"),
+            ("andnq", "bmi1"),
+            ("lzcntq", "lzcnt"),
+            ("pextq", "pext"),
+        ] {
+            let mut planted_listing = sse42.to_vec();
+            planted_listing.push(planted);
+            let failures = isa_failures(Arch::Sse42, LINUX, &planted_listing);
+            assert!(
+                fails_naming(&failures, class),
+                "sse42 with {planted}: {failures:?}"
+            );
+        }
+
+        let avx2 = ["popcntq", "vpermq", "shlxq", "andnq", "lzcntq"];
+        assert!(isa_failures(Arch::Avx2, LINUX, &avx2).is_empty());
+        let mut with_pext = avx2.to_vec();
+        with_pext.push("pextq");
+        assert!(fails_naming(
+            &isa_failures(Arch::Avx2, LINUX, &with_pext),
+            "pext"
+        ));
+
+        let pext = ["popcntq", "vpermq", "shlxq", "pextq"];
+        assert!(isa_failures(Arch::Pext, LINUX, &pext).is_empty());
+        assert!(isa_failures(Arch::Universal, LINUX, &pext).is_empty());
+    }
+
+    /// A tier that lost the instructions it exists for fails as surely as one
+    /// that gained some: it would still compute the right answer, slowly.
+    #[test]
+    fn a_tier_without_its_own_instructions_fails() {
+        for (arch, missing) in [
+            (Arch::Sse42, "popcnt"),
+            (Arch::Avx2, "avx"),
+            (Arch::Pext, "pext"),
+            (Arch::Universal, "pext"),
+        ] {
+            let failures = isa_failures(arch, LINUX, &["movq", "addq"]);
+            assert!(
+                failures
+                    .iter()
+                    .any(|f| f.starts_with(&format!("REQUIRED `{missing}`"))),
+                "{arch:?}: {failures:?}"
+            );
+        }
+        let failures = isa_failures(Arch::Arm64, "aarch64-unknown-linux-gnu", &["ret", "ldr"]);
+        assert!(fails_naming(&failures, "prefetch"), "{failures:?}");
+        let failures = isa_failures(
+            Arch::Arm64,
+            "aarch64-unknown-linux-gnu",
+            &["prfm", "ptrue", "aese", "sdot"],
+        );
+        for class in ["sve", "aes", "dotprod"] {
+            assert!(
+                fails_naming(&failures, class),
+                "arm64 with {class}: {failures:?}"
+            );
+        }
+    }
+
+    /// A static Linux binary carries glibc's run-time-picked variants: they
+    /// are left out by name, and the same instruction in engine code still
+    /// fails (Basilisk's `test_a_runtime_archive_function_is_left_out`).
+    #[test]
+    fn the_static_runtimes_own_functions_are_left_out_and_only_they() {
+        let features = tier_features(Arch::Base, LINUX, false).unwrap();
+        let disassembly = "
+0000000000401000 <_ZN5rarog6search7negamax>:
+  401000: \tmovq\t%rdi, %rax
+0000000000402000 <__memmove_avx_unaligned>:
+  402000: \tvmovdqu\t(%rsi), %ymm0
+  402004: \tvmovdqu\t%ymm0, (%rdi)
+";
+        let runtime: HashSet<String> = ["__memmove_avx_unaligned".to_string()].into();
+        let judgement = judge_disassembly(disassembly, Arch::Base, &features, &runtime);
+        assert!(judgement.failures.is_empty(), "{:?}", judgement.failures);
+        assert_eq!(
+            (judgement.instructions, judgement.runtime_instructions),
+            (3, 2)
+        );
+        // Nothing is left out without the runtime's names.
+        let judgement = judge_disassembly(disassembly, Arch::Base, &features, &HashSet::new());
+        assert!(fails_naming(&judgement.failures, "avx"));
+        // A failure names the function it was found in.
+        assert!(
+            judgement
+                .failures
+                .iter()
+                .any(|f| f.contains("(in __memmove_avx_unaligned)")),
+            "{:?}",
+            judgement.failures
+        );
+        // The same instruction in an engine function still fails.
+        let planted = disassembly.replace("  401000: \tmovq", "  401000: \tvmovdqu");
+        let judgement = judge_disassembly(&planted, Arch::Base, &features, &runtime);
+        assert!(fails_naming(&judgement.failures, "avx"));
+    }
+
+    /// Only run-time-picked variants and the guarded unwinder and SME
+    /// functions are left out; the runtime's other code is checked, so a
+    /// `libc.a` built for a newer CPU fails.
+    #[test]
+    fn only_the_runtimes_dispatched_functions_are_left_out() {
+        for name in [
+            "__memset_avx2_unaligned",
+            "__memmove_avx_unaligned_erms",
+            "__memcpy_evex_unaligned",
+            "__strchr_sse4_2",
+            "__strcasecmp_ssse3",
+            "__sin_fma",
+            "__memcpy_sve",
+            "__memmove_a64fx",
+            "_Unwind_GetGR",
+            "execute_stack_op",
+            "__libc_arm_za_disable",
+        ] {
+            assert!(is_dispatched_runtime_function(name), "{name}");
+        }
+        for name in [
+            "init_cpu_features.constprop.0",
+            "init_cpu_features",
+            "__libc_start_main",
+            "memset",
+            "__memset_sse2_unaligned",
+            "_Unwind_RaiseException",
+        ] {
+            assert!(!is_dispatched_runtime_function(name), "{name}");
+        }
+        // The 26.04 runtime's AVX in a non-variant fails the base tier.
+        let features = tier_features(Arch::Base, LINUX, false).unwrap();
+        let disassembly = "
+0000000000401000 <init_cpu_features.constprop.0>:
+  401000: \tvpinsrd\t$0x1, %ecx, %xmm1, %xmm0
+";
+        let runtime: HashSet<String> = ["init_cpu_features.constprop.0"]
+            .into_iter()
+            .filter(|name| is_dispatched_runtime_function(name))
+            .map(str::to_string)
+            .collect();
+        let judgement = judge_disassembly(disassembly, Arch::Base, &features, &runtime);
+        assert!(
+            fails_naming(&judgement.failures, "avx"),
+            "{:?}",
+            judgement.failures
+        );
+    }
+
+    #[test]
+    fn a_linker_script_names_its_archives() {
+        let script = "/* GNU ld script\n*/\nOUTPUT_FORMAT(elf64-x86-64)\n\
+                      GROUP ( /usr/lib/x86_64-linux-gnu/libm-2.39.a /usr/lib/x86_64-linux-gnu/libmvec.a )\n";
+        assert_eq!(
+            linker_script_archives(script),
+            [
+                "/usr/lib/x86_64-linux-gnu/libm-2.39.a",
+                "/usr/lib/x86_64-linux-gnu/libmvec.a"
+            ]
+        );
+        assert!(linker_script_archives("INPUT ( -lfoo )").is_empty());
+    }
+
+    #[test]
+    fn function_labels_are_read_and_nothing_else() {
+        assert_eq!(
+            function_label("0000000000402000 <__memmove_avx_unaligned>:"),
+            Some("__memmove_avx_unaligned")
+        );
+        assert_eq!(function_label("  402000: \tvmovdqu\t(%rsi), %ymm0"), None);
+        assert_eq!(function_label("Disassembly of section .text:"), None);
+        assert!(
+            static_runtime_functions(Path::new("x.o"), LINUX)
+                .unwrap()
+                .is_empty()
+        );
+        assert!(
+            static_runtime_functions(Path::new("rarog.exe"), WINDOWS)
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn an_empty_listing_is_not_a_pass() {
+        let features = tier_features(Arch::Base, LINUX, false).unwrap();
+        let judgement = judge_disassembly(
+            "Disassembly of section .text:\n",
+            Arch::Base,
+            &features,
+            &HashSet::new(),
+        );
+        assert_eq!(judgement.instructions, 0);
+    }
+
+    /// Windows and Linux link their runtime in; macOS cannot.
+    #[test]
+    fn the_runtime_is_static_where_the_platform_allows() {
+        for target in [
+            WINDOWS,
+            LINUX,
+            "aarch64-pc-windows-msvc",
+            "aarch64-unknown-linux-gnu",
+        ] {
+            assert_eq!(
+                runtime_flags(target),
+                ["-C", "target-feature=+crt-static"],
+                "{target}"
+            );
+        }
+        assert!(runtime_flags("aarch64-apple-darwin").is_empty());
+    }
+
+    #[test]
+    fn a_runtime_dll_import_is_found() {
+        let dynamic = "
+  Import {
+    Name: KERNEL32.dll
+  }
+  Import {
+    Name: VCRUNTIME140.dll
+  }
+  Import {
+    Name: api-ms-win-crt-heap-l1-1-0.dll
+  }
+  Import {
+    Name: api-ms-win-core-synch-l1-2-0.dll
+  }";
+        assert_eq!(
+            runtime_imports(dynamic),
+            ["VCRUNTIME140.dll", "api-ms-win-crt-heap-l1-1-0.dll"]
+        );
+        let static_imports =
+            "  Import {\n    Name: KERNEL32.dll\n  }\n  Import {\n    Name: WINMM.dll\n  }";
+        assert!(runtime_imports(static_imports).is_empty());
+    }
+
+    #[test]
+    fn a_dynamic_loader_or_needed_library_is_found() {
+        let dynamic = "
+  ProgramHeader {
+    Type: PT_INTERP (0x3)
+  }
+DynamicSection [ (27 entries)
+  Tag                Type     Name/Value
+  0x0000000000000001 NEEDED   Shared library: [libc.so.6]
+  0x000000000000000C INIT     0x1000
+]";
+        assert_eq!(
+            elf_runtime_dependencies(dynamic),
+            ["a dynamic loader (PT_INTERP)", "needed [libc.so.6]"]
+        );
+        let static_pie = "
+  ProgramHeader {
+    Type: PT_LOAD (0x1)
+  }
+DynamicSection [ (12 entries)
+  Tag                Type     Name/Value
+  0x000000000000001E FLAGS    BIND_NOW
+]";
+        assert!(elf_runtime_dependencies(static_pie).is_empty());
+    }
+
+    #[test]
+    fn the_calendar_is_right_at_its_edges() {
+        assert_eq!(build_name::civil_from_days(0), (1970, 1, 1));
+        assert_eq!(build_name::civil_from_days(59), (1970, 3, 1));
+        assert_eq!(build_name::civil_from_days(11_016), (2000, 2, 29));
+        assert_eq!(build_name::civil_from_days(20_761), (2026, 11, 4));
+        assert_eq!(build_name::civil_from_days(20_819), (2027, 1, 1));
     }
 }

@@ -1,6 +1,11 @@
 # Universal x86-64 binary — design record and deferral
 
-**Status: OPTIONAL, not scheduled, may never be done.** Owner: PLAN `G.2`.
+**Status (2026-11-04): scheduled as PLAN `E.3.3`, moved from `G.2` by
+maintainer decision.** Section 6's third trigger is taken as fired:
+unattended testers pick an asset without reading start-up output, and
+2.7.0 is the release CCRL will test. Where the text below says G.2, read
+E.3.3. Until 2026-11-04 the status was: OPTIONAL, not scheduled, may never
+be done; owner PLAN `G.2`.
 Written 2026-09-10 from the A.4 investigation. Nothing here is a
 commitment to build it; it exists so the work does not have to be redone if the
 triggers in section 6 ever fire.
@@ -300,3 +305,102 @@ RAR-P20 (tier value, and the frozen decision rule it resolved); RAR-P19 (the
 `/d/code/stockfish/src/universal/`, `src/Makefile`; `build.rs`;
 `xtask/src/main.rs` (`rustflags`, `tier_features`, `build_with_pgo`);
 `src/main.rs` (why the old startup CPU guard could never fire).
+
+## 11. The E.3.3 card and the form built (2026-11-04)
+
+PLAN E.3.3's four cheap checks, run in order on this host (Windows, MSVC
+`link.exe`, `rustc 1.99.1`), each able to stop the leaf. None did.
+
+1. **The post-LTO object can be kept and relinked.** `-C save-temps` keeps
+   the one object a fat-LTO, one-unit build links
+   (`rarog.rarog.<hash>-cgu.0.rcgu.o`), and `--print link-args` gives the
+   link line. Relinked alone with that line, the object gives the build's
+   `.text` byte for byte (145,349 lines of disassembly) and benches
+   14,749,043. So a tier's code in the universal binary is the code of
+   that tier's own PGO build, and section 7's metadata trap does not
+   arise: symbols are renamed after the profile was applied, in the
+   object, never in a build that reads a profile.
+2. **Almost nothing is global.** Of the object's symbols only three
+   non-constant ones are global (`main`, `rust_eh_personality` and std's
+   `EMPTY_PANIC`); everything else, the whole engine and its copy of std
+   included, is local after fat LTO. The other globals are COMDAT
+   constants named by their own value (`__real@3ff0…`, `__xmm@…`), which
+   hold the bytes their names spell in every tier, so sharing them is
+   safe. Each tier's three are renamed `rarog_<tier>_<name>` with
+   `llvm-objcopy --redefine-syms`, and the build fails if anything else
+   stays global. Undefined references are only Fathom (`tb_*`),
+   `compiler_builtins`, the C runtime and Win32, all resolved against one
+   baseline copy. This is simpler than Basilisk's case (section 9):
+   ThinLTO promoted 407 symbols there, fat LTO with one unit promotes none.
+3. **No initialiser runs in a tier.** The Windows tier objects carry no
+   `.CRT$X*` section, so nothing of a tier runs before the dispatcher
+   chooses; the build refuses one. On ELF std's capture of `argc`/`argv`
+   is an `.init_array` entry in every tier, which stores into that tier's
+   own copy; it is allowed and listed, and anything else is refused (to be
+   read on the first Linux build).
+4. **Function alignment reaches LTO.** `-C llvm-args=-align-all-functions=6`
+   puts every function section of the object on a 64-byte line (621 of
+   621 code sections with content, from 552 at 16 bytes and 69 at 1). With
+   PGO all four tiers' 686 to 690 code sections are aligned.
+
+**The form** (`cargo xtask build --universal`, `xtask/src/universal.rs`,
+`universal/dispatch.rs`):
+- each tier is the ordinary PGO build of its tier (`base`, `sse42`, `avx2`,
+  `pext`) with the alignment flag in both phases, its object and link line
+  kept;
+- its three globals are renamed, and its object is held to its own ISA
+  contract;
+- the dispatcher, outside the engine crate, compiled for the baseline,
+  reads the CPU through the engine's own `src/cpu_tier.rs` (feature bits
+  with the operating system's AVX state; AMD family 15h and 17h kept off
+  `pext`), honours `RAROG_ISA` and refuses a tier the CPU cannot run or a
+  name it does not know (`info string`, exit 1), then calls the chosen
+  tier's own `main`, which starts that tier's runtime and engine exactly as
+  its single-tier build does. It holds the one `unsafe` call of the form;
+- rustc links the dispatcher, the four renamed objects, the base tier's
+  engine archive (Fathom, built at the baseline, once), std's import stubs,
+  the builtins and the base tier's libraries;
+- before the link, Fathom and the dispatcher are held to the baseline
+  contract; after it, the image to the union (the `pext` contract);
+- on the shipped file, every tier this CPU runs is forced and benched for
+  one fingerprint, the start-up line names the tier, and `id name` does
+  not change.
+
+The first build (2026-11-04): 6,689,280 bytes on Windows (the `pext` build is
+1,679,872), every tier at 14,749,043,
+`pext` chosen on the 5950X, an unknown tier refused. The speed gate is
+RAR-P56. Not yet read: the Linux form (no Rust toolchain in this host's
+WSL; the first CI run builds it) and an Intel SDE selection matrix.
+
+**The gate (RAR-P56, 2026-11-04): PASS.** Four universal builds against four
+single-tier `pext` builds, one commit: **+0.45%** [+0.17%, +0.72%], so the
+relink costs nothing here, as section 9's alignment lead predicted, and the
+aligned form reads slightly faster (not separated from placement). The
+universal binary is the x64 release asset from this change on.
+
+**The Linux form (2026-11-04, WSL Ubuntu 24.04, a clean clone, GNU ld).**
+Every check passes. A tier defines five globals, all renamed: `main`,
+`rust_eh_personality`, its hidden `DW.ref.` pointer, std's `EMPTY_PANIC` and
+std's `ARGV_INIT_ARRAY`, the static behind the one `.init_array` entry
+(check 3's prediction). That entry runs in every tier at load and stores
+`argc`/`argv` into the tier's own copy; each forced tier read its own
+`bench 13` from the command line, so it is harmless. No value-named
+constants are shared on ELF. The first link kept the debug information std
+brings into each of the five objects (14,083,904 bytes); cargo's own link
+strips it (`-Wl,--strip-debug`), and the universal link now does the same
+(8,346,928 bytes, about four times a 2,056,248-byte tier). Its floor is
+glibc 2.34, with only libc, libm and libgcc_s.
+
+**A static runtime (2026-11-04, RAR-P57).** By the maintainer's decision
+every Windows and Linux build links its C runtime statically. The Windows
+universal binary needed nothing new. The Linux one first linked and then
+crashed before `main` (a segfault even when the dispatcher would refuse the
+tier): the universal link passed the base tier's C libraries (`-lc`,
+`-lpthread`, `-lgcc_eh`, …) again, after the static group rustc already
+links for the dispatcher's std. Linked by hand, the same objects ran without
+those libraries and crashed with them, as a static PIE and as a static non-PIE
+alike, so the order of a second C runtime, not position independence, was
+the fault. A static ELF link now leaves the libraries to rustc. The universal
+check, which runs the shipped file, is what caught it: the static-runtime
+check alone had passed. The static Linux binary is 9,435,472 bytes, with no
+dynamic loader and no needed library.

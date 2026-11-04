@@ -113,13 +113,13 @@ class WireTests(unittest.TestCase):
             nps_read.parse_runs(text, "x", 7_601_220)
 
     @staticmethod
-    def write_pool(directory, fingerprint, count):
+    def write_pool(directory, fingerprint, count, tier="pext"):
         rows = []
         for i in range(1, count + 1):
-            exe = directory / f"pext-{i}.exe"
+            exe = directory / f"{tier}-{i}.exe"
             exe.write_bytes(f"engine {i}".encode())
-            rows.append(f"{hashlib.sha256(exe.read_bytes()).hexdigest().upper()}  pext-{i}.exe")
-        (directory / "manifest-pext.txt").write_text(
+            rows.append(f"{hashlib.sha256(exe.read_bytes()).hexdigest().upper()}  {tier}-{i}.exe")
+        (directory / f"manifest-{tier}.txt").write_text(
             f"fingerprint   : {fingerprint} (verified)\n\n" + "\n".join(rows) + "\n", encoding="utf-8")
 
     def test_a_pool_whose_bytes_differ_from_the_manifest_is_refused(self):
@@ -131,6 +131,19 @@ class WireTests(unittest.TestCase):
             (directory / "pext-1.exe").write_bytes(b"not the same engine")
             with self.assertRaises(SystemExit):
                 nps_read.pool(directory)
+
+    def test_a_pool_of_any_tier_is_read_and_two_manifests_are_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = pathlib.Path(tmp)
+            self.write_pool(directory, HEAD, 2, tier="sse42")
+            self.assertEqual(nps_read.pool(directory),
+                             [directory / "sse42-1.exe", directory / "sse42-2.exe"])
+            self.write_pool(directory, HEAD, 2, tier="base")
+            with self.assertRaises(SystemExit):
+                nps_read.pool(directory)
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(SystemExit):
+                nps_read.pool(pathlib.Path(tmp))
 
     def test_each_pool_is_read_at_its_own_fingerprint(self):
         """A release baseline (2.4.0 benches 7,601,220) is read against the head."""

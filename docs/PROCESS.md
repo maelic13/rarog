@@ -770,7 +770,7 @@ nothing exists on GitHub until every cell has passed.
    says released; a failed tag run is repaired by retagging, after which
    it is true). These go on a short release branch and reach `master` by a
    squash PR like any other change. A PR to
-   `master` runs both `CI` and `Release` (a candidate build of the nine
+   `master` runs both `CI` and `Release` (a candidate build of the five
    assets with every check the tag run makes, publishing nothing). While
    `Cargo.toml` holds a plain `X.Y.Z`, that run also passes `release-check`
    for `vX.Y.Z` (all but the tag's name and the commit's place on
@@ -792,7 +792,7 @@ nothing exists on GitHub until every cell has passed.
 3. The PR's `Release` run is the rehearsal. A manual one (`Actions →
    Release → Run workflow`, or `gh workflow run release.yml --ref master`)
    is needed only when `master` moved without a PR; it builds,
-   `verify-isa`-checks and benches the nine assets, keeps them as a workflow
+   `verify-isa`-checks and benches the five assets, keeps them as a workflow
    artifact and publishes nothing.
 4. Tag and push:
 
@@ -800,7 +800,7 @@ nothing exists on GitHub until every cell has passed.
    git tag vX.Y.Z; git push origin vX.Y.Z
    ```
 
-   The workflow asserts one `bench 13` fingerprint across the nine assets
+   The workflow asserts one `bench 13` fingerprint across the five assets
    equal to the one GUIDE's checkpoint declares in its *Development head*
    row (at a release commit the *Released baseline* row names the same
    version at the same fingerprint), then creates the release, marked
@@ -816,7 +816,7 @@ nothing exists on GitHub until every cell has passed.
    2026-10-05). Otherwise the first change that moves
    the fingerprint fails every PR's `release-check`, since a changed engine
    would still call itself the released version. The bump is an engine
-   commit: bench unmoved, `uci` answering `id name Rarog X.Y.Z-dev`.
+   commit: bench unmoved, `uci` answering `id name Rarog dev-<date>-<hash>`.
 7. **A patch release.** When a released version needs a fix and `master`
    is shippable, the fix lands on `master` and a new release is cut from it
    as above. When `master` already holds work that should not ship yet:
@@ -839,8 +839,39 @@ nothing exists on GitHub until every cell has passed.
    branch: the tag keeps the commit. `master`'s CHANGELOG gets the same
    dated section by its next PR.
 
-Asset names are `rarog-vX.Y.Z-<os>-<arch>[.exe]`; GitHub's per-asset digests
-are the checksums to compare against.
+A build is named `rarog-<name>-<os>-<x64|arm64>[-<tier>][-<kind>]` (PLAN
+E.3.2): `<name>` is what `id name` reports, `X.Y.Z` at a release (the tag
+keeps its `v`) and `dev-<commit date>-<8 hash characters>` otherwise, with
+`-m` before the hash when the tree differs from the commit; an x64 single-tier
+build names its tier (`base`, `sse42`, `avx2`, `pext`, or `native` in its
+place); then `nopgo`, `debug` and the feature kinds, in that order. A PGO
+build with the default features names no kind. The release's five assets are
+the universal x86-64 binary, `rarog-X.Y.Z-<linux|windows>-x64[.exe]`, and the
+three `rarog-X.Y.Z-<os>-arm64[.exe]` (PLAN E.3.3, RAR-P56). The universal
+binary (`cargo xtask build --universal`) holds the four tiers' PGO builds,
+every function aligned to 64 bytes and every global renamed per tier after
+PGO, behind a baseline dispatcher (`universal/dispatch.rs`) that picks the
+fastest tier the CPU runs; `RAROG_ISA=<tier>` forces one, for a forced-tier
+bench or a measurement, and a tier the CPU cannot run is refused. Every
+measurement stays on the single-tier `pext` build. Every `cargo xtask` build
+for Windows and Linux links the C runtime statically (`+crt-static`: the
+Visual C++ runtime and the UCRT, or glibc as a static PIE), and xtask refuses
+a binary that still imports one or has a dynamic loader (RAR-P57); macOS
+cannot, so its binaries need only `libSystem` and macOS 11.0 or newer (the
+release checks that 11.0 is the minimum). A static Linux binary carries
+glibc's variants of its string and math functions for newer instruction sets
+(SVE `memcpy` on arm64, AVX `memmove`), which glibc picks at run time; the
+ISA check leaves out only those variants, named by their instruction set, and
+GCC's aarch64 unwinder, which reads the SVE vector length only for an SVE
+frame, and holds the rest of the runtime to the contract. So the Linux release
+builds on `ubuntu-24.04`: 26.04's `libc.a` runs AVX2 code outside its
+dispatch, and its binary failed on every CPU below AVX2 under SDE. The release benches every
+forced tier on its runner and checks the selection under Intel SDE
+(`tools/diag/check_universal.py`). The start-up line names the tier and kinds;
+`id name` never does, since rating lists key on it. `RAROG_DEV_ID=<date>-<hash>`
+fixes a development build's name for a byte-identity comparison. `cargo
+xtask build` names the file and runs the engine to check it reports that name.
+GitHub's per-asset digests are the checksums to compare against.
 
 ### Opening book
 
@@ -882,8 +913,8 @@ cargo test --manifest-path tools/texel-tuner/Cargo.toml
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo build --release
 "bench" | ./target/release/rarog.exe
-cargo xtask build --arch pext --pgo
-cargo xtask verify-isa --arch pext
+cargo xtask build          # this host's best tier, PGO; --tier, --nopgo, --native, --features
+cargo xtask verify-isa
 ```
 
 ```powershell

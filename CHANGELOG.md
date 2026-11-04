@@ -12,6 +12,10 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Added
 
+- **One x64 download for every CPU.** The Windows and Linux x64 files pick
+  the fastest code for your CPU when they start, so there is no build to
+  choose; older CPUs with SSE4.2 (Intel 2008+, AMD 2011+) get a faster path
+  than before.
 - **`LargePages` option (Windows).** Large pages, on by default where
   Windows allows them, can now be turned off without changing the account's
   rights.
@@ -21,9 +25,17 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 - **Time management reworked.** The engine stops thinking once it has proved a
   forced mate, keeps more of its clock in reserve when the clock runs low, and
   weighs how settled the best move is when deciding how long to think.
-- **Building from source: leave out `--native`.** The build instructions no
-  longer recommend it: on AMD Zen 3 it makes a slower engine than the same
-  build without it.
+- **Nothing to install.** The Windows and Linux downloads now carry the
+  runtime they need, so they no longer require the Visual C++ runtime on
+  Windows or a recent glibc on Linux.
+- **New download names**, such as `rarog-2.7.0-windows-x64.exe`: the
+  version without a `v`, the system, then `x64` or `arm64`.
+- **Building from source: `cargo xtask build`** now makes the fastest build
+  your CPU runs, profile-guided, without further options.
+- **Development builds name their commit** in `id name`, such as
+  `Rarog dev-20261104-209b555a`, and the start-up line names the CPU build.
+- **Building from source: `--native` is optional.** The build instructions no
+  longer recommend it: it is not always faster, so compare with `bench`.
 
 ### Fixed
 

@@ -25,7 +25,8 @@ a chess GUI or an engine-testing tool.
   and spends longer on critical positions.
 - **Pondering** — thinks on the opponent's clock when the GUI enables it.
 - **Optimized binaries** — published for Windows, Linux and macOS, on both
-  x86-64 and ARM64, and every one of them profile-guided-optimized.
+  x86-64 and ARM64, every one of them profile-guided-optimized; one x64
+  download runs the fastest build for any Intel or AMD processor.
 - **Large pages on Windows** — a few percent more speed when Windows allows
   the engine to use them; see [Large pages](#large-pages-windows).
 - **Built-in benchmark** — a `bench` command for reproducible speed and
@@ -39,23 +40,27 @@ a chess GUI or an engine-testing tool.
 - [All releases](https://github.com/maelic13/rarog/releases)
 
 Every release provides ready-to-run executables — no installation needed. Pick
-the one matching your operating system and CPU:
+the one for your computer:
 
-| Asset suffix | CPU required | Use when |
-| --- | --- | --- |
-| `pext` | AVX2, BMI2, FMA (Intel 2013+, AMD 2015+) | Modern Intel, or AMD Zen 3 and newer. Usually the fastest build. |
-| `avx2` | AVX2, BMI2, FMA (Intel 2013+, AMD 2015+) | AMD Zen 1, Zen 2 and Excavator. These CPUs run `pext` too, but slowly, because their PEXT instruction is emulated in microcode. |
-| `x86-64` | SSE3 (Intel 2004+, AMD 2005+) | Older CPUs, or when the two above do not start. It runs almost anywhere but is the slowest of the three. |
-| `arm64` | ARM64 baseline | ARM64 Linux, Windows on ARM, and Apple Silicon Macs. |
+| Your computer | Download |
+| --- | --- |
+| Windows, Intel or AMD processor | `rarog-{version}-windows-x64.exe` |
+| Linux, Intel or AMD processor | `rarog-{version}-linux-x64` |
+| Windows on ARM | `rarog-{version}-windows-arm64.exe` |
+| Linux on ARM | `rarog-{version}-linux-arm64` |
+| Mac with Apple silicon | `rarog-{version}-macos-arm64` |
 
-Not sure? Start with `pext`. If it does not start, your CPU lacks AVX2 or
-BMI2, so `avx2` will not start either: use `x86-64`. The engine also checks
-your CPU when it starts and prints a `CPU advisory` line when a different
-build would be faster on it.
+**One download for every Intel or AMD processor.** It holds builds for
+several processor generations and, when it starts, runs the fastest one your
+processor supports, so there is nothing to choose. Every build plays exactly
+the same moves; only the speed differs.
 
-How much the choice matters depends on the CPU, but the order is usually the
-same: on a CPU that runs PEXT natively `pext` is a little faster than `avx2`,
-and both are clearly faster than `x86-64`.
+Upgrading from 2.6 or earlier? Those releases had separate `x86-64`, `avx2`
+and `pext` downloads; from 2.7 the single `x64` download replaces all three.
+
+The Windows and Linux files carry everything they need, so they run on any
+64-bit Windows or Linux system; the Mac file needs macOS 11 or newer. Rarog
+is 64-bit only — there is no 32-bit build.
 
 ---
 
@@ -147,57 +152,87 @@ Every `info` line carries `depth`, `seldepth`, `multipv`, `score`, `nodes`,
 
 ## Build From Source
 
-Rarog is built with the `xtask` helper, a small program in this repository
-that Cargo runs for you. It picks the right compiler settings for each CPU
-build and writes the finished engine to `target/dist`.
+You do not need to build Rarog to play: the downloads are already optimized.
+Build it to develop or test the engine, or for a system without a download.
 
-1. Install Rust with [rustup](https://rustup.rs).
-2. Add the LLVM tools, which the `--pgo` builds below need:
+1. Install Rust with [rustup](https://rustup.rs). The repository pins the
+   compiler version, and rustup fetches it on the first build.
+2. Add the LLVM tools, which the build needs:
 
    ```bash
    rustup component add llvm-tools
    ```
 
-3. In the repository folder, build the engine. For most modern x86-64 CPUs
-   this is the fastest build:
-
-   ```bash
-   cargo xtask build --arch pext --pgo
-   ```
-
-   On an AMD Zen 1, Zen 2 or Excavator CPU use `--arch avx2` instead of
-   `--arch pext`; on an older x86-64 CPU use `--arch x86-64`; on ARM64 use
-   `--arch arm64`. The [Download](#download) table explains the choice.
-
-A `--pgo` build takes a while, because it builds the engine twice: once to
-measure how it runs on `bench`, then again using what it measured.
-
-### Build options
-
-| Option | Meaning |
-| --- | --- |
-| `--arch x86-64` | Portable x86-64; requires SSE3. The default on x86-64. |
-| `--arch avx2` | Requires AVX2, BMI2 and FMA. |
-| `--arch pext` | Same requirements as `avx2`, and also uses the PEXT instruction. |
-| `--arch arm64` | ARM64. The default on ARM64. |
-| `--native` | Also tunes the build for the exact CPU you are building on. |
-| `--pgo` | Profile-guided optimization, as used for every published build. |
-
-`--arch` and `--native` combine freely. On the AMD Zen 3 it was measured on,
-a `--native` build is clearly slower than the same build without it. It also
-may not run on any other computer, so its file name ends in `-native`.
-Leave `--native` out to build an engine that runs on every CPU its `--arch`
-supports, like the published ones:
+### The fastest engine for your computer
 
 ```bash
-cargo xtask build --arch pext --pgo
+cargo xtask build
 ```
 
-A `--pgo` build cannot be cross-compiled, because it has to run the engine
-while building it. On Windows ARM64, `xtask` selects the linker a valid
-profile needs by itself; no separate LLVM installation is required.
+This checks the processor of the computer that builds it, builds the one of
+the download's four builds that runs fastest there (`pext` on Intel Haswell
+and newer and AMD Zen 3 and newer), and optimizes it with a profile of the
+`bench` suite (PGO). It is the same code the download runs on your processor,
+in a single smaller file, and it may not start on an older processor. It
+takes a while, because the engine is built twice: once to measure how it runs,
+then again using what it measured.
+
+### Other builds
+
+One file for any Intel or AMD computer, as released (see below):
+
+```bash
+cargo xtask build --universal
+```
+
+Without the profile step, quickly:
+
+```bash
+cargo xtask build --nopgo
+```
+
+Tuned for the exact processor it is built on. It can be faster or not, so
+compare with `bench`, and it may not run on any other computer:
+
+```bash
+cargo xtask build --native
+```
 
 `cargo xtask help` lists every command and option.
+
+### Where the binaries go
+
+Every build is copied to `target/dist`, named
+`rarog-<version>-<system>-<processor>[-<build>][-<kind>]`. The version is the
+one the engine reports: `2.7.0` for a release, `dev-<date>-<commit>` for
+anything else. An Intel/AMD build names the build it holds (`base`, `sse42`,
+`avx2`, `pext`, or `native`); the universal binary, which holds them all, and
+ARM, which has one, name none. A profile-guided build names no kind; anything
+else says what it is. For example, on a Ryzen 9 5950X:
+
+| Build | In `target/dist` |
+| --- | --- |
+| `cargo xtask build` | `rarog-dev-20261104-def5fd66-windows-x64-pext.exe` |
+| `cargo xtask build --nopgo` | `rarog-dev-20261104-def5fd66-windows-x64-pext-nopgo.exe` |
+| `cargo xtask build --universal` | `rarog-dev-20261104-def5fd66-windows-x64.exe` |
+| The 2.7.0 download | `rarog-2.7.0-windows-x64.exe` |
+
+### The universal binary
+
+The universal build is the release's Intel/AMD download: four profile-guided
+builds of the engine in one file, and a small start-up check that runs the
+fastest one the processor supports.
+
+| Build | Chosen on |
+| --- | --- |
+| `pext` | Intel Haswell (2013) and newer, AMD Zen 3 (2020) and newer. The fastest. |
+| `avx2` | AMD Zen 1 and Zen 2, and other processors with AVX2 whose PEXT instruction is slow |
+| `sse42` | Intel Nehalem to Ivy Bridge (2008–2012), AMD Bulldozer to Steamroller |
+| `base` | Any other 64-bit Intel or AMD processor. The slowest. |
+
+The first line Rarog prints names the build it chose. To run one build on
+purpose, for testing, set the environment variable `RAROG_ISA` to `base`,
+`sse42`, `avx2` or `pext`; a build the processor cannot run is refused.
 
 ### Tests
 

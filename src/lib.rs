@@ -42,12 +42,18 @@ pub fn initialize_tables() {
     eval::endgame::kpk::initialize();
 }
 
-/// The engine version as reported to the user.
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+/// The version `id name` reports: `X.Y.Z` at a release, the commit for a
+/// development build (`build.rs`, `src/build_name.rs`).
+pub const VERSION: &str = env!("RAROG_VERSION");
+
+/// The tier and kinds of this build, as the start-up line names them
+/// (`pext`, `pext, nopgo`, `native`); empty for an arm64 PGO build.
+pub const BUILD_LABEL: &str = env!("RAROG_BUILD_LABEL");
 
 pub mod bench;
 pub mod board;
 pub mod cpu_advice;
+pub mod cpu_tier;
 pub mod crash_report;
 pub mod diag;
 pub mod engine;

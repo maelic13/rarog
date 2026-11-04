@@ -2,7 +2,7 @@
 """The two-step pooled-PGO NPS read (PROCESS, *Harness notes*; RAR-P32).
 
 Two pools of PGO builds of one source each (nps_build_pool.ps1, four builds,
-manifest-pext.txt), read in interleaved cycles of `bench 13 3`. A reading is
+manifest-<tier>.txt), read in interleaved cycles of `bench 13 3`. A reading is
 the best of its three runs; every run is archived in the output directory as
 `raw.json`, so any number here can be recomputed.
 
@@ -74,11 +74,21 @@ QUIET_SECONDS = 60
 MAX_QUIET_MINUTES = 30
 
 
+def pool_manifest(directory: Path) -> Path:
+    """The pool's one manifest, `manifest-<tier>.txt` as nps_build_pool.ps1
+    names it. Two in one directory would leave the builds ambiguous."""
+    manifests = sorted(directory.glob("manifest-*.txt"))
+    if len(manifests) != 1:
+        raise SystemExit(f"{directory}: expected one manifest-<tier>.txt, found "
+                         f"{[m.name for m in manifests] or 'none'}")
+    return manifests[0]
+
+
 def pool_fingerprint(directory: Path) -> int:
     """The bench fingerprint the pool's manifest verified on every copy. Each
     arm is checked against its own, so a pool of an earlier source (a release
     baseline) can be read against the head's."""
-    manifest = directory / "manifest-pext.txt"
+    manifest = pool_manifest(directory)
     m = MANIFEST_FINGERPRINT.search(manifest.read_text(encoding="utf-8"))
     if not m:
         raise SystemExit(f"{manifest}: records no fingerprint")
@@ -86,7 +96,7 @@ def pool_fingerprint(directory: Path) -> int:
 
 
 def pool(directory: Path) -> list[Path]:
-    manifest = directory / "manifest-pext.txt"
+    manifest = pool_manifest(directory)
     rows = MANIFEST_ROW.findall(manifest.read_text(encoding="utf-8"))
     if not rows:
         raise SystemExit(f"{manifest}: no build rows")
