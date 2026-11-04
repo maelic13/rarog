@@ -396,6 +396,10 @@ fn stop_during_bench_reports_an_interruption_not_a_summary() {
 /// A `Hash` the allocator refuses is announced once, not again on every later
 /// `setoption` that resends the option set.
 #[test]
+#[cfg_attr(
+    target_os = "macos",
+    ignore = "macOS reserves a 32 TiB table lazily, so no Hash is refused and the engine fills it instead"
+)]
 fn a_refused_hash_is_announced_once() {
     let mut session = UciSession::ready();
     session.send("setoption name Hash value 33554432");
