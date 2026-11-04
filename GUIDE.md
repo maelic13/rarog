@@ -121,7 +121,7 @@ field, about 3,475 on CCRL's Blitz scale.
 - [ ] **E.3** Release 2.7.0 through the tag-driven flow; 3.0.0 is reserved for the first NNUE release — **M**
     - [ ] **E.3.0** Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — **R2**
     - [x] **E.3.1** Tag-driven release flow — DONE 2026-10-05
-    - [ ] **E.3.2** Build names: one scheme for `id name`, the start-up line, the files and the build command, and an `sse42` tier — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **E.3.2** Build names: one scheme for `id name`, the start-up line, the files and the build command, and an `sse42` tier — **IMPLEMENTED / I1**
     - [ ] **E.3.3** The universal x86-64 binary: one release file per OS that picks its tier at start-up, at the single-tier build's speed — **RESEARCH / R2**
     - [ ] **E.3.4** Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — **M**
 - [ ] **E.4** The king-danger index rebuilt in the donor's structure; the classical line's next release if it wins — **R2**

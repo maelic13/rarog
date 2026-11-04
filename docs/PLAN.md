@@ -333,7 +333,7 @@ binary are settled before Phase D continues.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| E.3.2 | READY_FOR_IMPLEMENTATION | I1 | Now, before D.4 (maintainer decision 2026-11-04); behaviour-neutral, every tier at the fingerprint |
+| E.3.2 | IMPLEMENTED | I1 | Every tier at the fingerprint; the pooled NPS read of `sse42` over `base` on an idle host is left |
 | E.3.3 | RESEARCH | R2 | After E.3.2; the card's four checks first, each able to stop it |
 | D.4.3 | READY_FOR_IMPLEMENTATION | I1 | Before D.6.1, D.6.2 and D.8.4; a planted dropped move must fail it |
 | D.4.4 | RESEARCH | R2 | The card: how to re-search without perturbing the measured tree; before D.6's screens |
@@ -1475,8 +1475,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
         `vX.Y.Z`); `windows`, `linux` or `macos`; `x64` or `arm64`; on a
         single-tier x64 build its tier (`base`, `sse42`, `avx2`, `pext`,
         or `native` in its place), and no tier on arm64 or the universal
-        binary; then `nopgo`, `tune` or `diag`, in that order, on anything
-        but a PGO build with the default features. The release's
+        binary; then the kinds, on anything but a PGO build with the
+        default features: `nopgo`, `debug`, the engine's features `tune`,
+        `diag` and `texel`, then a candidate arm's own feature, sorted. The release's
         `rarog-v2.6.0-windows-pext.exe` becomes
         `rarog-2.7.0-windows-x64-pext.exe`, and today's
         `rarog-v2.7.0-dev-windows-pext-pgo.exe` becomes
@@ -1512,6 +1513,20 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       what older CPUs gain. Not in this leaf: whole-number releases
       (`Rarog 3`, `Rarog 3.1`), perhaps by dropping trailing zeros from the
       shown version, an idea for F.9 still to be discussed.
+      Implemented 2026-11-04 on `e32` in three commits (engine `ef8d60e`,
+      tooling `b4cbb13`, documents `d5f23da`): `src/build_name.rs` and
+      `src/cpu_tier.rs` hold the rules once and are compiled into
+      `build.rs`, the engine and `xtask`; `xtask` runs every build it makes
+      and refuses one whose `id name` or start-up line contradicts its file
+      name (a planted wrong label was refused and its file removed). Every
+      tier (`base`, `sse42`, `avx2`, `pext`) and the `tune` and `native`
+      builds bench 14,749,043 on this host and pass their ISA contracts;
+      `verify-isa` refuses the `sse42` build as `base` (237 `popcnt`) and
+      the `avx2` build as `sse42`. The staged test-engine names
+      (`tools/test_engines/rarog-<suffix>-pext-pgo.exe`) are unchanged, so
+      the harness scripts and recorded recipes that name them still work.
+      Left: the pooled NPS read of `sse42` over `base`, which needs an idle
+      host.
     - **E.3.3 The universal x86-64 binary: one release file per OS that picks its tier at start-up, at the single-tier build's speed — `R2` card, then `I2`/`V`.** Moved
       from G.2 on 2026-11-04 by maintainer decision. Its record
       (`analysis/universal_binary_2026-09.md`) deferred it at about zero
