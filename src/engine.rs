@@ -155,10 +155,7 @@ impl Engine {
         base_options: &SearchOptions,
         epoch: u64,
     ) -> SearchExit {
-        if epoch != 0 && self.control.current_epoch() != epoch {
-            return SearchExit::Stop;
-        }
-        if !self.control.prepare_search(epoch) {
+        if !self.start_suite(epoch) {
             return SearchExit::Stop;
         }
         let repeats = repeats.max(1);
@@ -174,6 +171,21 @@ impl Engine {
         let mut total_ms_first = 0u128;
         let mut nps_samples: Vec<u128> = Vec::with_capacity(repeats as usize);
 
+        let positions: Vec<SuitePosition<'_>> = BENCH_FENS
+            .iter()
+            .enumerate()
+            .map(|(index, fen)| SuitePosition {
+                label: format!("position {}", index + 1),
+                fen,
+            })
+            .collect();
+        let suite = Suite {
+            name: "bench",
+            depth,
+            options: base_options,
+            epoch,
+            tables: SuiteTables::Shared,
+        };
         crate::uci_println!("Large pages     : {}", crate::large_pages::large_pages());
         crate::uci_println!();
         for repeat in 0..repeats {
@@ -188,31 +200,7 @@ impl Engine {
             let mut ln_ebf_sum = 0f64;
             let mut ebf_count = 0usize;
 
-            for (index, fen) in BENCH_FENS.iter().enumerate() {
-                if epoch != 0 && self.control.current_epoch() != epoch {
-                    self.control.finish_search_if_current(epoch);
-                    return SearchExit::Stop;
-                }
-                let board = match Board::from_fen(fen) {
-                    Ok(board) => board,
-                    Err(err) => {
-                        crate::info_string!(
-                            "bench position {} failed to parse: {}",
-                            index + 1,
-                            err
-                        );
-                        self.control.finish_search_if_current(epoch);
-                        return SearchExit::Stop;
-                    }
-                };
-                let mut options = SearchOptions {
-                    board,
-                    ..SearchOptions::default()
-                };
-                options.limits.depth = Some(u32::from(depth));
-                options.engine = base_options.engine.clone();
-
-                let result = self.search(&options, false, epoch);
+            let run = self.run_suite(&suite, &positions, |index, _, result| {
                 total_nodes += result.nodes;
                 total_ms += result.elapsed_ms;
                 per_position_nodes.push(result.nodes);
@@ -245,20 +233,9 @@ impl Engine {
                     );
                     flush_stdout();
                 }
-
-                if result.exit == SearchExit::Quit {
-                    self.control.finish_search_if_current(epoch);
-                    return SearchExit::Quit;
-                }
-                if epoch != 0 && self.control.current_epoch() != epoch {
-                    self.control.finish_search_if_current(epoch);
-                    return SearchExit::Stop;
-                }
-                if self.control.stop_requested(epoch) {
-                    report_interrupted("bench");
-                    self.control.finish_search_if_current(epoch);
-                    return SearchExit::Stop;
-                }
+            });
+            if let Err(exit) = run {
+                return exit;
             }
 
             let run_nps = total_nodes as u128 * 1000 / total_ms.max(1);
@@ -331,46 +308,37 @@ impl Engine {
     /// deterministic and comparable across candidates (a tactical-regression
     /// telltale for search-selectivity work — not a strength metric).
     fn run_wac(&mut self, depth: u16, base_options: &SearchOptions, epoch: u64) -> SearchExit {
-        if epoch != 0 && self.control.current_epoch() != epoch {
-            return SearchExit::Stop;
-        }
-        if !self.control.prepare_search(epoch) {
+        if !self.start_suite(epoch) {
             return SearchExit::Stop;
         }
 
-        let positions = wac_positions();
+        let wac = wac_positions();
+        let positions: Vec<SuitePosition<'_>> = wac
+            .iter()
+            .map(|pos| SuitePosition {
+                label: pos.id.clone(),
+                fen: &pos.fen,
+            })
+            .collect();
         let mut solved = 0usize;
         let mut failed: Vec<String> = Vec::new();
         let mut total_nodes = 0u64;
         let mut total_ms = 0u128;
 
         crate::uci_println!();
-        for (index, pos) in positions.iter().enumerate() {
-            if epoch != 0 && self.control.current_epoch() != epoch {
-                self.control.finish_search_if_current(epoch);
-                return SearchExit::Stop;
-            }
-            let board = match Board::from_fen(&pos.fen) {
-                Ok(board) => board,
-                Err(err) => {
-                    crate::info_string!("wac {} failed to parse: {}", pos.id, err);
-                    self.control.finish_search_if_current(epoch);
-                    return SearchExit::Stop;
-                }
-            };
-            self.searcher.new_game();
-            let mut options = SearchOptions {
-                board: board.clone(),
-                ..SearchOptions::default()
-            };
-            options.limits.depth = Some(u32::from(depth));
-            options.engine = base_options.engine.clone();
-
-            let result = self.search(&options, false, epoch);
+        let suite = Suite {
+            name: "wac",
+            depth,
+            options: base_options,
+            epoch,
+            tables: SuiteTables::ClearedEachPosition,
+        };
+        let run = self.run_suite(&suite, &positions, |index, board, result| {
+            let pos = &wac[index];
             total_nodes += result.nodes;
             total_ms += result.elapsed_ms;
 
-            if move_matches_any(&board, result.bestmove, &pos.best_moves) {
+            if move_matches_any(board, result.bestmove, &pos.best_moves) {
                 solved += 1;
             } else {
                 failed.push(format!(
@@ -383,23 +351,16 @@ impl Engine {
             crate::uci_println!(
                 "wac {}/{}  {}  nodes {}  time {}ms  (solved {})",
                 index + 1,
-                positions.len(),
+                wac.len(),
                 pos.id,
                 result.nodes,
                 result.elapsed_ms,
                 solved
             );
             flush_stdout();
-
-            if result.exit == SearchExit::Quit {
-                self.control.finish_search_if_current(epoch);
-                return SearchExit::Quit;
-            }
-            if self.control.stop_requested(epoch) {
-                report_interrupted("wac");
-                self.control.finish_search_if_current(epoch);
-                return SearchExit::Stop;
-            }
+        });
+        if let Err(exit) = run {
+            return exit;
         }
 
         crate::uci_println!(
@@ -408,7 +369,7 @@ impl Engine {
              Nodes searched  : {}\n\
              Total time (ms) : {}",
             solved,
-            positions.len(),
+            wac.len(),
             depth,
             total_nodes,
             total_ms
@@ -421,6 +382,98 @@ impl Engine {
         self.control.finish_search_if_current(epoch);
         SearchExit::Stop
     }
+
+    /// Claim the search slot for a suite command, unless a later command has
+    /// already replaced it.
+    fn start_suite(&self, epoch: u64) -> bool {
+        (epoch == 0 || self.control.current_epoch() == epoch) && self.control.prepare_search(epoch)
+    }
+
+    /// Search each position of a suite to its depth, handing every result to
+    /// `report`. `Err` carries how the suite ended early, with the search slot
+    /// already released: `quit`; a later command replacing it, silently; or
+    /// `stop`, which says so, since a summary of the positions searched so far
+    /// would read as an ordinary result.
+    fn run_suite(
+        &mut self,
+        suite: &Suite<'_>,
+        positions: &[SuitePosition<'_>],
+        mut report: impl FnMut(usize, &Board, &SearchResult),
+    ) -> Result<(), SearchExit> {
+        let epoch = suite.epoch;
+        let replaced = |control: &EngineControl| epoch != 0 && control.current_epoch() != epoch;
+        for (index, position) in positions.iter().enumerate() {
+            if replaced(&self.control) {
+                self.control.finish_search_if_current(epoch);
+                return Err(SearchExit::Stop);
+            }
+            let board = match Board::from_fen(position.fen) {
+                Ok(board) => board,
+                Err(err) => {
+                    crate::info_string!(
+                        "{} {} failed to parse: {}",
+                        suite.name,
+                        position.label,
+                        err
+                    );
+                    self.control.finish_search_if_current(epoch);
+                    return Err(SearchExit::Stop);
+                }
+            };
+            if suite.tables == SuiteTables::ClearedEachPosition {
+                self.searcher.new_game();
+            }
+            let mut options = SearchOptions {
+                board: board.clone(),
+                ..SearchOptions::default()
+            };
+            options.limits.depth = Some(u32::from(suite.depth));
+            options.engine = suite.options.engine.clone();
+
+            let result = self.search(&options, false, epoch);
+            report(index, &board, &result);
+
+            if result.exit == SearchExit::Quit {
+                self.control.finish_search_if_current(epoch);
+                return Err(SearchExit::Quit);
+            }
+            if replaced(&self.control) {
+                self.control.finish_search_if_current(epoch);
+                return Err(SearchExit::Stop);
+            }
+            if self.control.stop_requested(epoch) {
+                report_interrupted(suite.name);
+                self.control.finish_search_if_current(epoch);
+                return Err(SearchExit::Stop);
+            }
+        }
+        Ok(())
+    }
+}
+
+/// A suite command's fixed conditions.
+struct Suite<'a> {
+    /// The command, as its messages name it.
+    name: &'static str,
+    depth: u16,
+    /// The engine options every position is searched with.
+    options: &'a SearchOptions,
+    epoch: u64,
+    tables: SuiteTables,
+}
+
+/// What a suite's positions share. Bench's fingerprint is a run over shared
+/// tables, cleared once per run; WAC's solved set is per position.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SuiteTables {
+    Shared,
+    ClearedEachPosition,
+}
+
+/// One position of a suite: its name in messages and its FEN.
+struct SuitePosition<'a> {
+    label: String,
+    fen: &'a str,
 }
 
 /// The control's word for one search. `go infinite` and a ponder search end
