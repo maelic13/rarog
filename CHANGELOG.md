@@ -25,6 +25,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 - **Time management reworked.** The engine stops thinking once it has proved a
   forced mate, keeps more of its clock in reserve when the clock runs low, and
   weighs how settled the best move is when deciding how long to think.
+- **Nothing to install.** The Windows and Linux downloads now carry the
+  runtime they need, so they no longer require the Visual C++ runtime on
+  Windows or a recent glibc on Linux.
 - **New download names**, such as `rarog-2.7.0-windows-x64.exe`: the
   version without a `v`, the system, then `x64` or `arm64`.
 - **Building from source: `cargo xtask build`** now makes the fastest build

@@ -1590,8 +1590,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       them), its one `.init_array` entry harmless (each forced tier read its
       own `bench 13` argument), glibc 2.34; the link now strips debug
       information as cargo's does, 8,346,928 bytes from 14,083,904
-      (`d1bbb60`). Left: the SDE matrix, which only the first `Release` run
-      reads.
+      (`d1bbb60`). By maintainer decision 2026-11-04 every `cargo xtask`
+      build for Windows and Linux links its C runtime statically, so a user
+      needs nothing installed (macOS cannot), and xtask refuses one that
+      does not (RAR-P57: Windows +0.13%, a pass; the WSL read of Linux was
+      too noisy to resolve, its speed question open for a native host).
+      Left: the SDE matrix, which only the first `Release` run reads.
     - **E.3.4 Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
       E.3.1 closed (2026-10-05), numbered E.3.2 until 2026-11-04: the version from `2.7.0-dev` to 2.7.0,
       behaviour-neutral with the fingerprint
@@ -1903,9 +1907,8 @@ this phase meets them, each is now a requirement of the leaf named:
 - **G.2 Platform and product: Chess960 on demand and distributed testing — `I1`.** Chess960 on demand, and distributed
   testing when typical gains reach 1–3 Elo. The universal x86-64 binary
   was G.2's until 2026-11-04, when the maintainer moved it to E.3.3
-  (`analysis/universal_binary_2026-09.md`). Also from Basilisk (H4): a
-  statically linked Linux asset removes the glibc floor (Basilisk's +5%
-  is one WSL read, so a pooled NPS read decides).
+  (`analysis/universal_binary_2026-09.md`). Basilisk's statically linked
+  Linux asset (H4) is E.3.3's too since 2026-11-04 (RAR-P57).
   Triumviratus inputs (TB-9, TB-14, TA-1, TA-3;
   `analysis/triumviratus_review_2026-11-03.md` §6, §13): its Chess960 contract
   and FRC perft suite, per-variant profiles merged into one universal build,

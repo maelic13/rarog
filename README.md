@@ -58,7 +58,9 @@ the same moves; only the speed differs.
 Upgrading from 2.6 or earlier? Those releases had separate `x86-64`, `avx2`
 and `pext` downloads; from 2.7 the single `x64` download replaces all three.
 
-Rarog is 64-bit only — there is no 32-bit build.
+The Windows and Linux files carry everything they need, so they run on any
+64-bit Windows or Linux system; the Mac file needs macOS 11 or newer. Rarog
+is 64-bit only — there is no 32-bit build.
 
 ---
 

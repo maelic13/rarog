@@ -853,7 +853,12 @@ every function aligned to 64 bytes and every global renamed per tier after
 PGO, behind a baseline dispatcher (`universal/dispatch.rs`) that picks the
 fastest tier the CPU runs; `RAROG_ISA=<tier>` forces one, for a forced-tier
 bench or a measurement, and a tier the CPU cannot run is refused. Every
-measurement stays on the single-tier `pext` build. The release benches every
+measurement stays on the single-tier `pext` build. Every `cargo xtask` build
+for Windows and Linux links the C runtime statically (`+crt-static`: the
+Visual C++ runtime and the UCRT, or glibc as a static PIE), and xtask refuses
+a binary that still imports one or has a dynamic loader (RAR-P57); macOS
+cannot, so its binaries need only `libSystem` and macOS 11.0, which the
+release checks. The release benches every
 forced tier on its runner and checks the selection under Intel SDE
 (`tools/diag/check_universal.py`). The start-up line names the tier and kinds;
 `id name` never does, since rating lists key on it. `RAROG_DEV_ID=<date>-<hash>`

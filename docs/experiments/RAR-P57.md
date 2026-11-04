@@ -1,4 +1,4 @@
-# RAR-P57 — A statically linked runtime on Windows and Linux against the dynamic one: speed — REGISTERED 2026-11-04, before the read
+# RAR-P57 — A statically linked runtime on Windows and Linux against the dynamic one: speed — REGISTERED 2026-11-04, before the read; READ 2026-11-04: Windows PASS +0.13%, Linux inconclusive
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -61,3 +61,45 @@ indicative, and no rule decides on it. The Windows gate is unchanged.
   read +5% in one WSL read (BAS-P22's environment), but Basilisk is C++ with
   libstdc++ linked in; Rust links its own std statically already, so less
   should change here.
+
+## Result (2026-11-04)
+
+**Windows (the gate): PASS.** The dynamic arm is RAR-P56's `pext` pool
+(`EF3EDF18`, `26E28271`, `D70E6F3A`, `DC63EFDF`); the static arm four builds
+from `e09fc46`, clean, in `analysis/artifacts/e33-static-nps/static-windows/`.
+Host idle, 1.3% and 1.5% CPU before the cycles, 4.3% after; no disturbed
+cycle.
+
+| Arm | Per-build medians (n/s) | Level |
+|---|---|---|
+| dynamic | 2,948,632, 2,936,044, 2,943,630, 2,944,214 | 2,943,130 |
+| static | 2,948,930, 2,942,454, 2,947,159, 2,949,222 | 2,946,941 |
+
+Static over dynamic **+0.13%**, 95% t-interval −0.12% to +0.38%: regression
+excluded by step 1. A static binary imports only Windows' own DLLs (no
+`VCRUNTIME140.dll`, no `api-ms-win-crt-*`) and is 1,857,024 bytes against
+1,679,872 (the no-PGO build measured).
+
+**Linux (indicative): inconclusive.** One dynamic (`F011FA74…`, `6c2d323`)
+and one static (`265A734E…`, `e09fc46`, 3,122,352 bytes, no dynamic loader,
+no linker warning) binary, eight interleaved cycles in WSL after a manual
+host check (0–5% CPU, nothing running); archived as
+`analysis/artifacts/e33-static-nps/read-linux.txt`.
+
+| Cycle | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| static / dynamic | 1.0075 | 0.9518 | 0.9382 | 1.0494 | 0.9537 | 0.9715 | 0.9358 | 1.0217 |
+
+Median **0.963 (−3.7%)**, range −6.4% to +4.9%. The dynamic binary alone
+read 2.63 M to 2.89 M n/s across cycles, a 10% swing, so WSL timing cannot
+resolve a few percent here; static was slower in 6 of 8 cycles, which a
+coin gives about one time in seven (one-sided). No rule decides on it.
+
+**Calibration.** Windows: predicted +0.1%, read +0.13%: a hit. Linux:
+predicted +2% [−1%, +5%]; the instrument could not resolve the question,
+so there is no calibration, only the noise to record.
+
+**Decision.** Static ships on Windows by the gate. On Linux it ships for
+compatibility at the maintainer's request (no glibc floor); the speed
+question stays open for a read on a native Linux host, where Basilisk's +5%
+and this read's −3.7% can be told apart.
