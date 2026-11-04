@@ -939,7 +939,7 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
       **Registered 2026-10-23 as RAR-R16** (`docs/experiments/RAR-R16.md`),
       before any game:
       - **The arms.** The candidate is `rarog-d15fit-pext-pgo.exe`, block
-        1's theta baked on the throwaway arm `d15-arm` (`082a780`, recipe
+        1's theta baked on the throwaway arm `d15-arm` (082a780, recipe
         `analysis/arm_patches/082a780-rar-r16-d15gate.patch`), version
         `2.7.0-dev+d15fit`. The head is `rarog-d15head-pext-pgo.exe` at
         `468ed7b`. Both are clean PGO builds and both bench 13,987,223.
@@ -1318,7 +1318,7 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
           head (which has the stop), `[-5,5]` with its cap, the probe on
           the pair. Registered before any game; maintainer-run overnight.
         - **Registered 2026-10-25 as RAR-R27:**
-          - **Arm:** `7703768` on the throwaway branch `d16-gate3`
+          - **Arm:** 7703768 on the throwaway branch `d16-gate3`
             (recipe `analysis/arm_patches/7703768-rar-r27-d16gate3.patch`,
             `rarog-d16gate3-pext-pgo.exe`, bench 11,480,295).
           - **Head:** `rarog-d1head2-pext-pgo.exe` at `6253027`, bench
@@ -1366,7 +1366,7 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
           (head 2.51 ×) and 2.70 × at `60000+600` (head 0.91 ×, its cascade
           completing just past the target); at `3000+30` +0.68 nominal ply
           for +6.9% first-move spend, fail-highs an iteration unchanged.
-          **The same probe on the PGO arm (`2d013c8`, 1.3 × faster) runs
+          **The same probe on the PGO arm (2d013c8, recipe `analysis/arm_patches/2d013c8-rar-r19-d16gate.patch`, 1.3 × faster) runs
           rec3 into the hard maximum at `180000+2000`:** it crosses the
           target one iteration later and depth 24's cascade costs more than
           the 90 s left. The frozen stop rule fires and the leaf stays in
@@ -1489,7 +1489,7 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
           move within its optimum (the PGO arm: rec3 2.5 s and 6.9 s, rec1
           2.3 s and 8.3 s, against the head's 30.3, 98.0, 4.4 and 37.5 s).
           **Done 2026-10-23, `READY_FOR_IMPLEMENTATION`:** the cluster, its
-          arm `6fd195e` (bench 8,996,837), its probe, its wire check and its
+          arm 6fd195e (recipe `analysis/arm_patches/6fd195e-rar-r20-d16fix4.patch`) (bench 8,996,837), its probe, its wire check and its
           gate are RAR-R20's; the research recommends a fit of the
           aspiration and reduction constants around the cluster before the
           gate.
@@ -1531,7 +1531,7 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
           On a fail nothing lands; RAR-R23's dispositions name the two
           closes. The history follows.
           `READY_FOR_IMPLEMENTATION` 2026-10-23. The cluster under gate is
-          the arm `6fd195e` (recipe
+          the arm 6fd195e (recipe
           `analysis/arm_patches/6fd195e-rar-r20-d16fix4.patch`, bench
           8,996,837): the four switches of RAR-R20 baked on as the defaults
           (`mopup_known_win` 6000, `AspDeltaSquareDiv` 10193,
@@ -1542,7 +1542,7 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
           and its test deleted, the instruments the cluster does not use
           removed (`AspFailHighReduce`, `AspFailHighRecover`, `AspRecentre`,
           `QsFailSoft`, `CoreLmrDeeperCap`, `CoreExtensionBudgetEighths`,
-          the arm `2d013c8` and its binary), the MultiPV loop given the same
+          the arm 2d013c8 (recipe `analysis/arm_patches/2d013c8-rar-r19-d16gate.patch`) and its binary), the MultiPV loop given the same
           `Aspiration` form, and the user-facing changelog entry (a fixed
           defect: the engine no longer runs a won ending into its hard
           maximum). On H0 nothing lands and the fit is the next step.
@@ -1578,10 +1578,10 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
             Nothing lands.
 
           The earlier gate's history follows.
-          The first registration (RAR-R19, the reduction arm `2d013c8`,
+          The first registration (RAR-R19, the reduction arm 2d013c8 (recipe `analysis/arm_patches/2d013c8-rar-r19-d16gate.patch`),
           seed 20261040) is withdrawn: its arm was a partial device and its
           probe reached the maximum. **Registered 2026-10-23 as RAR-R20**,
-          before any game: `rarog-d16fix4-pext-pgo.exe` (`6fd195e`, bench
+          before any game: `rarog-d16fix4-pext-pgo.exe` (6fd195e, recipe `analysis/arm_patches/6fd195e-rar-r20-d16fix4.patch`, bench
           8,996,837, the four parts) against `rarog-d15head-pext-pgo.exe`
           (`468ed7b`, 13,987,223), Colosseum `sprt-repair`, seed 20261042,
           run directory `rar-r20-gate`; then `match-fixed-ltc` 1,000 games
@@ -1598,13 +1598,13 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
           **The road to the gate is RAR-R21, staged:** three 2,000-game
           equal-speed reads (the four parts, parts 1–3, the freeze alone)
           decide whether SPSA block 1 over the `d16fix` surface (fifteen
-          coordinates, 60,000 games, the fit arm `217125b`) runs at all;
+          coordinates, 60,000 games, the fit arm 217125b (recipe `analysis/arm_patches/217125b-rar-r21-d16fit.patch`)) runs at all;
           the gate is re-registered on an arm rebuilt with the fitted
           values. The maintainer's commands are `run_r21.ps1 -Read
           all4|nofreeze|freeze|fit`.
           H1 lands it (harm near −5 excluded); H0 refutes it and the
           fallback is read. The fail-high stop's spin is deleted when the
-          fix lands. **Run 2026-10-24 as RAR-R22** on the arm `584c02d`
+          fix lands. **Run 2026-10-24 as RAR-R22** on the arm 584c02d (recipe `analysis/arm_patches/584c02d-rar-r22-d16gate2.patch`)
           (the fifteen fitted values and the budget baked, bench
           9,013,917): the probe eight of eight within the optimum, the
           wire check faultless, the SPRT **H0 at 1,377 pairs, −7.4 ± 7.5**,

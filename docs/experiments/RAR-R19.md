@@ -341,7 +341,7 @@ prototype move reached the maximum. The bench cut, 0.61 ×, is above the
 
 ## The arm (built 2026-10-23, after the reads)
 
-- Throwaway branch `d16-arm` at `2d013c8` on `027a604`, in a worktree at
+- Throwaway branch `d16-arm` at 2d013c8 on `027a604`, in a worktree at
   `D:/code/rarog-d16arm`: `AspFailHighReduce` 1 as the default, version
   `2.7.0-dev+d16fix`. Recipe
   `analysis/arm_patches/2d013c8-rar-r19-d16gate.patch` (SHA-256
@@ -600,7 +600,7 @@ Depth for depth, one thread, Hash 64, fresh processes (`depthcost.log`,
   device as "the fix" is not recommended.
 - The switches stay on `d1` at their defaults (`AspFailHighReduce` 0,
   `AspFailHighRecover` 0, `TmFailHighTarget` off), bench-neutral, as the
-  instruments of the next leaf; the arm `2d013c8` and its binary stay for
+  instruments of the next leaf; the arm 2d013c8 (recipe `analysis/arm_patches/2d013c8-rar-r19-d16gate.patch`) and its binary stay for
   the held gate.
 
 **Evidence layer:** node counts and window counts throughout; Elo only in
@@ -755,7 +755,7 @@ zero warnings, debug and release tests green, bench at the defaults
 - **The switches stay on `d1` at their defaults** (`AspFailHighReduce` 0,
   `AspFailHighRecover` 0, `CoreLmrDeeperCap` 4, `TmFailHighTarget` off),
   all bench-neutral, as instruments. The held gate on the reduction arm is
-  not run; the arm `2d013c8` and its binary stay for the record.
+  not run; the arm 2d013c8 (recipe `analysis/arm_patches/2d013c8-rar-r19-d16gate.patch`) and its binary stay for the record.
 - **Recommendation:** D.1.6 cannot close on a root-loop or reduction-cap
   device: none ends the stall, and the cap is a halving of the tree that
   only a search gate could judge. The research recommends (a) the
@@ -1342,7 +1342,7 @@ comparison; nothing here is Elo.
 ## Disposition: `READY_FOR_IMPLEMENTATION`; the cluster and its verification are RAR-R20
 
 The fix is one cluster of four parts, each a switch on `d1` at its neutral
-default and baked on as the default on the arm `6fd195e`: the known-win
+default and baked on as the default on the arm 6fd195e (recipe `analysis/arm_patches/6fd195e-rar-r20-d16fix4.patch`): the known-win
 evaluation of a bare-king ending (`mopup_known_win` 6000), the
 score-scaled first window (`AspDeltaSquareDiv` 10193), the line budget
 charged for deeper reduced searches (`CoreLmrDeeperBudget` 1), and the

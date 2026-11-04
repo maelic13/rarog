@@ -24,7 +24,7 @@ the current head is `./tools/build_test.ps1 -Suffix <name> -Tune`.
   negative values the line budget now charges (`CoreLmrPv`,
   `CoreLmrPvWindow`, `CoreLmrCorrection`, `CoreLmrGivesCheck`,
   `CoreLmrImprovement`, `CoreLmrTtPv`, `CoreLmrQuietHistory`). `value` is
-  the fit arm's default (`217125b`: the cluster's four parts baked, so the
+  the fit arm's default (217125b, recipe `analysis/arm_patches/217125b-rar-r21-d16fit.patch`: the cluster's four parts baked, so the
   tune starts at the cluster's seeds, as the harness requires), the step
   the b43 rule, and `min_value` and `max_value` the declared range except
   for `AspDeltaSquareDiv` (2000..40000 of 0..100000), `MopupKnownWin`
@@ -39,7 +39,7 @@ the current head is `./tools/build_test.ps1 -Suffix <name> -Tune`.
 - **`fixed_d16fix.json`:** Hash 64, Threads 1, MultiPV 1; the line budget
   (`CoreLmrDeeperBudget` 1) is the arm's default, not an option.
 - **Run:** block 1 is 2,000 iterations × 30 games on
-  `tools/test_engines/rarog-d16fit-tune.exe` (`217125b`, bench 8,996,837),
+  `tools/test_engines/rarog-d16fit-tune.exe` (217125b, recipe `analysis/arm_patches/217125b-rar-r21-d16fit.patch`, bench 8,996,837),
   `colosseum.ps1 -Mode spsa -Engine tools/test_engines/rarog-d16fit-tune.exe
   -ConfigGroup d16fix -Iterations 2000 -TotalGames 60000 -Seed 20261050`,
   or `analysis/artifacts/d16-cascade-2026-10-23/run_r21.ps1 -Read fit`. The

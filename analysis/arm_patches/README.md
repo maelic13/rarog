@@ -26,6 +26,22 @@ any prune while those bases were on a ref.
 | `f68bd31` | RAR-E25 | `05c792b` | Gate 1's candidate: C.3's king-safety unit, version `2.6.0-dev+c3king` (bench 14,270,302); proved through a temporary index to reproduce the arm's tree (`25f76d41…`); the throwaway branch `c3-arm` is deleted |
 | `936e274` | RAR-E25 | `f68bd31` | Gate 2's arm: the `c3margin` block's rounded theta baked into the 28 `src/search/params.rs` defaults on the gate-1 candidate, version `2.6.0-dev+c3gate2` (bench 13,187,295); applied after `f68bd31`'s patch on `05c792b`, proved to reproduce its tree (`c31a02ec…`) |
 | `160f414` | RAR-S105 | `4e7a391` | C.10.5's gate arm: RAR-S104's rounded theta baked into 76 of the 82 `src/search/params.rs` defaults and `eval::LAZY_MARGIN`, version `2.6.0-dev+c10gate` (bench 13,987,223); proved through a temporary index to reproduce the arm's tree (`04c60308…`); on the throwaway branch `c10-arm` until the gate is read |
+| `082a780` | RAR-R16 | `b96a9c1` | D.1.5's gate arm: D.1.4 block 1's theta baked into the thirteen clock defaults, version `2.7.0-dev+d15fit`; reproduces the arm's tree (`087e0beb…`); the throwaway branch `d15-arm` is deleted |
+| `2d013c8` | RAR-R19 | `027a604` | `AspFailHighReduce` 1 as the default, version `2.7.0-dev+d16fix`; reproduces the arm's tree (`2ff4b241…`); the throwaway branch `d16-arm` is deleted |
+| `6fd195e` | RAR-R20 | `097ea5d` | the cascade fix's four parts as the defaults, version `2.7.0-dev+d16fix4`; reproduces the arm's tree (`3678a90f…`); the throwaway branch `d16-arm2` is deleted |
+| `217125b` | RAR-R21 | `2f17467` | the cascade cluster's four parts as the search defaults, version `2.7.0-dev+d16fit` (the SPSA block's fit arm); reproduces the arm's tree (`56fd6135…`); the throwaway branch `d16-fit` is deleted |
+| `584c02d` | RAR-R22 | `570555b` | the cascade cluster at RAR-R21's block-1 values as the search defaults, version `2.7.0-dev+d16gate2`; reproduces the arm's tree (`ea3e13ab…`); the throwaway branch `d16-gate2` is deleted |
+| `7703768` | RAR-R27 | `6253027` | the LMR correction term capped at one ply as the search default, version `2.7.0-dev+d16gate3`; reproduces the arm's tree (`f82869d2…`); the throwaway branch `d16-gate3` is deleted |
+
+**Added 2026-11-04 (D.1's gate arms):** the six rows from `082a780` to
+`7703768` are D.1's arms, whose patches were written when each arm was
+built. Each was proved, through a temporary index, to apply to its base
+and reproduce the arm commit's tree exactly
+(`analysis/artifacts/ref-prune-2026-11-04/prove_patches.sh`); every base
+is on `d1`, held under PR #12 (`refs/pull/12/head`). The citing
+documents name the recipe, and the six throwaway branches were then
+deleted (maintainer decision 2026-11-04: a recipe in Git, not a branch
+or a tag, carries an arm).
 
 **Added 2026-10-04 (B.10's ref review):** the last three rows came from the
 throwaway branches `diag/b23-theta3900`, `b33-block1-probe` and `b33-gate`,
