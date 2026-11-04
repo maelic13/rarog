@@ -7,8 +7,8 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use rarog::board::{Board, Move};
+use rarog::search::options::SearchOptions;
 use rarog::search::{InfoSink, SearchEvent, Searcher};
-use rarog::search_options::SearchOptions;
 use rarog::syzygy::{self, Wdl};
 
 fn fixture_path() -> String {

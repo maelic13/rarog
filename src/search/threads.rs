@@ -8,7 +8,7 @@ use std::thread::{self, JoinHandle};
 use crate::board::{Board, Color, Move};
 use crate::eval::INF_SCORE;
 use crate::infra;
-use crate::search_options::{EngineOptions, SearchLimits};
+use crate::search::options::{EngineOptions, SearchLimits};
 use crate::tt::TranspositionTable;
 
 use super::movepick::ScoredMoveList;

@@ -7,8 +7,8 @@
 use std::sync::{Arc, Mutex};
 
 use rarog::board::Board;
+use rarog::search::options::SearchOptions;
 use rarog::search::{InfoSink, SearchEvent, Searcher};
-use rarog::search_options::SearchOptions;
 use rarog::syzygy::{self, Wdl};
 
 struct Recorder(Arc<Mutex<Vec<String>>>);

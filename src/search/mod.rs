@@ -23,6 +23,7 @@ mod correction;
 mod history;
 mod movepick;
 mod node;
+pub mod options;
 pub mod params;
 mod shared;
 mod stack;
@@ -36,7 +37,7 @@ use std::time::{Duration, Instant};
 use crate::board::{Board, Color, GameResult, Move, MoveList};
 use crate::eval::{INF_SCORE, MATE_SCORE};
 use crate::infra;
-use crate::search_options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
+use crate::search::options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
 use crate::syzygy::{self, Wdl};
 use crate::tt::{TB_VALUE, TB_WIN_SCORE, TranspositionTable};
 

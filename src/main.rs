@@ -7,7 +7,7 @@ use rarog::crash_report;
 use rarog::engine::Engine;
 use rarog::engine_command::{EngineCommandQueue, EngineControl};
 use rarog::infra::{THREAD_STACK_SIZE, capitalize_first_letter};
-use rarog::uci_protocol::{CommandOutcome, UciProtocol};
+use rarog::uci::{CommandOutcome, UciProtocol};
 
 // The big tables in large pages where Windows grants them; see `large_pages`.
 #[cfg(windows)]

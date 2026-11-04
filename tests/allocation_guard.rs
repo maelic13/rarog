@@ -16,8 +16,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use rarog::bench::BENCH_FENS;
 use rarog::board::Board;
+use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
-use rarog::search_options::SearchOptions;
 
 static ALLOCATIONS: AtomicU64 = AtomicU64::new(0);
 

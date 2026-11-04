@@ -19,8 +19,8 @@
 use rarog::board::{Board, Color, Move, Piece};
 use rarog::eval::{Evaluator, MATE_SCORE};
 use rarog::infra::THREAD_STACK_SIZE;
+use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
-use rarog::search_options::SearchOptions;
 
 const ENDGAMES_EPD: &str = include_str!("endgames.epd");
 

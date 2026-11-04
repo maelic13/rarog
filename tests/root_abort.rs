@@ -20,8 +20,8 @@
 
 use rarog::board::Board;
 use rarog::eval::MATE_SCORE;
+use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
-use rarog::search_options::SearchOptions;
 
 /// Positions with enough branching that a small node budget lands mid-iteration.
 const POSITIONS: [&str; 4] = [

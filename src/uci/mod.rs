@@ -1,11 +1,21 @@
+//! The UCI protocol: the input loop, dispatch, and the text the engine
+//! answers with. Parsing is in `position`, `go` and `options`, which return
+//! their notices; this module prints them.
+
+pub mod go;
+pub mod options;
+pub mod position;
+
 use std::io::{self, BufRead};
 use std::sync::{Arc, mpsc};
 
 use crate::bench::DEFAULT_BENCH_DEPTH;
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl};
 use crate::infra::{capitalize_first_letter, flush_stdout};
-use crate::search_options::{GoRequest, OptionUpdate, SearchOptions};
+use crate::search::options::SearchOptions;
 use crate::wac::DEFAULT_WAC_DEPTH;
+use go::GoRequest;
+use options::OptionUpdate;
 
 /// What one command line did, so a caller knows whether to keep reading and
 /// what to exit with.
@@ -117,12 +127,14 @@ impl UciProtocol {
             "stop" => self.stop(),
             "setoption" => self.set_option(args),
             "ucinewgame" => self.new_game(),
-            "position" => {
-                if let Err(message) = self.search_options.set_position(args) {
+            "position" => match position::parse(args) {
+                Ok(Some(board)) => self.search_options.board = board,
+                Ok(None) => {}
+                Err(message) => {
                     report_critical_error(command_line, &message);
                     return CommandOutcome::Fatal;
                 }
-            }
+            },
             "bench" => self.bench(args),
             "wac" => self.wac(args),
             #[cfg(feature = "tune")]
@@ -148,7 +160,7 @@ impl UciProtocol {
             crate::VERSION
         );
         crate::uci_println!("id author {}", env!("CARGO_PKG_AUTHORS").replace(':', ", "));
-        for option in SearchOptions::get_uci_options() {
+        for option in options::advertised() {
             crate::uci_println!("{option}");
         }
         crate::uci_println!("uciok");
@@ -171,7 +183,12 @@ impl UciProtocol {
     }
 
     fn go(&mut self, args: &[String]) {
-        if let GoRequest::Perft(depth) = self.search_options.set_search_parameters(args) {
+        let go = go::parse(args);
+        for notice in &go.notices {
+            crate::info_string!("{notice}");
+        }
+        self.search_options.limits = go.limits;
+        if let GoRequest::Perft(depth) = go.request {
             self.run_perft(depth);
             return;
         }
@@ -191,13 +208,15 @@ impl UciProtocol {
     /// Applied when the engine thread reaches it: the queue orders the change
     /// after any search already running, so this thread need not wait, and
     /// must not, since it alone reads the `stop` that ends a `go infinite`.
+    /// A rejected value changes nothing, so it queues nothing.
     fn set_option(&mut self, args: &[String]) {
-        match self.search_options.set_option(args) {
-            OptionUpdate::Engine => self
+        match options::apply(&mut self.search_options.engine, args) {
+            OptionUpdate::Applied => self
                 .commands
                 .push(EngineCommand::Configure(self.search_options.engine.clone())),
             OptionUpdate::ClearHash => self.commands.push(EngineCommand::ClearHash),
-            OptionUpdate::Unknown => {}
+            OptionUpdate::Rejected { notice } => crate::info_string!("{notice}"),
+            OptionUpdate::Unknown { name } => crate::info_string!("No such option: {name}"),
         }
     }
 

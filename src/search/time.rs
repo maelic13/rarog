@@ -4,7 +4,7 @@
 use crate::board::{Color, Move};
 use crate::eval::MATE_SCORE;
 use crate::infra;
-use crate::search_options::{EngineOptions, SearchLimits};
+use crate::search::options::{EngineOptions, SearchLimits};
 
 use super::MAX_PLY;
 use super::params::SearchParams;

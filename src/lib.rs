@@ -56,10 +56,9 @@ pub mod eval;
 pub mod infra;
 pub mod large_pages;
 pub mod search;
-pub mod search_options;
 pub mod syzygy;
 pub mod tt;
-pub mod uci_protocol;
+pub mod uci;
 pub mod wac;
 #[cfg(windows)]
 pub mod win32;

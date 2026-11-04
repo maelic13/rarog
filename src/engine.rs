@@ -6,8 +6,8 @@ use crate::bench::BENCH_FENS;
 use crate::board::Board;
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl, SearchControl};
 use crate::infra::flush_stdout;
+use crate::search::options::SearchOptions;
 use crate::search::{InfoSink, SearchEvent, SearchExit, SearchResult, Searcher};
-use crate::search_options::SearchOptions;
 use crate::wac::{move_matches_any, wac_positions};
 
 pub struct Engine {
@@ -506,7 +506,7 @@ fn print_bestmove(result: &SearchResult) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::search_options::EngineOptions;
+    use crate::search::options::EngineOptions;
     use std::sync::mpsc;
     use std::time::Duration;
 
