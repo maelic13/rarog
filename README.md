@@ -189,11 +189,16 @@ Without the profile step, quickly:
 cargo xtask build --nopgo
 ```
 
-`--native` tunes the build for the exact processor it is built on. It was
-slower on the AMD Zen 3 it was measured on, and it may not run on any other
-computer; compare with `bench`. A profile-guided build has to run the engine,
-so it cannot be built for another processor or system; add `--nopgo` for
-that. `cargo xtask help` lists every command and option.
+Tuned for the exact processor it is built on. It can be faster or not, so
+compare with `bench`, and it may not run on any other computer:
+
+```bash
+cargo xtask build --native
+```
+
+A profile-guided build has to run the engine, so building for another
+processor or system needs `--nopgo`. `cargo xtask help` lists every command
+and option.
 
 ### Where the binaries go
 

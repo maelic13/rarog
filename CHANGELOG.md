@@ -31,9 +31,8 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   your CPU runs, profile-guided, without further options.
 - **Development builds name their commit** in `id name`, such as
   `Rarog dev-20261104-209b555a`, and the start-up line names the CPU build.
-- **Building from source: leave out `--native`.** The build instructions no
-  longer recommend it: on AMD Zen 3 it makes a slower engine than the same
-  build without it.
+- **Building from source: `--native` is optional.** The build instructions no
+  longer recommend it: it is not always faster, so compare with `bench`.
 
 ### Fixed
 
