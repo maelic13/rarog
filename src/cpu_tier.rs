@@ -43,6 +43,42 @@ impl Tier {
             Tier::Avx2 | Tier::Pext => Level::V3,
         }
     }
+
+    /// The tier a name names, as [`Tier::name`] writes it.
+    pub fn from_name(name: &str) -> Option<Tier> {
+        Tier::ALL.into_iter().find(|tier| tier.name() == name)
+    }
+}
+
+/// The environment variable that forces the universal binary's tier, for a
+/// forced-tier bench and for measuring every tier on one host.
+pub const FORCE_VARIABLE: &str = "RAROG_ISA";
+
+/// The tier the universal binary runs: the one `forced` names, if this CPU
+/// runs it, else the fastest this CPU runs. `level` is `None` off x86-64.
+pub fn universal_tier(
+    level: Option<Level>,
+    slow_pext: bool,
+    forced: Option<&str>,
+) -> Result<Tier, String> {
+    let Some(level) = level else {
+        return Err("the universal x86-64 binary runs only on an x86-64 CPU".to_string());
+    };
+    let Some(name) = forced else {
+        return Ok(best_tier(level, slow_pext));
+    };
+    let Some(tier) = Tier::from_name(name) else {
+        return Err(format!(
+            "{FORCE_VARIABLE}={name} names no tier; expected base, sse42, avx2 or pext"
+        ));
+    };
+    if tier.level() > level {
+        return Err(format!(
+            "{FORCE_VARIABLE}={name} forces a tier this CPU cannot run; it runs up to {}",
+            best_tier(level, false).name()
+        ));
+    }
+    Ok(tier)
 }
 
 /// The x86-64 microarchitecture level a CPU supports.
@@ -160,6 +196,32 @@ fn cpu_vendor_family() -> (bool, u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_universal_binary_runs_the_best_tier_or_the_forced_one() {
+        assert_eq!(universal_tier(Some(Level::V3), false, None), Ok(Tier::Pext));
+        assert_eq!(universal_tier(Some(Level::V3), true, None), Ok(Tier::Avx2));
+        assert_eq!(universal_tier(Some(Level::V1), false, None), Ok(Tier::Base));
+        // A forced slower tier runs: that is how every tier is measured here.
+        assert_eq!(
+            universal_tier(Some(Level::V3), false, Some("base")),
+            Ok(Tier::Base)
+        );
+        // A forced pext runs on a slow-PEXT CPU: it is slow there, not illegal.
+        assert_eq!(
+            universal_tier(Some(Level::V3), true, Some("pext")),
+            Ok(Tier::Pext)
+        );
+        // A tier the CPU cannot run, or no tier at all, is refused.
+        let above = universal_tier(Some(Level::V2), false, Some("avx2")).unwrap_err();
+        assert!(
+            above.contains("cannot run") && above.contains("sse42"),
+            "{above}"
+        );
+        assert!(universal_tier(Some(Level::V3), false, Some("avx512")).is_err());
+        assert!(universal_tier(Some(Level::V3), false, Some("PEXT")).is_err());
+        assert!(universal_tier(None, false, None).is_err());
+    }
 
     #[test]
     fn slow_pext_covers_excavator_and_zen1_and_zen2_only() {
