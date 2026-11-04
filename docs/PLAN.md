@@ -332,7 +332,7 @@ maintainer decision 2026-11-04; both are done.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.4.4 | RESEARCH | R2 | The card: how to re-search without perturbing the measured tree; before D.6's screens |
+| D.4.4 | READY_FOR_IMPLEMENTATION | I2 | Card 2026-11-04: a `pricing` feature, probes isolated in the running search; V2, the main tree's nodes unchanged with sampling on, is its proof |
 | D.4.5 | READY_FOR_IMPLEMENTATION | V | The tool first, then the judge run's sample registered; maintainer-run |
 | D.4.6 | RESEARCH | R2 | The tool on the 5950X, validated on a patch of known effect; before D.8's NPS guards |
 | D.5.1 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value: the table handle and the helper lifecycle first |
@@ -529,6 +529,29 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       tables. Validation: with sampling off the bench is exact; a planted
       over-pruning rule reads higher than its honest form. Users: D.6.3,
       D.6.5, D.6.16, D.6.19, and F.6's fit.
+      Card 2026-11-04 (`analysis/pruning_pricing_card_2026-11-04.md`):
+      READY_FOR_IMPLEMENTATION, `I2`. The probe runs inside the search
+      under its own feature, `pricing`, never read together with `diag`.
+      While it runs, stores go to a per-thread scratch table read before
+      the main one, which is never written; the histories and corrections
+      are frozen; the stack and PV rows from its ply up, the node count
+      and the search statistics are saved and restored; no probe nests;
+      a node-level probe switches its one rule off at its own ply only.
+      A pruned move is searched at `depth - 1` with `(alpha, alpha + 1)`;
+      an LMR fail-low at its unreduced depth; a node-level cut is wrong
+      when the node without the rule scores below beta; a raise also
+      records whether the node then failed low. The sample hashes the
+      decision against a per-rule rate set from probe cost alone (about
+      10,000 probes a rule on `bench 13`). Validation: sampling off
+      benches 14,749,043, and so does the main search with sampling on
+      (the isolation proof), two runs write identical records, and
+      `CoreFpBase` lowered from 150 to −100 reads a higher futility share
+      than the default with disjoint 95% intervals. Predictions are frozen
+      in the card. D.6.5 and D.6.19 need counters, not prices: exclusion
+      searches are not priced, and a reduction the engine never makes has
+      no decision to re-search. If the isolation proof fails and the leak
+      is not closed, the leaf returns to `RESEARCH` with a scratch
+      `Searcher` as the next form.
     - **D.4.5 The loss table by cell — `V`.**
       Where Rarog loses, from games already played (TT-1): the pool
       tournaments' and the latest gates' games in Colosseum's database, every
