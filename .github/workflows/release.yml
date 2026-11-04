@@ -158,8 +158,13 @@ jobs:
       # xtask names the file (`rarog-<name>-<os>-<arch>`), checks the built
       # engine reports that name and, for the universal binary, that every
       # tier this runner runs, forced, benches one fingerprint.
+      # macOS 11.0 is the first release for Apple silicon and rustc's default
+      # for this target; set here so a runner's environment cannot move it.
+      # The `cc` crate builds Fathom for the same target.
       - name: Build the PGO asset
         shell: bash
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.os_name == 'macos' && '11.0' || '' }}
         run: >
           cargo xtask build --target ${{ matrix.target }}
           ${{ matrix.universal && '--universal' || '' }}
@@ -212,6 +217,21 @@ jobs:
               test "$n" = "$expected" || { echo "::error::the forced $tier tier benches $n, not $expected"; exit 1; }
             done
           fi
+          # The oldest system the asset runs on, checked rather than assumed:
+          # glibc 2.34 on Linux (Ubuntu 22.04, Debian 12, RHEL 9), macOS 11.0.
+          case '${{ matrix.os_name }}' in
+            linux)
+              floor="$(objdump -T "$bin" | grep -oE 'GLIBC_[0-9.]+' | sort -Vu | tail -1)"
+              echo "glibc floor: $floor"
+              [ "$(printf '%s\nGLIBC_2.34\n' "$floor" | sort -V | tail -1)" = GLIBC_2.34 ] \
+                || { echo "::error::the asset needs $floor, above glibc 2.34"; exit 1; }
+              ;;
+            macos)
+              minos="$(vtool -show-build "$bin" | awk '$1 == "minos" {print $2}')"
+              echo "minimum macOS: $minos"
+              [ "$minos" = 11.0 ] || { echo "::error::the asset needs macOS $minos, not 11.0"; exit 1; }
+              ;;
+          esac
           echo "$nodes" > "asset/${{ steps.asset.outputs.name }}.nodes"
 
       - uses: actions/upload-artifact@v7
