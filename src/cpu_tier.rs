@@ -108,6 +108,13 @@ pub const fn best_tier(level: Level, slow_pext: bool) -> Tier {
 /// `pext` build the slowest one there. Family 19h (Zen 3) onward and every
 /// Intel CPU with BMI2 are fast. Stockfish carries this same exception and
 /// no other model-based rule.
+#[cfg_attr(
+    not(target_arch = "x86_64"),
+    allow(
+        dead_code,
+        reason = "called only by the x86-64 detection; kept portable so the rule is tested everywhere"
+    )
+)]
 pub const fn has_slow_pext(is_amd: bool, family: u32) -> bool {
     is_amd && (family == 0x15 || family == 0x17)
 }
