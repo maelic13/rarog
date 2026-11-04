@@ -1,4 +1,4 @@
-# RAR-M83 — Self-relative scaling in the sibling-free slot: Rarog, Reckless and Stockfish, each one thread against four, RAR-M78's time-odds legs as G2 — REGISTERED 2026-11-03, before any game
+# RAR-M83 — Self-relative scaling in the sibling-free slot: Rarog, Reckless and Stockfish, each one thread against four, RAR-M78's time-odds legs as G2 — REGISTERED 2026-11-03, before any game; NOT DEFICIENT 2026-11-04: four threads worth 1.37 doublings of Rarog's own time against Reckless 1.49 and Stockfish 1.54
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -227,3 +227,83 @@ beside itself and ends with `ALL DONE`.
   on RAR-M78's figures gives DEFICIENT with upper bounds −0.26 and −0.36,
   as recorded; the judgement reaches every outcome. With no sampler
   directory the reader refuses (exit 2).
+
+## Result — 2026-11-04, appended after the read
+
+- **Run:** `run.ps1` (`45591c82…`, unchanged) by the maintainer from
+  2026-11-03 22:51 to 2026-11-04 07:35, one sampler directory
+  (`tools/results/d2-selfrel-sampler-20261103_225109/`), no leg
+  interrupted. Each manifest reads `placement: explicit
+  (2,4,6,8,16,18,20,22,24,26,28,30), one logical CPU per physical core`,
+  `host_busy_percent: 0.2`, `host_idle_waived: False`, `faults: time: 0-0;
+  other: 0-0`. Run directories `tools/results/selfrel-<engine>-threads`
+  (`results.txt` `a7907949…`, `12036f84…`, `9cbbdcf7…`); the reading
+  `analysis/artifacts/d2-selfrel/m83_read.log`. The three engines and the
+  six scripts still match their recorded hashes on 2026-11-04.
+- **Instrument: all three legs valid.**
+
+  | Leg | R (fifths) | Four-thread turns on four cores, by slot | Sibling busy |
+  |---|---|---|---|
+  | Rarog | 4.02 (4.00–4.05) | 95.2 / 95.5 / 95.7% | 0.0% |
+  | Reckless | 4.44 (4.41–4.46) | 95.9 / 95.0 / 95.7% | 0.0% |
+  | Stockfish | 4.43 (4.41–4.47) | 96.5 / 95.3 / 95.4% | 0.0% |
+
+- **Colosseum's results** (arm A's Elo, 1,000 games each, no time losses):
+  Rarog −139.0 ± 11.1, Reckless −128.6 ± 8.9, Stockfish −134.1 ± 8.7.
+- **Readings** (delta method, G2 RAR-M78's):
+
+  | Engine | G2 (Elo) | G4 (Elo) | D, 95% | X |
+  |---|---|---|---|---|
+  | Rarog | +101.8 ± 11.5 | +139.0 ± 11.1 | 1.37 [1.18, 1.55] | 2.58 |
+  | Reckless | +86.2 ± 9.8 | +128.6 ± 8.9 | 1.49 [1.29, 1.69] | 2.81 |
+  | Stockfish | +86.9 ± 9.9 | +134.1 ± 8.7 | 1.54 [1.34, 1.75] | 2.91 |
+
+  Rarog's D minus Reckless's −0.13 ± 0.27 (upper bound +0.15), minus
+  Stockfish's −0.18 ± 0.28 (upper bound +0.10).
+- **Outcome: NOT DEFICIENT**, by the registered rule: both upper bounds lie
+  above zero. Four threads are worth 1.37 doublings of Rarog's own time
+  against 1.49 and 1.54 for the two references; a gap larger than about
+  0.40 doublings to Reckless or 0.46 to Stockfish is excluded at 95%, a
+  smaller one is not (the registered power at 0.2 was 0.15).
+- **Observed, not judged** (the runner's lines and the reader's).
+  - Non-mate depth, one thread to four: Rarog 16.64 → 17.10 (+0.46),
+    Reckless 17.40 → 19.03 (+1.63), Stockfish 21.25 → 23.71 (+2.46).
+  - The four-thread side's holds: Rarog p50 4, p99 158, p999 416, max
+    2,265 ms, 17,432 of 63,147 moves over the margin (28%); Reckless p99
+    3 ms, 248 of 70,875; Stockfish p99 1 ms, 2 of 79,915.
+  - Against the packed legs: Rarog's G4 +139.0 (+83.9 in RAR-M81, +73.7 in
+    RAR-M78), Reckless's +128.6 (+110.6, +103.7), Stockfish's +134.1
+    (+114.1).
+
+## Disposition
+
+- **NOT DEFICIENT:** D.2's four-thread SMP target closes `NO_CHANGE` (PLAN
+  D.2.7). Rarog's four threads, placed one to a physical core, are worth
+  as many of its own doublings as Reckless's and Stockfish's are of theirs
+  within this design's resolution. The deficit RAR-M78 and RAR-M81 read was
+  Windows packing four threads on SMT siblings inside the auto slot.
+- The placement policy stays with every rated multi-thread read (PROCESS,
+  *Harness*) and E.2's four-thread arm. The open items, the four-thread
+  holds among them, go to G.1 as priors; the engine's 2T–4T shared-search
+  loss (RAR-P49, RAR-P50) stays recorded.
+- **Retry trigger:** a four-thread read in the sibling-free slot that puts
+  Rarog's D below both references at 95%, or a change to the lazy SMP
+  itself, reopens the comparison.
+
+## Calibration
+
+- **Outcome:** NOT DEFICIENT was predicted 0.70 and read.
+- **Levels:** every one inside its 80% band. Rarog G4 +139.0 against +135
+  (+118 to +152), D 1.37 against 1.33; Reckless +128.6 against +130, D 1.49
+  against 1.51; Stockfish +134.1 against +135, D 1.54 against 1.55. R:
+  Rarog 4.02 against 4.0, Reckless 4.44 against 4.45, Stockfish 4.43
+  against 4.3 (3.9 to 4.7), the band set without a sibling-free read of it.
+  The differences −0.13 and −0.18 against −0.18 and −0.22, their
+  half-widths 0.27 and 0.28 against about 0.28.
+- **Mechanism:** the levels came from the packed legs moved to each
+  engine's sibling-free R, shaded toward RAR-M82's 200-game reads; that
+  held. Rarog's smaller depth gain at four threads (+0.46 plies against
+  +1.63 and +2.46) did not carry into a lower D, so depth gain is not a
+  proxy for the threads' worth across engines.
+- **Instrument:** the placement rule, the floors and the reader worked as
+  registered; the four-core shares 95.0 to 96.5% sit as RAR-M82's did.

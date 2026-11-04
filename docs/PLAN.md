@@ -331,8 +331,6 @@ GUIDE's Now (`guide_board.py`).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.2.6 | READY_FOR_IMPLEMENTATION | V | Registered 2026-11-03, the maintainer's: one idle night of about nine hours (`analysis/artifacts/d2-selfrel/run.ps1`), Rarog's, Reckless's and Stockfish's four-thread legs at 1,000 games each in a slot of one logical CPU per physical core, RAR-M78's time-odds legs as G2; NOT DEFICIENT 0.70, DEFICIENT 0.20. The slot is the policy because the night's slow state was Windows packing four threads on SMT siblings (RAR-M82 RESTORED, 4.03 times one; RAR-P54 REFUTED, both engines keep 0.63–0.65 beside a sibling) |
-| D.2.7 | RESEARCH | R2 | Held on D.2.6: DEFICIENT opens it on RAR-R33's next read; NOT DEFICIENT closes D.2's four-thread target `NO_CHANGE` and hands its items to G.1 |
 | D.3.9 | RESEARCH | R2 | After D.2 (maintainer order, 2026-11-03): the score-normalisation card and the protocol decisions; the `src/uci/` (planned) move with D.8.13, the adapter boundary |
 | D.4.3 | READY_FOR_IMPLEMENTATION | I1 | Before D.6.1, D.6.2 and D.8.4; a planted dropped move must fail it |
 | D.4.4 | RESEARCH | R2 | The card: how to re-search without perturbing the measured tree; before D.6's screens |
@@ -1615,7 +1613,7 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
           the `10+0.1` read +2.1 ± 11.6. Nothing lands; D.1.6 returns to
           research (above), and this gate is re-registered on the
           surviving cluster.
-- **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; RAR-M78's deficit verdict was measured in a packed slot and is superseded (RAR-M82), the sibling-free comparison is RAR-M83 — `R2` investigation, `I2`/`V` sub-steps.** 4T and
+- **D.2 Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; RAR-M78's deficit verdict was measured in a packed slot and is superseded (RAR-M82), the sibling-free comparison is RAR-M83 — `R2` investigation, `I2`/`V` sub-steps, DONE 2026-11-04.** 4T and
   8T scaling against 1T at equal wall time; helper diversity, TT sharing,
   shared correction histories, soft-stop voting, thread-safe counters. The
   helper depth-skip policy is designed fresh from the donor; B.1 deleted the
@@ -2198,7 +2196,7 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
       hint a separate leaf held on how CCRL's testers place a four-thread
       engine; PARTIAL adds the per-thread working set to the card; NOT
       RESTORED returns D.2 to its engine card.
-    - **D.2.6 RAR-M83: the self-relative comparison in the sibling-free slot, the maintainer's night run — `V`.**
+    - **D.2.6 RAR-M83: the self-relative comparison in the sibling-free slot, the maintainer's night run — `V`, DONE 2026-11-04.**
       **RAR-M83 registered 2026-11-03**, before any game: the self-relative
       comparison in the sibling-free slot, Rarog (`e057d84`, RAR-M82's
       binary), Reckless 0.9.0 and Stockfish 18 each one thread against four,
@@ -2211,9 +2209,23 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
       on an idle night). Stockfish's leg is in: the rule needs both
       references, and no clean Stockfish four-thread leg exists. By its
       result D.2's four-thread target opens on RAR-R33's next read or closes
-      `NO_CHANGE`.
-    - **D.2.7 The four-thread engine card, by RAR-M83's outcome: what the helpers' entries do to the main thread, then a gate — `R2`, then `I2`/`V`.**
-      Held on D.2.6. NOT DEFICIENT closes D.2's four-thread target
+      `NO_CHANGE`. **Read 2026-11-04: NOT DEFICIENT** (predicted 0.70), run
+      by the maintainer from 22:51 to 07:35, the host idle, no fault or
+      time loss. All three legs valid: R 4.02, 4.44 and 4.43, four-thread
+      turns on four cores in 95 to 97% of their seconds, no sibling busy.
+      Four threads are worth 1.37 [1.18, 1.55] doublings of Rarog's own
+      time (G4 +139.0 ± 11.1, X 2.58) against Reckless's 1.49 (+128.6) and
+      Stockfish's 1.54 (+134.1); Rarog minus Reckless −0.13 ± 0.27, minus
+      Stockfish −0.18 ± 0.28, both upper bounds above zero. A gap above
+      about 0.4 doublings is excluded, a smaller one is not. Every
+      predicted level fell inside its band. Observed, not judged: non-mate
+      depth +0.46 plies at four threads against +1.63 and +2.46; Rarog's
+      four-thread holds as before (28% of moves over the margin, p99
+      158 ms; Reckless 0.4%, Stockfish none).
+    - **D.2.7 The four-thread engine card, by RAR-M83's outcome: what the helpers' entries do to the main thread, then a gate — `R2`, then `I2`/`V`, NO_CHANGE 2026-11-04.**
+      **Closed `NO_CHANGE` 2026-11-04 by RAR-M83's NOT DEFICIENT;** the
+      items below go to G.1 as priors, as the rule written before the read
+      says. Held on D.2.6. NOT DEFICIENT closes D.2's four-thread target
       `NO_CHANGE`: the placement policy stays with E.2's four-thread arm and
       every rated four-thread read (PROCESS), and the open items below go to
       G.1 as priors. DEFICIENT opens the card on RAR-R33's next read, the
