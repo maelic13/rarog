@@ -377,3 +377,16 @@ single-tier `pext` builds, one commit: **+0.45%** [+0.17%, +0.72%], so the
 relink costs nothing here, as section 9's alignment lead predicted, and the
 aligned form reads slightly faster (not separated from placement). The
 universal binary is the x64 release asset from this change on.
+
+**The Linux form (2026-11-04, WSL Ubuntu 24.04, a clean clone, GNU ld).**
+Every check passes. A tier defines five globals, all renamed: `main`,
+`rust_eh_personality`, its hidden `DW.ref.` pointer, std's `EMPTY_PANIC` and
+std's `ARGV_INIT_ARRAY`, the static behind the one `.init_array` entry
+(check 3's prediction). That entry runs in every tier at load and stores
+`argc`/`argv` into the tier's own copy; each forced tier read its own
+`bench 13` from the command line, so it is harmless. No value-named
+constants are shared on ELF. The first link kept the debug information std
+brings into each of the five objects (14,083,904 bytes); cargo's own link
+strips it (`-Wl,--strip-debug`), and the universal link now does the same
+(8,346,928 bytes, about four times a 2,056,248-byte tier). Its floor is
+glibc 2.34, with only libc, libm and libgcc_s.

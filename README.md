@@ -25,7 +25,8 @@ a chess GUI or an engine-testing tool.
   and spends longer on critical positions.
 - **Pondering** — thinks on the opponent's clock when the GUI enables it.
 - **Optimized binaries** — published for Windows, Linux and macOS, on both
-  x86-64 and ARM64, and every one of them profile-guided-optimized.
+  x86-64 and ARM64, every one of them profile-guided-optimized; one x64
+  download runs the fastest build for any Intel or AMD processor.
 - **Large pages on Windows** — a few percent more speed when Windows allows
   the engine to use them; see [Large pages](#large-pages-windows).
 - **Built-in benchmark** — a `bench` command for reproducible speed and
@@ -39,15 +40,25 @@ a chess GUI or an engine-testing tool.
 - [All releases](https://github.com/maelic13/rarog/releases)
 
 Every release provides ready-to-run executables — no installation needed. Pick
-the one matching your operating system:
+the one for your computer:
 
-| File ends in | Runs on |
+| Your computer | Download |
 | --- | --- |
-| `windows-x64.exe`, `linux-x64` | Any 64-bit Intel or AMD CPU. |
-| `windows-arm64.exe`, `linux-arm64`, `macos-arm64` | Windows on ARM, ARM64 Linux, and Apple Silicon Macs. |
+| Windows, Intel or AMD processor | `rarog-{version}-windows-x64.exe` |
+| Linux, Intel or AMD processor | `rarog-{version}-linux-x64` |
+| Windows on ARM | `rarog-{version}-windows-arm64.exe` |
+| Linux on ARM | `rarog-{version}-linux-arm64` |
+| Mac with Apple silicon | `rarog-{version}-macos-arm64` |
 
-The x64 file picks the fastest code for your CPU when it starts, and its
-first line names the choice (`pext`, `avx2`, `sse42` or `base`).
+**One download for every Intel or AMD processor.** It holds builds for
+several processor generations and, when it starts, runs the fastest one your
+processor supports, so there is nothing to choose. Every build plays exactly
+the same moves; only the speed differs.
+
+Upgrading from 2.6 or earlier? Those releases had separate `x86-64`, `avx2`
+and `pext` downloads; from 2.7 the single `x64` download replaces all three.
+
+Rarog is 64-bit only — there is no 32-bit build.
 
 ---
 
@@ -139,44 +150,84 @@ Every `info` line carries `depth`, `seldepth`, `multipv`, `score`, `nodes`,
 
 ## Build From Source
 
-Rarog is built with the `xtask` helper, a small program in this repository
-that Cargo runs for you. It picks the fastest build your CPU runs, sets the
-compiler up for it and writes the finished engine to `target/dist`.
+You do not need to build Rarog to play: the downloads are already optimized.
+Build it to develop or test the engine, or for a system without a download.
 
-1. Install Rust with [rustup](https://rustup.rs).
+1. Install Rust with [rustup](https://rustup.rs). The repository pins the
+   compiler version, and rustup fetches it on the first build.
 2. Add the LLVM tools, which the build needs:
 
    ```bash
    rustup component add llvm-tools
    ```
 
-3. In the repository folder, build the engine:
+### The fastest engine for your computer
 
-   ```bash
-   cargo xtask build
-   ```
+```bash
+cargo xtask build
+```
 
-The build takes a while, because it builds the engine twice: once to measure
-how it runs on `bench`, then again using what it measured (profile-guided
-optimization, as every published build is made).
+This checks the processor of the computer that builds it, builds the one of
+the download's four builds that runs fastest there (`pext` on Intel Haswell
+and newer and AMD Zen 3 and newer), and optimizes it with a profile of the
+`bench` suite (PGO). It is the same code the download runs on your processor,
+in a single smaller file, and it may not start on an older processor. It
+takes a while, because the engine is built twice: once to measure how it runs,
+then again using what it measured.
 
-### Build options
+### Other builds
 
-| Option | Meaning |
+One file for any Intel or AMD computer, as released (see below):
+
+```bash
+cargo xtask build --universal
+```
+
+Without the profile step, quickly:
+
+```bash
+cargo xtask build --nopgo
+```
+
+`--native` tunes the build for the exact processor it is built on. It was
+slower on the AMD Zen 3 it was measured on, and it may not run on any other
+computer; compare with `bench`. A profile-guided build has to run the engine,
+so it cannot be built for another processor or system; add `--nopgo` for
+that. `cargo xtask help` lists every command and option.
+
+### Where the binaries go
+
+Every build is copied to `target/dist`, named
+`rarog-<version>-<system>-<processor>[-<build>][-<kind>]`. The version is the
+one the engine reports: `2.7.0` for a release, `dev-<date>-<commit>` for
+anything else. An Intel/AMD build names the build it holds (`base`, `sse42`,
+`avx2`, `pext`, or `native`); the universal binary, which holds them all, and
+ARM, which has one, name none. A profile-guided build names no kind; anything
+else says what it is. For example, on a Ryzen 9 5950X:
+
+| Build | In `target/dist` |
 | --- | --- |
-| `--tier base`, `sse42`, `avx2`, `pext` | Builds that tier instead of the fastest one your CPU runs. |
-| `--universal` | Builds the published x64 file: every tier in one engine, which picks one when it starts. |
-| `--native` | Tunes the build for the exact CPU you are building on. |
-| `--nopgo` | Skips the measuring run: a faster build of a slower engine. |
+| `cargo xtask build` | `rarog-dev-20261104-def5fd66-windows-x64-pext.exe` |
+| `cargo xtask build --nopgo` | `rarog-dev-20261104-def5fd66-windows-x64-pext-nopgo.exe` |
+| `cargo xtask build --universal` | `rarog-dev-20261104-def5fd66-windows-x64.exe` |
+| The 2.7.0 download | `rarog-2.7.0-windows-x64.exe` |
 
-On the AMD Zen 3 it was measured on, a `--native` build is slower than the
-default one. It also may not run on any other computer, so its file name ends
-in `-native`. A build that profiles itself has to run the engine, so it
-cannot be built for another CPU or system; add `--nopgo` to do that. On
-Windows ARM64, `xtask` selects the linker a valid profile needs by itself; no
-separate LLVM installation is required.
+### The universal binary
 
-`cargo xtask help` lists every command and option.
+The universal build is the release's Intel/AMD download: four profile-guided
+builds of the engine in one file, and a small start-up check that runs the
+fastest one the processor supports.
+
+| Build | Chosen on |
+| --- | --- |
+| `pext` | Intel Haswell (2013) and newer, AMD Zen 3 (2020) and newer. The fastest. |
+| `avx2` | AMD Zen 1 and Zen 2, and other processors with AVX2 whose PEXT instruction is slow |
+| `sse42` | Intel Nehalem to Ivy Bridge (2008–2012), AMD Bulldozer to Steamroller |
+| `base` | Any other 64-bit Intel or AMD processor. The slowest. |
+
+The first line Rarog prints names the build it chose. To run one build on
+purpose, for testing, set the environment variable `RAROG_ISA` to `base`,
+`sse42`, `avx2` or `pext`; a build the processor cannot run is refused.
 
 ### Tests
 

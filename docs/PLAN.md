@@ -333,7 +333,7 @@ Phase D continues, after E.3.2's build names (done 2026-11-04).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| E.3.3 | LOCAL_QUALIFIED | I2 | Gate passed (RAR-P56 +0.45%), the release switched; the Linux form and the SDE matrix wait for the first `Release` run |
+| E.3.3 | LOCAL_QUALIFIED | I2 | Gate passed (RAR-P56 +0.45%), the release switched, Linux verified in WSL; the SDE matrix waits for the first `Release` run |
 | D.4.3 | READY_FOR_IMPLEMENTATION | I1 | Before D.6.1, D.6.2 and D.8.4; a planted dropped move must fail it |
 | D.4.4 | RESEARCH | R2 | The card: how to re-search without perturbing the measured tree; before D.6's screens |
 | D.4.5 | READY_FOR_IMPLEMENTATION | V | The tool first, then the judge run's sample registered; maintainer-run |
@@ -1584,9 +1584,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the single-tier `pext` build. By the maintainer's decision it is now
       the x64 release asset: `release.yml` builds it for Linux and Windows,
       benches every forced tier on the runner and checks the selection under
-      Intel SDE (`tools/diag/check_universal.py`), five assets in all. Left:
-      the Linux form and the SDE matrix, which only the first `Release` run
-      reads (this host's WSL has no Rust toolchain).
+      Intel SDE (`tools/diag/check_universal.py`), five assets in all. The
+      Linux form, built in WSL (Ubuntu 24.04, a clean clone): every check
+      passes, five globals a tier (std's argument-capture static among
+      them), its one `.init_array` entry harmless (each forced tier read its
+      own `bench 13` argument), glibc 2.34; the link now strips debug
+      information as cargo's does, 8,346,928 bytes from 14,083,904
+      (`d1bbb60`). Left: the SDE matrix, which only the first `Release` run
+      reads.
     - **E.3.4 Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
       E.3.1 closed (2026-10-05), numbered E.3.2 until 2026-11-04: the version from `2.7.0-dev` to 2.7.0,
       behaviour-neutral with the fingerprint
