@@ -902,6 +902,46 @@ fn a_root_with_no_legal_move_reports_a_score_before_bestmove() {
     }
 }
 
+/// Under `go infinite` a root with no legal move reports once and waits for
+/// `stop`: an infinite search owes `bestmove` only on `stop`, whatever it
+/// found, and a repeated report would read as a search still running.
+#[test]
+fn a_root_with_no_legal_move_under_go_infinite_reports_once_and_waits_for_stop() {
+    for threads in [1, 2] {
+        for (fen, expected) in [
+            (
+                "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3",
+                "info depth 0 score mate 0",
+            ),
+            ("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1", "info depth 0 score cp 0"),
+        ] {
+            let mut session = UciSession::ready();
+            session.send(&format!("setoption name Threads value {threads}"));
+            session.send("isready");
+            session.expect_line_containing("readyok", wait(5));
+            session.send(&format!("position fen {fen}"));
+            session.send("go infinite");
+            // Not scaled: a longer window is a stricter check.
+            let before_stop = session
+                .try_collect_until_line_containing("bestmove", Duration::from_millis(300))
+                .expect_err("an infinite search must not answer before stop");
+            assert_eq!(
+                before_stop,
+                vec![expected.to_string()],
+                "Threads {threads}, {fen}"
+            );
+            session.send("stop");
+            let after_stop = session.collect_until_line_containing("bestmove", wait(2));
+            assert_eq!(
+                after_stop,
+                vec!["bestmove 0000".to_string()],
+                "Threads {threads}, {fen}"
+            );
+            session.quit();
+        }
+    }
+}
+
 /// The last `info` line that carries a PV, and the `bestmove` after it.
 fn last_pv_and_bestmove(lines: &[String]) -> (String, String) {
     let pv_move = lines
