@@ -38,7 +38,7 @@ fn search(fen: &str, configure: impl FnOnce(&mut SearchOptions)) -> (Vec<String>
     };
     options.engine.syzygy.path = fixture_path();
     configure(&mut options);
-    searcher.configure(&options.engine);
+    searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
     assert_eq!(syzygy::largest(), 3, "the fixture holds 3-man tables");
     let result = searcher.search(board, &options, true, || SearchEvent::None);
     let raw = output.lock().expect("recorder lock").clone();

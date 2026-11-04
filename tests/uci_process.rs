@@ -401,9 +401,10 @@ fn stop_during_bench_reports_an_interruption_not_a_summary() {
 
 /// The largest `Hash` is what this machine can hold, and one MiB more is
 /// refused at once with a notice, on every platform, the setting kept: no
-/// allocation is attempted, and a later `setoption` says nothing more. (A
-/// platform that reserves lazily, as macOS does, would otherwise grant the
-/// table and spend the session filling it.)
+/// allocation is attempted. Another option says nothing about it; the same
+/// `Hash` sent again is refused again. (A platform that reserves lazily, as
+/// macOS does, would otherwise grant the table and spend the session filling
+/// it.)
 #[test]
 fn a_hash_above_this_machine_s_memory_is_refused_at_once() {
     let mut session = UciSession::start();
@@ -440,6 +441,14 @@ fn a_hash_above_this_machine_s_memory_is_refused_at_once() {
     assert!(
         !second.iter().any(|line| line.contains("Hash")),
         "{second:?}"
+    );
+    session.send(&format!("setoption name Hash value {}", max + 1));
+    session.send("isready");
+    let third = session.collect_until_line_containing("readyok", wait(15));
+    assert_eq!(
+        third.iter().filter(|line| **line == notice).count(),
+        1,
+        "{third:?}"
     );
     session.quit();
 }

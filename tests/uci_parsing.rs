@@ -182,11 +182,13 @@ fn setoption_and_reset_cover_engine_configuration() {
         &["name", "SyzygyProbeLimit", "value", "5"],
         &["name", "Syzygy50MoveRule", "value", "false"],
     ] {
-        assert_eq!(
-            options::apply(&mut engine, &args(parts)),
-            OptionUpdate::Applied,
-            "{parts:?}"
-        );
+        // `Hash` says it is the table's size, so the engine thread tries it.
+        let want = if parts[1] == "Hash" {
+            OptionUpdate::HashApplied
+        } else {
+            OptionUpdate::Applied
+        };
+        assert_eq!(options::apply(&mut engine, &args(parts)), want, "{parts:?}");
     }
     assert_eq!(
         options::apply(&mut engine, &args(&["name", "Clear", "Hash"])),

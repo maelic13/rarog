@@ -72,8 +72,8 @@ impl Engine {
                 self.control.finish_search_if_current(epoch);
                 SearchExit::Quit
             }
-            EngineCommand::Configure(options) => {
-                self.searcher.configure(&options);
+            EngineCommand::Configure { options, hash } => {
+                self.searcher.configure(&options, hash);
                 SearchExit::Stop
             }
             EngineCommand::ClearHash => {
@@ -537,7 +537,10 @@ mod tests {
             ..EngineOptions::default()
         };
         assert_eq!(
-            engine.handle(EngineCommand::Configure(options)),
+            engine.handle(EngineCommand::Configure {
+                options,
+                hash: crate::search::options::HashRequest::Sent,
+            }),
             SearchExit::Stop
         );
         assert_eq!(engine.handle(EngineCommand::ClearHash), SearchExit::Stop);

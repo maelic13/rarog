@@ -138,7 +138,7 @@ fn allocations_grow_per_iteration_never_per_node() {
             options.engine.threads = threads;
 
             let mut searcher = Searcher::default();
-            searcher.configure(&options.engine);
+            searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
             // The first search pays one-time set-up (lazy tables, the helper
             // pool's first jobs); it is not what this test is about.
             measured_search(&mut searcher, &options, SHALLOW_DEPTH);

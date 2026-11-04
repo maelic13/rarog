@@ -397,7 +397,7 @@ fn search_draw(searcher: &mut Searcher, fen: &str, depth: u32, nodes: u64) -> i3
     options.engine.threads = 1;
     options.limits.depth = Some(depth);
     options.limits.nodes = nodes;
-    searcher.configure(&options.engine);
+    searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
     searcher
         .search(board, &options, false, || SearchEvent::None)
         .score

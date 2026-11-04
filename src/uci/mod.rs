@@ -13,7 +13,7 @@ use std::sync::{Arc, mpsc};
 use crate::bench::DEFAULT_BENCH_DEPTH;
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl};
 use crate::infra::{capitalize_first_letter, flush_stdout};
-use crate::search::options::SearchOptions;
+use crate::search::options::{HashRequest, SearchOptions};
 use crate::wac::DEFAULT_WAC_DEPTH;
 use go::GoRequest;
 use options::OptionUpdate;
@@ -209,16 +209,29 @@ impl UciProtocol {
     /// Applied when the engine thread reaches it: the queue orders the change
     /// after any search already running, so this thread need not wait, and
     /// must not, since it alone reads the `stop` that ends a `go infinite`.
-    /// A rejected value changes nothing, so it queues nothing.
+    /// A rejected value changes nothing, so it queues nothing. Only a `Hash`
+    /// the GUI sends asks the engine thread for a table.
     fn set_option(&mut self, args: &[String]) {
-        match options::apply(&mut self.search_options.engine, args) {
-            OptionUpdate::Applied => self
-                .commands
-                .push(EngineCommand::Configure(self.search_options.engine.clone())),
-            OptionUpdate::ClearHash => self.commands.push(EngineCommand::ClearHash),
-            OptionUpdate::Rejected { notice } => crate::info_string!("{notice}"),
-            OptionUpdate::Unknown { name } => crate::info_string!("No such option: {name}"),
-        }
+        let hash = match options::apply(&mut self.search_options.engine, args) {
+            OptionUpdate::HashApplied => HashRequest::Sent,
+            OptionUpdate::Applied => HashRequest::NotSent,
+            OptionUpdate::ClearHash => {
+                self.commands.push(EngineCommand::ClearHash);
+                return;
+            }
+            OptionUpdate::Rejected { notice } => {
+                crate::info_string!("{notice}");
+                return;
+            }
+            OptionUpdate::Unknown { name } => {
+                crate::info_string!("No such option: {name}");
+                return;
+            }
+        };
+        self.commands.push(EngineCommand::Configure {
+            options: self.search_options.engine.clone(),
+            hash,
+        });
     }
 
     fn new_game(&mut self) {
@@ -474,12 +487,16 @@ mod tests {
     fn setoption_sends_configure_and_clear_hash_sends_its_own_command() {
         let (mut protocol, commands) = protocol_fixture();
         let configured = |command: EngineCommand| match command {
-            EngineCommand::Configure(options) => options,
+            EngineCommand::Configure { options, hash } => (options, hash),
             _ => panic!("setoption must configure the engine"),
         };
 
         protocol.set_option(&args(&["name", "Hash", "value", "8"]));
-        assert_eq!(configured(commands.wait_pop()).hash_mb, 8);
+        let (options, hash) = configured(commands.wait_pop());
+        assert_eq!((options.hash_mb, hash), (8, HashRequest::Sent));
+        // The same value again is still a request: the engine thread tries it.
+        protocol.set_option(&args(&["name", "Hash", "value", "8"]));
+        assert_eq!(configured(commands.wait_pop()).1, HashRequest::Sent);
 
         protocol.set_option(&args(&["name", "Clear", "Hash"]));
         assert!(matches!(commands.wait_pop(), EngineCommand::ClearHash));
@@ -492,12 +509,14 @@ mod tests {
             "MixedCase",
         ]));
         assert_eq!(
-            configured(commands.wait_pop()).syzygy.path,
+            configured(commands.wait_pop()).0.syzygy.path,
             "D:\\TB MixedCase"
         );
 
         protocol.set_option(&args(&["name", "Ponder", "value", "true"]));
-        assert!(configured(commands.wait_pop()).ponder);
+        let (options, hash) = configured(commands.wait_pop());
+        assert!(options.ponder);
+        assert_eq!(hash, HashRequest::NotSent);
     }
 
     #[test]

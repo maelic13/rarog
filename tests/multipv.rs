@@ -78,7 +78,7 @@ fn search_lines(
     };
     options.limits.depth = Some(depth);
     configure(&mut options);
-    searcher.configure(&options.engine);
+    searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
     let result = searcher.search(board, &options, true, || SearchEvent::None);
     let raw = lines.lock().expect("recorder lock").clone();
     let parsed: Vec<Line> = raw.iter().filter_map(|line| parse(line)).collect();

@@ -47,7 +47,7 @@ fn search(path: &str, fen: &str, lines: usize) -> (Vec<String>, Vec<String>, Str
     options.engine.syzygy.path = path.to_string();
     options.engine.multi_pv = lines;
     options.limits.depth = Some(5);
-    searcher.configure(&options.engine);
+    searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
     let result = searcher.search(board, &options, true, || SearchEvent::None);
     let raw = output.lock().expect("recorder lock").clone();
     // A single root move stops early, so read the deepest depth reported.
@@ -165,7 +165,7 @@ fn the_six_man_record_positions_report_a_win_a_ponder_move_and_a_legal_line() {
         };
         options.engine.syzygy.path = path.clone();
         options.limits.depth = Some(10);
-        searcher.configure(&options.engine);
+        searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
         let result = searcher.search(board.clone(), &options, true, || SearchEvent::None);
         let raw = output.lock().expect("recorder lock").clone();
         let line = raw

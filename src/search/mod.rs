@@ -37,7 +37,9 @@ use std::time::{Duration, Instant};
 use crate::board::{Board, Color, GameResult, Move, MoveList};
 use crate::eval::{INF_SCORE, MATE_SCORE};
 use crate::infra;
-use crate::search::options::{EngineOptions, MAX_THREADS, SearchLimits, SearchOptions};
+use crate::search::options::{
+    EngineOptions, HashRequest, MAX_THREADS, SearchLimits, SearchOptions,
+};
 use crate::syzygy::{self, Wdl};
 use crate::tt::{TB_VALUE, TB_WIN_SCORE, TranspositionTable};
 
@@ -382,7 +384,8 @@ impl Searcher {
         self.td.sink.line(&format!("info string {message}"));
     }
 
-    pub fn configure(&mut self, options: &EngineOptions) {
+    pub fn configure(&mut self, options: &EngineOptions, hash: HashRequest) {
+        let in_use = self.shared.hash_mb;
         // The option decides each big table's backing when it is allocated,
         // so a change allocates them all again: the helpers with their own,
         // this thread's, and the transposition table, released before its
@@ -396,15 +399,21 @@ impl Searcher {
             self.shared.tt = TranspositionTable::new(1);
             self.shared.hash_mb = 1;
         }
-        let hash_requested = options.hash_mb != self.shared.requested_hash_mb;
-        self.shared.requested_hash_mb = options.hash_mb;
-        if options.hash_mb != self.shared.hash_mb && (hash_requested || backing_changed) {
-            if self.shared.tt.resize(options.hash_mb) {
-                self.shared.hash_mb = options.hash_mb;
+        // A Hash the GUI sent is tried whenever it differs from the table in
+        // use, and a refusal said every time; any other change only keeps the
+        // size in use, across a change of backing too, so it never reports on
+        // a Hash nobody sent.
+        let target = match hash {
+            HashRequest::Sent => options.hash_mb,
+            HashRequest::NotSent => in_use,
+        };
+        if target != self.shared.hash_mb {
+            if self.shared.tt.resize(target) {
+                self.shared.hash_mb = target;
             } else {
                 self.notice(format_args!(
-                    "Unable to allocate Hash value {}; keeping {} MiB.",
-                    options.hash_mb, self.shared.hash_mb
+                    "Unable to allocate Hash value {target}; keeping {} MiB.",
+                    self.shared.hash_mb
                 ));
             }
         }
@@ -2027,28 +2036,35 @@ mod tests {
     }
 
     /// A `Hash` the allocator refuses keeps the table it had and is announced
-    /// once, not again on every later `setoption` that resends the option set.
+    /// every time it is sent, and never when another option is.
     /// `usize::MAX` MiB is a reservation `try_reserve_exact` rejects before any
     /// memory is touched, so the refusal is the same on every platform.
     #[test]
-    fn a_hash_the_allocator_refuses_keeps_the_table_and_is_announced_once() {
+    fn a_hash_the_allocator_refuses_keeps_the_table_and_is_announced_each_time_it_is_sent() {
         let lines = Arc::new(Mutex::new(Vec::new()));
         let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
         let refused = EngineOptions {
             hash_mb: usize::MAX,
             ..EngineOptions::default()
         };
-        searcher.configure(&refused);
-        searcher.configure(&EngineOptions {
+        let refusals = || {
+            lines
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|line| line.contains("Unable to allocate Hash"))
+                .count()
+        };
+        searcher.configure(&refused, HashRequest::Sent);
+        assert_eq!(refusals(), 1);
+        let threads = EngineOptions {
             threads: 2,
-            ..refused
-        });
-        let printed = lines.lock().unwrap().clone();
-        let refusals = printed
-            .iter()
-            .filter(|line| line.contains("Unable to allocate Hash"))
-            .count();
-        assert_eq!(refusals, 1, "{printed:?}");
+            ..refused.clone()
+        };
+        searcher.configure(&threads, HashRequest::NotSent);
+        assert_eq!(refusals(), 1, "another option reports nothing about Hash");
+        searcher.configure(&threads, HashRequest::Sent);
+        assert_eq!(refusals(), 2, "the same Hash sent again is tried again");
         assert_eq!(searcher.shared.hash_mb, 64);
     }
 
@@ -2314,13 +2330,13 @@ mod tests {
             threads: 4,
             ..EngineOptions::default()
         };
-        searcher.configure(&options);
+        searcher.configure(&options, HashRequest::Sent);
         assert!(
             searcher.shared.tt.is_shared(),
             "Threads > 1 must convert the table at configure, not in the first search"
         );
         options.threads = 1;
-        searcher.configure(&options);
+        searcher.configure(&options, HashRequest::Sent);
         assert!(
             !searcher.shared.tt.is_shared(),
             "Threads = 1 must restore the local table at configure"
@@ -2340,11 +2356,11 @@ mod tests {
             threads: 2,
             ..EngineOptions::default()
         };
-        searcher.configure(&options);
+        searcher.configure(&options, HashRequest::Sent);
         store_static_eval(&mut searcher, &board, 17);
 
         options.multi_pv = 2;
-        searcher.configure(&options);
+        searcher.configure(&options, HashRequest::Sent);
         assert!(
             searcher.shared.tt.probe(board.hash()).is_some(),
             "an unrelated option change kept the table"
@@ -2352,7 +2368,7 @@ mod tests {
         assert!(lines.lock().unwrap().is_empty());
 
         options.large_pages = false;
-        searcher.configure(&options);
+        searcher.configure(&options, HashRequest::Sent);
         assert!(
             searcher.shared.tt.probe(board.hash()).is_none(),
             "the table was allocated again"
@@ -2372,7 +2388,7 @@ mod tests {
         );
 
         options.large_pages = true;
-        searcher.configure(&options);
+        searcher.configure(&options, HashRequest::Sent);
         assert_eq!(
             lines.lock().unwrap().len(),
             2,

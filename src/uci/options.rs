@@ -18,6 +18,9 @@ use crate::search::params::{CoreParams, ProofParams, QuietParams, SearchParams};
 pub enum OptionUpdate {
     /// The option took the value; the engine thread must be reconfigured.
     Applied,
+    /// `Hash` took the value: the engine thread must try the table, and say
+    /// so if it cannot have it, however often the same value is sent.
+    HashApplied,
     /// The `Clear Hash` button: nothing to store, one action to run.
     ClearHash,
     /// A recognised option whose value was not taken; the setting is
@@ -291,6 +294,7 @@ pub fn apply(engine: &mut EngineOptions, args: &[String]) -> OptionUpdate {
         Kind::Button => return OptionUpdate::ClearHash,
     };
     match taken {
+        Ok(()) if option.name == "Hash" => OptionUpdate::HashApplied,
         Ok(()) => OptionUpdate::Applied,
         Err(Refusal::Unreadable) => OptionUpdate::Rejected {
             notice: format!("Invalid {} value.", option.name),
@@ -463,12 +467,12 @@ mod tests {
                 .iter()
                 .map(ToString::to_string)
                 .collect();
-            assert_eq!(
-                apply(&mut engine, &args),
-                OptionUpdate::Applied,
-                "{}",
-                option.name
-            );
+            let want = if option.name == "Hash" {
+                OptionUpdate::HashApplied
+            } else {
+                OptionUpdate::Applied
+            };
+            assert_eq!(apply(&mut engine, &args), want, "{}", option.name);
         }
         let default = EngineOptions::default();
         assert_eq!(engine.hash_mb, default.hash_mb);

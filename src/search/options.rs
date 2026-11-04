@@ -98,6 +98,16 @@ pub struct SearchLimits {
     pub(crate) issued: Option<std::time::Instant>,
 }
 
+/// Whether a reconfiguration carries a `Hash` the GUI has just sent. Such a
+/// value is tried whenever it differs from the table in use, and a refusal
+/// is reported every time; any other change keeps the table at the size in
+/// use and reports nothing about `Hash`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HashRequest {
+    Sent,
+    NotSent,
+}
+
 #[derive(Clone, Default)]
 pub struct SearchOptions {
     pub board: Board,
