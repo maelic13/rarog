@@ -857,8 +857,8 @@ measurement stays on the single-tier `pext` build. Every `cargo xtask` build
 for Windows and Linux links the C runtime statically (`+crt-static`: the
 Visual C++ runtime and the UCRT, or glibc as a static PIE), and xtask refuses
 a binary that still imports one or has a dynamic loader (RAR-P57); macOS
-cannot, so its binaries need only `libSystem` and macOS 11.0, which the
-release checks. The release benches every
+cannot, so its binaries need only `libSystem` and macOS 11.0 or newer (the
+release checks that 11.0 is the minimum). The release benches every
 forced tier on its runner and checks the selection under Intel SDE
 (`tools/diag/check_universal.py`). The start-up line names the tier and kinds;
 `id name` never does, since rating lists key on it. `RAROG_DEV_ID=<date>-<hash>`
