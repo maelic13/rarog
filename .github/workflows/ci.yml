@@ -146,6 +146,11 @@ jobs:
         run: |
           cargo test -p xtask
           cargo test --manifest-path tools/texel-tuner/Cargo.toml
+          # The universal binary's dispatcher is outside the workspace (it
+          # links only beside the four tiers); it must still compile clean.
+          rustc --edition 2024 --crate-type bin --emit=metadata -D warnings \
+            -o target/dispatch-check.rmeta universal/dispatch.rs
+          python3 -m py_compile tools/diag/check_universal.py
 
   bench-fingerprint:
     name: bench ${{ matrix.label }}

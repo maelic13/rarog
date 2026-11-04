@@ -7,7 +7,9 @@ run-name: ${{ github.ref_type == 'tag' && github.ref_name || format('release can
 # on master. The workflow validates first (the tag names Cargo.toml's version,
 # the tagged commit is on master or such a patch, CHANGELOG.md has a dated
 # section for it), builds the
-# eleven PGO assets read-only, benches every one and asserts a single `bench 13`
+# five PGO assets read-only (the universal x86-64 binary for Linux and
+# Windows, which picks its tier at start-up, and the three arm64 builds),
+# checks the x86-64 tier selection under Intel SDE, benches every one and asserts a single `bench 13`
 # fingerprint across the matrix equal to the one GUIDE's checkpoint declares,
 # and only then one job with write permission publishes the release with every
 # asset and the notes taken from that CHANGELOG section. Nothing exists on
@@ -112,7 +114,7 @@ jobs:
           if-no-files-found: error
 
   build:
-    name: Build ${{ matrix.os_name }} ${{ matrix.arch }} ${{ matrix.tier }}
+    name: Build ${{ matrix.os_name }} ${{ matrix.arch }}
     needs: prepare
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -121,24 +123,19 @@ jobs:
         include:
           # Every cell is a NATIVE runner (host triple == target), which PGO
           # requires: the instrumented binary runs its training bench locally.
-          # An x64 cell names its tier; arm64 has none.
-          - { runner: ubuntu-latest, os_name: linux, arch: x64, tier: base, target: x86_64-unknown-linux-gnu, ext: "" }
-          - { runner: ubuntu-latest, os_name: linux, arch: x64, tier: sse42, target: x86_64-unknown-linux-gnu, ext: "" }
-          - { runner: ubuntu-latest, os_name: linux, arch: x64, tier: avx2, target: x86_64-unknown-linux-gnu, ext: "" }
-          - { runner: ubuntu-latest, os_name: linux, arch: x64, tier: pext, target: x86_64-unknown-linux-gnu, ext: "" }
-          - { runner: ubuntu-24.04-arm, os_name: linux, arch: arm64, tier: "", target: aarch64-unknown-linux-gnu, ext: "" }
-          - { runner: windows-latest, os_name: windows, arch: x64, tier: base, target: x86_64-pc-windows-msvc, ext: ".exe" }
-          - { runner: windows-latest, os_name: windows, arch: x64, tier: sse42, target: x86_64-pc-windows-msvc, ext: ".exe" }
-          - { runner: windows-latest, os_name: windows, arch: x64, tier: avx2, target: x86_64-pc-windows-msvc, ext: ".exe" }
-          - { runner: windows-latest, os_name: windows, arch: x64, tier: pext, target: x86_64-pc-windows-msvc, ext: ".exe" }
+          # An x64 cell builds the universal binary, every tier trained on
+          # this runner; arm64 has no tiers.
+          - { runner: ubuntu-latest, os_name: linux, arch: x64, universal: true, target: x86_64-unknown-linux-gnu, ext: "" }
+          - { runner: ubuntu-24.04-arm, os_name: linux, arch: arm64, universal: false, target: aarch64-unknown-linux-gnu, ext: "" }
+          - { runner: windows-latest, os_name: windows, arch: x64, universal: true, target: x86_64-pc-windows-msvc, ext: ".exe" }
           # PGO here depends on a WORKAROUND, not on stock toolchain support:
           # linked with MSVC link.exe the instrumented binary emits .profraw
           # files with an empty symbol-name table and llvm-profdata refuses
           # them. xtask forces LLD for this target (`linker_flags` in
           # xtask/src/main.rs, rust-lang/rust#156675) — when that lands, drop
           # the override and re-test.
-          - { runner: windows-11-arm, os_name: windows, arch: arm64, tier: "", target: aarch64-pc-windows-msvc, ext: ".exe" }
-          - { runner: macos-latest, os_name: macos, arch: arm64, tier: "", target: aarch64-apple-darwin, ext: "" }
+          - { runner: windows-11-arm, os_name: windows, arch: arm64, universal: false, target: aarch64-pc-windows-msvc, ext: ".exe" }
+          - { runner: macos-latest, os_name: macos, arch: arm64, universal: false, target: aarch64-apple-darwin, ext: "" }
     steps:
       - uses: actions/checkout@v7
         with:
@@ -158,23 +155,21 @@ jobs:
       - name: Install llvm-tools
         run: rustup component add llvm-tools
 
-      # xtask names the file (`rarog-<name>-<os>-<arch>[-<tier>]`, the name a
-      # PGO build with the default features ships under) and checks the
-      # built engine reports it. A cross-runner tier the CPU cannot run is
-      # refused there, since PGO trains by running the engine.
+      # xtask names the file (`rarog-<name>-<os>-<arch>`), checks the built
+      # engine reports that name and, for the universal binary, that every
+      # tier this runner runs, forced, benches one fingerprint.
       - name: Build the PGO asset
         shell: bash
         run: >
           cargo xtask build --target ${{ matrix.target }}
-          ${{ matrix.tier && format('--tier {0}', matrix.tier) || '' }}
+          ${{ matrix.universal && '--universal' || '' }}
 
       - name: Take the asset
         id: asset
         shell: bash
         run: |
           set -euo pipefail
-          tier='${{ matrix.tier }}'
-          name="rarog-${{ needs.prepare.outputs.name }}-${{ matrix.os_name }}-${{ matrix.arch }}${tier:+-$tier}${{ matrix.ext }}"
+          name="rarog-${{ needs.prepare.outputs.name }}-${{ matrix.os_name }}-${{ matrix.arch }}${{ matrix.ext }}"
           built="target/dist/$name"
           test -f "$built" || { echo "::error::expected artifact not found: $built"; ls -la target/dist || true; exit 1; }
           mkdir -p asset
@@ -188,7 +183,7 @@ jobs:
         shell: bash
         run: >
           cargo xtask verify-isa --target ${{ matrix.target }}
-          ${{ matrix.tier && format('--tier {0}', matrix.tier) || '' }}
+          ${{ matrix.universal && '--universal' || '' }}
           --exe "asset/${{ steps.asset.outputs.name }}"
 
       # The UCI handshake, the name and the fingerprint. The node count must
@@ -208,17 +203,67 @@ jobs:
           expected='${{ needs.prepare.outputs.expected_nodes }}'
           echo "bench 13: $nodes nodes (declared $expected)"
           test "$nodes" = "$expected" || { echo "::error::fingerprint $nodes differs from the declared $expected"; exit 1; }
+          if [ '${{ matrix.universal }}' = true ]; then
+            for tier in base sse42 avx2 pext; do
+              forced="$(RAROG_ISA=$tier "$bin" bench 13)"
+              echo "$forced" | grep -q "^Rarog .* ($tier)\$" || { echo "::error::the forced $tier tier does not say so"; echo "$forced" | head -2; exit 1; }
+              n="$(echo "$forced" | grep -i 'Nodes searched' | grep -oE '[0-9]+' | head -1)"
+              echo "forced $tier: $n"
+              test "$n" = "$expected" || { echo "::error::the forced $tier tier benches $n, not $expected"; exit 1; }
+            done
+          fi
           echo "$nodes" > "asset/${{ steps.asset.outputs.name }}.nodes"
 
       - uses: actions/upload-artifact@v7
         with:
-          name: asset-${{ matrix.os_name }}-${{ matrix.arch }}${{ matrix.tier && format('-{0}', matrix.tier) || '' }}
+          name: asset-${{ matrix.os_name }}-${{ matrix.arch }}
           path: asset/*
           if-no-files-found: error
 
+  # The universal binary's tier selection under Intel SDE: each emulated CPU
+  # must start the tier the dispatcher's rule gives it and reproduce the
+  # fingerprint there, and a forced tier it cannot run must be refused
+  # (tools/diag/check_universal.py). The action is pinned by commit.
+  select:
+    name: Tier selection under SDE (${{ matrix.os_name }})
+    needs: [prepare, build]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-latest, os_name: linux, ext: "" }
+          - { runner: windows-latest, os_name: windows, ext: ".exe" }
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: asset-${{ matrix.os_name }}-x64
+          path: asset
+
+      - name: Download SDE
+        uses: petarpetrovt/setup-sde@31aa4a8e85e109bef00f1d838613fcc6ec421271 # v5.0
+        with:
+          environmentVariableName: SDE_DIR
+          sdeVersion: 9.58.0
+
+      - name: Check the tier each CPU selects
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary="asset/rarog-${{ needs.prepare.outputs.name }}-${{ matrix.os_name }}-x64${{ matrix.ext }}"
+          chmod +x "$binary"
+          python=$(command -v python3 || command -v python)
+          "$python" tools/diag/check_universal.py --binary "$binary" --sde "$SDE_DIR" \
+            --bench '${{ needs.prepare.outputs.expected_nodes }}'
+
   collect:
     name: Verify the complete matrix
-    needs: [prepare, build]
+    needs: [prepare, build, select]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -227,27 +272,25 @@ jobs:
           merge-multiple: true
           path: bundle
 
-      - name: Eleven assets, one fingerprint
+      - name: Five assets, one fingerprint
         shell: bash
         run: |
           set -euo pipefail
           cd bundle
           name='${{ needs.prepare.outputs.name }}'
-          expected=()
-          for os in linux windows; do
-            ext=""; [ "$os" = windows ] && ext=".exe"
-            for tier in base sse42 avx2 pext; do expected+=("rarog-${name}-${os}-x64-${tier}${ext}"); done
-            expected+=("rarog-${name}-${os}-arm64${ext}")
-          done
-          expected+=("rarog-${name}-macos-arm64")
+          expected=(
+            "rarog-${name}-linux-x64" "rarog-${name}-linux-arm64"
+            "rarog-${name}-windows-x64.exe" "rarog-${name}-windows-arm64.exe"
+            "rarog-${name}-macos-arm64"
+          )
           for f in "${expected[@]}"; do test -f "$f" || { echo "::error::missing asset $f"; exit 1; }; done
-          test "$(ls | grep -vc '\.nodes$')" -eq 11
+          test "$(ls | grep -vc '\.nodes$')" -eq 5
           nodes="$(cat *.nodes | sort -u)"
           test "$(wc -l <<<"$nodes")" -eq 1 || { echo "::error::the assets disagree on bench 13: $nodes"; exit 1; }
           test "$nodes" = '${{ needs.prepare.outputs.expected_nodes }}'
           rm -f *.nodes
           sha256sum "${expected[@]}" | tee SHA256SUMS
-          echo "eleven assets at bench 13 = $nodes"
+          echo "five assets at bench 13 = $nodes"
 
       - uses: actions/upload-artifact@v7
         with:
