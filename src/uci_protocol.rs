@@ -254,9 +254,10 @@ impl UciProtocol {
         flush_stdout();
     }
 
-    fn ponderhit(&mut self) {
+    /// Only the flag: the running search polls it, and nothing waits in the
+    /// queue behind a search for it.
+    fn ponderhit(&self) {
         self.control.request_ponderhit();
-        self.commands.push(EngineCommand::PonderHit);
     }
 
     fn run_perft(&self, depth: u32) {
@@ -530,11 +531,9 @@ mod tests {
         let (mut protocol, commands) = protocol_fixture();
 
         protocol.stop();
-        protocol.ponderhit();
         protocol.quit();
 
         assert!(matches!(commands.wait_pop(), EngineCommand::Quit { .. }));
         assert!(matches!(commands.wait_pop(), EngineCommand::Stop { .. }));
-        assert!(matches!(commands.wait_pop(), EngineCommand::PonderHit));
     }
 }

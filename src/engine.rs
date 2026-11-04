@@ -81,7 +81,6 @@ impl Engine {
                 self.searcher.new_game();
                 SearchExit::Stop
             }
-            EngineCommand::PonderHit => SearchExit::Stop,
             EngineCommand::Ready(ready) => {
                 let _ = ready.send(());
                 SearchExit::Stop
@@ -487,7 +486,6 @@ mod tests {
         );
         assert_eq!(engine.handle(EngineCommand::ClearHash), SearchExit::Stop);
         assert_eq!(engine.handle(EngineCommand::NewGame), SearchExit::Stop);
-        assert_eq!(engine.handle(EngineCommand::PonderHit), SearchExit::Stop);
 
         let quit = EngineCommand::Quit {
             epoch: control.request_quit(),

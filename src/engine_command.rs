@@ -196,9 +196,6 @@ pub enum EngineCommand {
     Configure(EngineOptions),
     ClearHash,
     NewGame,
-    /// The protocol thread has already raised the ponderhit flag; the queued
-    /// command keeps the engine's view of the queue in UCI order.
-    PonderHit,
     /// Answered once every earlier command has run.
     Ready(Sender<()>),
 }
