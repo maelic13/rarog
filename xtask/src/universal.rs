@@ -384,11 +384,7 @@ fn rename_tier(object: &Path, tier: cpu_tier::Tier, dir: &Path) -> Result<PathBu
         ],
     )?;
     let after = defined_globals(&renamed)?;
-    let prefix = tier_symbol(tier, "");
-    let leftover: Vec<&String> = after
-        .iter()
-        .filter(|name| !is_value_named_constant(name) && !name.starts_with(&prefix))
-        .collect();
+    let leftover = leftover_globals(&after, tier);
     if !leftover.is_empty() {
         return Err(format!(
             "the {} tier still defines {leftover:?} under a name another tier can take",
@@ -413,6 +409,17 @@ fn rename_tier(object: &Path, tier: cpu_tier::Tier, dir: &Path) -> Result<PathBu
     Ok(renamed)
 }
 
+/// The globals a renamed tier still defines under a name another tier could
+/// take: anything but a value-named constant or the tier's own names.
+fn leftover_globals(after: &[String], tier: cpu_tier::Tier) -> Vec<String> {
+    let prefix = tier_symbol(tier, "");
+    after
+        .iter()
+        .filter(|name| !is_value_named_constant(name) && !name.starts_with(&prefix))
+        .cloned()
+        .collect()
+}
+
 /// One section of an object, as `llvm-readobj --sections` describes it.
 #[derive(Debug, Default)]
 struct Section {
@@ -432,6 +439,11 @@ fn sections(object: &Path) -> Result<Vec<Section>> {
             object.to_str().ok_or("object path is not UTF-8")?,
         ],
     )?;
+    Ok(parse_sections(&text))
+}
+
+/// `llvm-readobj --sections` output, COFF or ELF, as sections.
+fn parse_sections(text: &str) -> Vec<Section> {
     let mut sections = Vec::new();
     let mut current: Option<Section> = None;
     for line in text.lines().map(str::trim) {
@@ -463,72 +475,119 @@ fn sections(object: &Path) -> Result<Vec<Section>> {
         }
     }
     sections.extend(current);
-    Ok(sections)
+    sections
 }
 
 /// Every function of the tier on a cache line: at most
 /// [`UNALIGNED_ALLOWANCE`] code sections below it, none of them hot.
 fn check_alignment(object: &Path) -> Result<()> {
-    let line = 1u64 << ALIGN_LOG2;
-    let code: Vec<Section> = sections(object)?
-        .into_iter()
-        .filter(|section| section.code && section.size > 0)
-        .collect();
-    let below: Vec<&Section> = code
-        .iter()
-        .filter(|section| section.alignment < line)
-        .collect();
     let objdump = llvm_tool("llvm-objdump")?;
     let table = tool_output(
         &objdump,
         &["-t", object.to_str().ok_or("object path is not UTF-8")?],
     )?;
-    let mut hot_below = Vec::new();
-    for section in &below {
-        let marker = format!("(sec{:>3})", section.number);
-        for symbol in table.lines().filter(|row| row.contains(&marker)) {
-            let name = symbol.split_whitespace().last().unwrap_or_default();
-            if HOT_FUNCTIONS
-                .iter()
-                .any(|hot| name.contains(&format!("{}{hot}", hot.len())))
-            {
-                hot_below.push(name.to_string());
-            }
-        }
-    }
-    if !hot_below.is_empty() || below.len() > UNALIGNED_ALLOWANCE {
+    let verdict = judge_alignment(&sections(object)?, &table);
+    if !verdict.hot_below.is_empty() || verdict.below > UNALIGNED_ALLOWANCE {
         return Err(format!(
-            "`{}`: {} of {} code sections are below {line}-byte alignment (allowed \
-             {UNALIGNED_ALLOWANCE}, none hot); hot ones: {hot_below:?}",
+            "`{}`: {} of {} code sections are below {}-byte alignment (allowed \
+             {UNALIGNED_ALLOWANCE}, none hot); hot ones: {:?}",
             object.display(),
-            below.len(),
-            code.len()
+            verdict.below,
+            verdict.code,
+            1u64 << ALIGN_LOG2,
+            verdict.hot_below
         ));
     }
     println_flush(format_args!(
-        "  {} of {} code sections on a {line}-byte line",
-        code.len() - below.len(),
-        code.len()
+        "  {} of {} code sections on a {}-byte line",
+        verdict.code - verdict.below,
+        verdict.code,
+        1u64 << ALIGN_LOG2
     ));
     Ok(())
 }
 
+/// How a tier object's code sections sit against the line.
+#[derive(Debug, PartialEq, Eq)]
+struct AlignmentVerdict {
+    code: usize,
+    below: usize,
+    hot_below: Vec<String>,
+}
+
+/// `table` is `llvm-objdump -t`: COFF marks a symbol's section `(secN)`;
+/// ELF names a function's own section after it (`.text.<symbol>`).
+fn judge_alignment(sections: &[Section], table: &str) -> AlignmentVerdict {
+    let line = 1u64 << ALIGN_LOG2;
+    let code: Vec<&Section> = sections
+        .iter()
+        .filter(|section| section.code && section.size > 0)
+        .collect();
+    let below: Vec<&&Section> = code
+        .iter()
+        .filter(|section| section.alignment < line)
+        .collect();
+    let is_hot = |name: &str| {
+        HOT_FUNCTIONS
+            .iter()
+            .any(|hot| name.contains(&format!("{}{hot}", hot.len())))
+    };
+    let mut hot_below = Vec::new();
+    for section in &below {
+        if is_hot(&section.name) {
+            hot_below.push(section.name.clone());
+        }
+        let marker = format!("(sec{:>3})", section.number);
+        for symbol in table.lines().filter(|row| row.contains(&marker)) {
+            let name = symbol.split_whitespace().last().unwrap_or_default();
+            if is_hot(name) {
+                hot_below.push(name.to_string());
+            }
+        }
+    }
+    AlignmentVerdict {
+        code: code.len(),
+        below: below.len(),
+        hot_below,
+    }
+}
+
 /// A tier's initialisers run at load, before the dispatcher has chosen, in
-/// every tier. Windows: none may exist. ELF: only `.init_array`, std's
+/// every tier. Windows: none may exist. ELF: one `.init_array` entry, std's
 /// capture of `argc`/`argv` into the tier's own copy, which is harmless run
 /// four times.
 fn check_initialisers(object: &Path) -> Result<()> {
-    let found: Vec<String> = sections(object)?
+    let names: Vec<String> = sections(object)?
         .into_iter()
         .map(|section| section.name)
+        .collect();
+    let found = judge_initialisers(&names)
+        .map_err(|refused| format!("`{}`: {refused}", object.display()))?;
+    if !found.is_empty() {
+        println_flush(format_args!(
+            "  initialisers kept (std's argument capture): {found:?}"
+        ));
+    }
+    Ok(())
+}
+
+/// The initialiser sections among `names`, or why they are refused.
+fn judge_initialisers(names: &[String]) -> std::result::Result<Vec<String>, String> {
+    let found: Vec<String> = names
+        .iter()
         .filter(|name| {
-            name.starts_with(".CRT$X")
-                || name.starts_with(".init_array")
-                || name.starts_with(".preinit_array")
-                || name.starts_with(".ctors")
-                || name.starts_with(".fini_array")
-                || name.starts_with(".dtors")
+            [
+                ".CRT$X",
+                ".init_array",
+                ".preinit_array",
+                ".ctors",
+                ".fini_array",
+                ".dtors",
+            ]
+            .iter()
+            .any(|prefix| name.starts_with(prefix))
         })
+        .cloned()
         .collect();
     let refused: Vec<&String> = found
         .iter()
@@ -536,16 +595,16 @@ fn check_initialisers(object: &Path) -> Result<()> {
         .collect();
     if !refused.is_empty() {
         return Err(format!(
-            "`{}` carries initialisers that would run in every tier: {refused:?}",
-            object.display()
+            "initialisers that would run in every tier: {refused:?}"
         ));
     }
-    if !found.is_empty() {
-        println_flush(format_args!(
-            "  initialisers kept (std's argument capture): {found:?}"
+    if found.len() > 1 {
+        return Err(format!(
+            "{} `.init_array` sections where std has one: {found:?}",
+            found.len()
         ));
     }
-    Ok(())
+    Ok(found)
 }
 
 /// Link the dispatcher with the renamed tiers. rustc does the link, so the
@@ -682,6 +741,152 @@ mod tests {
         assert_eq!(
             tier_symbol(cpu_tier::Tier::Sse42, "main"),
             "rarog_sse42_main"
+        );
+    }
+
+    const COFF_SECTIONS: &str = "
+Sections [
+  Section {
+    Number: 1
+    Name: .text (2E 74 65 78 74 00 00 00)
+    RawDataSize: 0
+    Characteristics [ (0x60500020)
+      IMAGE_SCN_ALIGN_16BYTES (0x500000)
+      IMAGE_SCN_CNT_CODE (0x20)
+    ]
+  }
+  Section {
+    Number: 4
+    Name: .text (2E 74 65 78 74 00 00 00)
+    RawDataSize: 132
+    Characteristics [ (0x60301020)
+      IMAGE_SCN_ALIGN_4BYTES (0x300000)
+      IMAGE_SCN_CNT_CODE (0x20)
+    ]
+  }
+  Section {
+    Number: 5
+    Name: .text (2E 74 65 78 74 00 00 00)
+    RawDataSize: 4096
+    Characteristics [ (0x60701020)
+      IMAGE_SCN_ALIGN_64BYTES (0x700000)
+      IMAGE_SCN_CNT_CODE (0x20)
+    ]
+  }
+  Section {
+    Number: 6
+    Name: .CRT$XCU (2E 43 52 54 24 58 43 55)
+    RawDataSize: 8
+    Characteristics [ (0x40300040)
+      IMAGE_SCN_ALIGN_4BYTES (0x300000)
+    ]
+  }
+]";
+
+    const ELF_SECTIONS: &str = "
+Sections [
+  Section {
+    Index: 7
+    Name: .text._RNvNtCs1_5rarog6search7negamax (512)
+    Type: SHT_PROGBITS (0x1)
+    Flags [ (0x6)
+      SHF_ALLOC (0x2)
+      SHF_EXECINSTR (0x4)
+    ]
+    Size: 4713
+    AddressAlignment: 16
+  }
+  Section {
+    Index: 8
+    Name: .init_array.00099 (600)
+    Type: SHT_INIT_ARRAY (0xE)
+    Size: 8
+    AddressAlignment: 8
+  }
+]";
+
+    #[test]
+    fn sections_are_read_from_both_object_formats() {
+        let coff = parse_sections(COFF_SECTIONS);
+        assert_eq!(coff.len(), 4);
+        assert_eq!(
+            (coff[1].number, coff[1].size, coff[1].alignment),
+            (4, 132, 4)
+        );
+        assert!(coff[2].code && coff[2].alignment == 64);
+        assert_eq!(coff[3].name, ".CRT$XCU");
+        assert!(!coff[3].code);
+        let elf = parse_sections(ELF_SECTIONS);
+        assert_eq!(
+            (elf[0].number, elf[0].size, elf[0].alignment),
+            (7, 4713, 16)
+        );
+        assert!(elf[0].code);
+        assert_eq!(elf[1].name, ".init_array.00099");
+    }
+
+    #[test]
+    fn a_cold_section_off_the_line_is_allowed_and_a_hot_one_is_not() {
+        let coff = parse_sections(COFF_SECTIONS);
+        // Section 4 holds a cold drop glue: counted, allowed (an empty
+        // section 1 is not code that runs).
+        let cold = "[ 8](sec  4)(fl 0x00)(ty  20)(scl   3) (nx 0) 0x00000000 _RINvNtCs7_4core3ptr9drop_glue\n";
+        let verdict = judge_alignment(&coff, cold);
+        assert_eq!((verdict.code, verdict.below), (2, 1));
+        assert!(verdict.hot_below.is_empty());
+        // The same section holding the search is refused.
+        let hot = "[ 8](sec  4)(fl 0x00)(ty  20)(scl   3) (nx 0) 0x00000000 _RNvNtCs1_5rarog6search7negamax\n";
+        assert_eq!(judge_alignment(&coff, hot).hot_below.len(), 1);
+        // ELF names a function's section after it.
+        let elf = parse_sections(ELF_SECTIONS);
+        assert_eq!(judge_alignment(&elf, "").hot_below.len(), 1);
+    }
+
+    #[test]
+    fn only_std_argument_capture_may_initialise() {
+        let names = |list: &[&str]| list.iter().map(|n| (*n).to_string()).collect::<Vec<_>>();
+        assert_eq!(judge_initialisers(&names(&[".text", ".rdata"])), Ok(vec![]));
+        assert!(judge_initialisers(&names(&[".text", ".init_array.00099"])).is_ok());
+        for refused in [
+            ".CRT$XCU",
+            ".CRT$XLB",
+            ".ctors",
+            ".preinit_array",
+            ".fini_array",
+        ] {
+            assert!(
+                judge_initialisers(&names(&[".text", refused])).is_err(),
+                "{refused}"
+            );
+        }
+        assert!(
+            judge_initialisers(&names(&[".init_array.00099", ".init_array"])).is_err(),
+            "a second initialiser is not std's"
+        );
+        let coff: Vec<String> = parse_sections(COFF_SECTIONS)
+            .into_iter()
+            .map(|s| s.name)
+            .collect();
+        assert!(judge_initialisers(&coff).is_err());
+    }
+
+    #[test]
+    fn a_global_left_unrenamed_is_found() {
+        let tier = cpu_tier::Tier::Avx2;
+        let clean: Vec<String> = [
+            "rarog_avx2_main",
+            "rarog_avx2_rust_eh_personality",
+            "__real@3ff0000000000000",
+        ]
+        .map(String::from)
+        .to_vec();
+        assert!(leftover_globals(&clean, tier).is_empty());
+        let mut planted = clean.clone();
+        planted.push("rust_eh_personality".to_string());
+        planted.push("rarog_pext_main".to_string());
+        assert_eq!(
+            leftover_globals(&planted, tier),
+            ["rust_eh_personality", "rarog_pext_main"]
         );
     }
 

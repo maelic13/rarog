@@ -978,8 +978,49 @@ fn check_isa(exe: &Path, arch: Arch, target: &str, default_cpu: bool) -> Result<
         ],
     )?;
 
+    let judgement = judge_disassembly(&disassembly, arch, &features);
+    if judgement.instructions == 0 {
+        return Err(format!(
+            "llvm-objdump produced no instructions for {} — it is probably not an \
+             object file for this host's disassembler",
+            exe.display()
+        ));
+    }
+    println_flush(format_args!(
+        "  {} instructions disassembled",
+        judgement.instructions
+    ));
+    for (class, count) in &judgement.counts {
+        println_flush(format_args!("    {class:<10} {count}"));
+    }
+    if judgement.tzcnt > 0 {
+        println_flush(format_args!(
+            "    {:<10} {} (permitted: {})",
+            "tzcnt", judgement.tzcnt, TZCNT_IS_BASELINE_SAFE
+        ));
+    }
+    if judgement.failures.is_empty() {
+        println_flush(format_args!("  contract holds"));
+        Ok(())
+    } else {
+        Err(judgement.failures.join("\n       "))
+    }
+}
+
+/// What a disassembly holds against a tier's contract.
+struct IsaJudgement {
+    instructions: u64,
+    counts: Vec<(&'static str, u64)>,
+    tzcnt: u64,
+    failures: Vec<String>,
+}
+
+/// Hold `disassembly` (`llvm-objdump -d` output) to the contract of `arch`,
+/// whose code generation enables `features`. Pure, so a planted instruction
+/// can be shown to fail.
+fn judge_disassembly(disassembly: &str, arch: Arch, features: &[String]) -> IsaJudgement {
     let contract = isa_contract(arch);
-    let mut counts: Vec<(&str, u64)> = contract
+    let mut counts: Vec<(&'static str, u64)> = contract
         .classes
         .iter()
         .map(|class| (class.name, 0u64))
@@ -1001,13 +1042,6 @@ fn check_isa(exe: &Path, arch: Arch, target: &str, default_cpu: bool) -> Result<
             }
         }
     }
-    if instructions == 0 {
-        return Err(format!(
-            "llvm-objdump produced no instructions for {} — it is probably not an \
-             object file for this host's disassembler",
-            exe.display()
-        ));
-    }
 
     let count_of = |name: &str| -> u64 {
         counts
@@ -1015,17 +1049,6 @@ fn check_isa(exe: &Path, arch: Arch, target: &str, default_cpu: bool) -> Result<
             .find_map(|(class, count)| (*class == name).then_some(*count))
             .unwrap_or(0)
     };
-    println_flush(format_args!("  {instructions} instructions disassembled"));
-    for (class, count) in &counts {
-        println_flush(format_args!("    {class:<10} {count}"));
-    }
-    if tzcnt > 0 {
-        println_flush(format_args!(
-            "    {:<10} {} (permitted: {})",
-            "tzcnt", tzcnt, TZCNT_IS_BASELINE_SAFE
-        ));
-    }
-
     let mut failures = Vec::new();
     for class in contract.classes {
         let count = count_of(class.name);
@@ -1060,11 +1083,11 @@ fn check_isa(exe: &Path, arch: Arch, target: &str, default_cpu: bool) -> Result<
             ));
         }
     }
-    if failures.is_empty() {
-        println_flush(format_args!("  contract holds"));
-        Ok(())
-    } else {
-        Err(failures.join("\n       "))
+    IsaJudgement {
+        instructions,
+        counts,
+        tzcnt,
+        failures,
     }
 }
 
@@ -2352,6 +2375,125 @@ mod tests {
             "pext, nopgo"
         );
         assert_eq!(build_name::label(None, &[]), "");
+    }
+
+    /// A listing in `llvm-objdump -d --no-show-raw-insn`'s form.
+    fn listing(mnemonics: &[&str]) -> String {
+        mnemonics
+            .iter()
+            .enumerate()
+            .map(|(i, m)| format!("  {:x}: \t{m}\t%rdi, %rax\n", 0x1000 + 4 * i))
+            .collect()
+    }
+
+    /// The failures a listing earns against `arch`'s contract, with the
+    /// features rustc really enables for it.
+    fn isa_failures(arch: Arch, target: &str, mnemonics: &[&str]) -> Vec<String> {
+        let features = tier_features(arch, target, false).expect("rustc --print cfg");
+        judge_disassembly(&listing(mnemonics), arch, &features).failures
+    }
+
+    fn fails_naming(failures: &[String], class: &str) -> bool {
+        failures.iter().any(|f| f.contains(&format!("`{class}`")))
+    }
+
+    /// Every planted instruction above a tier's level fails, by name, and
+    /// the tier's own instructions pass (Basilisk's `test_verify_isa`).
+    #[test]
+    fn a_planted_instruction_above_the_tier_fails() {
+        // `tzcnt` runs as `bsf` before BMI1; SSE3 is above `x86-64` on Linux.
+        let base = ["movq", "addq", "tzcntq"];
+        assert!(isa_failures(Arch::Base, LINUX, &base).is_empty());
+        for (planted, class) in [
+            ("movddup", "sse3"),
+            ("popcntq", "popcnt"),
+            ("pshufb", "ssse3"),
+            ("ptest", "sse4.1"),
+            ("crc32q", "sse4.2"),
+            ("vpermq", "avx"),
+            ("andnq", "bmi1"),
+            ("shlxq", "bmi2"),
+            ("pextq", "pext"),
+            ("lzcntq", "lzcnt"),
+        ] {
+            let mut planted_listing = base.to_vec();
+            planted_listing.push(planted);
+            let failures = isa_failures(Arch::Base, LINUX, &planted_listing);
+            assert!(
+                fails_naming(&failures, class),
+                "base with {planted}: {failures:?}"
+            );
+        }
+
+        let sse42 = ["movq", "popcntq", "pshufb", "ptest", "crc32q"];
+        assert!(isa_failures(Arch::Sse42, LINUX, &sse42).is_empty());
+        for (planted, class) in [
+            ("vpermq", "avx"),
+            ("andnq", "bmi1"),
+            ("lzcntq", "lzcnt"),
+            ("pextq", "pext"),
+        ] {
+            let mut planted_listing = sse42.to_vec();
+            planted_listing.push(planted);
+            let failures = isa_failures(Arch::Sse42, LINUX, &planted_listing);
+            assert!(
+                fails_naming(&failures, class),
+                "sse42 with {planted}: {failures:?}"
+            );
+        }
+
+        let avx2 = ["popcntq", "vpermq", "shlxq", "andnq", "lzcntq"];
+        assert!(isa_failures(Arch::Avx2, LINUX, &avx2).is_empty());
+        let mut with_pext = avx2.to_vec();
+        with_pext.push("pextq");
+        assert!(fails_naming(
+            &isa_failures(Arch::Avx2, LINUX, &with_pext),
+            "pext"
+        ));
+
+        let pext = ["popcntq", "vpermq", "shlxq", "pextq"];
+        assert!(isa_failures(Arch::Pext, LINUX, &pext).is_empty());
+        assert!(isa_failures(Arch::Universal, LINUX, &pext).is_empty());
+    }
+
+    /// A tier that lost the instructions it exists for fails as surely as one
+    /// that gained some: it would still compute the right answer, slowly.
+    #[test]
+    fn a_tier_without_its_own_instructions_fails() {
+        for (arch, missing) in [
+            (Arch::Sse42, "popcnt"),
+            (Arch::Avx2, "avx"),
+            (Arch::Pext, "pext"),
+            (Arch::Universal, "pext"),
+        ] {
+            let failures = isa_failures(arch, LINUX, &["movq", "addq"]);
+            assert!(
+                failures
+                    .iter()
+                    .any(|f| f.starts_with(&format!("REQUIRED `{missing}`"))),
+                "{arch:?}: {failures:?}"
+            );
+        }
+        let failures = isa_failures(Arch::Arm64, "aarch64-unknown-linux-gnu", &["ret", "ldr"]);
+        assert!(fails_naming(&failures, "prefetch"), "{failures:?}");
+        let failures = isa_failures(
+            Arch::Arm64,
+            "aarch64-unknown-linux-gnu",
+            &["prfm", "ptrue", "aese", "sdot"],
+        );
+        for class in ["sve", "aes", "dotprod"] {
+            assert!(
+                fails_naming(&failures, class),
+                "arm64 with {class}: {failures:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_empty_listing_is_not_a_pass() {
+        let features = tier_features(Arch::Base, LINUX, false).unwrap();
+        let judgement = judge_disassembly("Disassembly of section .text:\n", Arch::Base, &features);
+        assert_eq!(judgement.instructions, 0);
     }
 
     #[test]
