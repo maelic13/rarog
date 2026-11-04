@@ -196,9 +196,7 @@ compare with `bench`, and it may not run on any other computer:
 cargo xtask build --native
 ```
 
-A profile-guided build has to run the engine, so building for another
-processor or system needs `--nopgo`. `cargo xtask help` lists every command
-and option.
+`cargo xtask help` lists every command and option.
 
 ### Where the binaries go
 
