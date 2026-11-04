@@ -236,11 +236,17 @@ fn post_lto_object(line: &[String]) -> Result<PathBuf> {
 
 /// What the universal link takes from the base tier's own link line: its
 /// engine archive (which carries Fathom, built at the baseline), the
-/// compiler builtins, and the system libraries.
+/// compiler builtins, the system libraries, and whether cargo had the linker
+/// strip debug information.
 struct SharedInputs {
     engine_archive: PathBuf,
     archives: Vec<String>,
     libraries: Vec<String>,
+    /// Cargo's release default strips the debug information std brings
+    /// (`-Wl,--strip-debug` on Linux; nothing on MSVC, whose PDB is
+    /// separate). Unstripped, std's copy in each of five objects made the
+    /// Linux binary 14 MB.
+    strip_debuginfo: bool,
 }
 
 impl SharedInputs {
@@ -288,6 +294,7 @@ impl SharedInputs {
             engine_archive: PathBuf::from(engine_archive.as_str()),
             archives,
             libraries,
+            strip_debuginfo: line.iter().any(|arg| arg == "-Wl,--strip-debug"),
         })
     }
 }
@@ -573,6 +580,11 @@ fn link(
         ])
         .args(["-C", "panic=abort", "-D", "warnings"])
         .args(super::rustflags(Arch::Universal, false))
+        .args(if shared.strip_debuginfo {
+            &["-C", "strip=debuginfo"][..]
+        } else {
+            &[]
+        })
         .arg(format!(
             "--emit=obj={},link={}",
             dispatcher_object.display(),
@@ -643,6 +655,11 @@ mod tests {
         );
         assert_eq!(shared.archives.len(), 2);
         assert_eq!(shared.libraries, ["kernel32.lib", "advapi32.lib"]);
+        // MSVC's line strips nothing, so neither does the universal link.
+        assert!(!shared.strip_debuginfo);
+        let mut unix = line.clone();
+        unix.push("-Wl,--strip-debug".to_string());
+        assert!(SharedInputs::from_base_line(&unix).unwrap().strip_debuginfo);
         let two_engines = [line.clone(), line].concat();
         assert!(SharedInputs::from_base_line(&two_engines).is_err());
     }
