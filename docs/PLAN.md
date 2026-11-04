@@ -2896,6 +2896,39 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
       in `i64` before the clamp, a unit test at an overflowing depth and
       residual, exact fingerprint. Triumviratus lost to the same class of
       defect in its correction decay in tablebase endgames.
+    - **D.5.24 A `Hash` larger than the machine's physical memory is refused on every platform — `I1`, DONE 2026-11-04.**
+      Found 2026-11-04 on PR #13's macOS CI: the refused-`Hash` test timed
+      out with no output in both profiles. The table was bounded only by
+      what the allocator accepted, and macOS grants a `Vec` reservation
+      lazily, so 32 TiB succeeded and the engine spent the session filling
+      it; Windows refuses the commit and Linux's overcommit heuristic the
+      reservation. Neither donor bounds it: Stockfish exits the process
+      when its allocation returns null, and Reckless advertises a fixed
+      256 GiB maximum and does not check its allocation. `9dc8b81` put the
+      test off macOS as a stopgap; `db4e9ae` repairs it: the engine reads
+      the machine's physical memory once (`physical_memory`), advertises it
+      in whole MiB as `Hash`'s maximum (33554432 where the platform does not
+      say), and refuses a larger value as the option is parsed, with an
+      `info string` naming the value and the limit; the setting is kept
+      and nothing is allocated. Below the limit the allocator's own
+      refusal keeps its path, announced once with the table kept, now
+      tested at search level with a reservation no platform can make, and
+      the process test runs on macOS again. The limit is total, not
+      available, memory: available memory moves with the file cache and
+      other processes and would refuse a table that fits. **The unsafe
+      floor is 24** (maintainer decision 2026-11-04): Rust has no
+      physical-memory API, so the query is FFI. Windows adds
+      `GlobalMemoryStatusEx` to the existing `win32.rs` block as a `safe fn`
+      (it writes only into the struct a reference guarantees), so its call
+      needs no `unsafe`; Linux and macOS read `sysconf` through one new
+      `unsafe extern "C"` block whose single item is a `safe fn`. A
+      subprocess (`sysctl hw.memsize`) was the only unsafe-free route on
+      macOS and was not taken. Verified: debug and release suites, `cargo
+      fmt --check`, `cargo clippy --all-targets` with all and default
+      features at zero, `bench 13` = 14,749,043 on the base and pext builds;
+      the advertised maximum read 130,982 MiB here, Windows' own figure. The
+      Linux and macOS paths are compiled first by CI. A container whose
+      memory limit is below the host's still reports the host's memory.
   Not in this leaf: anything that moves the fingerprint (D.6), the
   simplification programme (D.8), the shell defects (D.3), the tablebase path
   (D.9).
