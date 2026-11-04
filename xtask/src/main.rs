@@ -1021,7 +1021,8 @@ fn check_isa(exe: &Path, arch: Arch, target: &str, default_cpu: bool) -> Result<
 }
 
 /// The functions of a statically linked Linux executable that are the C
-/// runtime's own (`libc.a`, `libm.a`), to be left out of its ISA check.
+/// runtime's own (`libc.a`, `libm.a`, `libgcc.a`, `libgcc_eh.a`), to be left
+/// out of its ISA check.
 ///
 /// glibc carries variants of its string and math functions for newer
 /// instruction sets (`__memmove_avx_unaligned`, SVE `memcpy` on arm64) and
@@ -1039,7 +1040,9 @@ fn static_runtime_functions(exe: &Path, target: &str) -> Result<HashSet<String>>
         "llvm-nm not found. Install it with `rustup component add llvm-tools`.".to_string()
     })?;
     let mut functions = HashSet::new();
-    for archive in ["libc.a", "libm.a"] {
+    // libc and libm, and GCC's support libraries, which a static link also
+    // carries: its aarch64 unwinder reads the SVE vector length at run time.
+    for archive in ["libc.a", "libm.a", "libgcc.a", "libgcc_eh.a"] {
         let path = PathBuf::from(command_output(
             "cc",
             &[&format!("-print-file-name={archive}")],
@@ -1151,9 +1154,13 @@ fn judge_disassembly(
     let mut tzcnt = 0u64;
     let mut runtime_instructions = 0u64;
     let mut in_runtime = false;
+    let mut function = "";
+    // Per class, the first few functions it appears in, to name in a failure.
+    let mut seen_in: Vec<Vec<&str>> = vec![Vec::new(); contract.classes.len()];
     for line in disassembly.lines() {
-        if let Some(function) = function_label(line) {
-            in_runtime = runtime.contains(function);
+        if let Some(label) = function_label(line) {
+            in_runtime = runtime.contains(label);
+            function = label;
             continue;
         }
         let Some(mnemonic) = disassembled_mnemonic(line) else {
@@ -1171,9 +1178,22 @@ fn judge_disassembly(
         for (index, class) in contract.classes.iter().enumerate() {
             if class.matches(mnemonic) {
                 counts[index].1 += 1;
+                if seen_in[index].len() < 3 && !seen_in[index].contains(&function) {
+                    seen_in[index].push(function);
+                }
             }
         }
     }
+    let named = |name: &str| -> String {
+        contract
+            .classes
+            .iter()
+            .position(|class| class.name == name)
+            .map(|index| &seen_in[index])
+            .filter(|functions| !functions.is_empty())
+            .map(|functions| format!(" (in {})", functions.join(", ")))
+            .unwrap_or_default()
+    };
 
     let count_of = |name: &str| -> u64 {
         counts
@@ -1191,17 +1211,19 @@ fn judge_disassembly(
         let banned_by_tier = contract.also_forbidden.contains(&class.name);
         if !permitted_by_cpu {
             failures.push(format!(
-                "FORBIDDEN `{}` appears {count} times, but the `{}` tier does not enable \
+                "FORBIDDEN `{}` appears {count} times{}, but the `{}` tier does not enable \
                  `{}` — this artifact cannot run on every CPU the tier promises",
                 class.name,
+                named(class.name),
                 arch_arg_name(arch),
                 class.feature
             ));
         } else if banned_by_tier {
             failures.push(format!(
-                "FORBIDDEN `{}` appears {count} times — the `{}` asset must not carry \
+                "FORBIDDEN `{}` appears {count} times{} — the `{}` asset must not carry \
                  that source path, or the two assets are the same binary",
                 class.name,
+                named(class.name),
                 arch_arg_name(arch)
             ));
         }
@@ -2733,6 +2755,15 @@ mod tests {
         // Nothing is left out without the runtime's names.
         let judgement = judge_disassembly(disassembly, Arch::Base, &features, &HashSet::new());
         assert!(fails_naming(&judgement.failures, "avx"));
+        // A failure names the function it was found in.
+        assert!(
+            judgement
+                .failures
+                .iter()
+                .any(|f| f.contains("(in __memmove_avx_unaligned)")),
+            "{:?}",
+            judgement.failures
+        );
         // The same instruction in an engine function still fails.
         let planted = disassembly.replace("  401000: \tmovq", "  401000: \tvmovdqu");
         let judgement = judge_disassembly(&planted, Arch::Base, &features, &runtime);
