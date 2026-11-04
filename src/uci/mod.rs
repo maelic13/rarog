@@ -3,6 +3,7 @@
 //! their notices; this module prints them.
 
 pub mod go;
+pub mod info;
 pub mod options;
 pub mod position;
 

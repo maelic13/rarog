@@ -54,17 +54,66 @@ use time::{IterationSignals, MateWatch, RuntimeLimits, TbExtension, compute_runt
 
 const MAX_DEPTH: usize = 100;
 
-const MAX_PLY: usize = 128;
+pub(crate) const MAX_PLY: usize = 128;
 const MAX_QPLY: usize = 16;
 const MIN_PARALLEL_DEPTH: usize = 4;
 const SHARED_NODE_BATCH: u64 = 128;
 const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
-/// Where a searcher writes its protocol output: the `info` line of each
-/// completed iteration and `info string` notices. The search formats lines and
-/// never touches stdout itself; the engine layer decides where they go.
+/// Where a searcher writes its protocol output: a report for each `info`
+/// line, which the protocol layer writes (`crate::uci::info`), and `info
+/// string` notices as text. The search never touches stdout itself; the
+/// engine layer decides where its output goes.
 pub trait InfoSink: Send {
-    /// One complete line, without the trailing newline.
+    /// One complete line of text, without the trailing newline.
     fn line(&self, line: &str);
+    /// One report of the search's state.
+    fn report(&self, report: &InfoReport<'_>);
+}
+
+/// What a search reports on an `info` line.
+pub enum InfoReport<'a> {
+    /// A line of an iteration.
+    Iteration(InfoRecord<'a>),
+    /// The root has no legal move: mated in check, stalemated otherwise.
+    NoLegalMove { in_check: bool },
+}
+
+/// One iteration's line, as the search knows it.
+pub struct InfoRecord<'a> {
+    pub depth: usize,
+    pub seldepth: usize,
+    /// The line's rank, from 1; only MultiPV reports more than one.
+    pub multipv: usize,
+    /// The score as shown: a tablebase result already placed in its
+    /// display band.
+    pub score: i32,
+    pub bound: ScoreBound,
+    pub nodes: u64,
+    /// The table's fill, in permille.
+    pub hashfull: usize,
+    pub tb_hits: u64,
+    pub elapsed_ms: u128,
+    pub pv: &'a [Move],
+}
+
+/// What a reported score is: exact, or the bound of a window that failed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScoreBound {
+    Exact,
+    /// The window failed high: the score is at least this.
+    Lower,
+    /// The window failed low: the score is at most this.
+    Upper,
+}
+
+impl From<RootBound> for ScoreBound {
+    fn from(bound: RootBound) -> Self {
+        match bound {
+            RootBound::Exact => Self::Exact,
+            RootBound::Lower => Self::Lower,
+            RootBound::Upper => Self::Upper,
+        }
+    }
 }
 
 /// Discards every line. The default, and what helper threads use.
@@ -72,6 +121,7 @@ struct SilentSink;
 
 impl InfoSink for SilentSink {
     fn line(&self, _line: &str) {}
+    fn report(&self, _report: &InfoReport<'_>) {}
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -315,40 +365,10 @@ pub struct Searcher {
     td: ThreadData,
 }
 
-/// Nodes per second for an `info` line. The elapsed time is floored at one
-/// millisecond, as Stockfish floors it: dividing by a zero elapsed time made
-/// the first lines of every search report `nps` a thousand times too low.
-fn nps(nodes: u64, elapsed_ms: u128) -> u128 {
-    u128::from(nodes) * 1000 / elapsed_ms.max(1)
-}
-
-/// What a tablebase win at the root prints, in centipawns; one less per ply
-/// further from the root, so a GUI reads a decided game, not a 300-pawn
-/// evaluation.
-const TB_DISPLAY_CP: i32 = 20_000;
-
 /// A tablebase result, not a mate: what the PV extension follows.
 fn is_tb_band(score: i32) -> bool {
     (TB_WIN_SCORE..=TB_VALUE).contains(&score.abs())
 }
-
-fn format_score(score: i32) -> String {
-    if score >= MATE_SCORE - infra::to_i32(MAX_PLY) {
-        format!("mate {}", (MATE_SCORE - score + 1) / 2)
-    } else if score <= -MATE_SCORE + infra::to_i32(MAX_PLY) {
-        format!("mate -{}", (MATE_SCORE + score + 1) / 2)
-    } else if score.abs() >= TB_WIN_SCORE {
-        let cp = TB_DISPLAY_CP - (TB_VALUE - score.abs());
-        format!("cp {}", score.signum() * cp)
-    } else {
-        format!("cp {}", score.clamp(-MAX_ORDINARY_CP, MAX_ORDINARY_CP))
-    }
-}
-
-/// The most an ordinary score prints: one below the lowest tablebase win, so
-/// a score that is neither a mate nor a tablebase result, the rule-50
-/// downgraded mate (`TB_WIN_SCORE - 1`) among them, never reads as decided.
-const MAX_ORDINARY_CP: i32 = TB_DISPLAY_CP - (TB_VALUE - TB_WIN_SCORE) - 1;
 
 impl Searcher {
     /// A searcher that writes its output to `sink`.
@@ -779,12 +799,9 @@ impl Searcher {
     fn no_legal_moves_result(&mut self, board: &Board, emit_info: bool) -> SearchResult {
         let result = self.result_for_no_legal_moves(board);
         if emit_info {
-            let score = if board.is_in_check() {
-                "mate 0"
-            } else {
-                "cp 0"
-            };
-            self.td.sink.line(&format!("info depth 0 score {score}"));
+            self.td.sink.report(&InfoReport::NoLegalMove {
+                in_check: board.is_in_check(),
+            });
         }
         SearchResult {
             bestmove: Move::NULL,
@@ -1644,7 +1661,6 @@ impl Searcher {
         let elapsed_ms = self.cfg.start.elapsed().as_millis();
         let nodes = self.reported_nodes();
         let tb_hits = self.reported_tb_hits();
-        let nps = nps(nodes, elapsed_ms);
         let hashfull = self.hashfull();
         for (index, line) in lines.iter().enumerate() {
             if index == 0 {
@@ -1652,32 +1668,20 @@ impl Searcher {
                     .last_reported_move
                     .set(line.pv.first().copied().unwrap_or(Move::NULL));
             }
-            let bound = match self.displayed_bound(line.pv.first(), line.score, line.bound) {
-                RootBound::Exact => "",
-                RootBound::Lower => " lowerbound",
-                RootBound::Upper => " upperbound",
-            };
+            let bound = self.displayed_bound(line.pv.first(), line.score, line.bound);
             let (shown, line_pv) = self.shown_line(&line.pv, line.score);
-            let pv = line_pv
-                .iter()
-                .map(std::string::ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(" ");
-            self.td.sink.line(&format!(
-                "info depth {} seldepth {} multipv {} score {}{} nodes {} nps {} hashfull {} \
-                 tbhits {} time {} pv {}",
-                line.depth.max(1),
-                line.seldepth,
-                index + 1,
-                format_score(shown),
-                bound,
+            self.td.sink.report(&InfoReport::Iteration(InfoRecord {
+                depth: line.depth.max(1),
+                seldepth: line.seldepth,
+                multipv: index + 1,
+                score: shown,
+                bound: bound.into(),
                 nodes,
-                nps,
                 hashfull,
                 tb_hits,
                 elapsed_ms,
-                pv
-            ));
+                pv: &line_pv,
+            }));
         }
     }
 
@@ -1923,33 +1927,18 @@ impl Searcher {
         self.td
             .last_reported_move
             .set(pv.first().copied().unwrap_or(Move::NULL));
-        let elapsed_ms = self.cfg.start.elapsed().as_millis();
-        let nodes = self.reported_nodes();
-        let tb_hits = self.reported_tb_hits();
-        let nps = nps(nodes, elapsed_ms);
-        let pv = pv
-            .iter()
-            .map(std::string::ToString::to_string)
-            .collect::<Vec<_>>()
-            .join(" ");
-        let bound = match bound {
-            RootBound::Exact => "",
-            RootBound::Lower => " lowerbound",
-            RootBound::Upper => " upperbound",
-        };
-        self.td.sink.line(&format!(
-            "info depth {} seldepth {} multipv 1 score {}{} nodes {} nps {} hashfull {} tbhits {} time {} pv {}",
+        self.td.sink.report(&InfoReport::Iteration(InfoRecord {
             depth,
             seldepth,
-            format_score(shown),
-            bound,
-            nodes,
-            nps,
-            self.hashfull(),
-            tb_hits,
-            elapsed_ms,
-            pv
-        ));
+            multipv: 1,
+            score: shown,
+            bound: bound.into(),
+            nodes: self.reported_nodes(),
+            hashfull: self.hashfull(),
+            tb_hits: self.reported_tb_hits(),
+            elapsed_ms: self.cfg.start.elapsed().as_millis(),
+            pv,
+        }));
     }
 
     /// Before `bestmove`: print the result's own line unless the last `info`
@@ -2006,32 +1995,6 @@ mod tests {
     /// band without taking a dependency on the search. This is the assertion
     /// that keeps the mirror honest, and it lives here because this module is
     /// the one that legitimately sees both constants.
-    /// A line printed inside the first millisecond used to divide by zero and
-    /// fall back to the raw node count: `nodes 49 nps 49` instead of 49,000.
-    #[test]
-    fn nps_floors_the_elapsed_time_at_one_millisecond() {
-        assert_eq!(super::nps(49, 0), 49_000);
-        assert_eq!(super::nps(49, 1), 49_000);
-        assert_eq!(super::nps(2_000, 4), 500_000);
-        assert_eq!(super::nps(0, 0), 0);
-    }
-
-    /// An ordinary score at or above the tablebase band's display printed raw,
-    /// so the rule-50-downgraded mate read `cp 31743`, above every tablebase
-    /// win.
-    #[test]
-    fn ordinary_scores_print_below_every_tablebase_win() {
-        use super::{TB_VALUE, TB_WIN_SCORE, format_score};
-        assert_eq!(format_score(143), "cp 143");
-        assert_eq!(format_score(19_872), "cp 19872");
-        assert_eq!(format_score(19_873), "cp 19872");
-        assert_eq!(format_score(TB_WIN_SCORE - 1), "cp 19872");
-        assert_eq!(format_score(-(TB_WIN_SCORE - 1)), "cp -19872");
-        assert_eq!(format_score(TB_WIN_SCORE), "cp 19873");
-        assert_eq!(format_score(TB_VALUE), "cp 20000");
-        assert_eq!(format_score(-TB_WIN_SCORE), "cp -19873");
-    }
-
     #[test]
     fn mopup_mirror_matches_the_real_ply_horizon() {
         assert_eq!(
@@ -2057,6 +2020,9 @@ mod tests {
     impl InfoSink for Recorder {
         fn line(&self, line: &str) {
             self.0.lock().unwrap().push(line.to_string());
+        }
+        fn report(&self, report: &InfoReport<'_>) {
+            self.line(&crate::uci::info::report_line(report));
         }
     }
 
@@ -2822,7 +2788,10 @@ mod tests {
             )
         );
         assert_eq!(stopped.bestmove.to_string(), fail_high.first);
-        assert_eq!(format_score(stopped.score), fail_high.score);
+        assert_eq!(
+            crate::uci::info::format_score(stopped.score),
+            fail_high.score
+        );
         assert_eq!(stopped.depth, fail_high.depth - 1);
 
         // Short of the soft target the fail-high is searched again as before.

@@ -7,7 +7,7 @@ use crate::board::Board;
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl, SearchControl};
 use crate::infra::flush_stdout;
 use crate::search::options::SearchOptions;
-use crate::search::{InfoSink, SearchEvent, SearchExit, SearchResult, Searcher};
+use crate::search::{InfoReport, InfoSink, SearchEvent, SearchExit, SearchResult, Searcher};
 use crate::wac::{move_matches_any, wac_positions};
 
 pub struct Engine {
@@ -23,6 +23,9 @@ struct StdoutSink;
 impl InfoSink for StdoutSink {
     fn line(&self, line: &str) {
         crate::uci_println!("{line}");
+    }
+    fn report(&self, report: &InfoReport<'_>) {
+        self.line(&crate::uci::info::report_line(report));
     }
 }
 
