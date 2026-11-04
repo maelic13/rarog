@@ -770,7 +770,7 @@ nothing exists on GitHub until every cell has passed.
    says released; a failed tag run is repaired by retagging, after which
    it is true). These go on a short release branch and reach `master` by a
    squash PR like any other change. A PR to
-   `master` runs both `CI` and `Release` (a candidate build of the eleven
+   `master` runs both `CI` and `Release` (a candidate build of the five
    assets with every check the tag run makes, publishing nothing). While
    `Cargo.toml` holds a plain `X.Y.Z`, that run also passes `release-check`
    for `vX.Y.Z` (all but the tag's name and the commit's place on
@@ -792,7 +792,7 @@ nothing exists on GitHub until every cell has passed.
 3. The PR's `Release` run is the rehearsal. A manual one (`Actions →
    Release → Run workflow`, or `gh workflow run release.yml --ref master`)
    is needed only when `master` moved without a PR; it builds,
-   `verify-isa`-checks and benches the eleven assets, keeps them as a workflow
+   `verify-isa`-checks and benches the five assets, keeps them as a workflow
    artifact and publishes nothing.
 4. Tag and push:
 
@@ -800,7 +800,7 @@ nothing exists on GitHub until every cell has passed.
    git tag vX.Y.Z; git push origin vX.Y.Z
    ```
 
-   The workflow asserts one `bench 13` fingerprint across the eleven assets
+   The workflow asserts one `bench 13` fingerprint across the five assets
    equal to the one GUIDE's checkpoint declares in its *Development head*
    row (at a release commit the *Released baseline* row names the same
    version at the same fingerprint), then creates the release, marked
@@ -845,9 +845,17 @@ keeps its `v`) and `dev-<commit date>-<8 hash characters>` otherwise, with
 `-m` before the hash when the tree differs from the commit; an x64 single-tier
 build names its tier (`base`, `sse42`, `avx2`, `pext`, or `native` in its
 place); then `nopgo`, `debug` and the feature kinds, in that order. A PGO
-build with the default features names no kind, so the release's eleven assets
-are `rarog-X.Y.Z-<linux|windows>-x64-<tier>[.exe]` and the three
-`rarog-X.Y.Z-<os>-arm64[.exe]`. The start-up line names the tier and kinds;
+build with the default features names no kind. The release's five assets are
+the universal x86-64 binary, `rarog-X.Y.Z-<linux|windows>-x64[.exe]`, and the
+three `rarog-X.Y.Z-<os>-arm64[.exe]` (PLAN E.3.3, RAR-P56). The universal
+binary (`cargo xtask build --universal`) holds the four tiers' PGO builds,
+every function aligned to 64 bytes and every global renamed per tier after
+PGO, behind a baseline dispatcher (`universal/dispatch.rs`) that picks the
+fastest tier the CPU runs; `RAROG_ISA=<tier>` forces one, for a forced-tier
+bench or a measurement, and a tier the CPU cannot run is refused. Every
+measurement stays on the single-tier `pext` build. The release benches every
+forced tier on its runner and checks the selection under Intel SDE
+(`tools/diag/check_universal.py`). The start-up line names the tier and kinds;
 `id name` never does, since rating lists key on it. `RAROG_DEV_ID=<date>-<hash>`
 fixes a development build's name for a byte-identity comparison. `cargo
 xtask build` names the file and runs the engine to check it reports that name.

@@ -371,3 +371,9 @@ The first build (2026-11-04): 6,689,280 bytes on Windows (the `pext` build is
 `pext` chosen on the 5950X, an unknown tier refused. The speed gate is
 RAR-P56. Not yet read: the Linux form (no Rust toolchain in this host's
 WSL; the first CI run builds it) and an Intel SDE selection matrix.
+
+**The gate (RAR-P56, 2026-11-04): PASS.** Four universal builds against four
+single-tier `pext` builds, one commit: **+0.45%** [+0.17%, +0.72%], so the
+relink costs nothing here, as section 9's alignment lead predicted, and the
+aligned form reads slightly faster (not separated from placement). The
+universal binary is the x64 release asset from this change on.

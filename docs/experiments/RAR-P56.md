@@ -1,4 +1,4 @@
-# RAR-P56 — The universal x86-64 binary against the single-tier pext build: the speed gate of PLAN E.3.3 — REGISTERED 2026-11-04, before the read
+# RAR-P56 — The universal x86-64 binary against the single-tier pext build: the speed gate of PLAN E.3.3 — REGISTERED 2026-11-04, before the read; READ 2026-11-04: PASS, +0.45%
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -58,3 +58,32 @@ Diagnostics only, not a rescue: the `pext` tier's own aligned build against
 the single-tier build separates the alignment from the relink, and the
 universal binary against that aligned build reads the placement alone.
 Neither changes the verdict.
+
+## Result (2026-11-04)
+
+Pools from `e5fceb5`, clean, in `analysis/artifacts/e33-universal-nps/`:
+
+| Pool | First hashes |
+|---|---|
+| `pext` | `EF3EDF18`, `26E28271`, `D70E6F3A`, `DC63EFDF` |
+| `universal` | `4AEF6C1F`, `D91DEB8F`, `690D5C9C`, `D1BEFBE6` |
+
+Host idle at 1.7% CPU, quiet after 65 s; 1.0% and 1.2% before the cycles,
+1.3% after; no disturbed cycle.
+
+| Arm | Per-build medians (n/s) | Level |
+|---|---|---|
+| `pext` | 2,938,107, 2,947,758, 2,936,952, 2,938,118 | 2,940,234 |
+| `universal` | 2,947,205, 2,956,346, 2,953,648, 2,956,320 | 2,953,380 |
+
+**Universal over pext: +0.45%, 95% t-interval +0.17% to +0.72%** (t 2.447,
+df 6): **PASS**, regression excluded by step 1. By the registered rule the
+universal binary becomes the x64 release asset.
+
+**Calibration.** Predicted −0.1% [−0.6%, +0.4%]: a miss in sign and
+magnitude, small, just above the interval's top. The prior was Basilisk's,
+whose aligned relink read slightly below its asset; here the aligned form
+reads slightly faster. The likely difference is that the 64-byte alignment
+itself helps this build (Rarog's single-tier functions sit at 16 bytes), but
+the registered diagnostics that would separate alignment from placement
+were for a failure and were not run, so that is a reading, not a finding.

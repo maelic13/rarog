@@ -39,24 +39,15 @@ a chess GUI or an engine-testing tool.
 - [All releases](https://github.com/maelic13/rarog/releases)
 
 Every release provides ready-to-run executables — no installation needed. Pick
-the one matching your operating system and CPU:
+the one matching your operating system:
 
-| File ends in | CPU required | Use when |
-| --- | --- | --- |
-| `x64-pext` | AVX2, BMI2, FMA (Intel 2013+, AMD 2015+) | Modern Intel, or AMD Zen 3 and newer. Usually the fastest build. |
-| `x64-avx2` | AVX2, BMI2, FMA (Intel 2013+, AMD 2015+) | AMD Zen 1, Zen 2 and Excavator. These CPUs run `pext` too, but slowly, because their PEXT instruction is emulated in microcode. |
-| `x64-sse42` | SSE4.2, POPCNT (Intel 2008+, AMD 2011+) | Older CPUs that the two above do not start on. |
-| `x64-base` | SSE3 (Intel 2004+, AMD 2005+) | The oldest CPUs. It runs almost anywhere but is the slowest. |
-| `arm64` | ARM64 baseline | ARM64 Linux, Windows on ARM, and Apple Silicon Macs. |
+| File ends in | Runs on |
+| --- | --- |
+| `windows-x64.exe`, `linux-x64` | Any 64-bit Intel or AMD CPU. |
+| `windows-arm64.exe`, `linux-arm64`, `macos-arm64` | Windows on ARM, ARM64 Linux, and Apple Silicon Macs. |
 
-Not sure? Start with `pext`. If it does not start, your CPU lacks AVX2 or
-BMI2, so `avx2` will not start either: try `sse42`, then `base`. The engine
-also checks your CPU when it starts and prints a `CPU advisory` line when a
-different build would be faster on it.
-
-How much the choice matters depends on the CPU, but the order is usually the
-same: on a CPU that runs PEXT natively `pext` is a little faster than `avx2`,
-and each build in the table is faster than the ones below it.
+The x64 file picks the fastest code for your CPU when it starts, and its
+first line names the choice (`pext`, `avx2`, `sse42` or `base`).
 
 ---
 
@@ -173,7 +164,8 @@ optimization, as every published build is made).
 
 | Option | Meaning |
 | --- | --- |
-| `--tier base`, `sse42`, `avx2`, `pext` | Builds that tier instead of the fastest one your CPU runs; see the [Download](#download) table. |
+| `--tier base`, `sse42`, `avx2`, `pext` | Builds that tier instead of the fastest one your CPU runs. |
+| `--universal` | Builds the published x64 file: every tier in one engine, which picks one when it starts. |
 | `--native` | Tunes the build for the exact CPU you are building on. |
 | `--nopgo` | Skips the measuring run: a faster build of a slower engine. |
 
