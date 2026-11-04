@@ -60,24 +60,34 @@ Three forms were weighed.
   feature, `pricing`, measured alone and never combined with `diag` for a
   read. A sampled decision calls one probe function. While it runs:
   1. **TT:** stores go to a per-thread scratch table (16 MB, allocated once
-     at search start); probes read the scratch table first and the main
-     table after it. The main table is never written, so the main search
-     sees exactly the entries it would have seen. The scratch table persists
-     across probes: its entries are honest results of searches of the same
+     with the searcher); a probe reads both tables and takes the deeper
+     entry, the main one on a tie, so it reuses its own results. The main
+     table is never written (eight write sites in `node.rs`: seven
+     `store`, one `store_eval`), so the main search sees exactly the
+     entries it would have seen. The scratch table persists across
+     probes: its entries are honest results of searches of the same
      positions.
   2. **Histories and corrections:** frozen. Their update functions return
      without writing (a flag in `HistoryTables` and `CorrectionTables`,
      compiled only under `pricing`). The probe orders by the tables as they
      stand at the decision.
   3. **Stack, PV table, counters:** the stack entries and PV rows from the
-     probe's ply upward, `nodes`, `seldepth`, `nmp_min_ply` and the search
+     node's own ply upward (a move-level probe pushes its move at that
+     ply, as the search does), `nodes`, `seldepth`, `nmp_min_ply` and the search
      statistics (`nmp_verifications`, `probcut_searches`, …) are saved before
      and restored after. The probe's nodes go to their own counter.
   4. **Nesting:** no probe starts inside a probe.
   5. **The decision reversed, nothing else:** a node-level probe re-enters
      `negamax` at the same ply with one rule switched off at that ply only
-     (`td.pricing_off = Some((ply, rule))`, consumed at the node); every rule
-     stays on below it.
+     (`td.pricing_off = Some((ply, rule))`, cleared when the probe
+     returns); every rule stays on below it. A same-ply re-entry inside
+     the probe sees the rule off too, which reverses nothing else: the
+     singular exclusion search skips reverse futility, null move and
+     ProbCut, and a null-move verification follows only a null move.
+  6. **One thread:** probes run only at `Threads 1`, where the sample
+     reproduces; `RAROG_PRICING` sets the rate shift (unset is off, `0`
+     the rates below, `1` each halved) and `RAROG_PRICING_OUT` names the
+     file the records are appended to.
   The evaluator's pawn and imbalance caches are pure functions of the
   position, so a probe that evicts an entry costs speed and no value.
 
@@ -86,8 +96,10 @@ Three forms were weighed.
   fingerprint.
 
 Per-node rule: the probe path allocates nothing per node. Records go into a
-per-thread `Vec` reserved at search start and are written at the existing
-per-position dump point; the default build compiles none of it.
+per-thread `Vec` reserved for the expected count (a push past it grows the
+buffer, in the instrument build only) and are written at the existing
+per-search dump point beside `diag::dump`; the default build compiles none
+of it.
 
 ## 4. Labels
 
@@ -130,9 +142,10 @@ tail length, the probe's nodes, the label and the result-changed flag.
 
 ## 5. Sample and cost
 
-The sample is the decision itself hashed with the rule
-(`key ^ move ^ rule` through a 64-bit mix) against a per-rule rate, so it
-does not depend on node order and reproduces exactly at one thread. First
+The sample is the decision itself hashed with the rule and the depth
+(`key`, move, rule and depth through a 64-bit mix) against a per-rule
+rate, so it does not depend on node order, reproduces exactly at one
+thread, and a position revisited by the next iteration is drawn afresh. First
 rates, aiming at about 10,000 probes per rule on `bench 13`: LMR fail-lows
 and reverse futility 1/256, SEE 1/128, LMP 1/64, quiet futility and the
 quiescence rules 1/16 (delta 1), razoring, null move and ProbCut 1/8;
@@ -163,8 +176,10 @@ when a user's cell has fewer than 400 probes there.
   its honest form. In a `pricing` and `tune` build, `CoreFpBase` lowered from
   150 to −100 prunes more quiets by futility; its **raises** share must
   exceed the default's with disjoint 95% Wilson intervals. The same plant
-  on the reduction side: one more ply of reduction on every reduced move (a
-  test switch under `pricing`) must raise the LMR fail-low **raises** share.
+  on the reduction side: `CoreLmrQuiet` raised from 1,932 to 2,956 (one
+  more ply on every reduced quiet) must raise the LMR fail-low **raises**
+  share for quiets. The options go in on standard input before `bench`
+  (a bare `bench` sets nothing, and `quit` aborts it).
 - **V5, the shipped build is untouched:** the default build benches
   14,749,043 and compiles no `pricing` code; every guard is behind
   `cfg(feature = "pricing")`.
@@ -234,3 +249,16 @@ feature, the scratch table, the freeze flags, the save-and-restore, the probe
 sites listed in section 2, the record format with a parser beside
 `tools/diag/bench_counters.py`, and V1–V5. The first `bench 13` read and its
 calibration against section 7 close D.4.4.
+
+## 11. Review, 2026-11-04, before implementation
+
+Read against `node.rs`, `mod.rs`, `tt.rs`, `history.rs` and
+`correction.rs`. The form stands. Corrected above: the TT read takes the
+deeper entry; the restored stack starts at the node's own ply; same-ply
+re-entries are named; the sample hash takes the depth; one thread and the
+environment controls are stated; the LMR plant uses `CoreLmrQuiet`, an
+existing option, instead of a new switch. Checked and unchanged: a TT probe
+takes `&self` and writes nothing; the search's thread state is
+`ThreadData`'s fields, all covered by section 3; node counting and the
+2,048-node poll read `td.nodes`, which the probe restores, so the main
+search reads the same counts after a probe.
