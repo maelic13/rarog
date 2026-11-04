@@ -327,13 +327,12 @@ class until they open. The rows are in ascending order, which is the order
 of work (maintainer decision 2026-11-03): a leaf added later takes the next
 free number of the step it belongs to, and one that must run earlier is
 placed by renumbering, never by moving its row. The first open row is
-GUIDE's Now (`guide_board.py`). E.3.2 and E.3.3 head the register out of
-order (maintainer decision 2026-11-04): the build names and the universal
-binary are settled before Phase D continues.
+GUIDE's Now (`guide_board.py`). E.3.3 heads the register out of order
+(maintainer decision 2026-11-04): the universal binary is settled before
+Phase D continues, after E.3.2's build names (done 2026-11-04).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| E.3.2 | IMPLEMENTED | I1 | Every tier at the fingerprint; the pooled NPS read of `sse42` over `base` on an idle host is left |
 | E.3.3 | RESEARCH | R2 | After E.3.2; the card's four checks first, each able to stop it |
 | D.4.3 | READY_FOR_IMPLEMENTATION | I1 | Before D.6.1, D.6.2 and D.8.4; a planted dropped move must fail it |
 | D.4.4 | RESEARCH | R2 | The card: how to re-search without perturbing the measured tree; before D.6's screens |
@@ -1450,7 +1449,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is
       `docs/PROCESS.md` *Release*; the leaf's text is in `docs/archive/PLAN-closed-2026-10-05.md`.
-    - **E.3.2 Build names: one scheme for `id name`, the start-up line, the files and the build command, and an `sse42` tier — `I1`.** Added
+    - **E.3.2 Build names: one scheme for `id name`, the start-up line, the files and the build command, and an `sse42` tier — `I1`, DONE 2026-11-04.** Added
       2026-11-04 by maintainer decision, with E.3.3, ahead of Phase D's
       remaining work. The form is Basilisk's
       (`D:/code/basilisk/cmake/git-version.cmake`,
@@ -1525,8 +1524,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the `avx2` build as `sse42`. The staged test-engine names
       (`tools/test_engines/rarog-<suffix>-pext-pgo.exe`) are unchanged, so
       the harness scripts and recorded recipes that name them still work.
-      Left: the pooled NPS read of `sse42` over `base`, which needs an idle
-      host.
+      The pooled NPS read (RAR-P55): `sse42` **+8.06%** [+7.57%, +8.55%]
+      over `base` on the 5950X, indicative of what older CPUs gain;
+      `nps_read.py` now reads a pool of any tier (`145ab14`).
     - **E.3.3 The universal x86-64 binary: one release file per OS that picks its tier at start-up, at the single-tier build's speed — `R2` card, then `I2`/`V`.** Moved
       from G.2 on 2026-11-04 by maintainer decision. Its record
       (`analysis/universal_binary_2026-09.md`) deferred it at about zero
