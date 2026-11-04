@@ -340,9 +340,14 @@ fn format_score(score: i32) -> String {
         let cp = TB_DISPLAY_CP - (TB_VALUE - score.abs());
         format!("cp {}", score.signum() * cp)
     } else {
-        format!("cp {score}")
+        format!("cp {}", score.clamp(-MAX_ORDINARY_CP, MAX_ORDINARY_CP))
     }
 }
+
+/// The most an ordinary score prints: one below the lowest tablebase win, so
+/// a score that is neither a mate nor a tablebase result, the rule-50
+/// downgraded mate (`TB_WIN_SCORE - 1`) among them, never reads as decided.
+const MAX_ORDINARY_CP: i32 = TB_DISPLAY_CP - (TB_VALUE - TB_WIN_SCORE) - 1;
 
 impl Searcher {
     /// A searcher that writes its output to `sink`.
@@ -2008,6 +2013,22 @@ mod tests {
         assert_eq!(super::nps(49, 1), 49_000);
         assert_eq!(super::nps(2_000, 4), 500_000);
         assert_eq!(super::nps(0, 0), 0);
+    }
+
+    /// An ordinary score at or above the tablebase band's display printed raw,
+    /// so the rule-50-downgraded mate read `cp 31743`, above every tablebase
+    /// win.
+    #[test]
+    fn ordinary_scores_print_below_every_tablebase_win() {
+        use super::{TB_VALUE, TB_WIN_SCORE, format_score};
+        assert_eq!(format_score(143), "cp 143");
+        assert_eq!(format_score(19_872), "cp 19872");
+        assert_eq!(format_score(19_873), "cp 19872");
+        assert_eq!(format_score(TB_WIN_SCORE - 1), "cp 19872");
+        assert_eq!(format_score(-(TB_WIN_SCORE - 1)), "cp -19872");
+        assert_eq!(format_score(TB_WIN_SCORE), "cp 19873");
+        assert_eq!(format_score(TB_VALUE), "cp 20000");
+        assert_eq!(format_score(-TB_WIN_SCORE), "cp -19873");
     }
 
     #[test]

@@ -46,6 +46,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   size the system cannot allocate is reported once, not after every later
   option change; and `searchmoves` with a single move searches it to the
   requested depth.
+- **Scores no longer look decided when they are not.** A position the
+  engine has not proved won could be reported with a score above every
+  tablebase win; ordinary scores now stay below the tablebase range.
 
 ## [2.6.0] - 2026-10-22
 
