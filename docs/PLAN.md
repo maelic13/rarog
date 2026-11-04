@@ -2911,9 +2911,16 @@ records from before 2026-11-01, where D.4 is the tablebase leaf.
       say), and refuses a larger value as the option is parsed, with an
       `info string` naming the value and the limit; the setting is kept
       and nothing is allocated. Below the limit the allocator's own
-      refusal keeps its path, announced once with the table kept, now
-      tested at search level with a reservation no platform can make, and
-      the process test runs on macOS again. The limit is total, not
+      refusal keeps its path with the table kept, tested at search level
+      with a reservation no platform can make, and the process test runs
+      on macOS again. **Every `Hash` sent is checked and answered**
+      (`488608c`, maintainer's rule 2026-11-04): `Configure` carries whether
+      the `setoption` was `Hash`; a sent value is tried whenever it differs
+      from the table in use and a refusal announced each time, while any
+      other option keeps the size in use and says nothing about `Hash`.
+      D.3.7's rule (retry only on a new value) left the same value sent
+      again after memory was freed neither tried nor answered. A search
+      runs on the table in use, the last size that was granted. The limit is total, not
       available, memory: available memory moves with the file cache and
       other processes and would refuse a table that fits. **The unsafe
       floor is 24** (maintainer decision 2026-11-04): Rust has no
