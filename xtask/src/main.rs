@@ -144,6 +144,10 @@ fn run() -> Result<()> {
         binary_path(&target_dir, &config.target)
     };
     let asset = copy_dist_binary(&binary, &config, &version)?;
+    if let Err(err) = check_static_runtime(&asset, &config.target) {
+        let _ = fs::remove_file(&asset);
+        return Err(err);
+    }
     if config.arch == Arch::Universal {
         if let Err(err) = universal::check(&asset, &version) {
             let _ = fs::remove_file(&asset);
@@ -1180,6 +1184,93 @@ fn find_rustup_llvm_tool(name: &str) -> Option<PathBuf> {
 /// Applied to EVERY build of the target, not just `--pgo` ones, so the PGO and
 /// non-PGO binaries differ in exactly one variable — the profile — and a
 /// performance bisect never has to ask "which linker was that one?".
+/// The C runtime linked into the binary where the platform allows it, so a
+/// user needs nothing installed: the Visual C++ runtime and the UCRT on
+/// Windows, glibc on Linux (a static PIE, no glibc floor). macOS cannot:
+/// Apple supports no static `libSystem`, which every Mac has. `cc` follows,
+/// so Fathom's C is built against the same runtime.
+fn runtime_flags(target: &str) -> Vec<String> {
+    if links_runtime_statically(target) {
+        vec!["-C".to_string(), "target-feature=+crt-static".to_string()]
+    } else {
+        Vec::new()
+    }
+}
+
+fn links_runtime_statically(target: &str) -> bool {
+    target.ends_with("-windows-msvc") || target.ends_with("-linux-gnu")
+}
+
+/// Refuse a binary that still depends on a C runtime the system must
+/// provide: on Windows an import of the Visual C++ runtime or the UCRT, on
+/// Linux a dynamic loader or any needed library.
+fn check_static_runtime(binary: &Path, target: &str) -> Result<()> {
+    if !links_runtime_statically(target) {
+        println_flush(format_args!(
+            "  runtime: the system's own (no static runtime on this platform)"
+        ));
+        return Ok(());
+    }
+    let readobj = find_llvm_tool("llvm-readobj").ok_or_else(|| {
+        "llvm-readobj not found. Install it with `rustup component add llvm-tools`.".to_string()
+    })?;
+    let path = binary.to_str().ok_or("binary path is not UTF-8")?;
+    let readobj = readobj.to_str().ok_or("llvm-readobj path is not UTF-8")?;
+    let problems = if target.ends_with("-windows-msvc") {
+        runtime_imports(&command_output(readobj, &["--coff-imports", path])?)
+    } else {
+        elf_runtime_dependencies(&command_output(
+            readobj,
+            &["--program-headers", "--dynamic-table", path],
+        )?)
+    };
+    if problems.is_empty() {
+        println_flush(format_args!("  runtime: linked in, nothing to install"));
+        Ok(())
+    } else {
+        Err(format!(
+            "`{}` depends on a runtime the system must provide: {}",
+            binary.display(),
+            problems.join(", ")
+        ))
+    }
+}
+
+/// The C runtime DLLs among a PE file's imports (`llvm-readobj --coff-imports`).
+fn runtime_imports(imports: &str) -> Vec<String> {
+    imports
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("Name:"))
+        .map(str::trim)
+        .filter(|dll| {
+            let dll = dll.to_ascii_lowercase();
+            ["vcruntime", "msvcp", "ucrtbase", "api-ms-win-crt-"]
+                .iter()
+                .any(|runtime| dll.starts_with(runtime))
+        })
+        .map(str::to_string)
+        .collect()
+}
+
+/// A dynamic loader or a needed library in an ELF file
+/// (`llvm-readobj --program-headers --dynamic-table`).
+fn elf_runtime_dependencies(text: &str) -> Vec<String> {
+    text.lines()
+        .map(str::trim)
+        .filter_map(|line| {
+            if line.starts_with("Type: PT_INTERP") {
+                Some("a dynamic loader (PT_INTERP)".to_string())
+            } else if line.contains("NEEDED") {
+                line.split("Shared library:")
+                    .nth(1)
+                    .map(|lib| format!("needed {}", lib.trim()))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 fn linker_flags(target: &str) -> Result<Vec<String>> {
     if target != "aarch64-pc-windows-msvc" {
         return Ok(Vec::new());
@@ -1333,6 +1424,7 @@ fn cargo_build(
     // through that branch, and the generate build is precisely the one that
     // must be LLD-linked for the profile to be mergeable.
     flags.extend(linker_flags(target)?);
+    flags.extend(runtime_flags(target));
 
     println_flush(format_args!(
         "Building Rarog {} for {}{}",
@@ -2494,6 +2586,74 @@ mod tests {
         let features = tier_features(Arch::Base, LINUX, false).unwrap();
         let judgement = judge_disassembly("Disassembly of section .text:\n", Arch::Base, &features);
         assert_eq!(judgement.instructions, 0);
+    }
+
+    /// Windows and Linux link their runtime in; macOS cannot.
+    #[test]
+    fn the_runtime_is_static_where_the_platform_allows() {
+        for target in [
+            WINDOWS,
+            LINUX,
+            "aarch64-pc-windows-msvc",
+            "aarch64-unknown-linux-gnu",
+        ] {
+            assert_eq!(
+                runtime_flags(target),
+                ["-C", "target-feature=+crt-static"],
+                "{target}"
+            );
+        }
+        assert!(runtime_flags("aarch64-apple-darwin").is_empty());
+    }
+
+    #[test]
+    fn a_runtime_dll_import_is_found() {
+        let dynamic = "
+  Import {
+    Name: KERNEL32.dll
+  }
+  Import {
+    Name: VCRUNTIME140.dll
+  }
+  Import {
+    Name: api-ms-win-crt-heap-l1-1-0.dll
+  }
+  Import {
+    Name: api-ms-win-core-synch-l1-2-0.dll
+  }";
+        assert_eq!(
+            runtime_imports(dynamic),
+            ["VCRUNTIME140.dll", "api-ms-win-crt-heap-l1-1-0.dll"]
+        );
+        let static_imports =
+            "  Import {\n    Name: KERNEL32.dll\n  }\n  Import {\n    Name: WINMM.dll\n  }";
+        assert!(runtime_imports(static_imports).is_empty());
+    }
+
+    #[test]
+    fn a_dynamic_loader_or_needed_library_is_found() {
+        let dynamic = "
+  ProgramHeader {
+    Type: PT_INTERP (0x3)
+  }
+DynamicSection [ (27 entries)
+  Tag                Type     Name/Value
+  0x0000000000000001 NEEDED   Shared library: [libc.so.6]
+  0x000000000000000C INIT     0x1000
+]";
+        assert_eq!(
+            elf_runtime_dependencies(dynamic),
+            ["a dynamic loader (PT_INTERP)", "needed [libc.so.6]"]
+        );
+        let static_pie = "
+  ProgramHeader {
+    Type: PT_LOAD (0x1)
+  }
+DynamicSection [ (12 entries)
+  Tag                Type     Name/Value
+  0x000000000000001E FLAGS    BIND_NOW
+]";
+        assert!(elf_runtime_dependencies(static_pie).is_empty());
     }
 
     #[test]

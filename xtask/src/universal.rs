@@ -639,6 +639,7 @@ fn link(
         ])
         .args(["-C", "panic=abort", "-D", "warnings"])
         .args(super::rustflags(Arch::Universal, false))
+        .args(super::runtime_flags(&config.target))
         .args(if shared.strip_debuginfo {
             &["-C", "strip=debuginfo"][..]
         } else {

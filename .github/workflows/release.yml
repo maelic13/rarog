@@ -217,14 +217,15 @@ jobs:
               test "$n" = "$expected" || { echo "::error::the forced $tier tier benches $n, not $expected"; exit 1; }
             done
           fi
-          # The oldest system the asset runs on, checked rather than assumed:
-          # glibc 2.34 on Linux (Ubuntu 22.04, Debian 12, RHEL 9), macOS 11.0.
+          # What the asset needs from the system, checked rather than assumed.
+          # Windows and Linux link their C runtime in (xtask refuses a build
+          # that does not); macOS cannot, and needs macOS 11.0.
           case '${{ matrix.os_name }}' in
             linux)
-              floor="$(objdump -T "$bin" | grep -oE 'GLIBC_[0-9.]+' | sort -Vu | tail -1)"
-              echo "glibc floor: $floor"
-              [ "$(printf '%s\nGLIBC_2.34\n' "$floor" | sort -V | tail -1)" = GLIBC_2.34 ] \
-                || { echo "::error::the asset needs $floor, above glibc 2.34"; exit 1; }
+              if readelf -l "$bin" | grep -q INTERP; then
+                echo "::error::the Linux asset is dynamically linked"; readelf -d "$bin" | grep NEEDED; exit 1
+              fi
+              echo "statically linked: no glibc needed"
               ;;
             macos)
               minos="$(vtool -show-build "$bin" | awk '$1 == "minos" {print $2}')"
