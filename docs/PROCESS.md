@@ -858,7 +858,11 @@ for Windows and Linux links the C runtime statically (`+crt-static`: the
 Visual C++ runtime and the UCRT, or glibc as a static PIE), and xtask refuses
 a binary that still imports one or has a dynamic loader (RAR-P57); macOS
 cannot, so its binaries need only `libSystem` and macOS 11.0 or newer (the
-release checks that 11.0 is the minimum). The release benches every
+release checks that 11.0 is the minimum). A static Linux binary carries
+glibc's variants of its string and math functions for newer instruction sets
+(SVE `memcpy` on arm64, AVX `memmove`), which glibc picks at run time; the
+ISA check leaves out the functions `libc.a` and `libm.a` define and holds the
+rest to the contract. The release benches every
 forced tier on its runner and checks the selection under Intel SDE
 (`tools/diag/check_universal.py`). The start-up line names the tier and kinds;
 `id name` never does, since rating lists key on it. `RAROG_DEV_ID=<date>-<hash>`
