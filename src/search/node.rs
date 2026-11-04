@@ -4,11 +4,15 @@
 use crate::board::{Board, CheckInfo, Move, MoveList, Piece};
 use crate::eval::{INF_SCORE, MATE_SCORE, VALUE_NONE, piece_value};
 use crate::infra;
-use crate::tt::{Bound, TtProbe, TtStore};
+use crate::tt::{Bound, TtEntry, TtProbe, TtStore};
 
 use super::history::{BestMoveUpdate, SearchedMoves, cont_context};
 use super::movepick::{
     MovePicker, ScoredMoveList, Stage, diversify_root_scores, is_noisy, pick_next,
+};
+#[cfg(feature = "pricing")]
+use super::pricing::{
+    Decision, HiddenMove, NodeEntry, NodeKind, QCapture, QEntry, ReSearch, Rule, Verdict,
 };
 use super::{MAX_PLY, MAX_QPLY, SearchEvent, Searcher, TB_WIN_SCORE};
 
@@ -121,9 +125,9 @@ pub(super) trait NodeType {
 /// The root node: a PV node at ply 0.
 pub(super) struct Root;
 /// A PV node below the root.
-struct Pv;
+pub(super) struct Pv;
 /// A null-window node.
-struct NonPv;
+pub(super) struct NonPv;
 
 impl NodeType for Root {
     const PV: bool = true;
@@ -392,7 +396,7 @@ impl Searcher {
     /// continuation context: whether this node is in check, whether the move
     /// is noisy, and the coloured piece and destination.
     #[inline]
-    fn push_move(&mut self, board: &Board, ply: usize, mv: Move, piece: Piece) {
+    pub(super) fn push_move(&mut self, board: &Board, ply: usize, mv: Move, piece: Piece) {
         let captured = board.captured_piece(mv);
         let entry = &mut self.td.stack[ply];
         entry.mv = mv;
@@ -471,11 +475,46 @@ impl Searcher {
     /// the line's accumulated lateness: the parent's laterality plus
     /// [`laterality_step`] of this move's index.
     #[inline]
-    fn record_move_order(&mut self, ply: usize, move_count: i32) {
+    pub(super) fn record_move_order(&mut self, ply: usize, move_count: i32) {
         let parent = self.td.stack.back(ply, 1).laterality;
         let entry = &mut self.td.stack[ply];
         entry.move_count = move_count;
         entry.laterality = parent + laterality_step(move_count);
+    }
+
+    /// The table entry for `key`. A pricing probe also reads its scratch
+    /// table.
+    #[inline(always)]
+    fn tt_probe(&self, key: u64) -> Option<TtEntry> {
+        #[cfg(feature = "pricing")]
+        if self.td.pricing.probing {
+            return self.pricing_tt_probe(key);
+        }
+        self.shared.tt.probe(key)
+    }
+
+    /// Store a search result. A pricing probe stores into its scratch table,
+    /// so the main table stays as the measured search left it.
+    #[inline(always)]
+    fn tt_store(&mut self, store: TtStore) {
+        #[cfg(feature = "pricing")]
+        if self.td.pricing.probing {
+            self.pricing_scratch().store(store);
+            return;
+        }
+        self.shared.tt.store(store);
+    }
+
+    /// Store a static evaluation alone; a pricing probe's goes to its
+    /// scratch table.
+    #[inline(always)]
+    fn tt_store_eval(&mut self, key: u64, raw_eval: i32, is_pv: bool) {
+        #[cfg(feature = "pricing")]
+        if self.td.pricing.probing {
+            self.pricing_scratch().store_eval(key, raw_eval, is_pv);
+            return;
+        }
+        self.shared.tt.store_eval(key, raw_eval, is_pv);
     }
 
     pub(super) fn negamax<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
@@ -492,6 +531,15 @@ impl Searcher {
         poll: &mut P,
     ) -> i32 {
         debug_assert_eq!(NODE::ROOT, ply == 0, "the root node type is exactly ply 0");
+        #[cfg(feature = "pricing")]
+        let pricing_entry = NodeEntry {
+            depth,
+            alpha,
+            beta,
+            allow_null,
+            cut_node,
+            last_critical_ply,
+        };
         if self.check_stop(poll) {
             return 0;
         }
@@ -544,7 +592,7 @@ impl Searcher {
         if let Some((score, bound)) = self.syzygy_wdl_bound(board, depth, ply, excluded) {
             match tb_verdict(score, bound, alpha, beta, NODE::PV) {
                 TbVerdict::Return => {
-                    self.shared.tt.store(TtStore {
+                    self.tt_store(TtStore {
                         key: hash,
                         depth: (depth + 6).min(infra::to_i32(MAX_PLY) - 1),
                         score,
@@ -564,7 +612,7 @@ impl Searcher {
                 TbVerdict::Search => {}
             }
         }
-        let tt_entry = self.shared.tt.probe(hash);
+        let tt_entry = self.tt_probe(hash);
         // Main thread only: if helpers' work reaches the thread that owns the
         // answer, this hit rate rises with the thread count.
         if self.td.thread_id == 0 {
@@ -698,7 +746,7 @@ impl Searcher {
                 // A miss stores the eval at once, so the next visit to this
                 // position skips the evaluation even if this search is cut.
                 if tt_entry.is_none() && excluded.is_null() {
-                    self.shared.tt.store_eval(hash, raw, tt_pv);
+                    self.tt_store_eval(hash, raw, tt_pv);
                 }
                 raw
             } else {
@@ -825,6 +873,7 @@ impl Searcher {
         // fail-high entry says there is more here.
         if !NODE::PV
             && !in_check
+            && !pricing_off!(self, ply, Razor)
             && eval_for_pruning
                 < alpha - self.cfg.core.razor_base - self.cfg.core.razor_square * depth * depth
             && alpha < RAZOR_ALPHA_LIMIT
@@ -838,7 +887,33 @@ impl Searcher {
                 "razor depth {depth} estimated {eval_for_pruning} margin {} alpha {alpha}",
                 self.cfg.core.razor_base + self.cfg.core.razor_square * depth * depth
             );
-            return self.quiescence::<NonPv, _>(board, alpha, beta, ply, 0, poll);
+            let score = self.quiescence::<NonPv, _>(board, alpha, beta, ply, 0, poll);
+            #[cfg(feature = "pricing")]
+            if !NODE::ROOT
+                && excluded.is_null()
+                && self.pricing_sampled(Rule::Razor, hash, Move::NULL, depth)
+            {
+                let decision = Decision {
+                    rule: Rule::Razor,
+                    depth,
+                    ply,
+                    node: NodeKind::of(NODE::PV, cut_node),
+                    move_count: 0,
+                    tail: 0,
+                    quiet: None,
+                };
+                self.price_node::<NODE, _>(
+                    board,
+                    &decision,
+                    &pricing_entry,
+                    Verdict::Shortcut {
+                        returned: score,
+                        alpha,
+                    },
+                    poll,
+                );
+            }
+            return score;
         }
 
         // Reverse futility: far enough above beta that the node is expected
@@ -853,7 +928,7 @@ impl Searcher {
         // of the relieved margin cannot cut, and only a node between the two
         // computes the set, which the move loop then reuses.
         let mut threats = None;
-        if !tt_pv && !in_check && excluded.is_null() {
+        if !tt_pv && !in_check && excluded.is_null() && !pricing_off!(self, ply, ReverseFutility) {
             let core = &self.cfg.core;
             let base = core.rfp_square * depth * depth / 16 + core.rfp_linear * depth
                 - core.rfp_improvement * improvement / 1024
@@ -890,6 +965,27 @@ impl Searcher {
                      base {base} beta {beta} returns {score}",
                     threats.is_some()
                 );
+                #[cfg(feature = "pricing")]
+                if !NODE::ROOT
+                    && self.pricing_sampled(Rule::ReverseFutility, hash, Move::NULL, depth)
+                {
+                    let decision = Decision {
+                        rule: Rule::ReverseFutility,
+                        depth,
+                        ply,
+                        node: NodeKind::of(NODE::PV, cut_node),
+                        move_count: 0,
+                        tail: 0,
+                        quiet: None,
+                    };
+                    self.price_node::<NODE, _>(
+                        board,
+                        &decision,
+                        &pricing_entry,
+                        Verdict::Cut { beta },
+                        poll,
+                    );
+                }
                 return score;
             }
         }
@@ -928,6 +1024,7 @@ impl Searcher {
         // so verifications never nest.
         if !NODE::ROOT
             && allow_null
+            && !pricing_off!(self, ply, NullMove)
             && depth >= 3
             && !in_check
             && excluded.is_null()
@@ -1017,6 +1114,25 @@ impl Searcher {
                 if score >= null_bound && !is_loss(score) {
                     let in_region = self.td.nmp_min_ply > 0;
                     if score >= beta && (depth < self.cfg.proof.nmp_verify_depth || in_region) {
+                        #[cfg(feature = "pricing")]
+                        if self.pricing_sampled(Rule::NullMove, hash, Move::NULL, depth) {
+                            let decision = Decision {
+                                rule: Rule::NullMove,
+                                depth,
+                                ply,
+                                node: NodeKind::of(NODE::PV, cut_node),
+                                move_count: 0,
+                                tail: 0,
+                                quiet: None,
+                            };
+                            self.price_node::<NODE, _>(
+                                board,
+                                &decision,
+                                &pricing_entry,
+                                Verdict::Cut { beta },
+                                poll,
+                            );
+                        }
                         return null_cutoff_score(score, beta);
                     }
                     if !in_region {
@@ -1062,6 +1178,25 @@ impl Searcher {
                         );
                         if verified >= beta {
                             crate::diag_count!(nmp_verify_pass);
+                            #[cfg(feature = "pricing")]
+                            if self.pricing_sampled(Rule::NullMove, hash, Move::NULL, depth) {
+                                let decision = Decision {
+                                    rule: Rule::NullMove,
+                                    depth,
+                                    ply,
+                                    node: NodeKind::of(NODE::PV, cut_node),
+                                    move_count: 0,
+                                    tail: 0,
+                                    quiet: None,
+                                };
+                                self.price_node::<NODE, _>(
+                                    board,
+                                    &decision,
+                                    &pricing_entry,
+                                    Verdict::Cut { beta },
+                                    poll,
+                                );
+                            }
                             return null_cutoff_score(score, beta);
                         }
                         crate::diag_count!(nmp_verify_fail);
@@ -1084,7 +1219,13 @@ impl Searcher {
         // it is repeated at the full depth. A cut stores a lower bound with
         // its move and returns a score pulled toward beta; a decisive score
         // is returned and stored as proved.
-        if !NODE::ROOT && !in_check && excluded.is_null() && !is_win(beta) && !tt_pv {
+        if !NODE::ROOT
+            && !in_check
+            && excluded.is_null()
+            && !is_win(beta)
+            && !tt_pv
+            && !pricing_off!(self, ply, ProbCut)
+        {
             let improving_i = i32::from(improving);
             let probcut_beta =
                 beta + self.cfg.proof.probcut_base - self.cfg.proof.probcut_improving * improving_i;
@@ -1254,7 +1395,26 @@ impl Searcher {
                              probcut_depth {probcut_depth} bound {move_beta} score {score} \
                              static {static_eval} returns {returned}"
                         );
-                        self.shared.tt.store(TtStore {
+                        #[cfg(feature = "pricing")]
+                        if self.pricing_sampled(Rule::ProbCut, hash, Move::NULL, depth) {
+                            let decision = Decision {
+                                rule: Rule::ProbCut,
+                                depth,
+                                ply,
+                                node: NodeKind::of(NODE::PV, cut_node),
+                                move_count: 0,
+                                tail: 0,
+                                quiet: None,
+                            };
+                            self.price_node::<NODE, _>(
+                                board,
+                                &decision,
+                                &pricing_entry,
+                                Verdict::Cut { beta },
+                                poll,
+                            );
+                        }
+                        self.tt_store(TtStore {
                             key: hash,
                             depth: probcut_depth + 1,
                             // The fail-high shifted down by the margin it
@@ -1580,6 +1740,32 @@ impl Searcher {
                         "lmp depth {depth} move {mv} move_count {move_count} history {history} \
                          improvement {improvement} alpha {alpha}"
                     );
+                    #[cfg(feature = "pricing")]
+                    if excluded.is_null()
+                        && self.pricing_sampled(Rule::LateMovePruning, hash, mv, depth)
+                    {
+                        let decision = Decision {
+                            rule: Rule::LateMovePruning,
+                            depth,
+                            ply,
+                            node: NodeKind::of(NODE::PV, cut_node),
+                            move_count,
+                            tail: move_picker.moves_left_behind(),
+                            quiet: Some(is_quiet),
+                        };
+                        let hidden = HiddenMove {
+                            mv,
+                            piece: moving_piece,
+                            extension_spent,
+                            search: ReSearch {
+                                new_depth: depth - 1,
+                                alpha,
+                                cut_node: !cut_node,
+                                last_critical_ply,
+                            },
+                        };
+                        self.price_pruned_move(board, &decision, &hidden, poll);
+                    }
                     skip_quiets = true;
                     continue;
                 }
@@ -1606,6 +1792,32 @@ impl Searcher {
                         "futility depth {depth} move {mv} move_count {move_count} eval {static_eval} \
                          history {history} corr {corr_abs} value {futility_value} alpha {alpha}"
                     );
+                    #[cfg(feature = "pricing")]
+                    if excluded.is_null()
+                        && self.pricing_sampled(Rule::QuietFutility, hash, mv, depth)
+                    {
+                        let decision = Decision {
+                            rule: Rule::QuietFutility,
+                            depth,
+                            ply,
+                            node: NodeKind::of(NODE::PV, cut_node),
+                            move_count,
+                            tail: move_picker.moves_left_behind(),
+                            quiet: Some(is_quiet),
+                        };
+                        let hidden = HiddenMove {
+                            mv,
+                            piece: moving_piece,
+                            extension_spent,
+                            search: ReSearch {
+                                new_depth: depth - 1,
+                                alpha,
+                                cut_node: !cut_node,
+                                last_critical_ply,
+                            },
+                        };
+                        self.price_pruned_move(board, &decision, &hidden, poll);
+                    }
                     if best_score < futility_value && best_score.abs() < TB_WIN_SCORE {
                         best_score = futility_value;
                     }
@@ -1639,6 +1851,32 @@ impl Searcher {
                         "bad_noisy_futility depth {depth} move {mv} move_count {move_count} \
                          eval {static_eval} history {history} value {noisy_futility_value} alpha {alpha}"
                     );
+                    #[cfg(feature = "pricing")]
+                    if excluded.is_null()
+                        && self.pricing_sampled(Rule::BadNoisyFutility, hash, mv, depth)
+                    {
+                        let decision = Decision {
+                            rule: Rule::BadNoisyFutility,
+                            depth,
+                            ply,
+                            node: NodeKind::of(NODE::PV, cut_node),
+                            move_count,
+                            tail: move_picker.moves_left_behind(),
+                            quiet: Some(is_quiet),
+                        };
+                        let hidden = HiddenMove {
+                            mv,
+                            piece: moving_piece,
+                            extension_spent,
+                            search: ReSearch {
+                                new_depth: depth - 1,
+                                alpha,
+                                cut_node: !cut_node,
+                                last_critical_ply,
+                            },
+                        };
+                        self.price_pruned_move(board, &decision, &hidden, poll);
+                    }
                     if best_score < noisy_futility_value && best_score.abs() < TB_WIN_SCORE {
                         best_score = noisy_futility_value;
                     }
@@ -1653,6 +1891,32 @@ impl Searcher {
                         ply,
                         "history_prune depth {depth} move {mv} move_count {move_count} history {history}"
                     );
+                    #[cfg(feature = "pricing")]
+                    if excluded.is_null()
+                        && self.pricing_sampled(Rule::HistoryPruning, hash, mv, depth)
+                    {
+                        let decision = Decision {
+                            rule: Rule::HistoryPruning,
+                            depth,
+                            ply,
+                            node: NodeKind::of(NODE::PV, cut_node),
+                            move_count,
+                            tail: 0,
+                            quiet: Some(is_quiet),
+                        };
+                        let hidden = HiddenMove {
+                            mv,
+                            piece: moving_piece,
+                            extension_spent,
+                            search: ReSearch {
+                                new_depth: depth - 1,
+                                alpha,
+                                cut_node: !cut_node,
+                                last_critical_ply,
+                            },
+                        };
+                        self.price_pruned_move(board, &decision, &hidden, poll);
+                    }
                     continue;
                 }
 
@@ -1696,6 +1960,36 @@ impl Searcher {
                         "see_prune depth {depth} move {mv} move_count {move_count} quiet {is_quiet} \
                          history {history} threshold {threshold}"
                     );
+                    #[cfg(feature = "pricing")]
+                    let rule = if is_quiet {
+                        Rule::QuietSee
+                    } else {
+                        Rule::NoisySee
+                    };
+                    #[cfg(feature = "pricing")]
+                    if excluded.is_null() && self.pricing_sampled(rule, hash, mv, depth) {
+                        let decision = Decision {
+                            rule,
+                            depth,
+                            ply,
+                            node: NodeKind::of(NODE::PV, cut_node),
+                            move_count,
+                            tail: 0,
+                            quiet: Some(is_quiet),
+                        };
+                        let hidden = HiddenMove {
+                            mv,
+                            piece: moving_piece,
+                            extension_spent,
+                            search: ReSearch {
+                                new_depth: depth - 1,
+                                alpha,
+                                cut_node: !cut_node,
+                                last_critical_ply,
+                            },
+                        };
+                        self.price_pruned_move(board, &decision, &hidden, poll);
+                    }
                     continue;
                 }
             }
@@ -1847,6 +2141,29 @@ impl Searcher {
                         poll,
                     );
                     self.td.stack[ply].reduction = 0;
+                    #[cfg(feature = "pricing")]
+                    if score <= alpha
+                        && reduced_depth < new_depth
+                        && excluded.is_null()
+                        && self.pricing_sampled(Rule::LmrFailLow, hash, mv, depth)
+                    {
+                        let decision = Decision {
+                            rule: Rule::LmrFailLow,
+                            depth,
+                            ply,
+                            node: NodeKind::of(NODE::PV, cut_node),
+                            move_count,
+                            tail: 0,
+                            quiet: Some(is_quiet),
+                        };
+                        let search = ReSearch {
+                            new_depth,
+                            alpha,
+                            cut_node: !cut_node,
+                            last_critical_ply,
+                        };
+                        self.price_reduced_move(board, &decision, &search, poll);
+                    }
                     if score > alpha {
                         // A reduced move that beat alpha by a wide margin earns
                         // a deeper verification. Not at the root, as the donor
@@ -2010,7 +2327,7 @@ impl Searcher {
                     // it excludes the better moves.
                     if excluded.is_null() {
                         if !(NODE::ROOT && self.td.multipv_line > 0) {
-                            self.shared.tt.store(TtStore {
+                            self.tt_store(TtStore {
                                 key: hash,
                                 depth,
                                 score,
@@ -2026,6 +2343,8 @@ impl Searcher {
                             crate::diag_count!(main_store_lower);
                         }
                     }
+                    #[cfg(feature = "pricing")]
+                    self.pricing_close(ply, false);
                     return score;
                 }
             }
@@ -2114,7 +2433,7 @@ impl Searcher {
         }
         if excluded.is_null() {
             if !(NODE::ROOT && self.td.multipv_line > 0) {
-                self.shared.tt.store(TtStore {
+                self.tt_store(TtStore {
                     key: hash,
                     depth,
                     score: best_score,
@@ -2138,6 +2457,8 @@ impl Searcher {
                 }
             }
         }
+        #[cfg(feature = "pricing")]
+        self.pricing_close(ply, bound == Bound::Upper);
         best_score
     }
 
@@ -2153,6 +2474,8 @@ impl Searcher {
         if self.check_stop(poll) {
             return 0;
         }
+        #[cfg(feature = "pricing")]
+        let pricing_q_entry = QEntry { alpha, beta, qply };
         if ply >= MAX_PLY - 1 {
             return self.corrected_eval(board, MAX_PLY - 1);
         }
@@ -2181,7 +2504,7 @@ impl Searcher {
             }
         }
         let original_alpha = alpha;
-        let tt_entry = self.shared.tt.probe(hash);
+        let tt_entry = self.tt_probe(hash);
         let ev = TtProbe::from_entry(tt_entry, ply, board.halfmove_clock());
         // A depth-0 store replaces a shallow entry, so it carries on the PV bit
         // an earlier search stored for the position rather than clearing it.
@@ -2254,7 +2577,7 @@ impl Searcher {
                 // A stand-pat fail-high is stored as a depth-0 lower bound.
                 // Suppressing these stores measured worse: TT cutoffs fell
                 // faster than the tree shrank.
-                self.shared.tt.store(TtStore {
+                self.tt_store(TtStore {
                     key: hash,
                     depth: 0,
                     score: stand_pat,
@@ -2274,6 +2597,7 @@ impl Searcher {
             }
             let delta_margin = self.cfg.quiet.qs_delta_margin;
             if board.occupied_count() > 8
+                && !pricing_off!(self, ply, QDelta)
                 && stand_pat + piece_value(Piece::Queen) + delta_margin < alpha
             {
                 crate::diag_count!(q_delta_prune);
@@ -2283,6 +2607,23 @@ impl Searcher {
                 }
                 // Reached only when `stand_pat < alpha`, so `alpha` here is still
                 // the caller's bound and `stand_pat` is the honest lower figure.
+                #[cfg(feature = "pricing")]
+                if self.pricing_sampled(Rule::QDelta, hash, Move::NULL, infra::to_i32(qply)) {
+                    let decision = Decision {
+                        rule: Rule::QDelta,
+                        depth: infra::to_i32(qply),
+                        ply,
+                        node: NodeKind::of(NODE::PV, false),
+                        move_count: 0,
+                        tail: 0,
+                        quiet: None,
+                    };
+                    let verdict = Verdict::Shortcut {
+                        returned: stand_pat,
+                        alpha,
+                    };
+                    self.price_q_node::<NODE, _>(board, &decision, &pricing_q_entry, verdict, poll);
+                }
                 return stand_pat;
             }
         }
@@ -2370,6 +2711,26 @@ impl Searcher {
                     {
                         crate::diag_count!(q_futility_flip_eval_units);
                     }
+                    #[cfg(feature = "pricing")]
+                    if self.pricing_sampled(Rule::QFutility, hash, mv, infra::to_i32(qply)) {
+                        let decision = Decision {
+                            rule: Rule::QFutility,
+                            depth: infra::to_i32(qply),
+                            ply,
+                            node: NodeKind::of(NODE::PV, false),
+                            move_count: infra::to_i32(tactical_count),
+                            tail: 0,
+                            quiet: Some(false),
+                        };
+                        let capture = QCapture {
+                            mv,
+                            piece: board.moving_piece(mv),
+                            alpha,
+                            beta,
+                            qply,
+                        };
+                        self.price_q_capture::<NODE, _>(board, &decision, &capture, poll);
+                    }
                     continue;
                 }
                 // Late captures are skipped unless they recapture or check, the
@@ -2385,6 +2746,26 @@ impl Searcher {
                         crate::diag_count!(q_check_exempt);
                     } else {
                         crate::diag_count!(q_count_skip);
+                        #[cfg(feature = "pricing")]
+                        if self.pricing_sampled(Rule::QCount, hash, mv, infra::to_i32(qply)) {
+                            let decision = Decision {
+                                rule: Rule::QCount,
+                                depth: infra::to_i32(qply),
+                                ply,
+                                node: NodeKind::of(NODE::PV, false),
+                                move_count: infra::to_i32(tactical_count),
+                                tail: 0,
+                                quiet: Some(false),
+                            };
+                            let capture = QCapture {
+                                mv,
+                                piece: board.moving_piece(mv),
+                                alpha,
+                                beta,
+                                qply,
+                            };
+                            self.price_q_capture::<NODE, _>(board, &decision, &capture, poll);
+                        }
                         continue;
                     }
                 }
@@ -2409,11 +2790,51 @@ impl Searcher {
                     // moved shallow iterations on mate canaries.
                     if !board.see_ge(mv, see_threshold) {
                         crate::diag_count!(q_see_threshold_skip);
+                        #[cfg(feature = "pricing")]
+                        if self.pricing_sampled(Rule::QSee, hash, mv, infra::to_i32(qply)) {
+                            let decision = Decision {
+                                rule: Rule::QSee,
+                                depth: infra::to_i32(qply),
+                                ply,
+                                node: NodeKind::of(NODE::PV, false),
+                                move_count: infra::to_i32(tactical_count),
+                                tail: 0,
+                                quiet: Some(false),
+                            };
+                            let capture = QCapture {
+                                mv,
+                                piece: board.moving_piece(mv),
+                                alpha,
+                                beta,
+                                qply,
+                            };
+                            self.price_q_capture::<NODE, _>(board, &decision, &capture, poll);
+                        }
                         continue;
                     }
                 }
                 if picked.see < 0 && !board.see_ge(mv, self.cfg.params.qs_see_bad_floor) {
                     crate::diag_count!(q_bad_floor_skip);
+                    #[cfg(feature = "pricing")]
+                    if self.pricing_sampled(Rule::QBadFloor, hash, mv, infra::to_i32(qply)) {
+                        let decision = Decision {
+                            rule: Rule::QBadFloor,
+                            depth: infra::to_i32(qply),
+                            ply,
+                            node: NodeKind::of(NODE::PV, false),
+                            move_count: infra::to_i32(tactical_count),
+                            tail: 0,
+                            quiet: Some(false),
+                        };
+                        let capture = QCapture {
+                            mv,
+                            piece: board.moving_piece(mv),
+                            alpha,
+                            beta,
+                            qply,
+                        };
+                        self.price_q_capture::<NODE, _>(board, &decision, &capture, poll);
+                    }
                     continue;
                 }
             }
@@ -2444,7 +2865,7 @@ impl Searcher {
                     crate::diag_count!(q_move_store);
                 }
                 let score = fail_high_toward_beta(score, beta, self.cfg.quiet.qs_cutoff_lerp);
-                self.shared.tt.store(TtStore {
+                self.tt_store(TtStore {
                     key: hash,
                     depth: 0,
                     score,
@@ -2484,7 +2905,7 @@ impl Searcher {
                 Bound::Lower => {}
             }
         }
-        self.shared.tt.store(TtStore {
+        self.tt_store(TtStore {
             key: hash,
             depth: 0,
             score: alpha,

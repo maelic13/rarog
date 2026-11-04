@@ -38,6 +38,14 @@ default = []
 # but must not change nodes or best moves; production compiles it out entirely.
 diag = []
 
+# Pricing instrument: re-searches a sample of pruned and reduced moves at the
+# depth their rule denied and records whether they would have raised alpha
+# (analysis/pruning_pricing_card_2026-11-04.md). Instrument-only, never in a
+# shipped or SPRT binary, and never read together with `diag`, whose counters
+# would count the probes. With sampling on the main search's nodes are
+# unchanged; that equality is the instrument's isolation proof.
+pricing = []
+
 # Exposes the Texel trace machinery (EvalTrace, reconstruct, flat-param helpers)
 # used by the offline tuner in tools/texel-tuner. Never enabled in
 # production or `tune` builds; bypasses the eval/pawn caches and records a

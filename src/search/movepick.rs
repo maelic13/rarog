@@ -282,6 +282,33 @@ impl MovePicker {
         }
     }
 
+    /// The moves a skip or a break at this point removes: in the quiet stage
+    /// the quiets not yet emitted that do not survive a skip, in the bad noisy
+    /// stage the bad noisy moves not yet emitted. For the pricing records;
+    /// the full picker serves only the root, where nothing is pruned.
+    #[cfg(feature = "pricing")]
+    pub(super) fn moves_left_behind(&self) -> usize {
+        match self {
+            Self::Full { .. } => 0,
+            Self::Staged {
+                moves,
+                noisy_len,
+                bad_len,
+                quiet_index,
+                bad_index,
+                survivors_left,
+                stage,
+                ..
+            } => match stage {
+                Stage::Quiets => {
+                    (moves.len() - noisy_len - quiet_index).saturating_sub(*survivors_left)
+                }
+                Stage::BadNoisy => bad_len - bad_index,
+                _ => 0,
+            },
+        }
+    }
+
     /// The stage the picker is in: the stage of the last emitted move, except
     /// after the TT move, which reports the stage that follows it.
     pub(super) fn stage(&self) -> Stage {

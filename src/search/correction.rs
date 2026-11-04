@@ -202,6 +202,11 @@ impl Searcher {
     /// admission rule: not in check, a quiet best move, a bound that agrees
     /// with the residual's sign.
     pub(super) fn train_correction(&mut self, board: &Board, depth: i32, diff: i32, ply: usize) {
+        // A pricing probe leaves the corrections as the measured search had them.
+        #[cfg(feature = "pricing")]
+        if self.td.pricing.probing {
+            return;
+        }
         crate::diag_count!(correction_updates);
         #[cfg(feature = "diag")]
         {
