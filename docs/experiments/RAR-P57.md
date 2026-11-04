@@ -40,6 +40,19 @@ A pass ships the static runtime. A fail is reported to the maintainer before
 anything ships: the reason for the change is compatibility, so whether a
 measured loss is worth it is the maintainer's decision, not this rule's.
 
+## Amendment (2026-11-04, before either read)
+
+Linux PGO builds of one source are byte-identical here: the four dynamic
+builds from `6c2d323` share one hash (`F011FA74…`), so PGO training is
+deterministic on Linux, unlike Windows. `nps_read.py` refuses identical
+binaries, so it cannot read a Linux pool. The Linux read instead benches the
+one dynamic and the one static binary (`e09fc46`, `265A734E…`) interleaved in
+WSL: eight cycles, in each both arms run `bench 13` three times in
+alternating order and an arm's reading is the best of its three; the
+estimate is the median of the eight static/dynamic ratios and the spread is
+their range. It covers process noise, not build layout. It stays
+indicative, and no rule decides on it. The Windows gate is unchanged.
+
 ## Prediction
 
 - Windows: **+0.1%**, 90% interval −0.4% to +0.6%; P(pass) 0.85. The same
