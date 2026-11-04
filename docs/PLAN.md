@@ -332,7 +332,6 @@ maintainer decision 2026-11-04; both are done.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.4.3 | READY_FOR_IMPLEMENTATION | I1 | Before D.6.1, D.6.2 and D.8.4; a planted dropped move must fail it |
 | D.4.4 | RESEARCH | R2 | The card: how to re-search without perturbing the measured tree; before D.6's screens |
 | D.4.5 | READY_FOR_IMPLEMENTATION | V | The tool first, then the judge run's sample registered; maintainer-run |
 | D.4.6 | RESEARCH | R2 | The tool on the 5950X, validated on a patch of known effect; before D.8's NPS guards |
@@ -484,7 +483,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       reached its c_end at its last iteration, so no fitted vector was
       explored at a reduced perturbation. The range rule is F.6's decision.
       Record: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
-    - **D.4.3 A search-path perft — `I1`.**
+    - **D.4.3 A search-path perft — `I1`, DONE 2026-11-04.**
       Perft through the staged picker (the TT move, then the noisy and quiet
       stages in the search's order), make and unmake, recomputing every key
       and derived field from scratch at each node (`check_consistency`) and
@@ -496,6 +495,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       change the picker's partition, and D.8.4–D.8.5, which move the board.
       Triumviratus's `tdperft` (TB-1) ran 482M nodes with 0 errors and
       validated a board rewrite.
+      Done in `495adb9`: `src/search/path_perft.rs`, a test module run by
+      `cargo test --release`. Each node takes a TT move from its key (none,
+      a legal move as stored, the same move re-read from its UCI text with
+      its flags lost, or arbitrary bits), puts it through `legal_move` as
+      the search does, and drains the staged picker; each emitted move is
+      re-tested by `legal_move`, checked for a repeat, made with the
+      search's check hint and unmade, with `check_consistency` after both
+      and the key, castling, en passant and clocks compared after the
+      unmake. Release reads the six standard positions at depth 4 or 5,
+      16.0M leaves in about 5 s, every count the reference and every stage
+      emitting; debug reads them shallower. Five planted faults fail it:
+      the picker losing its last bad noisy move (4,800,978 leaves against
+      4,865,609 from the start position), the TT move left in the noisy or
+      the quiet list (a repeat), a check hint that never reports check
+      (the checker set desynced) and a re-read TT move played without its
+      flags restored (fails the legality test). The committed test drops
+      one move from each stage in turn and requires a wrong count.
     - **D.4.4 Pruning and reduction pricing — `R2`, then `I2`.**
       What each pruning rule and each reduction hides (TM-9, Triumviratus's
       `prunelog` and `redlog`): a deterministic sample of the moves each rule
