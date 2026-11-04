@@ -333,7 +333,7 @@ Phase D continues, after E.3.2's build names (done 2026-11-04).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| E.3.3 | RESEARCH | R2 | After E.3.2; the card's four checks first, each able to stop it |
+| E.3.3 | IMPLEMENTED | I2 | The card's four checks passed; built on Windows; RAR-P56's speed gate next, then the Linux form and the release switch |
 | D.4.3 | READY_FOR_IMPLEMENTATION | I1 | Before D.6.1, D.6.2 and D.8.4; a planted dropped move must fail it |
 | D.4.4 | RESEARCH | R2 | The card: how to re-search without perturbing the measured tree; before D.6's screens |
 | D.4.5 | READY_FOR_IMPLEMENTATION | V | The tool first, then the judge run's sample registered; maintainer-run |
@@ -1573,6 +1573,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `rarog-<version>-linux-x64`, with no per-tier x64 asset (maintainer
       decision 2026-11-04): five assets with the three arm64. Measurements
       stay on the single-tier `pext` build.
+      Card 2026-11-04 (`analysis/universal_binary_2026-09.md` section 11):
+      the four checks pass on Windows. The kept post-LTO object relinks to
+      the build's text byte for byte; fat LTO leaves three globals a tier,
+      renamed after PGO; the tier objects carry no initialiser; the
+      alignment reaches LTO. Built by `cargo xtask build --universal`, each
+      tier and the whole image held to their ISA contracts, every tier
+      forced at 14,749,043. Its speed gate is RAR-P56, registered before the
+      read. Not yet read: the Linux form and the SDE matrix.
     - **E.3.4 Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
       E.3.1 closed (2026-10-05), numbered E.3.2 until 2026-11-04: the version from `2.7.0-dev` to 2.7.0,
       behaviour-neutral with the fingerprint
