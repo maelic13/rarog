@@ -168,9 +168,11 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 - Before differencing two counters, confirm they are in the same unit (per
   node versus per move produced RAR-S25). A passing invariant does not prove
   comparability.
-- A binary entered in a rated pool is a tagged release or carries its bench
-  fingerprint or feature flag in its version string (`2.5.0-dev+b2core`), and
-  its ledger row names the fingerprint. The harness binary is pinned the same
+- A binary entered in a rated pool is a tagged release or a development
+  build of a committed tree, whose `id name` names its commit
+  (`dev-20261104-209b555a`; a dirty tree's `-m` is refused for testing); a
+  feature arm is named in its file and sidecar, and its ledger row names the
+  fingerprint. The harness binary is pinned the same
   way: `tools/colosseum/colosseum.pin.json` names its revision and SHA-256, and
   a runner that is not the pinned one is refused, not substituted.
 - The current fingerprint is declared once, in GUIDE's checkpoint;

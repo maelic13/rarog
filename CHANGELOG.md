@@ -12,6 +12,8 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Added
 
+- **An `sse42` build** for older CPUs with SSE4.2 (Intel 2008+, AMD 2011+),
+  faster on them than `base`.
 - **`LargePages` option (Windows).** Large pages, on by default where
   Windows allows them, can now be turned off without changing the account's
   rights.
@@ -21,6 +23,13 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 - **Time management reworked.** The engine stops thinking once it has proved a
   forced mate, keeps more of its clock in reserve when the clock runs low, and
   weighs how settled the best move is when deciding how long to think.
+- **New download names**, such as `rarog-2.7.0-windows-x64-pext.exe`: the
+  version without a `v`, the system, `x64` or `arm64`, then the CPU build.
+  The `x86-64` build is now called `base`.
+- **Building from source: `cargo xtask build`** now makes the fastest build
+  your CPU runs, profile-guided, without further options.
+- **Development builds name their commit** in `id name`, such as
+  `Rarog dev-20261104-209b555a`, and the start-up line names the CPU build.
 - **Building from source: leave out `--native`.** The build instructions no
   longer recommend it: on AMD Zen 3 it makes a slower engine than the same
   build without it.
