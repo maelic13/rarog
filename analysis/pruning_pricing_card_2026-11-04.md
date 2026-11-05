@@ -518,3 +518,97 @@ changed how often it fires; recorded, not read.
 What screens may read now: the twelve validated labels. D.6.3 needs the
 null-move and ProbCut verdicts; ProbCut's is validated, the null move's is
 not.
+
+## 15. Re-entry, the table and stronger plants, registered 2026-11-05 before any run
+
+**Question.** Why do two node-level rules move the wrong way under their
+plants (razoring FAILs at 0.77; the null move's share halves, 1.99% to
+0.88%, under a plant that barely changed how often it fires), and can the
+LMR, null-move and noisy-SEE labels be resolved by plants that act?
+
+**Competing explanations** for the reversed node-level reads:
+
+1. *Re-entry defect.* A node-level probe re-enters the node with arguments
+   that differ from the decision's (depth, window, node type, null-move
+   permission, critical ply), so it prices a different node. Predicts that a
+   probe with nothing switched off fails to reproduce the decision.
+2. *Table contamination.* A probe reads the deeper of the main and scratch
+   entries, and in a planted run the main table holds the planted search's
+   bounds. Where the probe's subtree reaches positions the planted search
+   stored, planted errors come back as agreement with the decision.
+   Confinement swapped the parameters, not the table. Predicts that probes
+   reading only their own scratch table (cold) lose the reversal, most where
+   probes are deep (null move, 19.7 nodes on average) and least for razoring
+   (4.0).
+3. *A harmless plant.* A lower razoring margin adds nodes where quiet
+   futility already prunes nearly every quiet, so the label, razoring off
+   with everything else on, rightly finds them seldom wrong. Predicts that
+   the identity probes reproduce the decision and that going cold changes
+   nothing.
+
+Not tested: the frozen histories and corrections were trained by the planted
+search, so even a cold probe orders moves and corrects its estimates with the
+planted search's tables. They move ordering and margins, never a stored
+score.
+
+**Design.**
+
+- **T1, identity** (tests 1). With `RAROG_PRICING_IDENTITY=1` every sampled
+  node-level decision (`razor`, `rfp`, `nmp`, `probcut`, `q_delta`) gets a
+  second probe with nothing switched off. It reads the main table only and
+  stores nothing, so it reads what the decision read and leaves the priced
+  probe's scratch table alone. It is recorded as `<rule>_identity`, its label
+  set when it fails to reproduce the decision (a cut: below beta; a returned
+  score: on the other side of alpha). Run once, honest, warm. It holds for a
+  rule when the 95% Wilson upper bound of that share is below 1%. **V9:** the
+  run's priced records equal `v2.tsv`'s line for line.
+- **T2, cold** (tests 2). With `RAROG_PRICING_COLD=1` probes read and write
+  the scratch table alone. Arms: honest; and, confined, razoring
+  (`CoreRazorBase` 100, section 13's), the null move (`CoreNmpBase` 0,
+  below), reverse futility (section 13's, a node-level rule that passed warm)
+  and futility (the control). Read by section 13's `plant`, its activation,
+  strata and thresholds unchanged. **V10:** the honest cold run's main search
+  is 14,749,043 nodes.
+- **T3, stronger plants**, warm and confined as in section 13:
+
+| Rule | Option | Default to plant |
+|---|---|---|
+| Null move (`nmp`) | `CoreNmpBase` | 159 to 0: the entry margin falls to its floor of 2, so the rule tries whenever the estimate clears beta |
+| LMR fail-lows, quiets (`lmr`) | `CoreLmrQuiet` | 1,932 to 3,980: two plies on every reduced quiet |
+| Noisy SEE (`see_noisy`) | `CoreSeeNoisySquare`, `CoreSeeNoisyLinear`, `CoreSeeNoisyHistory`, `CoreSeeNoisyConstant` | 5, 12, 33 and 33 to 0: threshold 0 at every depth, the most the formula's cap at 0 allows |
+
+- **Diagnostic, no verdict:** each rule's honest share warm against cold,
+  which is what the table contributes to its label.
+
+**Inference rules.**
+
+- A node-level rule whose identity holds and whose cold plant PASSes is
+  validated for the warm honest read: the cold read shows that the label
+  responds to the rule's harm, and an honest run's table holds no planted
+  result.
+- Razoring: if its identity holds and its cold plant does not PASS,
+  explanation 3 stands. The label's mechanics are verified but its harm
+  cannot be shown by its own margin; it stays out of every screen, recorded
+  as such, and D.4.4 does not wait on it.
+- The null move is validated by a warm PASS in T3, or by identity plus a
+  cold PASS.
+- LMR is validated by a PASS in T3; otherwise it stays out of every screen.
+- Noisy SEE INACTIVE again: its own options cannot plant it harder, and the
+  label stays out of every screen.
+- A failed identity is a defect. It is found and repaired, and that rule's
+  identity and plant reads are rerun as registered here before anything
+  reads it.
+- D.4.4 closes when every identity holds, after any repair; every label's
+  status is then recorded, and unvalidated labels stay out of screens.
+
+**Predictions, frozen, low confidence.** Every identity holds, each under
+0.5% unreproduced. Cold: razoring still does not PASS (explanation 3), the
+null move PASSes, reverse futility and futility PASS. Warm T3: the null move
+at margin 0 does not PASS (contamination), LMR at two plies PASSes, noisy SEE
+is INACTIVE. Warm against cold, honest: the node-level wrong shares rise
+cold, and the move-level shares move by less than a fifth.
+
+**Recipe.** As section 13, adding `--identity` or `--cold` to
+`pricing_table.py run` (which set the variables above), `pricing_table.py
+identity <records>` for T1 (exit 0 when every identity holds), and
+`plant` for T2 and T3.

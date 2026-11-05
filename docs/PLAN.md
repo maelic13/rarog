@@ -332,7 +332,7 @@ maintainer decision 2026-11-04; both are done.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.4.4 | RESEARCH | R2 | Plant test read 2026-11-05 (card section 14): 12 of 16 labels plant-validated; razoring FAILs (a lower margin's extra decisions are wrong less often), so the next card separates a razor-probe defect from a plant futility already covers, by a placebo read; LMR unresolved, null-move and noisy-SEE plants inactive |
+| D.4.4 | READY_FOR_IMPLEMENTATION | I2 | Card section 15 registered 2026-11-05: identity probes test the node-level re-entry, cold probes (scratch table only) test table contamination, and stronger plants for the null move, LMR and noisy SEE |
 | D.4.5 | READY_FOR_IMPLEMENTATION | V | The tool first, then the judge run's sample registered; maintainer-run |
 | D.4.6 | RESEARCH | R2 | The tool on the 5950X, validated on a patch of known effect; before D.8's NPS guards |
 | D.5.1 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value: the table handle and the helper lifecycle first |
@@ -581,7 +581,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       null-move and noisy-SEE plants were inactive. Those four labels
       stay out of every screen; D.4.4 stays in `RESEARCH` for a placebo
       read of the node-level probes and stronger plants, each a new
-      registration.
+      registration. Registered 2026-11-05 (section 15): an identity
+      probe per node-level decision tests the re-entry, probes reading
+      only their scratch table test whether the planted search's table
+      leaks into them, and stronger plants for the null move (entry
+      margin 0), LMR (two plies) and noisy SEE (threshold 0).
     - **D.4.5 The loss table by cell — `V`.**
       Where Rarog loses, from games already played (TT-1): the pool
       tournaments' and the latest gates' games in Colosseum's database, every
