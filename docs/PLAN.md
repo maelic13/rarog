@@ -332,7 +332,6 @@ maintainer decision 2026-11-04; both are done.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.4.4 | READY_FOR_IMPLEMENTATION | I2 | Card section 15 registered 2026-11-05: identity probes test the node-level re-entry, cold probes (scratch table only) test table contamination, and stronger plants for the null move, LMR and noisy SEE |
 | D.4.5 | READY_FOR_IMPLEMENTATION | V | The tool first, then the judge run's sample registered; maintainer-run |
 | D.4.6 | RESEARCH | R2 | The tool on the 5950X, validated on a patch of known effect; before D.8's NPS guards |
 | D.5.1 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value: the table handle and the helper lifecycle first |
@@ -512,7 +511,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       (the checker set desynced) and a re-read TT move played without its
       flags restored (fails the legality test). The committed test drops
       one move from each stage in turn and requires a wrong count.
-    - **D.4.4 Pruning and reduction pricing — `R2`, then `I2`.**
+    - **D.4.4 Pruning and reduction pricing — `R2`, then `I2`, DONE 2026-11-05.**
       What each pruning rule and each reduction hides (TM-9, Triumviratus's
       `prunelog` and `redlog`): a deterministic sample of the moves each rule
       prunes (razoring, reverse futility, null move, ProbCut, futility, the
@@ -586,6 +585,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       only their scratch table test whether the planted search's table
       leaks into them, and stronger plants for the null move (entry
       margin 0), LMR (two plies) and noisy SEE (threshold 0).
+      Read 2026-11-05 (section 16; `9432eb2`, `3b3767e`): every
+      identity probe reproduces its decision (at most 4 of 12,737
+      unreproduced), so the re-entry is right; razoring fails cold as
+      it did warm, so the table does not explain it; the null-move, LMR
+      and noisy-SEE plants pass. Fifteen of sixteen labels are
+      plant-validated. Razoring's probe is verified but its harm is not
+      shown by its own margin, so its label stays out of every screen.
+      Done.
     - **D.4.5 The loss table by cell — `V`.**
       Where Rarog loses, from games already played (TT-1): the pool
       tournaments' and the latest gates' games in Colosseum's database, every

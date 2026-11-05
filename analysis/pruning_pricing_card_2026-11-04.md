@@ -612,3 +612,87 @@ cold, and the move-level shares move by less than a fifth.
 `pricing_table.py run` (which set the variables above), `pricing_table.py
 identity <records>` for T1 (exit 0 when every identity holds), and
 `plant` for T2 and T3.
+
+## 16. Re-entry, the table and stronger plants, read 2026-11-05
+
+Identity and cold probes in `9432eb2`, their runs and the identity read in
+`3b3767e`, the registration in `272c97a`; run as section 15 registered, with
+nothing changed. Binary: `pricing` and `tune`, SHA-256
+`0fbfdbe07bfa27be…`; records and logs in `analysis/artifacts/d44-pricing/r4/`
+(identity run `7b03b15d4c938b68…`, honest cold `0d837adc14e07e80…`).
+
+| Check | Result |
+|---|---|
+| V9, identity leaves the priced read alone | the identity run's 317,670 priced records equal `v2.tsv`'s line for line, pass |
+| V10, cold is isolated | the honest cold run's main search is 14,749,043 nodes, pass |
+| Routing | unit tests: a warm probe reads the deeper entry, a cold one the scratch table alone, an identity probe the main table alone and stores nothing; a priced probe switches its rule off, an identity probe nothing |
+| Builds | the default and `pricing` builds bench 14,749,043; the unconfined `pricing` run reproduces `v2.tsv`; clippy zero in the default, `pricing` and all-feature builds; suites pass (debug 444, release 445, release `pricing` 449) |
+
+**T1, identity:** every node-level re-entry reproduces its decision.
+
+| Rule | Identity probes (= priced) | Unreproduced | 95% upper bound | |
+|---|---|---|---|---|
+| `nmp` | 16,518 | 0 | 0.02% | holds |
+| `probcut` | 11,447 | 2 | 0.06% | holds |
+| `q_delta` | 17,152 | 0 | 0.02% | holds |
+| `razor` | 12,737 | 4 | 0.08% | holds |
+| `rfp` | 12,371 | 0 | 0.03% | holds |
+
+**T2, cold, and T3, stronger plants** (`plant`, section 13's thresholds):
+
+| Read | Main nodes | Probes, honest to planted | Share, honest to planted | Activation | MH odds ratio [95%] | Verdict |
+|---|---|---|---|---|---|---|
+| Cold razoring (`CoreRazorBase` 100) | 12,854,694 | 12,737 to 22,300 | 7.66% to 6.28% | 2.009 | 0.787 [0.723, 0.858] | FAIL |
+| Cold null move (`CoreNmpBase` 0) | 13,891,939 | 16,518 to 38,921 | 1.82% to 4.48% | 2.502 | 1.590 [1.400, 1.806] | PASS |
+| Cold reverse futility (`CoreRfpSquare` 40) | 9,907,927 | 12,371 to 13,235 | 6.09% to 6.23% | 1.593 | 1.226 [1.104, 1.362] | PASS |
+| Cold futility (`CoreFpBase` −100) | 12,149,055 | 16,365 to 53,328 | 0.10% to 2.02% | 3.956 | 16.959 [10.371, 27.731] | PASS |
+| Warm null move (`CoreNmpBase` 0) | 13,891,939 | 16,518 to 38,921 | 1.99% to 4.20% | 2.502 | 1.371 [1.211, 1.553] | PASS |
+| Warm LMR quiets (`CoreLmrQuiet` 3,980) | 6,618,263 | 8,444 to 5,318 | 1.60% to 2.39% | 1.404 | 1.645 [1.280, 2.112] | PASS |
+| Warm noisy SEE (four terms 0) | 14,679,926 | 9,383 to 11,393 | 1.08% to 2.74% | 1.220 | 2.664 [2.124, 3.343] | PASS |
+
+**Diagnostic, honest warm against cold** (share of wrong or raising
+probes): razoring 7.03% to 7.66%, reverse futility 6.09% to 6.09%, null move
+1.99% to 1.82%, ProbCut 0.34% to 0.24%, quiescence delta 1.84% to 1.78%; the
+move-level rules move by under a fifth (LMR 1.63% to 1.79%, LMP 2.46% to
+2.75%, quiet SEE 0.42% to 0.49%) except quiet futility, 0.13% to 0.10% on
+about 20 wrong labels per arm. The table carries no consistent bias into
+the labels.
+
+**Verdicts, by section 15's rules.**
+
+- Explanation 1, a re-entry defect, is refuted for every node-level rule:
+  the probes re-enter the node the decision saw.
+- Explanation 2, table contamination, is refuted as the cause: razoring
+  FAILs cold as it did warm (0.79 against 0.77), reverse futility reads the
+  same both ways, and the null move PASSes both ways. Section 14's null-move
+  halving belonged to its reduction plant, which barely changed how often
+  the rule fires, not to the probe: a margin plant that fires 2.5 times as
+  often reads higher warm and cold.
+- Explanation 3 stands for razoring: its probe reproduces its decisions,
+  and its harm is not shown by its own margin. Its label stays out of every
+  screen, and D.4.4 does not wait on it.
+- The null-move, LMR and noisy-SEE labels are validated by their warm
+  plants; the null move's also by identity and its cold plant.
+
+**D.4.4 closes.** Every identity holds. Fifteen of the sixteen labels are
+plant-validated: reverse futility, the null move, ProbCut, late-move
+pruning, quiet and bad-noisy futility, history pruning, quiet and noisy
+SEE, LMR fail-lows on quiets, and the five quiescence rules. Razoring's
+probe is verified and its label is out of screens. D.6.3's null-move and
+ProbCut verdicts are both validated. Still untested: the frozen histories
+and corrections a probe uses were trained by the measured search, planted
+or not (section 15).
+
+**Calibration against section 15** (predictions unchanged above):
+
+| Prediction | Read | Miss |
+|---|---|---|
+| Every identity holds, each under 0.5% | all hold, the most 0.03% (razoring) | none |
+| Cold razoring does not PASS | FAIL, 0.79 | none |
+| Cold null move PASSes | 1.59 | none |
+| Cold reverse futility and futility PASS | 1.23, 16.96 | none |
+| Warm null move at margin 0 does not PASS | PASS, 1.37 | mechanism: there was no contamination; section 14's drop came from the reduction plant |
+| Warm LMR at two plies PASSes | 1.65 | none |
+| Noisy SEE INACTIVE | activation 1.220, PASS 2.66 | magnitude: dropping the history and constant terms added more decisions than expected |
+| Node-level wrong shares rise cold | razoring ×1.09, reverse futility ×1.00, null move ×0.91, ProbCut ×0.71 | sign, for two of four: the table holds no consistent bias |
+| Move-level shares move under a fifth | all but quiet futility (×0.77, about 20 wrong labels per arm) | magnitude, in a thin cell |

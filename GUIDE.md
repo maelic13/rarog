@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.4.4** (`R2`): Pruning and reduction pricing.
+**Now: D.4.5** (`V`): The loss table by cell.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -38,7 +38,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.4.1** Wall-clock overhead read — DONE 2026-11-03
     - [x] **D.4.2** SPSA schedule read — DONE 2026-11-03
     - [x] **D.4.3** A search-path perft — DONE 2026-11-04
-    - [ ] **D.4.4** Pruning and reduction pricing — **READY_FOR_IMPLEMENTATION / I2**
+    - [x] **D.4.4** Pruning and reduction pricing — DONE 2026-11-05
     - [ ] **D.4.5** The loss table by cell — **READY_FOR_IMPLEMENTATION / V**
     - [ ] **D.4.6** An identical-tree counter read — **RESEARCH / R2**
 - [ ] **D.5** Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, the `Hash` notice, dead code, test and CI gaps — **I1**
@@ -169,7 +169,7 @@ field, about 3,475 on CCRL's Blitz scale.
 | Evaluation deficit | **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21): Stockfish's classical HCE over Rarog's frozen evaluation inside Stockfish's search, from +181.7 ± 19.0 at Phase C's start (RAR-O05), 82.5 ± 25.2 closed. The donor's remaining king signal is the index's structure (RAR-E72, RAR-E73); Phase F supersedes the classical evaluation, and an evaluation change under a fitted search follows PROCESS |
 | Speed | The C head (2026-10-21/22): **+28.92%** pooled-PGO bench NPS over the B.9 head (RAR-P39; `rustc 1.99.1`'s −1.63% included, RAR-P37, its code generation −3.6% without PGO, RAR-P38); in games (Colosseum CLI 0.4.0) +29.8% at 1T and −9.2% at 4T over the B.9 head (RAR-M73, RAR-M74), and −8.6% at 1T and −19.1% at 4T against Rarog 2.4.0 in the same games; the evaluation 21.1% of search samples, B.9's 24.3% (RAR-P40) |
 | Conversion | **13.8 draws and 0.0 losses per 1,000 games** after a persistent piece-up (RAR-M73's games, the C head; Poisson 95% 9.5–19.3 and 0–1.5), against the B.9 head's 15.8 and 0.8 (RAR-M64) and 2.4.0's 24.4 and 5.3: the draw rate's fall is not resolved |
-| Active experiment | None running. **Landed 2026-11-04 as `c69761d` (PR #13):** D.2 closed `NO_CHANGE` (RAR-M83: four threads are worth 1.37 doublings of Rarog's own time against Reckless's 1.49 and Stockfish's 1.54; one logical CPU per physical core is the placement for every rated multi-thread read); D.3 done, with the protocol behind `src/uci/`; D.5.24's `Hash` bound and D.6.15's draw verdicts. Triumviratus is registered as a mechanisms-only donor and its small gains wait in Phase H. **Landed 2026-11-04 as `5efe16f` (PR #14):** E.3.2's build names (`sse42` +8.06% over `base`, RAR-P55) and E.3.3's universal binary (RAR-P56: +0.45% over the pext build), the x64 release asset, whose Intel SDE selection matrix passed in the first `Release` run. D.4.3's search-path perft done 2026-11-04 on `d4`; D.4.4's pricing instrument built 2026-11-04 on `d4` (`7c2fec0`; isolation proved, the futility plant separates, the LMR plant does not: the plant test read 2026-11-05: twelve of sixteen labels validated, razoring fails, LMR, null move and noisy SEE unvalidated; identity, cold-table and stronger-plant reads registered, `analysis/pruning_pricing_card_2026-11-04.md` sections 14 and 15); then D.4's other instruments, then D.5's repairs and D.6's candidates. Finished steps' records: PLAN and `docs/archive/PLAN-phaseD-done-2026-11-04.md` |
+| Active experiment | None running. **Landed 2026-11-04 as `c69761d` (PR #13):** D.2 closed `NO_CHANGE` (RAR-M83: four threads are worth 1.37 doublings of Rarog's own time against Reckless's 1.49 and Stockfish's 1.54; one logical CPU per physical core is the placement for every rated multi-thread read); D.3 done, with the protocol behind `src/uci/`; D.5.24's `Hash` bound and D.6.15's draw verdicts. Triumviratus is registered as a mechanisms-only donor and its small gains wait in Phase H. **Landed 2026-11-04 as `5efe16f` (PR #14):** E.3.2's build names (`sse42` +8.06% over `base`, RAR-P55) and E.3.3's universal binary (RAR-P56: +0.45% over the pext build), the x64 release asset, whose Intel SDE selection matrix passed in the first `Release` run. D.4.3's search-path perft done 2026-11-04 on `d4`; D.4.4's pricing instrument done 2026-11-05 on `d4` (fifteen of sixteen labels plant-validated; razoring's probe reproduces its decisions but its label stays out of screens, `analysis/pruning_pricing_card_2026-11-04.md`); then D.4's other instruments, then D.5's repairs and D.6's candidates. Finished steps' records: PLAN and `docs/archive/PLAN-phaseD-done-2026-11-04.md` |
 
 ## Holds and obligations
 
