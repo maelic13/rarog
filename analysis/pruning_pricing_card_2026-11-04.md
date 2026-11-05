@@ -432,3 +432,89 @@ target/pricing-tune`, then per rule `python tools/diag/pricing_table.py run
 --exe target/pricing-tune/release/rarog.exe --confine --set <Option>=<value>
 --out <file>`, and `pricing_table.py plant <honest> <planted> --rule <name>`
 (`--quiet quiet` for LMR).
+
+## 14. The plant test read, 2026-11-05
+
+Confinement in `6b95225`, the read in `ccff1a9` (`pricing_table.py run
+--confine` and `plant`), the registration in `bd46336`, all run as section
+13 registered with no plant, stratum or threshold changed. Binary: `pricing`
+and `tune`, SHA-256 `dfdb31d53c3c2999…`; records, logs and `plants.md` in
+`analysis/artifacts/d44-pricing/r3/`.
+
+| Check | Result |
+|---|---|
+| V6, the swap is neutral | the confined honest arm is byte-identical to `v2.tsv` (`55138be08d104de7…`), pass |
+| V7, isolation under a plant | confined main searches equal the global ones: futility 12,149,055, LMR 8,871,834, reverse futility 9,907,927, pass |
+| V8, the wire is live | both swap tests pass; end to end, the LMR plant's probes searched 733,672 nodes confined against 705,283 global, so the binary swaps |
+| V1, V2, V5 again | the default and `pricing` builds bench 14,749,043; the unconfined `pricing` run reproduces `v2.tsv`; clippy zero in the default, `pricing` and all-feature builds; suites pass (debug 444, release 445, release `pricing` 447) |
+
+| Rule | Main nodes | Probes, honest to planted | Share, honest to planted | Activation | MH odds ratio [95%] | Verdict |
+|---|---|---|---|---|---|---|
+| `razor` | 12,854,694 | 12,737 to 22,300 | 7.03% to 5.60% | 2.009 | 0.765 [0.700, 0.837] | FAIL |
+| `rfp` | 9,907,927 | 12,371 to 13,235 | 6.09% to 6.20% | 1.593 | 1.214 [1.093, 1.348] | PASS |
+| `nmp` | 11,446,448 | 16,518 to 14,167 | 1.99% to 0.88% | 1.105 | - | INACTIVE |
+| `probcut` | 14,121,083 | 11,447 to 26,614 | 0.34% to 1.13% | 2.428 | 3.254 [2.327, 4.551] | PASS |
+| `lmp` | 16,893,682 | 20,096 to 29,102 | 2.46% to 3.83% | 1.264 | 1.601 [1.437, 1.784] | PASS |
+| `futility` | 12,149,055 | 16,365 to 53,328 | 0.13% to 1.95% | 3.956 | 12.198 [7.938, 18.744] | PASS |
+| `bnfp` | 12,134,765 | 20,332 to 31,109 | 0.59% to 1.30% | 1.860 | 2.068 [1.684, 2.538] | PASS |
+| `history` | 13,918,222 | 73,878 to 86,576 | 3.02% to 3.85% | 1.242 | 1.174 [1.111, 1.242] | PASS |
+| `see_quiet` | 9,685,155 | 13,452 to 11,360 | 0.42% to 0.86% | 1.286 | 2.009 [1.444, 2.794] | PASS |
+| `see_noisy` | 15,239,293 | 9,383 to 11,602 | 1.08% to 1.83% | 1.197 | - | INACTIVE |
+| `lmr` | 8,871,834 | 8,444 to 6,479 | 1.60% to 1.85% | 1.276 | 1.184 [0.921, 1.522] | UNRESOLVED |
+| `q_delta` | 15,528,230 | 17,152 to 73,367 | 1.84% to 9.39% | 4.063 | 5.288 [4.714, 5.930] | PASS |
+| `q_futility` | 16,875,099 | 32,107 to 67,813 | 3.39% to 8.88% | 1.846 | 2.779 [2.601, 2.969] | PASS |
+| `q_count` | 12,753,118 | 7,096 to 14,251 | 1.31% to 1.91% | 2.323 | 1.468 [1.157, 1.864] | PASS |
+| `q_see` | 13,778,462 | 42,691 to 52,407 | 1.90% to 5.48% | 1.314 | 3.042 [2.808, 3.295] | PASS |
+| `q_bad_floor` | 13,208,448 | 2,884 to 4,468 | 4.51% to 9.27% | 1.730 | 2.158 [1.761, 2.643] | PASS |
+
+**Verdicts.** Twelve labels PASS and are plant-validated: reverse futility,
+ProbCut, late-move pruning, quiet futility, bad-noisy futility, history
+pruning, quiet SEE and all five quiescence rules. Razoring FAILs. The LMR
+label is UNRESOLVED. The null-move and noisy-SEE plants are INACTIVE (noisy
+SEE at 1.197, just under the registered 1.2; its share rose, but no verdict
+is drawn from an inactive plant). Per section 13 the razor, LMR, null-move
+and noisy-SEE labels stay out of every screen, and D.4.4 stays in
+`RESEARCH` on the razor probe.
+
+**Diagnostic** (section 12's global plants, the same statistic): futility
+12.15 [7.90, 18.67], reverse futility 1.19 [1.08, 1.33], LMR quiets 1.23
+[0.96, 1.58]. Composition (explanation 1) alone explains section 12's
+reverse-futility null. Contamination (explanation 2) is refuted for LMR:
+confined, its ratio is 1.18 [0.92, 1.52], no closer to separating. The LMR
+plant adds only 28% more decisions and moves the share from 1.60% to 1.85%,
+an effect too small for about 120 raises per arm.
+
+**Razoring's FAIL.** The wrong share falls from 6.94% to 5.24% at depth 1
+and below and is flat at depth 2 (8.06% to 8.03%): the decisions a lower
+margin adds are wrong less often than the honest ones. Two explanations
+compete, and this read cannot separate them. (a) The razor probe is wrong
+for its rule, which section 13's consequence assumes. (b) The plant is not
+harmful: razoring's region lies where quiet futility already prunes every
+quiet that does not give direct check (at depth 1 the futility value
+`eval + 183 + history terms` sits below alpha whenever `eval < alpha − 284`,
+up to the history term), so the extra razored nodes are ones the rest of the
+search would resolve the same way, and the label, which is "razoring off,
+everything else on", rightly finds them seldom wrong. The cheapest
+discriminators, for the next card to register: a placebo read (probing
+node-level rules at nodes where they did not fire must reproduce the node's
+own side of alpha, testing the probe with no plant at all), and razor
+records flagged by whether quiet futility covers every quiet at the node.
+The null-move share halved (1.99% to 0.88%) under a plant that barely
+changed how often it fires; recorded, not read.
+
+**Calibration against section 13** (predictions unchanged above):
+
+| Prediction | Read | Miss |
+|---|---|---|
+| At least 13 of 16 PASS | 12 | count, by one; razor and LMR missed, two plants inactive |
+| Futility, the control, PASSes | PASS, 12.20 | none |
+| LMR quiets PASS confined | UNRESOLVED, 1.18 | mechanism: contamination was not the cause; the plant's effect is small |
+| Reverse futility PASSes confined | PASS, 1.21 | none |
+| ProbCut likeliest UNRESOLVED | PASS, 3.25 | magnitude: its plant more than doubled the decisions |
+| Global reverse futility separates stratified | 1.19 [1.08, 1.33] | none |
+| Global LMR does not | 1.23 [0.96, 1.58] | none |
+| No rule predicted to FAIL | razoring FAILs | the plant premise (a lower margin is a worse rule) may not hold where another rule covers the region |
+
+What screens may read now: the twelve validated labels. D.6.3 needs the
+null-move and ProbCut verdicts; ProbCut's is validated, the null move's is
+not.
