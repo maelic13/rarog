@@ -591,8 +591,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       it did warm, so the table does not explain it; the null-move, LMR
       and noisy-SEE plants pass. Fifteen of sixteen labels are
       plant-validated. Razoring's probe is verified but its harm is not
-      shown by its own margin, so its label stays out of every screen.
-      Done.
+      shown by its own margin, so its label stays out of every screen
+      until a plant harmful on its own passes, read first by the step that
+      wants it (the card's retry trigger). Done.
     - **D.4.5 The loss table by cell — `V`.**
       Where Rarog loses, from games already played (TT-1): the pool
       tournaments' and the latest gates' games in Colosseum's database, every

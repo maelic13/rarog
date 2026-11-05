@@ -670,7 +670,11 @@ the labels.
   often reads higher warm and cold.
 - Explanation 3 stands for razoring: its probe reproduces its decisions,
   and its harm is not shown by its own margin. Its label stays out of every
-  screen, and D.4.4 does not wait on it.
+  screen, and D.4.4 does not wait on it. Retry trigger (2026-11-05): the
+  first step that wants razoring's label registers a plant that is harmful
+  on its own, such as a smaller depth term (`CoreRazorSquare`) that razors
+  deeper nodes quiet futility does not reach, and reads it with section 13's
+  rules before it uses the label.
 - The null-move, LMR and noisy-SEE labels are validated by their warm
   plants; the null move's also by identity and its cold plant.
 
