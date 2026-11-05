@@ -331,3 +331,104 @@ probe keeps the honest rule), compared within depth bands and pooled
 These are screens: the null move's all-node and the reverse futility's
 shallow wrong rates are candidates for D.6.3's and D.6's cards, not findings
 (section 9), and the node-level labels are not yet plant-validated.
+
+## 13. A plant test for every rule, registered 2026-11-05 before any run
+
+**Question.** Does each rule's label rise when that rule alone is made more
+aggressive in the measured search? Section 12's V4 read the all-depth share
+under a global option, and two things besides the label moved with it. The
+plant reshaped the tree: the LMR plant cut the main search from 14,749,043
+nodes to 8,871,834, the reverse-futility plant to 9,907,927, moving decisions
+between depths and node types whose rates differ several times over. And
+the option ran inside every probe too, so a probe searched with the same
+planted rule below the priced ply.
+
+**Competing explanations** for the LMR and reverse-futility nulls, and what
+each predicts:
+
+1. *Composition*: the label responds, but the depth and node-type mix hides
+   it. A stratified statistic separates the global plants too.
+2. *Contamination*: the planted rule inside the probe's subtree weakens the
+   probe and hides raises. A confined plant separates where the global one
+   did not, stratified alike.
+3. *Insensitive label*: the probe does not measure the decision's cost (the
+   wrong depth, window or ply for the rule's re-entry). An active, confined
+   plant does not separate within strata.
+4. *Inactive plant*: the option barely changes how often the rule fires.
+   The activation check below fails.
+
+**Design.**
+
+- **Confinement.** With `RAROG_PRICING_CONFINE=1`, a `pricing` and `tune`
+  build swaps the compiled-in parameter sets (search, core, proof and quiet)
+  into the searcher when a probe opens and the set options back when it
+  closes, so a planted option acts only in the measured search. One swap per
+  probe, compiled only into `pricing` builds.
+- **V6, the swap is neutral:** the honest arm is the same binary with
+  confinement on and no option set, and must reproduce `v2.tsv` byte for
+  byte.
+- **V7, isolation under a plant:** probes leave the main search alone either
+  way, so a confined plant's main search must equal its global run's in
+  section 12: futility 12,149,055, LMR 8,871,834, reverse futility
+  9,907,927 nodes.
+- **V8, the wire is live:** a test sets a core parameter, opens a probe,
+  sees the compiled-in value, closes it and sees the planted value again.
+- **Plants:** one per rule, each the rule's own margin or count made more
+  aggressive and nothing else:
+
+| Rule (record name) | Option | Default to plant |
+|---|---|---|
+| Razoring (`razor`) | `CoreRazorBase` | 302 to 100 |
+| Reverse futility (`rfp`) | `CoreRfpSquare` | 170 to 40 (section 12's) |
+| Null move (`nmp`) | `CoreNmpRBase` | 4,255 to 6,300, two plies shallower |
+| ProbCut (`probcut`) | `CoreProbcutBase` | 145 to 50 |
+| Late-move pruning (`lmp`) | `CoreLmpBase` | 2,888 to 1,024 |
+| Quiet futility (`futility`) | `CoreFpBase` | 150 to −100 (V4's) |
+| Bad-noisy futility (`bnfp`) | `CoreBnfpBase` | 56 to −100 |
+| History pruning (`history`) | `CoreHpSlope` | 1,019 to 300 |
+| Quiet SEE (`see_quiet`) | `CoreSeeQuietSquare` | 7 to 0 |
+| Noisy SEE (`see_noisy`) | `CoreSeeNoisySquare`, `CoreSeeNoisyLinear` | 5 and 12 to 0 and 0 |
+| LMR fail-lows, quiets (`lmr`) | `CoreLmrQuiet` | 1,932 to 2,956 (V4's) |
+| Quiescence delta (`q_delta`) | `QsDeltaMargin` | 308 to 0 |
+| Quiescence futility (`q_futility`) | `QsFutilityMargin` | 257 to 50 |
+| Quiescence count (`q_count`) | `QsCountLimit` | 3 to 2 |
+| Quiescence SEE (`q_see`) | `QsSeeMargin` | 247 to 50 |
+| Quiescence bad floor (`q_bad_floor`) | `QsSeeBadFloor` | −43 to 0 |
+
+- **Activation:** the rule's probes per main-search node, planted over
+  honest, at least 1.2; below it the plant is INACTIVE and the rule gets no
+  verdict.
+- **Statistic:** the Mantel–Haenszel odds ratio of the label, planted
+  against honest, with strata of depth (exact, 12 and above pooled; the
+  quiescence ply for the quiescence rules), node type and, for move rules,
+  quiet or noisy; the 95% interval by Robins, Breslow and Greenland. LMR
+  reads quiets only, as V4 registered.
+- **Verdicts:** PASS when active and the lower bound exceeds 1; FAIL when
+  active and the upper bound is below 1.25 (the odds of a wrong decision
+  rose by less than a quarter while the plant added at least a fifth more
+  decisions); UNRESOLVED otherwise. `pricing_table.py plant` prints them and
+  exits 0, 1, 2 or 3 for PASS, FAIL, UNRESOLVED and INACTIVE.
+- **Diagnostic, no verdict:** the same statistic on section 12's three
+  global plants, which separates explanations 1 and 2.
+
+**Predictions, frozen.** At least 13 of the 16 rules PASS. Futility, the
+control, PASSes. LMR quiets and reverse futility PASS under confinement.
+ProbCut is the likeliest UNRESOLVED (39 wrong verdicts in the honest read).
+In the diagnostic, the global reverse-futility plant separates once
+stratified and the global LMR plant does not. Low confidence on every
+single rule; moderate on the count.
+
+**Consequences.** PASS: the label is plant-validated and a screen may read
+it. FAIL: the rule's probe is suspect (explanation 3); its label stays out
+of every screen and D.4.4 stays in `RESEARCH` on that probe. UNRESOLVED or
+INACTIVE: the label stays unvalidated and out of screens; a stronger plant
+or a larger suite is a new registration, never a rerun under a changed
+threshold. D.4.4 closes when no rule FAILs, its record listing every
+label's status. Plants, strata and thresholds are fixed here and do not
+change after the first planted run.
+
+**Recipe.** `cargo build --release --features pricing,tune --target-dir
+target/pricing-tune`, then per rule `python tools/diag/pricing_table.py run
+--exe target/pricing-tune/release/rarog.exe --confine --set <Option>=<value>
+--out <file>`, and `pricing_table.py plant <honest> <planted> --rule <name>`
+(`--quiet quiet` for LMR).
