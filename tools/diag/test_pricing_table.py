@@ -143,3 +143,28 @@ def test_activation_is_per_main_node(tmp_path):
     planted = write(tmp_path / "p.tsv", [summary(2000)]
                     + [record(label=int(i < 400)) for i in range(2000)])
     assert main(["plant", honest, planted, "--rule", "lmr"]) == 3
+
+
+def test_identity_holds_only_when_every_rule_reproduces(tmp_path):
+    priced = [record(rule="razor") for _ in range(1000)] + [record(rule="nmp") for _ in range(1000)]
+    clean = ([record(rule="razor_identity") for _ in range(1000)]
+             + [record(rule="nmp_identity", label=int(i < 1)) for i in range(1000)])
+    assert main(["identity", write(tmp_path / "a.tsv", [summary(1000)] + priced + clean)]) == 0
+    broken = ([record(rule="razor_identity") for _ in range(1000)]
+              + [record(rule="nmp_identity", label=int(i < 20)) for i in range(1000)])
+    assert main(["identity", write(tmp_path / "b.tsv", [summary(1000)] + priced + broken)]) == 1
+
+
+def test_identity_fails_when_a_decision_lacks_its_identity_probe(tmp_path):
+    priced = [record(rule="razor") for _ in range(1000)]
+    short = [record(rule="razor_identity") for _ in range(999)]
+    assert main(["identity", write(tmp_path / "c.tsv", [summary(1000)] + priced + short)]) == 1
+
+
+def test_identity_records_stay_out_of_the_plant_read(tmp_path):
+    honest = write(tmp_path / "h.tsv", [summary(1000)]
+                   + [record(label=int(i < 10)) for i in range(1000)]
+                   + [record(rule="lmr_identity", label=1) for _ in range(5000)])
+    planted = write(tmp_path / "p.tsv", [summary(1000)]
+                    + [record(label=int(i < 10)) for i in range(1000)])
+    assert main(["plant", honest, planted, "--rule", "lmr"]) == 3

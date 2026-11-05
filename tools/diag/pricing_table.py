@@ -22,6 +22,12 @@ within depth, node-type and move-class strata decides PASS (lower bound
 above 1, exit 0), FAIL (upper bound below 1.25, exit 1) or UNRESOLVED
 (exit 2); a plant below the activation is INACTIVE (exit 3).
 
+`run --identity` adds a second probe to every node-level decision with
+nothing switched off, recorded as `<rule>_identity`; `identity` reads them
+(each must reproduce its decision: the 95% Wilson upper bound of the
+unreproduced share below 1%, exit 0). `run --cold` makes probes read the
+scratch table alone (the card's section 15).
+
 A record: rule, depth (a quiescence rule's is its quiescence ply), ply, node
 type, move number, the moves the decision also removed, the probe's nodes,
 the label (1: the hidden move raised alpha, or a node-level verdict was
@@ -46,6 +52,8 @@ MIN_CELL = 400
 ACTIVATION = 1.2
 FAIL_BELOW = 1.25
 DEPTH_CAP = 12
+IDENTITY_BELOW = 0.01
+IDENTITY_SUFFIX = "_identity"
 Z95 = 1.959964
 
 
@@ -239,8 +247,31 @@ def plant_verdict(honest: Read, planted: Read, rule: str, quiet: str | None) -> 
     return 2
 
 
+def identity_verdict(read: Read) -> int:
+    """Print each node-level rule's identity read; 0 when every one holds."""
+    groups = collections.defaultdict(list)
+    for r in read.records:
+        if r.rule.endswith(IDENTITY_SUFFIX):
+            groups[r.rule[: -len(IDENTITY_SUFFIX)]].append(r)
+    if not groups:
+        raise SystemExit("no identity records: run with --identity")
+    held = True
+    for rule in sorted(groups):
+        group = groups[rule]
+        missed = sum(r.label for r in group)
+        priced = sum(r.rule == rule for r in read.records)
+        _, high = wilson(missed, len(group))
+        holds = high < IDENTITY_BELOW and priced == len(group)
+        held &= holds
+        print(f"{rule:<12} identity probes {len(group):>6} (priced {priced:>6})"
+              f"  unreproduced {missed:>4}  share {missed / len(group):.4f}"
+              f"  upper {high:.4f}  {'HOLDS' if holds else 'FAILS'}")
+    return 0 if held else 1
+
+
 def run_bench(exe: str, depth: int, out: pathlib.Path, options: list[tuple[str, str]],
-              shift: int, confine: bool = False) -> int:
+              shift: int, confine: bool = False, identity: bool = False,
+              cold: bool = False) -> int:
     """One bench with sampling on; returns the main search's node count.
 
     Streamed like bench_counters.py: a piped `printf ... | engine` closes stdin,
@@ -251,10 +282,12 @@ def run_bench(exe: str, depth: int, out: pathlib.Path, options: list[tuple[str, 
     env = dict(os.environ)
     env["RAROG_PRICING"] = str(shift)
     env["RAROG_PRICING_OUT"] = str(out.resolve())
-    if confine:
-        env["RAROG_PRICING_CONFINE"] = "1"
-    else:
-        env.pop("RAROG_PRICING_CONFINE", None)
+    for var, on in (("RAROG_PRICING_CONFINE", confine), ("RAROG_PRICING_IDENTITY", identity),
+                    ("RAROG_PRICING_COLD", cold)):
+        if on:
+            env[var] = "1"
+        else:
+            env.pop(var, None)
     exe_path = pathlib.Path(exe).resolve()
     proc = subprocess.Popen([str(exe_path)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                             text=True, bufsize=1, env=env, cwd=str(exe_path.parent))
@@ -312,6 +345,10 @@ def main(argv=None) -> int:
                      help="the fingerprint the main search must reproduce")
     run.add_argument("--confine", action="store_true",
                      help="probes search with the compiled-in parameters")
+    run.add_argument("--identity", action="store_true",
+                     help="a second, nothing-off probe per node-level decision")
+    run.add_argument("--cold", action="store_true",
+                     help="probes read and write the scratch table alone")
     show = sub.add_parser("table", help="tabulate records")
     show.add_argument("records", nargs="+")
     show.add_argument("--by", choices=["depth", "node", "move", "quiet"])
@@ -326,6 +363,8 @@ def main(argv=None) -> int:
     plant.add_argument("planted")
     plant.add_argument("--rule", required=True)
     plant.add_argument("--quiet", choices=["quiet", "noisy"])
+    ident = sub.add_parser("identity", help="the registered identity read")
+    ident.add_argument("records")
     args = ap.parse_args(argv)
 
     if args.command == "run":
@@ -337,7 +376,8 @@ def main(argv=None) -> int:
             options.append((name, value))
         out = pathlib.Path(args.out)
         out.parent.mkdir(parents=True, exist_ok=True)
-        nodes = run_bench(args.exe, args.depth, out, options, args.shift, args.confine)
+        nodes = run_bench(args.exe, args.depth, out, options, args.shift, args.confine,
+                          args.identity, args.cold)
         read = parse(out.read_text().splitlines())
         print(f"bench nodes {nodes}  recorded main nodes {read.main_nodes}"
               f"  probes {len(read.records)}  probe nodes {read.probe_nodes}")
@@ -355,6 +395,8 @@ def main(argv=None) -> int:
         read = parse(lines)
         print_table(read, table(read, args.by))
         return 0
+    if args.command == "identity":
+        return identity_verdict(parse(pathlib.Path(args.records).read_text().splitlines()))
     if args.command == "plant":
         return plant_verdict(parse(pathlib.Path(args.honest).read_text().splitlines()),
                              parse(pathlib.Path(args.planted).read_text().splitlines()),
