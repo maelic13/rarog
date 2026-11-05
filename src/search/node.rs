@@ -494,12 +494,15 @@ impl Searcher {
     }
 
     /// Store a search result. A pricing probe stores into its scratch table,
-    /// so the main table stays as the measured search left it.
+    /// so the main table stays as the measured search left it; an identity
+    /// probe stores nothing.
     #[inline(always)]
     fn tt_store(&mut self, store: TtStore) {
         #[cfg(feature = "pricing")]
         if self.td.pricing.probing {
-            self.pricing_scratch().store(store);
+            if let Some(table) = self.pricing_scratch() {
+                table.store(store);
+            }
             return;
         }
         self.shared.tt.store(store);
@@ -511,7 +514,9 @@ impl Searcher {
     fn tt_store_eval(&mut self, key: u64, raw_eval: i32, is_pv: bool) {
         #[cfg(feature = "pricing")]
         if self.td.pricing.probing {
-            self.pricing_scratch().store_eval(key, raw_eval, is_pv);
+            if let Some(table) = self.pricing_scratch() {
+                table.store_eval(key, raw_eval, is_pv);
+            }
             return;
         }
         self.shared.tt.store_eval(key, raw_eval, is_pv);

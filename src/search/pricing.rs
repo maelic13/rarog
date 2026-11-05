@@ -14,6 +14,12 @@
 //! label. With `RAROG_PRICING_CONFINE=1` each probe searches with the
 //! compiled-in parameters, so the plant acts only in the measured search
 //! and not inside the probe that prices its decisions.
+//!
+//! Two checks of the probes themselves. With `RAROG_PRICING_IDENTITY=1`
+//! each node-level decision is probed a second time with nothing switched
+//! off, reading the main table alone and storing nothing: it must reproduce
+//! the decision. With `RAROG_PRICING_COLD=1` probes read and write the
+//! scratch table alone, so no result of the measured search reaches them.
 
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
@@ -210,6 +216,30 @@ struct Record {
     nodes: u64,
     label: bool,
     changed: Changed,
+    kind: ProbeKind,
+}
+
+/// What a probe is for.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum ProbeKind {
+    /// The decision reversed: the rule off at its ply, or the hidden move
+    /// searched.
+    Priced,
+    /// The node searched again with nothing off: it must reproduce the
+    /// decision.
+    Identity,
+}
+
+/// The tables a probe reads; it stores into the scratch table unless it
+/// reads the main one alone.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum ProbeTables {
+    /// The deeper of the main and scratch entries, the main one on a tie.
+    Warm,
+    /// The scratch table alone: no result of the measured search.
+    Cold,
+    /// The main table alone, nothing stored: what the decision read.
+    Identity,
 }
 
 /// The parameter sets a confined probe exchanges with the searcher's: the
@@ -242,6 +272,12 @@ pub(super) struct Pricing {
     /// acts only in the measured search.
     confine: bool,
     held: Option<Box<HeldParameters>>,
+    /// Probes read the scratch table alone.
+    cold: bool,
+    /// Node-level decisions get an identity probe too.
+    identity: bool,
+    /// The running probe's tables.
+    tables: ProbeTables,
     scratch: Option<TranspositionTable>,
     records: Vec<Record>,
     /// Raising move-level records per ply still waiting for their node.
@@ -259,6 +295,9 @@ impl Default for Pricing {
             off: None,
             confine: confine_from_env(),
             held: None,
+            cold: cold_from_env(),
+            identity: identity_from_env(),
+            tables: ProbeTables::Warm,
             scratch: None,
             records: Vec::new(),
             pending: PlyArray::new(0),
@@ -287,8 +326,25 @@ fn extra_shift() -> Option<u32> {
 /// search; unset, probes search with the options set).
 fn confine_from_env() -> bool {
     static CONFINE: OnceLock<bool> = OnceLock::new();
-    *CONFINE
-        .get_or_init(|| std::env::var("RAROG_PRICING_CONFINE").is_ok_and(|raw| raw.trim() == "1"))
+    env_switch(&CONFINE, "RAROG_PRICING_CONFINE")
+}
+
+/// Whether probes read the scratch table alone, from `RAROG_PRICING_COLD`.
+fn cold_from_env() -> bool {
+    static COLD: OnceLock<bool> = OnceLock::new();
+    env_switch(&COLD, "RAROG_PRICING_COLD")
+}
+
+/// Whether node-level decisions get an identity probe, from
+/// `RAROG_PRICING_IDENTITY`.
+fn identity_from_env() -> bool {
+    static IDENTITY: OnceLock<bool> = OnceLock::new();
+    env_switch(&IDENTITY, "RAROG_PRICING_IDENTITY")
+}
+
+/// A switch read once from the environment: `1` is on, anything else off.
+fn env_switch(cell: &'static OnceLock<bool>, var: &str) -> bool {
+    *cell.get_or_init(|| std::env::var(var).is_ok_and(|raw| raw.trim() == "1"))
 }
 
 /// The file the records are appended to, from `RAROG_PRICING_OUT`.
@@ -320,28 +376,36 @@ impl Searcher {
         drawn & stride == 0
     }
 
-    /// The table entry a probe sees: the deeper of the main and the scratch
-    /// table's, the main one on a tie.
+    /// The table entry a probe sees, by its tables.
     pub(super) fn pricing_tt_probe(&self, key: u64) -> Option<TtEntry> {
-        let main = self.shared.tt.probe(key);
-        let scratch = self
-            .td
-            .pricing
-            .scratch
-            .as_ref()
-            .and_then(|table| table.probe(key));
-        match (main, scratch) {
-            (Some(main), Some(scratch)) if scratch.depth > main.depth => Some(scratch),
-            (main, scratch) => main.or(scratch),
+        let scratch = || {
+            self.td
+                .pricing
+                .scratch
+                .as_ref()
+                .and_then(|table| table.probe(key))
+        };
+        match self.td.pricing.tables {
+            ProbeTables::Warm => match (self.shared.tt.probe(key), scratch()) {
+                (Some(main), Some(scratch)) if scratch.depth > main.depth => Some(scratch),
+                (main, scratch) => main.or(scratch),
+            },
+            ProbeTables::Cold => scratch(),
+            ProbeTables::Identity => self.shared.tt.probe(key),
         }
     }
 
-    /// The table a probe writes.
-    pub(super) fn pricing_scratch(&mut self) -> &mut TranspositionTable {
-        self.td
-            .pricing
-            .scratch
-            .get_or_insert_with(|| TranspositionTable::new(SCRATCH_MB))
+    /// The table a probe writes; none for an identity probe.
+    pub(super) fn pricing_scratch(&mut self) -> Option<&mut TranspositionTable> {
+        let pricing = &mut self.td.pricing;
+        if pricing.tables == ProbeTables::Identity {
+            return None;
+        }
+        Some(
+            pricing
+                .scratch
+                .get_or_insert_with(|| TranspositionTable::new(SCRATCH_MB)),
+        )
     }
 
     fn probe_begin(&mut self) -> Saved {
@@ -363,6 +427,11 @@ impl Searcher {
             pricing.scratch = Some(TranspositionTable::new(SCRATCH_MB));
         }
         pricing.probing = true;
+        pricing.tables = if pricing.cold {
+            ProbeTables::Cold
+        } else {
+            ProbeTables::Warm
+        };
         td.hist.frozen = true;
         let saved = Saved {
             nodes: td.nodes,
@@ -410,7 +479,14 @@ impl Searcher {
         nodes
     }
 
-    fn push_record(&mut self, decision: &Decision, nodes: u64, label: bool, changed: Changed) {
+    fn push_record(
+        &mut self,
+        decision: &Decision,
+        nodes: u64,
+        label: bool,
+        changed: Changed,
+        kind: ProbeKind,
+    ) {
         let pricing = &mut self.td.pricing;
         if pricing.records.capacity() == 0 {
             pricing.records.reserve(1 << 16);
@@ -429,6 +505,7 @@ impl Searcher {
             nodes,
             label,
             changed,
+            kind,
         });
     }
 
@@ -497,7 +574,7 @@ impl Searcher {
         } else {
             Changed::NotRead
         };
-        self.push_record(decision, nodes, raises, changed);
+        self.push_record(decision, nodes, raises, changed, ProbeKind::Priced);
     }
 
     /// A node a rule cut or razored, searched again at its entry depth and
@@ -510,8 +587,25 @@ impl Searcher {
         verdict: Verdict,
         poll: &mut P,
     ) {
+        self.node_probe::<NODE, _>(board, decision, entry, verdict, ProbeKind::Priced, poll);
+        if self.td.pricing.identity {
+            self.node_probe::<NODE, _>(board, decision, entry, verdict, ProbeKind::Identity, poll);
+        }
+    }
+
+    /// One probe of a node a rule cut or razored: with the rule off at its
+    /// ply, or, for an identity probe, with nothing off.
+    fn node_probe<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
+        &mut self,
+        board: &mut Board,
+        decision: &Decision,
+        entry: &NodeEntry,
+        verdict: Verdict,
+        kind: ProbeKind,
+        poll: &mut P,
+    ) {
         let saved = self.probe_begin();
-        self.td.pricing.off = Some((decision.ply, decision.rule));
+        self.probe_switches(decision, kind);
         let score = self.negamax::<NODE, _>(
             board,
             entry.depth,
@@ -525,7 +619,22 @@ impl Searcher {
             poll,
         );
         let nodes = self.probe_end(&saved);
-        self.push_record(decision, nodes, verdict.wrong(score), Changed::NotRead);
+        self.push_record(
+            decision,
+            nodes,
+            verdict.wrong(score),
+            Changed::NotRead,
+            kind,
+        );
+    }
+
+    /// A priced probe switches the rule off at its ply; an identity probe
+    /// switches nothing and reads the main table alone.
+    fn probe_switches(&mut self, decision: &Decision, kind: ProbeKind) {
+        match kind {
+            ProbeKind::Priced => self.td.pricing.off = Some((decision.ply, decision.rule)),
+            ProbeKind::Identity => self.td.pricing.tables = ProbeTables::Identity,
+        }
     }
 
     /// A quiescence node whose delta rule returned, searched again with the
@@ -538,8 +647,30 @@ impl Searcher {
         verdict: Verdict,
         poll: &mut P,
     ) {
+        self.q_node_probe::<NODE, _>(board, decision, entry, verdict, ProbeKind::Priced, poll);
+        if self.td.pricing.identity {
+            self.q_node_probe::<NODE, _>(
+                board,
+                decision,
+                entry,
+                verdict,
+                ProbeKind::Identity,
+                poll,
+            );
+        }
+    }
+
+    fn q_node_probe<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
+        &mut self,
+        board: &mut Board,
+        decision: &Decision,
+        entry: &QEntry,
+        verdict: Verdict,
+        kind: ProbeKind,
+        poll: &mut P,
+    ) {
         let saved = self.probe_begin();
-        self.td.pricing.off = Some((decision.ply, decision.rule));
+        self.probe_switches(decision, kind);
         let score = self.quiescence::<NODE, _>(
             board,
             entry.alpha,
@@ -549,7 +680,13 @@ impl Searcher {
             poll,
         );
         let nodes = self.probe_end(&saved);
-        self.push_record(decision, nodes, verdict.wrong(score), Changed::NotRead);
+        self.push_record(
+            decision,
+            nodes,
+            verdict.wrong(score),
+            Changed::NotRead,
+            kind,
+        );
     }
 
     /// A capture a quiescence rule skipped, searched as quiescence searches
@@ -576,7 +713,13 @@ impl Searcher {
         );
         board.unmake_move(capture.mv);
         let nodes = self.probe_end(&saved);
-        self.push_record(decision, nodes, score > capture.alpha, Changed::NotRead);
+        self.push_record(
+            decision,
+            nodes,
+            score > capture.alpha,
+            Changed::NotRead,
+            ProbeKind::Priced,
+        );
     }
 
     /// Close the raising records of the node at `ply` as it exits: whether
@@ -654,8 +797,12 @@ fn write_records(path: &str, main_nodes: u64, pricing: &Pricing) -> std::io::Res
         };
         writeln!(
             out,
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{changed}\t{quiet}",
+            "{}{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{changed}\t{quiet}",
             r.rule.name(),
+            match r.kind {
+                ProbeKind::Priced => "",
+                ProbeKind::Identity => "_identity",
+            },
             r.depth,
             r.ply,
             r.node.name(),
@@ -671,6 +818,7 @@ fn write_records(path: &str, main_nodes: u64, pricing: &Pricing) -> std::io::Res
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tt::{Bound, TtStore};
 
     /// A confined probe searches with the compiled-in values and hands the
     /// planted ones back when it closes.
@@ -694,6 +842,79 @@ mod tests {
             assert_eq!(searcher.cfg.proof.nmp_r_base, 6_300);
             assert_eq!(searcher.cfg.quiet.qs_count_limit, 2);
         }
+    }
+
+    fn entry_at(depth: i32, key: u64) -> TtStore {
+        TtStore {
+            key,
+            depth,
+            score: 10 * depth,
+            bound: Bound::Exact,
+            mv: Move::NULL,
+            ply: 0,
+            static_eval: 0,
+            is_pv: false,
+        }
+    }
+
+    /// A warm probe reads the deeper entry, a cold one the scratch table's
+    /// alone, an identity probe the main table's alone and stores nothing.
+    #[test]
+    fn each_probe_reads_its_own_tables() {
+        let key = 0x1234_5678_9abc_def0;
+        let mut searcher = Searcher::default();
+        searcher.td.pricing.cold = false;
+        searcher.shared.tt.store(entry_at(3, key));
+        let saved = searcher.probe_begin();
+        assert_eq!(searcher.td.pricing.tables, ProbeTables::Warm);
+        searcher
+            .pricing_scratch()
+            .expect("a warm probe stores")
+            .store(entry_at(5, key));
+        // The stored score names the entry: ten times its depth.
+        let which = |entry: Option<TtEntry>| entry.map(|e| i32::from(e.score) / 10);
+        assert_eq!(which(searcher.pricing_tt_probe(key)), Some(5));
+        searcher.td.pricing.tables = ProbeTables::Cold;
+        assert_eq!(which(searcher.pricing_tt_probe(key)), Some(5));
+        searcher.td.pricing.tables = ProbeTables::Identity;
+        assert_eq!(which(searcher.pricing_tt_probe(key)), Some(3));
+        assert!(searcher.pricing_scratch().is_none());
+        searcher.probe_end(&saved);
+
+        let other = key ^ 0xffff_0000_0000_0000;
+        searcher.shared.tt.store(entry_at(4, other));
+        searcher.td.pricing.cold = true;
+        let saved = searcher.probe_begin();
+        assert_eq!(searcher.td.pricing.tables, ProbeTables::Cold);
+        assert!(searcher.pricing_tt_probe(other).is_none());
+        searcher.probe_end(&saved);
+    }
+
+    /// A priced probe switches its rule off at its ply; an identity probe
+    /// switches nothing and reads the main table alone.
+    #[test]
+    fn an_identity_probe_switches_nothing_off() {
+        let mut searcher = Searcher::default();
+        let decision = Decision {
+            rule: Rule::Razor,
+            depth: 1,
+            ply: 4,
+            node: NodeKind::of(false, true),
+            move_count: 0,
+            tail: 0,
+            quiet: None,
+        };
+        let saved = searcher.probe_begin();
+        searcher.probe_switches(&decision, ProbeKind::Identity);
+        assert_eq!(searcher.td.pricing.off, None);
+        assert_eq!(searcher.td.pricing.tables, ProbeTables::Identity);
+        searcher.probe_end(&saved);
+        let saved = searcher.probe_begin();
+        searcher.probe_switches(&decision, ProbeKind::Priced);
+        assert_eq!(searcher.td.pricing.off, Some((4, Rule::Razor)));
+        assert_ne!(searcher.td.pricing.tables, ProbeTables::Identity);
+        searcher.probe_end(&saved);
+        assert_eq!(searcher.td.pricing.off, None);
     }
 
     /// Unconfined, a probe searches with the options set.
