@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.4.5** (`V`): The loss table by cell.
+**Now: D.4.6** (`R2`): An identical-tree counter read.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -39,7 +39,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.4.2** SPSA schedule read — DONE 2026-11-03
     - [x] **D.4.3** A search-path perft — DONE 2026-11-04
     - [x] **D.4.4** Pruning and reduction pricing — DONE 2026-11-05
-    - [ ] **D.4.5** The loss table by cell — **LOCAL_QUALIFIED / V**
+    - [x] **D.4.5** The loss table by cell — DONE 2026-11-05
     - [ ] **D.4.6** An identical-tree counter read — **RESEARCH / R2**
 - [ ] **D.5** Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, the `Hash` notice, dead code, test and CI gaps — **I1**
     - [ ] **D.5.1** The table handle — **READY_FOR_IMPLEMENTATION / I1**
@@ -77,15 +77,10 @@ field, about 3,475 on CCRL's Blitz scale.
     - [ ] **D.6.8** A depth-0 entry is counted as two nodes — **RESEARCH / R2**
     - [ ] **D.6.9** The endgame scale's target — **RESEARCH / R2**
     - [ ] **D.6.10** The pawnless default factor — **RESEARCH / R2**
-    - [ ] **D.6.11** Piece-term definitions no experiment read — **RESEARCH / R2**
-    - [ ] **D.6.12** `Hash` at any size — **RESEARCH / R2**
     - [ ] **D.6.13** The aspiration fail-low window — **RESEARCH / R2**
-    - [ ] **D.6.14** Low-value notes — **RESEARCH / R2**
     - [x] **D.6.15** The correction is added to the evaluator's draw verdicts — DONE 2026-11-03
     - [ ] **D.6.16** Quiescence prunes by gain against a decisive material edge — **RESEARCH / R2**
     - [ ] **D.6.17** Underpromotions and Saavedra's study — **RESEARCH / R2**
-    - [ ] **D.6.18** Stockfish 19 mechanisms Basilisk adopted that Rarog lacks — **RESEARCH / R2**
-    - [ ] **D.6.19** Root and in-check reductions never read apart — **RESEARCH / R2**
     - [ ] **D.6.20** The fail-high stop's hole — **RESEARCH / R2**
     - [ ] **D.6.21** Won KPK positions read at or below 0 — **RESEARCH / R2**
     - [ ] **D.6.22** `krpkr_scale`'s hard zeros on won positions — **RESEARCH / R2**
@@ -103,12 +98,11 @@ field, about 3,475 on CCRL's Blitz scale.
     - [ ] **D.8.9** P8: delete the family masks — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.8.10** P9: one `ArrayList<T, N>` — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.8.11** P10: one `Compiled<T>` — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.8.12** P11: split `search/mod.rs`, after D.2 — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.8.12** P11: split `search/mod.rs` — **READY_FOR_IMPLEMENTATION / I1**
     - [x] **D.8.13** P12: the adapter boundary, inside D.3 — DONE 2026-11-04
     - [ ] **D.8.14** P13: one iterative-deepening driver — **RESEARCH / R2**
     - [ ] **D.8.15** P14: bench and WAC under one suite runner — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.8.16** P15: the evaluation's shape — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.8.17** P16: comments — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.8.18** P17: lints — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.8.19** P18: the node frame — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.8.20** P19: evaluation terms computed for a constant — **READY_FOR_IMPLEMENTATION / I1**
@@ -130,12 +124,12 @@ field, about 3,475 on CCRL's Blitz scale.
 
 - [ ] **F.0** Investigation: board events, accumulator ownership, trainer choice, data format, first architecture — **R3**
 - [ ] **F.1** Board events and accumulator scaffolding, behaviour-neutral for HCE; cost ledger — **I2**
-- [ ] **F.2** Data generation at scale: 30–60M unique positions, splits, manifests, hashes — **V**
-    - [ ] **F.2.1** Classical refit on search-visited data: the frozen HCE's whole surface refitted on F.2's dataset, gated as an evaluation change; the classical line's release if it wins — **V**
-- [ ] **F.3** Trainer hardening and baseline nets, two seeds per configuration — **I2**
-- [ ] **F.4** Scalar integration: `quantised.bin` contract, integer-exact conformance, HCE fallback — **I2**
+- [ ] **F.2** Scalar integration: `quantised.bin` contract, integer-exact conformance, HCE fallback — **I2**
+- [ ] **F.3** Trainer hardening: a deterministic pipeline checked against a reference recipe on a pilot slice, and the learning curve that sizes F.4 — **I2**
+- [ ] **F.4** Data generation at scale: the corpus F.3's learning curve sizes, splits, manifests, hashes — **V**
+    - [ ] **F.4.1** Classical refit on search-visited data: the frozen HCE's whole surface refitted on F.4's dataset, gated as an evaluation change; the classical line's release if it wins — **V**
 - [ ] **F.5** Incremental and SIMD: same-net parity on every move type, tiers, pooled NPS attribution — **I2**
-- [ ] **F.6** Search re-fit for the network — **V**
+- [ ] **F.6** The first nets and the search re-fit: baseline nets judged against one fixed anchor, then the search refitted to the network — **V**
 - [ ] **F.7** Architecture ladder: output buckets, king buckets, relation/threat inputs; one axis at a time — **R3**
 - [ ] **F.8** Data frontier: on-policy refresh, deduplication, hard-position mining — **V**
 - [ ] **F.9** NNUE release, 3.0.0: beat the classical release at STC, LTC and 4T; platform matrix — **M**
@@ -159,7 +153,7 @@ field, about 3,475 on CCRL's Blitz scale.
 
 | Item | Value |
 |---|---|
-| Next release | **2.7.0** at E.3 after Phases D and E, cut only after **E.3.0**'s originality disclosure (maintainer decision 2026-10-23; `analysis/originality_review_2.6.0_2026-10-22.md`) (maintainer decision 2026-10-22: 3.0.0 is reserved for the first NNUE release, F.9; E.2's four targets already pass at 1T and 4T, RAR-M73, RAR-M74, and its result is recorded, not a version). Later classical gains (E.4, F.2.1) release as 2.8.0 onward under Phase F's rule |
+| Next release | **2.7.0** at E.3 after Phases D and E, cut only after **E.3.0**'s originality disclosure (maintainer decision 2026-10-23; `analysis/originality_review_2.6.0_2026-10-22.md`) (maintainer decision 2026-10-22: 3.0.0 is reserved for the first NNUE release, F.9; E.2's four targets already pass at 1T and 4T, RAR-M73, RAR-M74, and its result is recorded, not a version). Later classical gains (E.4, F.4.1) release as 2.8.0 onward under Phase F's rule |
 | Released baseline | **2.6.0** on `master`, released 2026-10-22 from the `v2.6.0` tag; fingerprint **13,987,223 / EBF 2.565**. Over 2.5.0: +153.4 ± 10.7 at `3+0.03` 1T, +149.3 ± 15.1 at `10+0.1`, +149.7 ± 14.7 at 4T (RAR-M76). 2.5.0 (2026-10-05, 11,171,726 / EBF 2.512) was +272.4 over 2.4.0 at `3+0.03` (RAR-M64) |
 | Development head | `d4` from `master` at `5efe16f` (E.3.2's build names and E.3.3's universal binary, "Name builds by their commit and ship one universal x64 binary", PR #14, 2026-11-04; D.2 and D.3, "Harden the UCI protocol and keep draw verdicts", PR #13, 2026-11-04; D.1 is `703fe78`, PR #12; the 2.6.0 release is `0127e58`, PR #11), version **2.7.0-dev** (a build reports `dev-<date>-<hash>`): the 2.5.0 search with Phase C's evaluation, C.12's speed pass and large pages, C.10's search tune and D.1's clock; D.3's protocol and shell repairs, D.6.15's draw verdicts and D.5.24's physical-memory `Hash` bound; build names, a statically linked runtime and one universal x64 release binary; one PGO-trained kernel for every thread (`e057d84`); the classical evaluation frozen at engine source `9fb525e`; fingerprint **14,749,043 / EBF 2.564** since D.6.15 (`3a16fbb`; 13,987,223 / EBF 2.565 before); `rustc 1.99.1` (RAR-P36–P38, kept by maintainer decision). A registration names the revision it builds from and this fingerprint. Change records: `docs/HISTORY.md`, `docs/archive/PLAN-phaseD-done-2026-11-04.md`, `docs/archive/PLAN-closed-2026-10-22.md` |
 | Pool position, `3+0.03` 1T | **3,428.8 ± 19.2** (RAR-M73, the C head, 2026-10-21), **+142.3 ± 24.8 over the B.9 head's 3,286.5 ± 15.7** (RAR-M64; 2.4.0 rates 3,001): Houdini 3 +172.8, Critter 1.6a +231.5, Fritz 16 +256.2, Rybka 4.1 +330.2, so all four E.2 targets pass at 1T; Rarog 2.4.0 +363.2 |
@@ -169,7 +163,7 @@ field, about 3,475 on CCRL's Blitz scale.
 | Evaluation deficit | **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21): Stockfish's classical HCE over Rarog's frozen evaluation inside Stockfish's search, from +181.7 ± 19.0 at Phase C's start (RAR-O05), 82.5 ± 25.2 closed. The donor's remaining king signal is the index's structure (RAR-E72, RAR-E73); Phase F supersedes the classical evaluation, and an evaluation change under a fitted search follows PROCESS |
 | Speed | The C head (2026-10-21/22): **+28.92%** pooled-PGO bench NPS over the B.9 head (RAR-P39; `rustc 1.99.1`'s −1.63% included, RAR-P37, its code generation −3.6% without PGO, RAR-P38); in games (Colosseum CLI 0.4.0) +29.8% at 1T and −9.2% at 4T over the B.9 head (RAR-M73, RAR-M74), and −8.6% at 1T and −19.1% at 4T against Rarog 2.4.0 in the same games; the evaluation 21.1% of search samples, B.9's 24.3% (RAR-P40) |
 | Conversion | **13.8 draws and 0.0 losses per 1,000 games** after a persistent piece-up (RAR-M73's games, the C head; Poisson 95% 9.5–19.3 and 0–1.5), against the B.9 head's 15.8 and 0.8 (RAR-M64) and 2.4.0's 24.4 and 5.3: the draw rate's fall is not resolved |
-| Active experiment | None running. **Landed 2026-11-04 as `c69761d` (PR #13):** D.2 closed `NO_CHANGE` (RAR-M83: four threads are worth 1.37 doublings of Rarog's own time against Reckless's 1.49 and Stockfish's 1.54; one logical CPU per physical core is the placement for every rated multi-thread read); D.3 done, with the protocol behind `src/uci/`; D.5.24's `Hash` bound and D.6.15's draw verdicts. Triumviratus is registered as a mechanisms-only donor and its small gains wait in Phase H. **Landed 2026-11-04 as `5efe16f` (PR #14):** E.3.2's build names (`sse42` +8.06% over `base`, RAR-P55) and E.3.3's universal binary (RAR-P56: +0.45% over the pext build), the x64 release asset, whose Intel SDE selection matrix passed in the first `Release` run. D.4.3's search-path perft done 2026-11-04 on `d4`; D.4.4's pricing instrument done 2026-11-05 on `d4` (fifteen of sixteen labels plant-validated; razoring's probe reproduces its decisions but its label stays out of screens, `analysis/pruning_pricing_card_2026-11-04.md`); D.4.5's loss table registered 2026-11-05 and its tool smoke-qualified, its judge run (about 3.4 h on fifteen workers) the maintainer's (`analysis/loss_table_card_2026-11-05.md`, section 10); then D.4's other instruments, then D.5's repairs and D.6's candidates. Finished steps' records: PLAN and `docs/archive/PLAN-phaseD-done-2026-11-04.md` |
+| Active experiment | None running. **Landed 2026-11-04 as `c69761d` (PR #13):** D.2 closed `NO_CHANGE` (RAR-M83: four threads are worth 1.37 doublings of Rarog's own time against Reckless's 1.49 and Stockfish's 1.54; one logical CPU per physical core is the placement for every rated multi-thread read); D.3 done, with the protocol behind `src/uci/`; D.5.24's `Hash` bound and D.6.15's draw verdicts. Triumviratus is registered as a mechanisms-only donor and its small gains wait in Phase H. **Landed 2026-11-04 as `5efe16f` (PR #14):** E.3.2's build names (`sse42` +8.06% over `base`, RAR-P55) and E.3.3's universal binary (RAR-P56: +0.45% over the pext build), the x64 release asset, whose Intel SDE selection matrix passed in the first `Release` run. D.4.3's search-path perft done 2026-11-04 on `d4`; D.4.4's pricing instrument done 2026-11-05 on `d4` (fifteen of sixteen labels plant-validated; razoring's probe reproduces its decisions but its label stays out of screens, `analysis/pruning_pricing_card_2026-11-04.md`); D.4.5's loss-table tool done 2026-11-05, its run on the C head withdrawn before any reading and the read moved to H.3, on the network head's games (`analysis/loss_table_card_2026-11-05.md`, sections 10–11). The roadmap was reordered the same day so that its numbering is the order of work, with no step waiting for a later one (HISTORY's number map): D.4.6, then D.5's repairs, D.6's candidates, D.7, D.8 and D.9, then Phases E to H in order. Finished steps' records: PLAN and `docs/archive/PLAN-phaseD-done-2026-11-04.md` |
 
 ## Holds and obligations
 

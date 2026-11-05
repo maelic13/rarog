@@ -220,3 +220,33 @@ the judge (a crash is resumed by the same command):
 python tools/diag/loss_table.py judge analysis/artifacts/d45-loss/sample.tsv --judge D:/chess/engines/stockfish/stockfish-19-windows-x86-64-universal.exe --nodes 1000000 --hash 64 --workers 15 --out analysis/artifacts/d45-loss/judged.tsv
 python tools/diag/loss_table.py research analysis/artifacts/d45-loss/judged.tsv --exe tools/test_engines/rarog-c11head-pext-pgo.exe --judge D:/chess/engines/stockfish/stockfish-19-windows-x86-64-universal.exe --hash 128 --min-loss 0.10 --limit 2000 --workers 15 --out analysis/artifacts/d45-loss/research.tsv
 ```
+
+## 11. Withdrawn, 2026-11-05
+
+The maintainer stopped the judge run after 164 of the 1,896 games and
+withdrew it before any reading (maintainer decision 2026-11-05). The
+table's consumer is H.3, which tunes the network head's clock; no step
+before it uses the table, and the C head's games describe a clock and an
+evaluation the engine will not have by then. The read moves to H.3, on the
+network head's games, with a fresh registration that reuses this card's
+design; section 7's predictions are about the C head and are not carried
+over. The tool stays: D.4.5 closes as an instrument.
+
+What the stop taught:
+
+- **Cost.** The run paced at about 5.4 hours (164 games in 28 minutes),
+  not section 10's 3.4: fifteen workers each ran about 1.6 times slower
+  than one alone. The next registration times its smoke at the run's
+  worker count.
+- **Ctrl+C did not stop the run.** A worker that died of the interrupt
+  lost its game, and the parent waited for it without seeing the key.
+  `c124b2e`: workers ignore the interrupt, engines run in their own
+  process group, the parent waits in short steps and terminates the pool,
+  and the judge keeps its finished games. Checked with a console break to a
+  judge run and to a research run on the smoke sample: each stopped within
+  0.5 s with no engine left, the judge kept its finished game, and the same
+  command then finished it to the smoke's records
+  (`analysis/artifacts/d45-loss/smoke/interrupt.log`).
+
+The 164 judged games stay in `analysis/artifacts/d45-loss/judged.tsv`,
+unread; they are not this card's run and carry no reading.
