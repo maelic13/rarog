@@ -187,6 +187,11 @@ def test_a_resumed_run_keeps_finished_games_and_drops_a_partial_one(tmp_path):
         f.write("a\n# game pool 1 plies 1\nb\nc\n")
     assert lt.resume(out, header) == {("pool", 1)}
     assert out.read_text(encoding="utf-8").splitlines()[-2:] == ["a", "# game pool 1 plies 1"]
+    # A stop inside the marker leaves half of it: that game is partial too.
+    with open(out, "a", encoding="utf-8") as f:
+        f.write("d\n# game pool 2 pl")
+    assert lt.resume(out, header) == {("pool", 1)}
+    assert out.read_text(encoding="utf-8").splitlines()[-1] == "# game pool 1 plies 1"
     with pytest.raises(SystemExit):
         lt.resume(out, header[:2] + ["# nodes 20 hash 1 threads 1"])
 

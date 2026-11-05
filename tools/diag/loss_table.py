@@ -33,7 +33,8 @@ game's moves, so a game's records do not depend on the workers or the
 order. A final position the rules decide (mate, stalemate, insufficient
 material, a threefold or the fifty-move rule) is scored by the rule. Each
 game's records end with a `# game` line; a rerun on the same output keeps
-finished games, drops a partial one and continues.
+finished games, drops a partial one and continues. Ctrl+C stops a judge or
+research run within a second; the judge's finished games stay.
 
 A game's losses telescope: the engine's summed loss minus its opponent's is
 the engine's expected score at the first position minus the judge's at the
@@ -60,6 +61,7 @@ import multiprocessing
 import os
 import pathlib
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -346,9 +348,13 @@ class Eval:
 class Uci:
     def __init__(self, exe: str, options: list[tuple[str, str]]):
         self.exe = exe
+        # An engine in the console's group would die of Ctrl+C under a live
+        # worker; in its own group it quits when its worker's pipe closes.
+        group = ({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt"
+                 else {"start_new_session": True})
         self.proc = subprocess.Popen([exe], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                      stderr=subprocess.DEVNULL, text=True, bufsize=1,
-                                     cwd=os.path.dirname(os.path.abspath(exe)))
+                                     cwd=os.path.dirname(os.path.abspath(exe)), **group)
         self.name = None
         for line in self.command("uci", "uciok"):
             if line.startswith("id name "):
@@ -489,7 +495,28 @@ def judge_game(game: Game, reason: str, engine: str, evaluate) -> list[dict]:
 _WORKER: dict = {}
 
 
+def _ignore_interrupts() -> None:
+    """Ctrl+C is the parent's to handle: a worker that dies of it loses its
+    task, and the pool waits for that result forever."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    if hasattr(signal, "SIGBREAK"):
+        signal.signal(signal.SIGBREAK, signal.SIG_IGN)
+
+
+def results(iterator):
+    """A pool's results, waited for in short steps: on Windows a bare wait
+    on a pool's results never sees Ctrl+C."""
+    while True:
+        try:
+            yield iterator.next(timeout=0.5)
+        except multiprocessing.TimeoutError:
+            continue
+        except StopIteration:
+            return
+
+
 def _judge_init(judge: str, options, nodes: int) -> None:
+    _ignore_interrupts()
     _WORKER["judge"] = Uci(judge, options)
     _WORKER["nodes"] = nodes
 
@@ -522,8 +549,9 @@ def resume(out: pathlib.Path, header: list[str]) -> set:
         raise SystemExit(f"{out} was written by another sample, judge or setting")
     kept, pending, done = lines[:len(header) + 1], [], set()
     for line in lines[len(header) + 1:]:
-        if line.startswith("# game "):
-            _, _, run, number, _, _ = line.split(" ")
+        parts = line.split(" ")
+        if len(parts) == 6 and parts[:2] == ["#", "game"] and parts[4] == "plies":
+            _, _, run, number, _, _ = parts
             kept.extend(pending)
             kept.append(line)
             pending = []
@@ -554,15 +582,21 @@ def cmd_judge(args) -> int:
     start, finished = time.time(), 0
     with open(out, "a", encoding="utf-8", newline="\n") as sink, multiprocessing.Pool(
             args.workers, _judge_init, (args.judge, judge_options(args.hash), args.nodes)) as pool:
-        for run, number, plies, records in pool.imap_unordered(_judge_one, todo):
-            sink.write("".join(format_record(r) + "\n" for r in records))
-            sink.write(f"# game {run} {number} plies {plies}\n")
-            sink.flush()
-            finished += 1
-            if finished % args.progress == 0 or finished == len(todo):
-                rate = (time.time() - start) / finished
-                print(f"{finished}/{len(todo)} games, {rate:.1f} s a game,"
-                      f" {rate * (len(todo) - finished) / 3600:.2f} h left", flush=True)
+        try:
+            for run, number, plies, records in results(pool.imap_unordered(_judge_one, todo)):
+                sink.write("".join(format_record(r) + "\n" for r in records)
+                           + f"# game {run} {number} plies {plies}\n")
+                sink.flush()
+                finished += 1
+                if finished % args.progress == 0 or finished == len(todo):
+                    rate = (time.time() - start) / finished
+                    print(f"{finished}/{len(todo)} games, {rate:.1f} s a game,"
+                          f" {rate * (len(todo) - finished) / 3600:.2f} h left", flush=True)
+        except KeyboardInterrupt:
+            pool.terminate()
+            print(f"stopped: {len(done) + finished} of {len(games)} games judged and kept;"
+                  " the same command continues", flush=True)
+            return 130
     return 0
 
 
@@ -743,6 +777,7 @@ def verdict(threshold: float, fresh: float, losses: dict) -> str:
 
 
 def _research_init(exe, engine_hash, judge, judge_hash, judge_nodes) -> None:
+    _ignore_interrupts()
     _WORKER["engine"] = Uci(exe, [("Threads", "1"), ("Hash", str(engine_hash))])
     _WORKER["judge"] = Uci(judge, judge_options(judge_hash))
     _WORKER["nodes"] = judge_nodes
@@ -807,7 +842,12 @@ def cmd_research(args) -> int:
     items = [(r, games[(r["run"], r["game"])], multiples, args.min_loss) for r in chosen]
     with multiprocessing.Pool(args.workers, _research_init,
                               (args.exe, args.hash, args.judge, judge_hash, judge_nodes)) as pool:
-        rows = list(pool.imap(_research_one, items))
+        try:
+            rows = list(results(pool.imap(_research_one, items)))
+        except KeyboardInterrupt:
+            pool.terminate()
+            print("stopped: nothing written; the same command starts again", flush=True)
+            return 130
     fields = list(rows[0]) if rows else []
     lines = [RESEARCH_MAGIC,
              f"# judged {pathlib.Path(args.judged).resolve()} sha256 {sha256(args.judged)}",
@@ -896,6 +936,8 @@ def main(argv=None) -> int:
     p.add_argument("research")
 
     args = ap.parse_args(argv)
+    if hasattr(signal, "SIGBREAK"):
+        signal.signal(signal.SIGBREAK, signal.default_int_handler)
     return {"sample": cmd_sample, "judge": cmd_judge, "table": cmd_table,
             "research": cmd_research, "split": cmd_split}[args.command](args)
 
