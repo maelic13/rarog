@@ -5,6 +5,7 @@ the intervals are disjoint."""
 
 from __future__ import annotations
 
+import math
 import sys
 from pathlib import Path
 
@@ -12,7 +13,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from pricing_table import main, parse, table, wilson  # noqa: E402
+from pricing_table import main, mantel_haenszel, parse, table, wilson  # noqa: E402
 
 
 def record(rule="lmr", depth=4, label=0, changed="-", nodes=10, move=5, quiet="1"):
@@ -78,3 +79,67 @@ def test_compare_reads_only_the_quiet_moves_when_asked(tmp_path):
 def test_a_bad_quiet_field_is_refused():
     with pytest.raises(ValueError, match="quiet"):
         parse([record(quiet="x")])
+
+
+def summary(nodes):
+    return f"# search nodes {nodes} probes 0 probe_nodes 0"
+
+
+def test_mantel_haenszel_of_one_stratum_is_the_crude_ratio_with_woolf_variance():
+    planted = parse([record(label=int(i < 10)) for i in range(100)]).records
+    honest = parse([record(label=int(i < 5)) for i in range(100)]).records
+    ratio, low, high = mantel_haenszel(planted, honest)
+    assert ratio == pytest.approx(10 * 95 / (90 * 5))
+    woolf = math.sqrt(1 / 10 + 1 / 90 + 1 / 5 + 1 / 95)
+    assert low == pytest.approx(ratio * math.exp(-1.959964 * woolf))
+    assert high == pytest.approx(ratio * math.exp(1.959964 * woolf))
+
+
+def simpson(tmp_path):
+    """Higher in each depth, lower pooled: the plant moved decisions to the
+    deep stratum, where wrong decisions are rare."""
+    honest = ([record(depth=1, label=int(i < 100)) for i in range(1000)]
+              + [record(depth=6, label=int(i < 2)) for i in range(200)])
+    planted = ([record(depth=1, label=int(i < 40)) for i in range(200)]
+               + [record(depth=6, label=int(i < 40)) for i in range(2000)])
+    return (write(tmp_path / "h.tsv", [summary(1000)] + honest),
+            write(tmp_path / "p.tsv", [summary(1000)] + planted))
+
+
+def test_the_plant_read_passes_a_composition_shift_the_crude_read_misses(tmp_path):
+    honest, planted = simpson(tmp_path)
+    assert main(["compare", honest, planted, "--rule", "lmr"]) == 1
+    assert main(["plant", honest, planted, "--rule", "lmr"]) == 0
+
+
+def test_an_insensitive_label_fails(tmp_path):
+    honest = write(tmp_path / "h.tsv", [summary(1000)]
+                   + [record(label=int(i % 20 == 0)) for i in range(4000)])
+    planted = write(tmp_path / "p.tsv", [summary(1000)]
+                    + [record(label=int(i % 20 == 0)) for i in range(8000)])
+    assert main(["plant", honest, planted, "--rule", "lmr"]) == 1
+
+
+def test_a_thin_read_is_unresolved(tmp_path):
+    honest = write(tmp_path / "h.tsv", [summary(1000)]
+                   + [record(label=int(i < 2)) for i in range(100)])
+    planted = write(tmp_path / "p.tsv", [summary(1000)]
+                    + [record(label=int(i < 3)) for i in range(150)])
+    assert main(["plant", honest, planted, "--rule", "lmr"]) == 2
+
+
+def test_a_plant_that_barely_fires_more_is_inactive(tmp_path):
+    honest = write(tmp_path / "h.tsv", [summary(1000)]
+                   + [record(label=int(i < 10)) for i in range(1000)])
+    planted = write(tmp_path / "p.tsv", [summary(1000)]
+                    + [record(label=int(i < 200)) for i in range(1100)])
+    assert main(["plant", honest, planted, "--rule", "lmr"]) == 3
+
+
+def test_activation_is_per_main_node(tmp_path):
+    # Twice the probes over twice the nodes is the same rate: inactive.
+    honest = write(tmp_path / "h.tsv", [summary(1000)]
+                   + [record(label=int(i < 10)) for i in range(1000)])
+    planted = write(tmp_path / "p.tsv", [summary(2000)]
+                    + [record(label=int(i < 400)) for i in range(2000)])
+    assert main(["plant", honest, planted, "--rule", "lmr"]) == 3
