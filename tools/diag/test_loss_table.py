@@ -2,8 +2,8 @@
 """Tests for loss_table.py: comments and clocks are read as Colosseum writes
 them, the sample takes losses, spoiled draws and their twins, every move's
 loss is the judge's value before it minus after it from the mover's side,
-the losses telescope to the result, a resumed judge run drops a partial
-game, and the cells and verdicts follow their definitions."""
+the losses telescope to the judge's last score and an adjudication's
+remainder is apart, a resumed judge run drops a partial game, and the cells and verdicts follow their definitions."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ FOOL = ["f3", "e5", "g4", "Qh4#"]
 
 def pgn(number, white, black, result, sans, scores, pair=1, pair_game=1, ms=40):
     """A game as Colosseum's CLI writes it."""
-    text = [f'[Event "Colosseum CLI tournament"]', f'[White "{white}"]', f'[Black "{black}"]',
+    text = ['[Event "Colosseum CLI tournament"]',f'[White "{white}"]', f'[Black "{black}"]',
             f'[Result "{result}"]', f'[TimeControl "{TC}"]', '[SetUp "1"]',
             f'[FEN "{chess.STARTING_FEN}"]', f'[GameNumber "{number}"]',
             f'[PairNumber "{pair}"]', f'[PairGame "{pair_game}"]', ""]
@@ -130,10 +130,29 @@ def test_every_loss_is_before_minus_after_and_the_losses_telescope(tmp_path):
         assert r["loss_es"] == pytest.approx(r["es_before"] - r["es_after"], abs=1e-9)
     # The last move mates: the rule scores it, the judge is not asked.
     assert records[-1]["es_after"] == 1.0 and records[-1]["cp_after"] == lt.MATE_CP
-    net, swing = lt.identity(records)
-    assert net == pytest.approx(swing, abs=1e-9)
+    assert {r["result"] for r in records} == {1.0}
+    ident = lt.identity(records)
+    assert ident.net == pytest.approx(ident.to_final, abs=1e-9) and ident.worst < 1e-9
     start = fake_evaluate(chess.STARTING_FEN, []).es
-    assert swing == pytest.approx((1 - start) - 1.0, abs=1e-9)
+    # A mate decides the last position, so the judge's last is the result.
+    assert ident.to_final == pytest.approx((1 - start) - 1.0, abs=1e-9)
+    assert ident.to_result == pytest.approx(ident.to_final, abs=1e-9)
+
+
+def test_an_adjudication_leaves_its_remainder_to_no_move(tmp_path):
+    sans = SHUFFLE[:6]
+    game = read_one(tmp_path, pgn(1, "E", "O", "0-1", sans, ["0"] * len(sans)))
+    records = lt.judge_game(game, "loss", "E", fake_evaluate)
+    assert {r["result"] for r in records} == {0.0}
+    ident = lt.identity(records)
+    assert ident.net == pytest.approx(ident.to_final, abs=1e-9) and ident.worst < 1e-9
+    start = fake_evaluate(chess.STARTING_FEN, []).es
+    # Black moved last, so the judge's last value is for White, the engine.
+    last = fake_evaluate(chess.STARTING_FEN, [p.uci for p in game.plies]).es
+    assert ident.to_final == pytest.approx(start - last, abs=1e-9)
+    assert ident.to_result == pytest.approx(start - 0.0, abs=1e-9)
+    # A record dropped from the middle breaks the telescoping.
+    assert lt.identity(records[:2] + records[3:]).worst > 1e-3
 
 
 def test_a_drawn_final_position_is_scored_by_the_rule():

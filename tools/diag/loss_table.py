@@ -36,9 +36,11 @@ game's records end with a `# game` line; a rerun on the same output keeps
 finished games, drops a partial one and continues.
 
 A game's losses telescope: the engine's summed loss minus its opponent's is
-the engine's expected score at the first position minus its result, so the
-table attributes each game's points to cells; `table` prints that identity
-over the read.
+the engine's expected score at the first position minus the judge's at the
+last, so the table attributes each game's points to cells. Where an
+adjudication ended the game, the judge's last expected score minus the
+result is carried by no move. `table` prints both over the read and fails
+when a game's losses do not telescope.
 
 `research` re-searches each engine move whose judged loss is at least
 `--min-loss`, from a fresh table at 1, 4 and 16 times the game's nodes, and
@@ -73,12 +75,12 @@ CLOCK_BANDS = (10, 25, 50)
 MEN_BANDS = (9, 15, 23)
 MULTIPLES = (1, 4, 16)
 SAMPLE_MAGIC = "# loss_table sample v1"
-JUDGED_MAGIC = "# loss_table judged v1"
+JUDGED_MAGIC = "# loss_table judged v2"
 RESEARCH_MAGIC = "# loss_table research v1"
 RECORD_FIELDS = ("run", "game", "ply", "mover", "name", "opponent", "colour", "move",
                  "men", "clock_ms", "clock_frac", "game_s", "game_n", "game_t",
                  "cp_before", "es_before", "cp_after", "es_after", "loss_cp", "loss_es",
-                 "reason", "fen")
+                 "reason", "result", "fen")
 
 
 # --- games -----------------------------------------------------------------
@@ -410,8 +412,8 @@ def parse_search(lines: list[str], need_wdl: bool) -> Eval:
     cp = value if kind == "cp" else (MATE_CP - abs(value)) * (1 if value > 0 else -1)
     if "wdl" in tokens:
         j = tokens.index("wdl")
-        w, d, l = (int(t) for t in tokens[j + 1:j + 4])
-        es = (w + d / 2) / (w + d + l)
+        wins, draws, losses = (int(t) for t in tokens[j + 1:j + 4])
+        es = (wins + draws / 2) / (wins + draws + losses)
     elif need_wdl:
         raise RuntimeError("the judge prints no wdl: it needs UCI_ShowWDL")
     else:
@@ -459,6 +461,7 @@ def judge_game(game: Game, reason: str, engine: str, evaluate) -> list[dict]:
     clock = clocks(game)
     colour = engine_colour(game, engine)
     opponent = game.black if colour == "w" else game.white
+    result = outcome(game, colour)
     first = "w" if chess.Board(game.start_fen).turn == chess.WHITE else "b"
     records = []
     for k, ply in enumerate(game.plies):
@@ -478,7 +481,7 @@ def judge_game(game: Game, reason: str, engine: str, evaluate) -> list[dict]:
             "cp_before": before.cp, "es_before": round(before.es, 4),
             "cp_after": cp_after, "es_after": round(es_after, 4),
             "loss_cp": before.cp - cp_after, "loss_es": round(before.es - es_after, 4),
-            "reason": reason, "fen": fens[k],
+            "reason": reason, "result": result, "fen": fens[k],
         })
     return records
 
@@ -596,7 +599,7 @@ def read_judged(path) -> Judged:
             values = dict(zip(columns, line.split("\t")))
             for key in ("game", "ply", "men", "clock_ms", "cp_before", "cp_after", "loss_cp"):
                 values[key] = int(values[key])
-            for key in ("clock_frac", "es_before", "es_after", "loss_es"):
+            for key in ("clock_frac", "es_before", "es_after", "loss_es", "result"):
                 values[key] = float(values[key])
             pending.append(values)
     if pending:
@@ -656,22 +659,40 @@ def tabulate(records: list[dict], dims: list[str], class_cp: int = CLASS_CP) -> 
     return rows
 
 
-def identity(records: list[dict]) -> tuple[float, float]:
-    """The engine's loss minus its opponents', against its expected score at
-    each game's first position minus its result; equal by construction."""
+@dataclasses.dataclass(frozen=True)
+class Identity:
+    """The engine's points over a read, all from its side. `net` is its summed
+    loss minus its opponents'; `to_final` its expected score at each game's
+    first position minus the judge's at the last; `to_result` the first minus
+    its result; `worst` the largest one game's |net - to_final|."""
+    net: float
+    to_final: float
+    to_result: float
+    worst: float
+
+
+IDENTITY_TOLERANCE = 1e-6
+
+
+def identity(records: list[dict]) -> Identity:
+    """A game's losses telescope to its first position minus its last; what an
+    adjudication leaves between the last position and the result is carried
+    by no move."""
     by_game = collections.defaultdict(list)
     for r in records:
         by_game[(r["run"], r["game"])].append(r)
-    net, swing = 0.0, 0.0
+    net = to_final = to_result = worst = 0.0
     for moves in by_game.values():
         moves.sort(key=lambda r: r["ply"])
-        for r in moves:
-            net += r["loss_es"] if r["mover"] == "engine" else -r["loss_es"]
+        game_net = sum(r["loss_es"] if r["mover"] == "engine" else -r["loss_es"] for r in moves)
         first, last = moves[0], moves[-1]
         start = first["es_before"] if first["mover"] == "engine" else 1 - first["es_before"]
         end = last["es_after"] if last["mover"] == "engine" else 1 - last["es_after"]
-        swing += start - end
-    return net, swing
+        net += game_net
+        to_final += start - end
+        to_result += start - last["result"]
+        worst = max(worst, abs(game_net - (start - end)))
+    return Identity(net, to_final, to_result, worst)
 
 
 def cmd_table(args) -> int:
@@ -679,11 +700,14 @@ def cmd_table(args) -> int:
     records = [r for r in judged.records if not args.reason or r["reason"] in args.reason]
     dims = [d for d in args.by.split(",") if d] if args.by else []
     rows = tabulate(records, dims, args.class_cp)
-    net, swing = identity(records)
+    ident = identity(records)
     print(f"{judged.header.get('judge', '?')}; {judged.header.get('nodes', '?')}")
     print(f"{len({(r['run'], r['game']) for r in records})} games, {len(records)} moves;"
-          f" the engine's loss minus its opponents' {net:.3f} points, its start minus its"
-          f" result {swing:.3f}")
+          f" the engine's loss minus its opponents' {ident.net:.3f} points, its start minus"
+          f" the judge's last {ident.to_final:.3f} (largest game difference"
+          f" {ident.worst:.1e}); its start minus its result {ident.to_result:.3f}, the"
+          f" judge's last minus the result {ident.to_result - ident.to_final:.3f} carried"
+          f" by no move")
     head = ["side"] + dims + ["moves", "games", "mean_cp", "errors", "error_share",
                               "points", "point_share", "mean_mpts"]
     widths = [max(len(h), *(len(_fmt(r[h])) for r in rows)) if rows else len(h) for h in head]
@@ -694,6 +718,9 @@ def cmd_table(args) -> int:
         pathlib.Path(args.tsv).write_text(
             "\n".join(["\t".join(head)] + ["\t".join(_fmt(r[h]) for h in head) for r in rows]) + "\n",
             encoding="utf-8")
+    if ident.worst > IDENTITY_TOLERANCE:
+        print(f"a game's losses do not telescope: {ident.worst:.1e} > {IDENTITY_TOLERANCE:.0e}")
+        return 1
     return 0
 
 
