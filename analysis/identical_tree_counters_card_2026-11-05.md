@@ -106,6 +106,77 @@ shell; its tool is the `I1` step.
   H.4, and layout is a separate lever (function alignment, BAS-P20), not
   this leaf's.
 
+## T1 result, 2026-11-05
+
+The first attempt was stopped after 5 of its 20 runs because the maintainer
+was using the PC; its log is kept as `run-disturbed.log` and is not part of
+this result. The rerun waited for the maintainer's word that the PC was
+idle: quiet gate 1.7%, each run's host load 4.0–4.6% (one busy logical CPU
+of 32 is 3.1%), no run repeated, all 20 at the fingerprint. The tool is
+`tools/diag/identical_tree_counters.py t1`; outputs in
+`analysis/artifacts/d46-counters/t1/` (`raw.json`, `summary.txt`,
+`run.log`, and `read.txt` for the checks below).
+
+| Measure | Within-build CV (mean of 4) | Spread of build medians |
+|---|---|---|
+| NPS | 0.211% | 0.276% |
+| Scheduled cycles per node | 0.177% | 0.253% |
+
+- **What the count is.** Cycles per node times NPS is 3.394–3.408 GHz on
+  every run: the 5950X's invariant time-stamp counter. The scheduled share
+  of bench time was at least 99.84%, and cycles per node correlates 0.954
+  with 1/NPS. On an idle pinned core the unprivileged count is wall time
+  with almost nothing removed.
+- **P1 held.** The ratio of the two CVs is 0.84, inside 0.5–1.0. For equal
+  precision it saves about 30% of the runs (0.84² = 0.70), not a change of
+  method.
+- **P2 held in sign, but T1 cannot attribute it.** Shuffling the build
+  labels over the 20 runs gives a median spread of 0.145% and a 95th
+  percentile of 0.277% for cycles per node (0.178% and 0.316% for NPS);
+  the observed spread is beaten by chance with probability 0.064 (0.095 for
+  NPS). At five runs a build, layout and run noise are not separated.
+- **Rule.** 0.253% lies in the 0.1–0.3% band: T2 decides.
+
+**Calibration.** P1 right in magnitude and mechanism: there was little
+preemption to remove. P2 right in sign; the miss is in the instrument
+design: the bands did not allow for the noise in the spread of four
+medians of five runs (about 0.15% at T1's CV), so the 0.1% "wins outright"
+band could not be reached at that run noise whatever layout does. T2's rule
+below reads the shuffle beside the spread.
+
+## T2, prepared 2026-11-05 (maintainer-run, elevated)
+
+`tools/diag/identical_tree_counters.py t2`: T1's schedule unchanged, each
+bench inside an ETW kernel session (`xperf -on PROC_THREAD+LOADER+CSWITCH
+-pmc TotalCycles,InstructionRetired,BranchMispredictions CSWITCH strict`),
+one ETL per run, read afterwards without elevation by summing each counter
+over the search thread's time on CPU 6. Checked unelevated: the counter
+names parse (an unknown name fails with "not found", the real ones fail only
+on access), the tool refuses without elevation (exit 2), and `t2 --dry-run`
+runs the schedule without tracing (`analysis/artifacts/d46-counters/t2-dry.log`).
+The reader is written against the first real ETL.
+
+**Predictions, frozen before T2 runs:**
+
+| # | Prediction | Confidence |
+|---|---|---|
+| P4 | Within a build, the CV of TotalCycles per node is 0.5–1.0× T1's 0.177% (a memory-bound search counts more stall cycles at a higher clock, so core cycles do not remove frequency) | 60% |
+| P5 | The spread of the build medians of TotalCycles per node is at least 0.2% (H1) | 65% |
+| P6 | Within a build, the CV of instructions retired per node is at most 0.02% | 70% |
+| P7 | The spread of the build medians of instructions retired per node is at least 0.1% (the PGO builds differ in code, not only in placement) | 60% |
+
+**Rule, registered before T2:**
+
+- TotalCycles beats the pooled builds only if the spread of its build
+  medians is at most 0.1%, each build's CV is at most 0.1%, and the
+  label shuffle puts the observed spread below its median. Then the `I1`
+  step builds the reader into a tool and validates it against the pooled
+  read on a planted cost.
+- Otherwise no counter reads speed better than the pooled builds: D.4.6
+  closes `NO_CHANGE` for speed. Instructions retired then go into PROCESS as
+  a diagnostic beside the pooled read only if their within-build CV is at
+  most 0.05%; they never accept a change.
+
 ## Decision
 
-Pending T1.
+Pending T2.

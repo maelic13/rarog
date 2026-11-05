@@ -626,7 +626,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       forces several builds here too. Validated against the pooled read on one
       patch of known effect. Users: the NPS guards of D.5 and D.8, D.7, H.4.
       No sibling pair: RAR-P54 read both engines at 0.63–0.65 beside a
-      sibling.
+      sibling. T1, the unprivileged read, 2026-11-05: the thread cycle count
+      is the 3.4 GHz time-stamp counter, so on a pinned idle core it is wall
+      time (CV 0.177% against NPS's 0.211%), and its 0.253% spread between
+      builds is not separable from run noise at five runs a build; by the
+      card's rule T2 decides, the elevated ETW read, which is the
+      maintainer's (`analysis/identical_tree_counters_card_2026-11-05.md`).
 - **D.5 Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, the `Hash` notice, dead code, test and CI gaps — `I1`.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` (its §5 lists
   every item with its reviewer ID; the reports are in
