@@ -9,6 +9,11 @@
 //! takes its stores), the histories and corrections are frozen, and the stack,
 //! PV and node count are restored afterwards. With sampling on, the main
 //! search's node count therefore stays its fingerprint.
+//!
+//! A plant (an option set to make one rule more aggressive) validates a
+//! label. With `RAROG_PRICING_CONFINE=1` each probe searches with the
+//! compiled-in parameters, so the plant acts only in the measured search
+//! and not inside the probe that prices its decisions.
 
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
@@ -18,6 +23,7 @@ use crate::board::{Board, Move, Piece};
 use crate::tt::{TranspositionTable, TtEntry};
 
 use super::node::{NodeType, NonPv};
+use super::params::{CoreParams, Param, ProofParams, QuietParams, SearchParams};
 use super::stack::{PlyArray, StackEntry};
 use super::{MAX_PLY, SearchEvent, Searcher};
 
@@ -206,6 +212,17 @@ struct Record {
     changed: Changed,
 }
 
+/// The parameter sets a confined probe exchanges with the searcher's: the
+/// compiled-in values while the measured search runs, the set ones while
+/// a probe runs.
+#[derive(Default)]
+struct HeldParameters {
+    params: SearchParams,
+    core: Param<CoreParams>,
+    proof: Param<ProofParams>,
+    quiet: Param<QuietParams>,
+}
+
 /// The thread state a probe saves and restores, beyond its buffers.
 struct Saved {
     nodes: u64,
@@ -221,6 +238,10 @@ pub(super) struct Pricing {
     pub(super) probing: bool,
     /// The rule a node-level probe switched off, and the ply it is off at.
     pub(super) off: Option<(usize, Rule)>,
+    /// Probes search with the compiled-in parameters, so a planted option
+    /// acts only in the measured search.
+    confine: bool,
+    held: Option<Box<HeldParameters>>,
     scratch: Option<TranspositionTable>,
     records: Vec<Record>,
     /// Raising move-level records per ply still waiting for their node.
@@ -236,6 +257,8 @@ impl Default for Pricing {
         Self {
             probing: false,
             off: None,
+            confine: confine_from_env(),
+            held: None,
             scratch: None,
             records: Vec::new(),
             pending: PlyArray::new(0),
@@ -257,6 +280,15 @@ fn extra_shift() -> Option<u32> {
             .and_then(|raw| raw.trim().parse::<u32>().ok())
             .filter(|shift| *shift < 16)
     })
+}
+
+/// Whether probes search with the compiled-in parameters, from
+/// `RAROG_PRICING_CONFINE` (`1` confines a planted option to the measured
+/// search; unset, probes search with the options set).
+fn confine_from_env() -> bool {
+    static CONFINE: OnceLock<bool> = OnceLock::new();
+    *CONFINE
+        .get_or_init(|| std::env::var("RAROG_PRICING_CONFINE").is_ok_and(|raw| raw.trim() == "1"))
 }
 
 /// The file the records are appended to, from `RAROG_PRICING_OUT`.
@@ -332,15 +364,32 @@ impl Searcher {
         }
         pricing.probing = true;
         td.hist.frozen = true;
-        Saved {
+        let saved = Saved {
             nodes: td.nodes,
             seldepth: td.seldepth,
             nmp_min_ply: td.nmp_min_ply,
+        };
+        if self.td.pricing.confine {
+            self.swap_parameters();
         }
+        saved
+    }
+
+    /// Exchange the searcher's parameter sets with the held ones. Once per
+    /// probe, in the instrument build only.
+    fn swap_parameters(&mut self) {
+        let held = self.td.pricing.held.get_or_insert_with(Box::default);
+        std::mem::swap(&mut self.cfg.params, &mut held.params);
+        std::mem::swap(&mut self.cfg.core, &mut held.core);
+        std::mem::swap(&mut self.cfg.proof, &mut held.proof);
+        std::mem::swap(&mut self.cfg.quiet, &mut held.quiet);
     }
 
     /// Restore what the probe changed; returns the probe's nodes.
     fn probe_end(&mut self, saved: &Saved) -> u64 {
+        if self.td.pricing.confine {
+            self.swap_parameters();
+        }
         let td = &mut self.td;
         let pricing = &mut td.pricing;
         let restore = "probe_begin filled the buffers";
@@ -617,4 +666,45 @@ fn write_records(path: &str, main_nodes: u64, pricing: &Pricing) -> std::io::Res
         )?;
     }
     out.flush()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A confined probe searches with the compiled-in values and hands the
+    /// planted ones back when it closes.
+    #[test]
+    fn a_confined_probe_searches_with_the_compiled_in_parameters() {
+        let mut searcher = Searcher::default();
+        searcher.td.pricing.confine = true;
+        searcher.cfg.core.fp_base = -100;
+        searcher.cfg.params.qs_see_margin = 50;
+        searcher.cfg.proof.nmp_r_base = 6_300;
+        searcher.cfg.quiet.qs_count_limit = 2;
+        for _ in 0..2 {
+            let saved = searcher.probe_begin();
+            assert_eq!(searcher.cfg.core, CoreParams::DEFAULT);
+            assert_eq!(searcher.cfg.params, SearchParams::DEFAULT);
+            assert_eq!(searcher.cfg.proof, ProofParams::DEFAULT);
+            assert_eq!(searcher.cfg.quiet, QuietParams::DEFAULT);
+            searcher.probe_end(&saved);
+            assert_eq!(searcher.cfg.core.fp_base, -100);
+            assert_eq!(searcher.cfg.params.qs_see_margin, 50);
+            assert_eq!(searcher.cfg.proof.nmp_r_base, 6_300);
+            assert_eq!(searcher.cfg.quiet.qs_count_limit, 2);
+        }
+    }
+
+    /// Unconfined, a probe searches with the options set.
+    #[test]
+    fn an_unconfined_probe_keeps_the_set_parameters() {
+        let mut searcher = Searcher::default();
+        searcher.td.pricing.confine = false;
+        searcher.cfg.core.fp_base = -100;
+        let saved = searcher.probe_begin();
+        assert_eq!(searcher.cfg.core.fp_base, -100);
+        searcher.probe_end(&saved);
+        assert_eq!(searcher.cfg.core.fp_base, -100);
+    }
 }
