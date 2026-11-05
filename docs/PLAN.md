@@ -332,7 +332,7 @@ maintainer decision 2026-11-04; both are done.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.4.5 | READY_FOR_IMPLEMENTATION | V | The tool first, then the judge run's sample registered; maintainer-run |
+| D.4.5 | LOCAL_QUALIFIED | V | Tool and card done, smoke passed; the judge and re-search runs are the maintainer's (about 3.4 h), then the read |
 | D.4.6 | RESEARCH | R2 | The tool on the 5950X, validated on a patch of known effect; before D.8's NPS guards |
 | D.5.1 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value: the table handle and the helper lifecycle first |
 | D.5.2 | READY_FOR_IMPLEMENTATION | I1 | After D.3, in order of value; exact fingerprint, pooled NPS where hot |
@@ -595,9 +595,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       until a plant harmful on its own passes, read first by the step that
       wants it (the card's retry trigger). Done.
     - **D.4.5 The loss table by cell — `V`.**
-      Where Rarog loses, from games already played (TT-1): the pool
-      tournaments' and the latest gates' games in Colosseum's database, every
-      move scored by a judge (Stockfish 19 at fixed nodes) as the evaluation
+      Where Rarog loses, from games already played (TT-1): the C head's
+      lost, spoiled and twin games from its one-thread pools, every move
+      scored by a judge (Stockfish 19 at fixed nodes) as the evaluation
       before it minus the evaluation after, from the mover's side; tabulated
       for both sides by position class (defending, level, ahead), clock left
       and material, with the opponent's moves in the same cells as the
@@ -608,6 +608,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       its draw-rate question is open (GUIDE, *Conversion*). No new games; the
       judge's CPU is the maintainer's, its sample registered first. It feeds
       E.1, H.3 and the order of what follows.
+      Registered 2026-11-05 (`analysis/loss_table_card_2026-11-05.md`,
+      `c2381c0`): 1,896 games from RAR-M73's and RAR-M75's run directories
+      (Colosseum's database holds none of the C head's games; the gates are
+      Rarog against Rarog and stay out), Stockfish 19 at 1,000,000 nodes,
+      four tables, the re-search of moves losing 0.10 or more and seven
+      predictions. The tool is `tools/diag/loss_table.py` (`6a48602`; its
+      identity corrected in `158f52f`, a defect the first smoke found). The
+      smoke repeats byte for byte across workers, a resume and two
+      re-searches, and puts the judge run at about 3.4 hours on fifteen
+      workers (the card's section 10, with the commands). `LOCAL_QUALIFIED`:
+      the judge and re-search runs are the maintainer's; the read follows.
     - **D.4.6 An identical-tree counter read — `R2`, then `I1`.**
       Speed of a change that keeps the tree, by hardware counters (TM-7):
       cycles, instructions and branch misses per node, the engine pinned to

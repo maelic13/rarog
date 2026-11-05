@@ -92,9 +92,15 @@ points); the loss in centipawns, capped at ±300 when averaged; an error is
 a move losing at least 50 cp (the donor's measures, for comparison).
 
 **Losses telescope.** In each game the C head's summed loss minus its
-opponent's equals its expected score at the first position minus its
-result, so the table divides each game's points among cells. The tool
-prints both sides of this identity for every read.
+opponent's equals its expected score at the first position minus the
+judge's at the last, so the table divides each game's points among cells.
+A game the rules end (mate, a rule draw) ends at its result; where an
+adjudication ended it, the judge's last expected score minus the result is
+carried by no move, and the tool reports that remainder apart. The tool
+prints both for every read and fails when a game's losses do not
+telescope. (Corrected 2026-11-05 by the smoke, before the sample was
+judged: this paragraph said the losses telescope to the result, which
+holds only where the rules end the game; section 10.)
 
 Cautions. Stockfish 11 is an opponent and an ancestor of the judge, which
 may favour its moves slightly. The sample is made of lost and spoiled
@@ -120,7 +126,8 @@ For each cell: moves, games, mean capped centipawn loss, errors and their
 share, points lost, the cell's share of the side's points lost, and the
 mean in thousandths of a point. The C head's **excess** in a cell is its
 points lost there minus its opponents'; the excesses sum to the sample's
-start-minus-result.
+start minus the judge's last, and the adjudication remainder is reported
+beside them.
 
 ## 6. The worst moves, searched again
 
@@ -171,11 +178,45 @@ Errors read as clock or evaluation only among those reproduced at 1×.
 - **V1, repetition.** Before the run, the smoke judges three sampled
   games twice, with one worker and with two, and the records must match
   byte for byte after sorting; the smoke's re-search, run twice, must match.
-- **V2, identity.** In every game the two sides of section 4's identity
-  agree to 10⁻⁶.
+- **V2, identity.** In every game the C head's net loss and its start
+  minus the judge's last agree to 10⁻⁶; `table` exits 1 otherwise.
 - **V3, coverage.** Every sampled game is judged, every searched position
   printed a WDL, and the judge and the C head have the recorded hashes.
 
 A failure of V1 or V2 voids the run until the tool is fixed. The run is
 resumable; a crash continues it, and it is neither cut nor extended. The
 smoke's three games carry no reading.
+
+## 10. The smoke, 2026-11-05
+
+Three sampled games, `c11-gauntlet` 15 (a loss), 16 (its twin) and 38 (a
+spoiled draw), 376 moves, judged on section 4's settings by the tool at
+`158f52f`; their numbers carry no reading. Logs and outputs are in
+`analysis/artifacts/d45-loss/smoke/`.
+
+- **V1.** One worker and two wrote the same 383 lines after sorting; a run
+  cut inside its last game and resumed wrote them again; the re-search
+  (moves losing at least 0.03, four of them, two workers, Hash 128), run
+  twice, wrote the same nine lines.
+- **V2.** The largest game difference was 5.6 × 10⁻¹⁷; a copy with one
+  move's loss raised by 0.01 made `table` exit 1.
+- **V3.** Every position printed a WDL (the judge stops otherwise);
+  Stockfish 19's SHA-256 is `45bc8e49…` and the C head's `9750d3de…`.
+- **A defect, fixed before the run.** The first smoke, on `6a48602`, passed
+  V1, but its identity line called the judge's last score the result,
+  the claim section 4 then made. `158f52f` writes each game's result into
+  its records, reports the remainder apart and fails a game that does not
+  telescope; the results above are its rerun.
+- **Cost.** One worker judged 379 positions in 276.7 s, 0.73 s a position.
+  The sample's 254,073 positions (252,177 moves and 1,896 last positions)
+  take about 51.5 hours of one worker, about 3.4 hours on fifteen, so
+  section 4's 1,000,000 nodes stand. The re-search took about 8 s a move
+  on one worker, so 2,000 moves take about 20 minutes on fifteen.
+
+The two runs are the maintainer's, on an idle host, the re-search after
+the judge (a crash is resumed by the same command):
+
+```
+python tools/diag/loss_table.py judge analysis/artifacts/d45-loss/sample.tsv --judge D:/chess/engines/stockfish/stockfish-19-windows-x86-64-universal.exe --nodes 1000000 --hash 64 --workers 15 --out analysis/artifacts/d45-loss/judged.tsv
+python tools/diag/loss_table.py research analysis/artifacts/d45-loss/judged.tsv --exe tools/test_engines/rarog-c11head-pext-pgo.exe --judge D:/chess/engines/stockfish/stockfish-19-windows-x86-64-universal.exe --hash 128 --min-loss 0.10 --limit 2000 --workers 15 --out analysis/artifacts/d45-loss/research.tsv
+```
