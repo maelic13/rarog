@@ -173,11 +173,15 @@ presented as mature.
 
 ### The independence boundary
 
-Donors: **Reckless** for search, threading, time management and NNUE, and
-**Stockfish** by area (maintainer decision 2026-11-06, widening 2026-09-09's;
-PLAN rule 1 points here). **Stockfish 19** (tag `sf_19`) is the reference for
-everything that is not the classical evaluation, and the latest development
-tree, named by its date, where a question needs it. **Stockfish 11** is the
+Donors: **Reckless**, always at its latest commit, is the primary reference
+and donor, chiefly for function, implementation and logic: search, threading,
+time management and NNUE. For how the engine behaves Stockfish may be the
+better reference, and where the two differ the difference goes to the
+maintainer before anything is built (maintainer decision 2026-11-06, widening
+2026-09-09's; PLAN rule 1 points here). **Stockfish** is read by area.
+**Stockfish 19** (tag `sf_19`) is the reference for everything that is not the
+classical evaluation, and the latest development tree, named by its date,
+where a question needs it. **Stockfish 11** is the
 reference for the classical evaluation (tag `sf_11`; the king-safety and
 threat fixtures, and the forms fitted from them, follow `9587eeeb` of
 2020-07-30: `analysis/engine_review_2026-11-01.md`, EVAL-4), or a later

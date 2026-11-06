@@ -335,6 +335,9 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
+| D.5.3.1 | RESEARCH | R2 | The donors differ on who answers: the maintainer's decision first |
+| D.5.3.2 | RESEARCH | R2 | The donors differ on which thread may stop: the maintainer's decision first |
+| D.5.3.3 | RESEARCH | R2 | The donors differ on the weight: the maintainer's decision first |
 | D.5.4 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.5 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.6 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -541,7 +544,30 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      search one line; `go mate` stops at `2N - 1` plies where Stockfish runs
      until a mate is proved or it is stopped; and the vote weighs score by
      depth where Stockfish 19 weighs score alone, which is a change at the
-     rated configuration and so needs a gate.
+     rated configuration and so needs a gate. Those three are the addenda
+     below, taken before D.5.4 by maintainer decision 2026-11-06.
+        - **D.5.3.1 Helpers and the answer under MultiPV — `R2`.** Rarog's helpers
+         search one line and the main thread answers, B.2.0.2's contract.
+         Both donors' helpers search every line. Reckless answers with thread 0;
+         Stockfish votes since its "multiPV: protect mated-ins and allow thread
+         selection" (PR 6728) and prints the winner's lines. Question: whether
+         helpers search every line, and who answers.
+        - **D.5.3.2 `go mate` without a ply limit — `R2`.** Rarog stops the main
+         thread at `2N - 1` plies. Both donors have no ply limit and run until a
+         mate within N is proved or they are stopped, so a position without one
+         runs until `stop`. Reckless lets only thread 0 end the search; Stockfish
+         lets any thread, from "Improve multi-threaded go-mate searches" (PR
+         6668), which guards against inexact mate scores from aborted searches.
+         No effect on games.
+        - **D.5.3.3 The vote's weight and its decisive order — `R2`.** Rarog
+         and Reckless weigh `(score - min + c) * depth`, with `c` 14 and 10;
+         Stockfish 19 weighs score alone (`c` 14) after "Simplify thread
+         selection" (PR 6935), which passed as a non-regression at STC and LTC
+         over 437,904 and 484,778 SMP games, so its evidence is neutrality, not
+         a gain. Separately, both donors take the shortest mate among decisive
+         results, Stockfish since a 2019 bug fix; Rarog's `parallel_result_key`
+         ranks decisive results by vote first, so it can pick a longer mate.
+         Changes move at `Threads > 1` only, not the fingerprint.
     - **D.5.4 Helper start-up — `I1`.** (DRIVER-14, TT-8): each helper builds and discards a
      64 MiB table (`Searcher::default()` then `TranspositionTable::new(1)`),
      touches about 32 MB of tables, and `isready` does not wait for any of it;

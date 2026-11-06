@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.5.4** (`I1`): Helper start-up.
+**Now: D.5.3.1** (`R2`): Helpers and the answer under MultiPV.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -39,6 +39,9 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.5.1** The table handle — DONE 2026-11-06
     - [x] **D.5.2** A `Hash` change at `Threads > 1` fills the table twice — DONE 2026-11-06
     - [x] **D.5.3** The fixed-depth vote — DONE 2026-11-06
+        - [ ] **D.5.3.1** Helpers and the answer under MultiPV — **RESEARCH / R2**
+        - [ ] **D.5.3.2** `go mate` without a ply limit — **RESEARCH / R2**
+        - [ ] **D.5.3.3** The vote's weight and its decisive order — **RESEARCH / R2**
     - [ ] **D.5.4** Helper start-up — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.5** The `Hash` rounding notice — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.6** The dead quiescence type parameter — **READY_FOR_IMPLEMENTATION / I1**
