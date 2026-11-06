@@ -78,6 +78,10 @@ pub(super) struct HistoryTables {
     /// `[context][coloured piece and destination]`, flat; a context is a row
     /// base from [`cont_context`].
     cont: Box<[i16; CONT_SIZE]>,
+    /// Set while a pricing probe runs: no update writes, so the measured
+    /// search finds the tables as it left them.
+    #[cfg(feature = "pricing")]
+    pub(super) frozen: bool,
 }
 
 impl Default for HistoryTables {
@@ -87,6 +91,8 @@ impl Default for HistoryTables {
             noisy: Box::new([[[0; 2]; CAPTURED_SLOTS]; PIECE_TO_SIZE]),
             pawn: zeroed(),
             cont: zeroed(),
+            #[cfg(feature = "pricing")]
+            frozen: false,
         }
     }
 }
@@ -111,6 +117,10 @@ impl HistoryTables {
 
     #[inline(always)]
     pub(super) fn update_quiet(&mut self, threats: Bitboard, stm: Color, mv: Move, bonus: i32) {
+        #[cfg(feature = "pricing")]
+        if self.frozen {
+            return;
+        }
         let (from, to) = (mv.from_sq(), mv.to_sq());
         apply_bonus(
             &mut self.quiet[stm as usize][usize::from(threats.contains(from))]
@@ -145,6 +155,10 @@ impl HistoryTables {
         captured: Option<Piece>,
         bonus: i32,
     ) {
+        #[cfg(feature = "pricing")]
+        if self.frozen {
+            return;
+        }
         apply_bonus(
             &mut self.noisy[piece_to(color, piece, to)][captured.map_or(6, |p| p as usize)]
                 [usize::from(threats.contains(to))],
@@ -173,6 +187,10 @@ impl HistoryTables {
         to: Square,
         bonus: i32,
     ) {
+        #[cfg(feature = "pricing")]
+        if self.frozen {
+            return;
+        }
         apply_bonus(
             &mut self.pawn[pawn_row + piece_to(color, piece, to)],
             bonus,
@@ -194,6 +212,10 @@ impl HistoryTables {
         to: Square,
         bonus: i32,
     ) {
+        #[cfg(feature = "pricing")]
+        if self.frozen {
+            return;
+        }
         apply_bonus(
             &mut self.cont[context + piece_to(color, piece, to)],
             bonus,

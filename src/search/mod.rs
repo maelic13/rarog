@@ -19,12 +19,28 @@ macro_rules! trace_decision {
     };
 }
 
+/// Whether a pricing probe switched `rule` off at `ply`: the one decision a
+/// node-level probe reverses. Always false outside the `pricing` build.
+macro_rules! pricing_off {
+    ($searcher:expr, $ply:expr, $rule:ident) => {{
+        #[cfg(feature = "pricing")]
+        let off = $searcher.td.pricing.off == Some(($ply, crate::search::pricing::Rule::$rule));
+        #[cfg(not(feature = "pricing"))]
+        let off = false;
+        off
+    }};
+}
+
 mod correction;
 mod history;
 mod movepick;
 mod node;
 pub mod options;
 pub mod params;
+#[cfg(test)]
+mod path_perft;
+#[cfg(feature = "pricing")]
+mod pricing;
 mod shared;
 mod stack;
 mod thread;
@@ -1220,6 +1236,8 @@ impl Searcher {
         // dump lives in `search_parallel`, after the helpers are joined.
         if self.shared.threads == 1 {
             crate::diag::dump();
+            #[cfg(feature = "pricing")]
+            self.pricing_dump();
         }
 
         self.remember_search_score(best_score);
@@ -1565,6 +1583,8 @@ impl Searcher {
         }
         if self.shared.threads == 1 {
             crate::diag::dump();
+            #[cfg(feature = "pricing")]
+            self.pricing_dump();
         }
         self.remember_search_score(best_score);
         let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);

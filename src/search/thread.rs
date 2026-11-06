@@ -105,6 +105,9 @@ pub(super) struct ThreadData {
     /// the search reads this many elapsed milliseconds, and none before it.
     #[cfg(test)]
     pub(super) test_clock: Option<(u64, f64)>,
+    /// The pricing instrument's probe state and records.
+    #[cfg(feature = "pricing")]
+    pub(super) pricing: super::pricing::Pricing,
 }
 
 impl Default for ThreadData {
@@ -161,6 +164,8 @@ impl Default for ThreadData {
             lmr_in_check: 0,
             #[cfg(test)]
             test_clock: None,
+            #[cfg(feature = "pricing")]
+            pricing: super::pricing::Pricing::default(),
         }
     }
 }

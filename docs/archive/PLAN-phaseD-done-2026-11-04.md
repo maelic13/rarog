@@ -5,7 +5,7 @@ landed as `c69761d`: PLAN keeps each finished step's heading over a short
 summary, and the text below is what it held. Nothing here is a current
 instruction. Citations of the form `PLAN D.x` in the ledger, HISTORY and
 the analyses resolve here; the readings are in the ledger rows each step
-names.
+names. D.4's full text joined on 2026-11-06, when D.4 finished.
 
 ## D.1
 
@@ -2190,6 +2190,178 @@ names.
       fitted vector was explored at a reduced perturbation, as Triumviratus's
       were for a month (TM-2). The range rule (start ± 2.25c clear of a
       formula's change of nature) is F.6's decision.
+
+## D.4
+
+- **D.4 Instruments from the Triumviratus review: the measurement-integrity reads, a search-path perft, pruning and reduction pricing, the loss table by cell, an identical-tree counter read — `R2`, then `I1`/`I2`/`V`, DONE 2026-11-06.**
+  Added 2026-11-03 (maintainer: the instruments that help now, placed just
+  before the next cluster that uses them;
+  `analysis/triumviratus_review_2026-11-03.md` §13b). Rarog has their
+  neighbours (pooled-PGO NPS, the `diag` counters, the ablation mask, the
+  conversion audit), but nothing that prices what a pruning rule hides, splits
+  a lost game's errors by cell, or reads speed below the pooled read's limit.
+  None changes the tree or a gate; each is validated on a planted case before
+  it is trusted, and its readings screen, never accept. First after D.3
+  (maintainer decision 2026-11-03): the instruments come before the repairs
+  (D.5) and the candidates (D.6) whose cards are their first users; the two
+  measurement-integrity reads are done.
+    - **D.4.1 Wall-clock overhead read — `V`, DONE 2026-11-03.**
+      Clean, no repair: `go nodes 1000` costs 0.55 ms against Stockfish
+      19's 0.93, `go movetime` overshoots by 0.56 to 0.94 ms (median),
+      inside the 1 ms that would open a repair, and `ponderhit` answers in
+      0.53 to 1.56 ms. Record: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
+    - **D.4.2 SPSA schedule read — `V`, DONE 2026-11-03.**
+      Clean: the pinned Colosseum CLI 0.5.0 runs the perturbation down to
+      its c_end on the c₀/(k+1)^0.102 schedule, and Rarog's last tune
+      reached its c_end at its last iteration, so no fitted vector was
+      explored at a reduced perturbation. The range rule is F.6's decision.
+      Record: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
+    - **D.4.3 A search-path perft — `I1`, DONE 2026-11-04.**
+      Perft through the staged picker (the TT move, then the noisy and quiet
+      stages in the search's order), make and unmake, recomputing every key
+      and derived field from scratch at each node (`check_consistency`) and
+      re-checking every generated move with the TT move's legality test
+      (`legal_move`), on the standard perft positions in release against their
+      reference counts. `tests/board_differential.rs` does the recompute on
+      random walks through `generate_legal_moves` only. Planted case: a picker
+      that drops one stage's move fails it. Before D.6.1 and D.6.2, which
+      change the picker's partition, and D.8.4–D.8.5, which move the board.
+      Triumviratus's `tdperft` (TB-1) ran 482M nodes with 0 errors and
+      validated a board rewrite.
+      Done in `495adb9`: `src/search/path_perft.rs`, a test module run by
+      `cargo test --release`. Each node takes a TT move from its key (none,
+      a legal move as stored, the same move re-read from its UCI text with
+      its flags lost, or arbitrary bits), puts it through `legal_move` as
+      the search does, and drains the staged picker; each emitted move is
+      re-tested by `legal_move`, checked for a repeat, made with the
+      search's check hint and unmade, with `check_consistency` after both
+      and the key, castling, en passant and clocks compared after the
+      unmake. Release reads the six standard positions at depth 4 or 5,
+      16.0M leaves in about 5 s, every count the reference and every stage
+      emitting; debug reads them shallower. Five planted faults fail it:
+      the picker losing its last bad noisy move (4,800,978 leaves against
+      4,865,609 from the start position), the TT move left in the noisy or
+      the quiet list (a repeat), a check hint that never reports check
+      (the checker set desynced) and a re-read TT move played without its
+      flags restored (fails the legality test). The committed test drops
+      one move from each stage in turn and requires a wrong count.
+    - **D.4.4 Pruning and reduction pricing — `R2`, then `I2`, DONE 2026-11-05.**
+      What each pruning rule and each reduction hides (TM-9, Triumviratus's
+      `prunelog` and `redlog`): a deterministic sample of the moves each rule
+      prunes (razoring, reverse futility, null move, ProbCut, futility, the
+      move count, SEE, and quiescence's rules) and of the reduced searches
+      that fail low is searched again at the depth the rule denied, with the
+      node's window. Recorded per rule, depth, node type and move number: the
+      decisions, the share that would have raised alpha, and the share that
+      would have changed the node's best move. The label that matters is a
+      move that failed low reduced and beats alpha at full depth (1.7% of
+      probed moves there); a label of beating alpha at the reduced depth spent
+      nodes on moves already re-searched (−9.65). The card decides the form:
+      the `diag` build may not change nodes, and a re-search writes the TT and
+      the histories, so the pricing runs as its own feature or on scratch
+      tables. Validation: with sampling off the bench is exact; a planted
+      over-pruning rule reads higher than its honest form. Users: D.6.3,
+      D.6.5, D.6.16, D.6.19 (H.2's since 2026-11-05), and F.6's fit.
+      Card 2026-11-04 (`analysis/pruning_pricing_card_2026-11-04.md`):
+      READY_FOR_IMPLEMENTATION, `I2`. The probe runs inside the search
+      under its own feature, `pricing`, never read together with `diag`.
+      While it runs, stores go to a per-thread scratch table read before
+      the main one, which is never written; the histories and corrections
+      are frozen; the stack and PV rows from its ply up, the node count
+      and the search statistics are saved and restored; no probe nests;
+      a node-level probe switches its one rule off at its own ply only.
+      A pruned move is searched at `depth - 1` with `(alpha, alpha + 1)`;
+      an LMR fail-low at its unreduced depth; a node-level cut is wrong
+      when the node without the rule scores below beta; a raise also
+      records whether the node then failed low. The sample hashes the
+      decision against a per-rule rate set from probe cost alone (about
+      10,000 probes a rule on `bench 13`). Validation: sampling off
+      benches 14,749,043, and so does the main search with sampling on
+      (the isolation proof), two runs write identical records, and
+      `CoreFpBase` lowered from 150 to −100 reads a higher futility share
+      than the default with disjoint 95% intervals. Predictions are frozen
+      in the card. D.6.5 and D.6.19 need counters, not prices: exclusion
+      searches are not priced, and a reduction the engine never makes has
+      no decision to re-search. If the isolation proof fails and the leak
+      is not closed, the leaf returns to `RESEARCH` with a scratch
+      `Searcher` as the next form.
+      Built 2026-11-04 in `7c2fec0`, read by `tools/diag/pricing_table.py`
+      (`8a5fb6a`; the card's section 12). With sampling on the main search
+      still benches 14,749,043 beside 317,670 probes, two runs write
+      identical records, and the default build is unchanged. The futility
+      plant separates (0.13% to 1.95%); the registered LMR plant does not
+      (1.60% to 1.94% on quiets), nor does a reverse-futility plant run
+      beyond the registration. Read by depth, both plants are higher in
+      every band: a global option moves the depth mix and acts inside the
+      probe's own subtree, so V4's premise holds only for rules whose
+      probes contain none of their own decisions. Back to `RESEARCH`, the
+      question narrowed to a plant test valid for every rule (a plant
+      confined to the measured search, compared within depth bands,
+      registered first). Until it passes, only futility's label is
+      plant-validated and no screen reads the LMR or node-level labels.
+      The plant test was registered 2026-11-05 (the card's section 13):
+      one plant per rule, confined to the measured search by swapping the
+      compiled-in parameters into every probe, read as a Mantel–Haenszel
+      odds ratio within depth, node-type and move-class strata.
+      Read 2026-11-05 (section 14; confinement `6b95225`, the read
+      `ccff1a9`): the swap is neutral, isolation holds under every plant,
+      and twelve labels pass (reverse futility, ProbCut, LMP, quiet and
+      bad-noisy futility, history, quiet SEE and the five quiescence
+      rules). Razoring fails: a lower margin's extra decisions are wrong
+      less often, which is either a razor-probe defect or a plant in a
+      region quiet futility already covers. The LMR label is unresolved
+      (confinement changed nothing: the plant's effect is small), and the
+      null-move and noisy-SEE plants were inactive. Those four labels
+      stay out of every screen; D.4.4 stays in `RESEARCH` for a placebo
+      read of the node-level probes and stronger plants, each a new
+      registration. Registered 2026-11-05 (section 15): an identity
+      probe per node-level decision tests the re-entry, probes reading
+      only their scratch table test whether the planted search's table
+      leaks into them, and stronger plants for the null move (entry
+      margin 0), LMR (two plies) and noisy SEE (threshold 0).
+      Read 2026-11-05 (section 16; `9432eb2`, `3b3767e`): every
+      identity probe reproduces its decision (at most 4 of 12,737
+      unreproduced), so the re-entry is right; razoring fails cold as
+      it did warm, so the table does not explain it; the null-move, LMR
+      and noisy-SEE plants pass. Fifteen of sixteen labels are
+      plant-validated. Razoring's probe is verified but its harm is not
+      shown by its own margin, so its label stays out of every screen
+      until a plant harmful on its own passes, read first by the step that
+      wants it (the card's retry trigger). Done.
+    - **D.4.5 The loss table by cell — `V`, DONE 2026-11-05.**
+      Where Rarog loses, from games already played (TT-1): every move scored
+      by a judge (Stockfish 19 at fixed nodes) as the evaluation before it
+      minus the evaluation after, from the mover's side, tabulated for both
+      sides by position class, clock left and material with the opponent's
+      moves in the same cells as the control, and the worst errors searched
+      again at 4× and 16× the game's nodes to split clock errors from
+      evaluation errors. Done as an instrument: `tools/diag/loss_table.py`
+      (`6a48602`; the identity corrected in `158f52f`, a defect the first
+      smoke found; Ctrl+C stops a run and keeps its finished games,
+      `c124b2e`), its smoke repeating byte for byte across workers, a
+      resume, an interrupt and two re-searches
+      (`analysis/loss_table_card_2026-11-05.md`, registered `c2381c0`,
+      sections 10 and 11). The registered run on the C head's 1,896 lost,
+      spoiled and twin games was withdrawn before any reading (maintainer
+      decision 2026-11-05): its consumer is H.3, which tunes the network
+      head's clock, so the C head's games would describe an engine nobody
+      will tune then. 164 games were judged before the stop, at a pace of
+      5.4 hours for the run against the smoke's 3.4 (fifteen workers each
+      about 1.6× slower than one alone); they stay unread in
+      `analysis/artifacts/d45-loss/`. The read is H.3's first step, on the
+      network head's games, registered afresh.
+    - **D.4.6 An identical-tree counter read — `R2`, NO_CHANGE 2026-11-06.**
+      Speed of a change that keeps the tree, by hardware counters (TM-7), on
+      the four PGO builds of one source, pinned to one core. No counter beats
+      the pooled builds: the thread cycle count is the time-stamp counter,
+      so wall time, and ETW's core cycles vary only a sixth less than NPS (CV 0.267%
+      against 0.322%). The pooled read stays the speed check; there is no
+      `I1` step. Instructions retired failed the frozen rule, CV 0.051%
+      against 0.05%, wholly through a split nobody predicted: a process falls
+      at random into one of two states on the same tree, 0.09% apart in
+      instructions and 0.40% in NPS, cause unknown, H.4's lead
+      (`analysis/identical_tree_counters_card_2026-11-05.md`;
+      `tools/diag/identical_tree_counters.py` stays as the instrument).
 
 ## D.5.22
 
