@@ -458,7 +458,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   repaired (D.3.10, the `isready` handshake; D.3.11, the fastest of three
   cold searches). Full record, D.3.1 to D.3.11: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
 - **D.4 Instruments from the Triumviratus review: the measurement-integrity reads, a search-path perft, pruning and reduction pricing, the loss table by cell, an identical-tree counter read — `R2`, then `I1`/`I2`/`V`, DONE 2026-11-06.**
-  The instruments the repairs and candidates use, each validated on a
+  Landed in `7d5fc06` (PR #15). The instruments the repairs and candidates
+  use, each validated on a
   planted case; none changes the tree or a gate, and their readings screen,
   never accept. D.4.1: wall-clock overhead is clean (`go movetime` overshoots
   by under 1 ms). D.4.2: Colosseum's SPSA schedule is clean. D.4.3: a
