@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.4.6 | RESEARCH | R2 | The tool on the 5950X, validated on a patch of known effect; before the NPS guards of D.5 and D.8 |
 | D.5.1 | READY_FOR_IMPLEMENTATION | I1 | In order of value: the table handle and the helper lifecycle first |
 | D.5.2 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.3 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -458,7 +457,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   `NO_CHANGE`, to be fitted per network in F.6. The load flakes are
   repaired (D.3.10, the `isready` handshake; D.3.11, the fastest of three
   cold searches). Full record, D.3.1 to D.3.11: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
-- **D.4 Instruments from the Triumviratus review: the measurement-integrity reads, a search-path perft, pruning and reduction pricing, the loss table by cell, an identical-tree counter read — `R2`, then `I1`/`I2`/`V`.**
+- **D.4 Instruments from the Triumviratus review: the measurement-integrity reads, a search-path perft, pruning and reduction pricing, the loss table by cell, an identical-tree counter read — `R2`, then `I1`/`I2`/`V`, DONE 2026-11-06.**
   Added 2026-11-03 (maintainer: the instruments that help now, placed just
   before the next cluster that uses them;
   `analysis/triumviratus_review_2026-11-03.md` §13b). Rarog has their
@@ -615,23 +614,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       about 1.6× slower than one alone); they stay unread in
       `analysis/artifacts/d45-loss/`. The read is H.3's first step, on the
       network head's games, registered afresh.
-    - **D.4.6 An identical-tree counter read — `R2`, then `I1`.**
-      Speed of a change that keeps the tree, by hardware counters (TM-7):
-      cycles, instructions and branch misses per node, the engine pinned to
-      one core, the search thread only, a byte-identical copy of the base as
-      the noise control. The card decides the tool on the 5950X under Windows
-      (ETW's PMC sources, which `tools/profile_etw.ps1` already drives, or AMD
-      uProf) and whether code layout, which sets the pooled read's limit (four
-      builds an arm resolve 1%; twenty cycles reach only ±0.25%, PROCESS),
-      forces several builds here too. Validated against the pooled read on one
-      patch of known effect. Users: the NPS guards of D.5 and D.8, D.7, H.4.
-      No sibling pair: RAR-P54 read both engines at 0.63–0.65 beside a
-      sibling. T1, the unprivileged read, 2026-11-05: the thread cycle count
-      is the 3.4 GHz time-stamp counter, so on a pinned idle core it is wall
-      time (CV 0.177% against NPS's 0.211%), and its 0.253% spread between
-      builds is not separable from run noise at five runs a build; by the
-      card's rule T2 decides, the elevated ETW read, which is the
-      maintainer's (`analysis/identical_tree_counters_card_2026-11-05.md`).
+    - **D.4.6 An identical-tree counter read — `R2`, NO_CHANGE 2026-11-06.**
+      Speed of a change that keeps the tree, by hardware counters (TM-7), on
+      the four PGO builds of one source, pinned to one core. No counter beats
+      the pooled builds: the thread cycle count is the time-stamp counter,
+      so wall time, and ETW's core cycles vary only a sixth less than NPS (CV 0.267%
+      against 0.322%). The pooled read stays the speed check; there is no
+      `I1` step. Instructions retired failed the frozen rule, CV 0.051%
+      against 0.05%, wholly through a split nobody predicted: a process falls
+      at random into one of two states on the same tree, 0.09% apart in
+      instructions and 0.40% in NPS, cause unknown, H.4's lead
+      (`analysis/identical_tree_counters_card_2026-11-05.md`;
+      `tools/diag/identical_tree_counters.py` stays as the instrument).
 - **D.5 Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, the `Hash` notice, dead code, test and CI gaps — `I1`.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` (its §5 lists
   every item with its reviewer ID; the reports are in
@@ -640,8 +634,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   since D.6.15) on both slider backends, passes the debug and release
   suites, `cargo fmt --check` and `cargo clippy --all-features
   --all-targets` at zero warnings, and lands as its own commit; an item that
-  touches hot code (6, 9, 10) adds the allocation guard and one speed read,
-  D.4.6's counter read where it resolves the change, else the pooled-NPS
+  touches hot code (6, 9, 10) adds the allocation guard and one pooled-NPS
   read by PROCESS's method. No strength gate: AGENTS' repair case 1 with the
   named activation or correctness read. In order of value:
     - **D.5.1 The table handle — `I1`.** (TT-1, TT-3, DRIVER-10, DRIVER-20; the 2026-10-06
@@ -2115,8 +2108,10 @@ labels H1–H45.
   network head's profile, Triumviratus's board, SEE, picker, prefetch and
   build-layout leads (TB-4 to TB-8, TB-12, TB-14's layout flags; TB-16's
   negatives; its stack probes, TB-11, are D.8.19's) are read where the
-  profile shows their cost, each with exact fingerprint, pooled-PGO NPS and
-  D.4.6's counter read.
+  profile shows their cost, each with exact fingerprint and pooled-PGO NPS.
+  D.4.6 left one more lead: a process falls at random into one of two states
+  on the same tree, 0.40% apart in NPS, cause unknown
+  (`analysis/identical_tree_counters_card_2026-11-05.md`).
   Each shortcut ships with a build switch that runs the original beside it at
   every node and aborts on the first disagreement (TM-10, as Triumviratus
   checked every identical-tree patch).

@@ -177,6 +177,68 @@ The reader is written against the first real ETL.
   a diagnostic beside the pooled read only if their within-build CV is at
   most 0.05%; they never accept a change.
 
+## T2 result, run 2026-11-05, read 2026-11-06
+
+The maintainer ran it elevated on an idle PC: quiet gate 1.1%, each run's
+host load 3.3–3.9%, no run repeated, all 20 at the fingerprint. The reader
+is `tools/diag/identical_tree_counters.py read`; outputs in
+`analysis/artifacts/d46-counters/t2/` (`read.txt`, `counters.json`,
+`state.txt`). The wire is live: every switch of the search thread paired with
+its Pmc event, its scheduled time within 2% of the bench time, the clock
+4.750–4.765 GHz, 2.27–2.29 instructions a cycle. Per node: about 1,620 core
+cycles, 3,690 instructions and 13 branch misses.
+
+| Measure | Mean within-build CV | Largest | Spread of build medians | Shuffled median | P(shuffled ≥ observed) |
+|---|---|---|---|---|---|
+| NPS | 0.322% | 0.434% | 0.299% | 0.259% | 0.34 |
+| Scheduled cycles per node | 0.236% | 0.298% | 0.160% | 0.151% | 0.42 |
+| TotalCycles per node | 0.267% | 0.326% | 0.298% | 0.228% | 0.32 |
+| Instructions per node | 0.0513% | 0.0518% | 0.092% | 0.093% | 0.85 |
+| Branch misses per node | 0.414% | 0.483% | 0.648% | 0.662% | 0.65 |
+
+**The rule.** TotalCycles fails all three conditions: spread 0.298% against
+0.1%, largest CV 0.326% against 0.1%, and the observed spread above the
+shuffled median. Instructions retired fail their condition, 0.0513% against
+0.05%. The margin is small, and the rule was frozen before the read, so it
+stands.
+
+**Two states per process (not predicted; read after exposure, so a lead, not
+a result).** Instructions per node take one of two values, ten runs each:
+3,687.64 and 3,691.09, each with a CV of 0.0015%. The gap is about 51 million
+instructions a run (0.094%). Every build shows both, in no order, and the
+node count is the same. The high state costs 0.40% more core cycles, 0.74%
+more branch misses and 0.40% of NPS. Inside a state, the four builds' mean
+instructions agree to 0.002%. All of the instruction CV above is this split.
+The traces rule out the image base (fixed per build) and any single bit of
+the search thread's stack or TEB addresses (the best separates 6 against 2 of
+ten). Heap addresses are not in the traces, and the cause is unknown.
+
+**Calibration.**
+
+- P4 missed in magnitude: 1.51× T1's CV, not 0.5–1.0×. The whole read was
+  noisier than T1 (NPS CV 0.322% against 0.211%), and core cycles removed
+  nothing the scheduled count had not (0.267% against 0.236%), as its stated
+  mechanism expected.
+- P5 held in sign (0.298%), with the same limit as P2: chance beats that
+  spread about one time in three, so these reads neither show nor exclude
+  H1. RAR-P32's 0.36% stays the evidence for the build limit.
+- P6 missed in mechanism: the two states were not foreseen. Inside a state
+  the CV is far below the 0.02% predicted.
+- P7 missed in mechanism: the premise that the builds differ in instruction
+  count is false. They run the same count, so they differ in placement.
+- H3 therefore holds inside a state; it fails the frozen rule only through
+  a split nobody registered.
+
 ## Decision
 
-Pending T2.
+**D.4.6 closes `NO_CHANGE`, 2026-11-06.** No counter reads speed better than
+the pooled builds on this host: the run noise of cycles is only a sixth
+below NPS's, far from the 0.1% the rule needs. The pooled read stays the speed check of D.5, D.7, D.8 and H.4, and
+there is no `I1` step. Instructions retired do not enter PROCESS as a
+diagnostic. `identical_tree_counters.py` stays as the research instrument.
+
+**Retry trigger.** A read of instructions per node as a diagnostic is
+reconsidered only when the two states are explained, or under a registration
+that splits them in advance. The states themselves go to H.4 as a lead:
+removing the slow state would be worth about 0.2% of average speed, read here
+on one bench and not in games.

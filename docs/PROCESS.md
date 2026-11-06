@@ -457,6 +457,9 @@ change of 1% or more. To split a compiler's code generation from its use of
 the profile, `nps_build_pool.ps1 -NoPgo` builds plain pools: its copies must
 be the same code apart from the link's own stamps, and they are read as a
 pool, because one binary's processes alone vary by up to 6% (RAR-P38). A
+PGO build's processes also fall at random into one of two states on the same
+tree, 0.40% apart in NPS, cause unknown (D.4.6's card), so a read of few
+processes can draw them unevenly. A
 plain build embeds its build directory's path, so it reproduces per
 directory only.
 
