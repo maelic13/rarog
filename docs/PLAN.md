@@ -335,7 +335,7 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.5 | GAME_GATE | I1 | Built (`1450340`); RAR-S106's speed and harm reads wait for an idle PC |
+| D.5.5 | GAME_GATE | I1 | Built (`1450340`); RAR-S106's speed read passed, its 2,000-game harm read is the maintainer's |
 | D.5.6 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.7 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.8 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |

@@ -72,3 +72,39 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   memory latency that dominates a probe.
 - **Most likely failure mode:** the speed read landing between its bounds on
   code placement or the trees' mix, leaving step 2 unresolved rather than failed.
+
+## Binaries (appended before any game)
+
+Built 2026-11-06 on an idle host (guard: 1.7% CPU, no other process), each from
+a clean worktree at its commit, rustc 1.99.1, `cargo xtask build --tier pext`.
+
+| Arm | Commit | `id name` | Bench | SHA-256 |
+| --- | --- | --- | --- | --- |
+| `d55base` | `9b8538d` | `dev-20261106-9b8538d2` | 14,749,043 | `6dcb982fabca08802614f3aa0eb749aa8c85a8b6ea3f0578d6ef03666c5cb786` |
+| `d55cand` | `1450340` | `dev-20261106-14503405` | 15,625,852 | `66fd5e0dd28710f1544daea8abea73c12551f67aadb5ed27e5b8b781c1ecac8f` |
+
+Each arm's four pool builds are distinct bytes at its fingerprint. The match's
+dry run passed every preflight: runner pin, both fingerprints, build flavour,
+compiler and policy.
+
+## Result: `nps` (2026-11-06)
+
+**Pass by step 1: +1.07%, 95% interval −0.01% to +2.16%.** Levels 2,942,532
+against 2,974,112, two cycles, CPU 1.3% and 0.9% before them, 1.0% after, no
+disturbed cycle; `read/read.txt` in the artifact folder.
+
+The tool warns that arms at different fingerprints do not make an NPS speed
+read, as this registration said they would not. Rule 8's alternative does not
+do better here: bench nodes over pooled NPS gives 5.01 s against 5.25 s, +4.8%
+of time, which is the +5.9% of nodes, and valid mappings alone span 11.9M to
+15.6M. So this read rules out a large cost and says nothing finer about the
+multiply; the games carry the speed that matters. A same-tree arm could
+isolate it, a shift for the multiply at a power-of-two `Hash`, contrary to
+"cannot be separated" above. It is not run: no result would change the
+disposition, since both donors pay the multiply and the repair is for users.
+
+**Calibration (speed):** a miss in magnitude and sign. The prediction was
+−0.2% ± 0.4%, and the read is above that range. The failed assumption is that
+the multiply would set the size of the difference; the trees' mix, named only
+as a failure mode, was larger than the range allowed. Nothing here is a speed
+gain: the interval touches zero and the two arms search different trees.
