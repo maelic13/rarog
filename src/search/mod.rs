@@ -396,6 +396,17 @@ impl Searcher {
         searcher
     }
 
+    /// A helper's searcher. It searches the pool's table, held only for each
+    /// job, so what it keeps of its own between jobs is the smallest table.
+    fn helper() -> Self {
+        Self {
+            worker_pool: WorkerPool::default(),
+            shared: SearchShared::with_table(TranspositionTable::new(1)),
+            cfg: SearchConfig::default(),
+            td: ThreadData::default(),
+        }
+    }
+
     fn notice(&self, message: std::fmt::Arguments<'_>) {
         self.td.sink.line(&format!("info string {message}"));
     }
@@ -482,12 +493,15 @@ impl Searcher {
         self.shared.tt.clear();
     }
 
+    /// The helpers clear alongside this thread, and all are done on return, so
+    /// a `readyok` that follows means the whole pool is ready.
     pub fn new_game(&mut self) {
+        self.worker_pool.start_new_game();
         self.shared.tt.clear();
         self.clear_history();
         self.td.evaluator.clear_pawn_table();
         self.td.previous_search_score = None;
-        self.worker_pool.new_game();
+        self.worker_pool.finish_new_game();
     }
 
     pub(crate) fn clear_history(&mut self) {

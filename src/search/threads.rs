@@ -1,7 +1,7 @@
 //! Lazy-SMP: the helper pool, per-thread job setup and the parallel result
 //! vote.
 
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, atomic::Ordering, mpsc};
 use std::thread::{self, JoinHandle};
 
@@ -42,6 +42,8 @@ enum WorkerMessage {
 
 struct SearchWorkerHandle {
     sender: Sender<WorkerMessage>,
+    /// One message per finished start-up and `NewGame`.
+    acks: Receiver<()>,
     handle: Option<JoinHandle<()>>,
 }
 
@@ -53,7 +55,16 @@ pub(super) struct WorkerPool {
 impl WorkerPool {
     /// Grow or shrink the pool to `helper_count` threads and return how many
     /// it holds, which is fewer when the operating system refuses a thread.
+    /// New helpers have finished starting on return.
     pub(super) fn set_helper_count(&mut self, helper_count: usize) -> usize {
+        self.set_helper_count_with(helper_count, spawn_search_worker)
+    }
+
+    fn set_helper_count_with(
+        &mut self,
+        helper_count: usize,
+        spawn: impl Fn(usize) -> Option<SearchWorkerHandle>,
+    ) -> usize {
         while self.workers.len() > helper_count {
             if let Some(mut worker) = self.workers.pop() {
                 let _ = worker.sender.send(WorkerMessage::Shutdown);
@@ -62,20 +73,27 @@ impl WorkerPool {
                 }
             }
         }
+        let started = self.workers.len();
         while self.workers.len() < helper_count {
-            if let Some(worker) = spawn_search_worker(self.workers.len()) {
+            if let Some(worker) = spawn(self.workers.len()) {
                 self.workers.push(worker);
             } else {
                 break;
             }
         }
+        // After every spawn, so the new helpers start up together.
+        wait_for_acks(&self.workers[started..]);
         self.workers.len()
     }
 
-    pub(crate) fn new_game(&self) {
+    pub(crate) fn start_new_game(&self) {
         for worker in &self.workers {
             let _ = worker.sender.send(WorkerMessage::NewGame);
         }
+    }
+
+    pub(crate) fn finish_new_game(&self) {
+        wait_for_acks(&self.workers);
     }
 
     fn send_search(&self, index: usize, job: WorkerJob) -> bool {
@@ -94,19 +112,27 @@ impl Drop for WorkerPool {
     }
 }
 
+/// One acknowledgement from each of `workers`. A helper that died has dropped
+/// its sender, so the wait ends with it and `isready` cannot hang.
+fn wait_for_acks(workers: &[SearchWorkerHandle]) {
+    for worker in workers {
+        let _ = worker.acks.recv();
+    }
+}
+
 fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
     let (sender, receiver) = mpsc::channel();
+    let (ack, acks) = mpsc::channel();
     let handle = thread::Builder::new()
         .name(format!("rarog-search-{index}"))
         .stack_size(infra::THREAD_STACK_SIZE)
         .spawn(move || {
-            // Ready before the first search, which runs on the clock: a helper
-            // searches the pool's table, held only for the job, so the one it
-            // keeps between jobs is the smallest there is; and its history and
-            // cache pages are touched here, not by that search.
-            let mut worker = Searcher::default();
-            worker.shared.tt = TranspositionTable::new(1);
+            // Ready before the first search, which runs on the clock: the
+            // helper's history and cache pages are touched here, not by that
+            // search.
+            let mut worker = Searcher::helper();
             worker.reset_worker_state_for_new_game();
+            let _ = ack.send(());
             while let Ok(message) = receiver.recv() {
                 match message {
                     WorkerMessage::Search(job) => {
@@ -124,7 +150,10 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
                         let result = worker.run_worker_job(*job, &mut helper_poll);
                         let _ = result_tx.send(result);
                     }
-                    WorkerMessage::NewGame => worker.reset_worker_state_for_new_game(),
+                    WorkerMessage::NewGame => {
+                        worker.reset_worker_state_for_new_game();
+                        let _ = ack.send(());
+                    }
                     WorkerMessage::Shutdown => break,
                 }
             }
@@ -132,6 +161,7 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
         .ok()?;
     Some(SearchWorkerHandle {
         sender,
+        acks,
         handle: Some(handle),
     })
 }
@@ -567,6 +597,7 @@ impl Searcher {
 #[cfg(test)]
 mod tests {
     use std::sync::Mutex;
+    use std::sync::atomic::AtomicUsize;
     use std::time::{Duration, Instant};
 
     use super::*;
@@ -623,6 +654,80 @@ mod tests {
 
         assert_eq!(selected.bestmove, d2d4);
         assert_eq!(index, 1);
+    }
+
+    /// A helper that takes `delay` over its start-up and each `NewGame`,
+    /// counting each one it finishes.
+    fn slow_worker(delay: Duration, finished: &Arc<AtomicUsize>) -> SearchWorkerHandle {
+        let finished = Arc::clone(finished);
+        let (sender, receiver) = mpsc::channel();
+        let (ack, acks) = mpsc::channel();
+        let handle = thread::spawn(move || {
+            let finish = || {
+                thread::sleep(delay);
+                finished.fetch_add(1, Ordering::SeqCst);
+                let _ = ack.send(());
+            };
+            finish();
+            while let Ok(message) = receiver.recv() {
+                match message {
+                    WorkerMessage::NewGame => finish(),
+                    WorkerMessage::Shutdown => break,
+                    WorkerMessage::Search(_) => {}
+                }
+            }
+        });
+        SearchWorkerHandle {
+            sender,
+            acks,
+            handle: Some(handle),
+        }
+    }
+
+    /// `readyok` follows these calls, so a slow helper must hold them back.
+    #[test]
+    fn the_pool_waits_for_slow_helpers_to_start_and_to_clear() {
+        const DELAY: Duration = Duration::from_millis(100);
+        let finished = Arc::new(AtomicUsize::new(0));
+        let mut pool = WorkerPool::default();
+
+        let helpers = pool.set_helper_count_with(3, |_| Some(slow_worker(DELAY, &finished)));
+        assert_eq!(helpers, 3);
+        assert_eq!(finished.load(Ordering::SeqCst), 3, "started");
+
+        pool.start_new_game();
+        pool.finish_new_game();
+        assert_eq!(finished.load(Ordering::SeqCst), 6, "cleared");
+
+        pool.set_helper_count_with(4, |_| Some(slow_worker(DELAY, &finished)));
+        assert_eq!(
+            finished.load(Ordering::SeqCst),
+            7,
+            "only the new helper is waited for"
+        );
+    }
+
+    #[test]
+    fn a_helper_that_died_does_not_hang_the_pool() {
+        let dead = || {
+            let (sender, _) = mpsc::channel();
+            let (_, acks) = mpsc::channel();
+            Some(SearchWorkerHandle {
+                sender,
+                acks,
+                handle: None,
+            })
+        };
+        let mut pool = WorkerPool::default();
+
+        assert_eq!(pool.set_helper_count_with(2, |_| dead()), 2);
+        pool.start_new_game();
+        pool.finish_new_game();
+    }
+
+    #[test]
+    fn a_helper_keeps_only_the_smallest_table() {
+        assert_eq!(Searcher::helper().shared.tt.allocated_bytes(), 1 << 20);
     }
 
     /// Three threads on a longer mate outvote the one that found the shortest,
