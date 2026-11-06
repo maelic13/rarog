@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **14,749,043 / EBF 2.564** at engine source `3a16fbb` (D.6.15: a draw verdict takes no correction; before it 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.99.1`) | RAR-S105, RAR-P36 |
+| Fingerprint | `bench 13` **15,625,852 / EBF 2.563** at engine source `1450340` (D.5.5: `Hash` at any size moved every slot, RAR-S106 pending; before it 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.99.1`) | RAR-S105, RAR-P36 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -335,7 +335,7 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.5 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
+| D.5.5 | GAME_GATE | I1 | Built (`1450340`); RAR-S106's speed and harm reads wait for an idle PC |
 | D.5.6 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.7 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.8 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -474,12 +474,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   speed check, and an unexplained two-state split between processes is H.4's
   lead (`analysis/identical_tree_counters_card_2026-11-05.md`). Full record,
   D.4.1 to D.4.6: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
-- **D.5 Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, the `Hash` notice, dead code, test and CI gaps — `I1`.**
+- **D.5 Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, `Hash` at any size, dead code, test and CI gaps — `I1`.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` (its §5 lists
   every item with its reviewer ID; the reports are in
   `analysis/artifacts/engine-review-2026-11-01/`). Every item reproduces
-  the development fingerprint (GUIDE's checkpoint; 14,749,043 / EBF 2.564
-  since D.6.15) on both slider backends, passes the debug and release
+  the development fingerprint (GUIDE's checkpoint) on both slider backends,
+  except D.5.5, which moves it by design; passes the debug and release
   suites, `cargo fmt --check` and `cargo clippy --all-features
   --all-targets` at zero warnings, and lands as its own commit; an item that
   touches hot code (6, 9, 10) adds the allocation guard and one pooled-NPS
@@ -601,12 +601,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      a real helper's acknowledgement hangs the suite. Fingerprint 14,749,043 /
      EBF 2.564 on both slider backends; debug and release suites, fmt and
      clippy clean.
-    - **D.5.5 The `Hash` rounding notice — `I1`.** (TT-7): `Hash` is floored to a power of
-     two with no word (1000 → 512 MiB, 2000 → 1024, 3000 → 2048, 32000 →
-     16384); an `info string` notice from `configure`, a README sentence, a
-     test (`Hash 100` → 64). Sizing to any value (a multiply-shift index with
-     a low-bit tag) changes the fingerprint at every size and is G.2's, only
-     if the notice shows anyone sets such values.
+    - **D.5.5 `Hash` at any size — `I1`.** (TT-7.) `Hash` was floored to a power of two
+     with no word (1000 → 512 MiB, 2000 → 1024, 3000 → 2048, 32000 → 16384).
+     Reckless and Stockfish 19 size exactly, so the notice planned here gave
+     way to the repair by maintainer decision 2026-11-06, moving it up from
+     G.2, whose condition could never fire: a notice prints on users' machines.
+     `1450340`: both table forms take the whole size, a cluster is the high half
+     of key times count, and the tag moves to the key's low 16 bits so the two
+     stay independent. `Hash 1000` holds 1,042 MiB against 554 at one thread.
+     The fingerprint moves at every size, to 15,625,852 / EBF 2.563: 18 positions
+     up and 17 down, median ratio 1.000; six valid bit choices bench 11.9M to
+     15.6M, and an index overlapping the tag reads 53.0M at EBF 2.80, so this is
+     the search's chaos and not a weak tag. Test keys that relied on the old
+     mapping were fixed first, in their own commit (`9b8538d`), and pass on both
+     tables. Debug and release suites, fmt and clippy clean; mutants of the tag
+     and of the floor fail. Gate: RAR-S106, AGENTS' repair case 2, a no-regression
+     speed read and a 2,000-game fixed read with a harm rule at −13 nElo.
     - **D.5.6 The dead quiescence type parameter — `I1`.** (NODE-6): `quiescence<NODE>` never
      reads `NODE` (the PV bit comes from the stored form since B.4), so `Pv`
      and `NonPv` are two identical 355-line copies of the hottest recursion;
@@ -1924,12 +1934,6 @@ only once inference runs at speed (F.5, F.6).
   and FRC perft suite, per-variant profiles merged into one universal build,
   an analysis build compiled as a second search copy, and strength levels
   calibrated in games.
-  `Hash` at any size (TT-7; D.6.12 until 2026-11-05, a product question,
-  not strength): the multiply-shift index with a low-bit tag, only if D.5.5's
-  notice shows anyone sets such sizes; case 2. Triumviratus's TT16 uses the
-  multiply-high index (TP-1, `analysis/triumviratus_review_2026-11-03.md`
-  §8); its +6.30 ± 5.06 was against its own cache-line-straddling layout,
-  which Rarog's aligned clusters do not have.
 - **G.3 Frontier: larger nets, data scaling, LTC search fit; CCRL top-50 gate — `R3`.** Larger nets, data scaling, search fit at LTC; the
   top-50 gate is the CCRL list again.
   Triumviratus inputs (TS-2, TS-19, TM-5;
