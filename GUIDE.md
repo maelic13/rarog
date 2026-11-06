@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.5.3** (`I1`): The fixed-depth vote.
+**Now: D.5.4** (`I1`): Helper start-up.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -38,7 +38,7 @@ field, about 3,475 on CCRL's Blitz scale.
 - [ ] **D.5** Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, the `Hash` notice, dead code, test and CI gaps — **I1**
     - [x] **D.5.1** The table handle — DONE 2026-11-06
     - [x] **D.5.2** A `Hash` change at `Threads > 1` fills the table twice — DONE 2026-11-06
-    - [ ] **D.5.3** The fixed-depth vote — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.5.3** The fixed-depth vote — DONE 2026-11-06
     - [ ] **D.5.4** Helper start-up — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.5** The `Hash` rounding notice — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.6** The dead quiescence type parameter — **READY_FOR_IMPLEMENTATION / I1**

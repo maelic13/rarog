@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.3 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.4 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.5 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.6 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -516,15 +515,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      MiB). Fingerprint 14,749,043 / EBF 2.564 on both slider backends; debug
      and release suites, fmt and clippy clean. `make_shared` itself still
      cannot report a refusal, on a `Threads` change: TT-15, G.1's.
-    - **D.5.3 The fixed-depth vote — `I1`.** (DRIVER-12): helpers drop the depth limit and
-     the weighted vote runs for every single-line search, so `go depth N` at
-     `Threads > 1` can report a deeper helper's result and print `info depth
-     N+1`, or a shallower one's: at Threads 4 and `go depth 4` the main thread
-     reached 4 and helpers stopped at 2 to 5, and one search returned a result
-     below depth 4 (seen 2026-11-06 in D.5.1's test); at Threads 2 and `go
-     depth 10` the last `info depth` was 8 or 9 in 3 of 20 runs, and 9 in 2 of
-     20 on `4d906a9`, before either repair. Skip the vote under a
-     depth limit (the donor answers with thread 0). A test at Threads 4.
+    - **D.5.3 The fixed-depth vote — `I1`, DONE 2026-11-06.** (DRIVER-12.) Helpers drop the
+     depth limit and the weighted vote ran for every single-line search, so
+     `go depth N` at `Threads > 1` could report a helper's result, deeper or
+     shallower than N: at Threads 4 and `go depth 4` the main thread reached 4
+     while helpers stopped at 2 to 5. `32bb806`: `pool_answer` holds the whole
+     decision, and under a depth limit, `go mate N` included, the main thread
+     answers. One case keeps the vote: a main thread stopped inside its first
+     iteration has no result, so `go depth 30` with an early `stop` still takes
+     a helper's. `pool_answer`'s tests catch the branch's removal every time
+     (3 of 3); the whole-path test at Threads 4, 30 searches, only sometimes
+     (1 of 3), since helpers race. Read, 30 fresh `go depth 10` per row, last
+     `info depth`: all 10 at Threads 2 and at Threads 4, against 8 to 9 in 5
+     of 30 and 8 to 11 in 3 of 30 on `8859e67`. `go depth 30` with `stop`
+     answered 30 of 30, and MultiPV 2 reached its depth. Fingerprint
+     14,749,043 / EBF 2.564 on both slider backends; debug and release suites,
+     fmt and clippy clean.
     - **D.5.4 Helper start-up — `I1`.** (DRIVER-14, TT-8): each helper builds and discards a
      64 MiB table (`Searcher::default()` then `TranspositionTable::new(1)`),
      touches about 32 MB of tables, and `isready` does not wait for any of it;

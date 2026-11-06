@@ -68,6 +68,8 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   the machine's memory.
 - **Changing `Hash` frees the old table.** With more than one thread, the
   old table stayed in memory until the next search.
+- **`go depth` keeps to its depth.** With more than one thread, the answer
+  could come from a search shallower or deeper than the depth asked for.
 
 ## [2.6.0] - 2026-10-22
 
