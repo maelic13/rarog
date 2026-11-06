@@ -113,8 +113,10 @@ pub(super) fn compute_runtime_limits(
     max_depth: usize,
 ) -> RuntimeLimits {
     // `None` = no depth limit.
-    let depth = options
-        .depth
+    let depth = [options.depth, options.mate_plies]
+        .into_iter()
+        .flatten()
+        .min()
         .map_or(max_depth, |d| (d as usize).clamp(1, max_depth));
     let mut optimum_ms = f64::INFINITY;
     let mut maximum_ms = f64::INFINITY;
@@ -223,6 +225,7 @@ pub(super) fn compute_runtime_limits(
             optimum_ms = optimum_ms.min(maximum_ms);
             mate_stop = !analysis_mode
                 && options.depth.is_none()
+                && options.mate_plies.is_none()
                 && options.nodes == 0
                 && options.search_moves.is_empty();
         }
@@ -787,6 +790,10 @@ mod tests {
                 ..clock.clone()
             },
             SearchLimits {
+                mate_plies: Some(5),
+                ..clock.clone()
+            },
+            SearchLimits {
                 nodes: 1_000_000,
                 ..clock.clone()
             },
@@ -978,5 +985,20 @@ mod tests {
             42,
         );
         assert_eq!(unlimited.depth, 42);
+    }
+
+    #[test]
+    fn a_mate_search_stops_at_its_plies_or_a_shallower_depth() {
+        let mate = SearchLimits {
+            mate_plies: Some(5),
+            ..SearchLimits::default()
+        };
+        assert_eq!(limits(0, &mate).depth, 5);
+        let both = |depth| SearchLimits {
+            depth: Some(depth),
+            ..mate.clone()
+        };
+        assert_eq!(limits(0, &both(3)).depth, 3);
+        assert_eq!(limits(0, &both(9)).depth, 5);
     }
 }

@@ -100,7 +100,8 @@ fn startpos_moves_and_go_limits_parse() {
     assert_eq!(limits.depth, Some(3));
 
     let limits = go::parse(&args(&["mate", "2", "searchmoves", "e2e4", "g1f3"])).limits;
-    assert_eq!(limits.depth, Some(3));
+    assert_eq!(limits.mate_plies, Some(3));
+    assert_eq!(limits.depth, None, "a mate search is not a depth limit");
     assert_eq!(limits.search_moves.len(), 2);
 }
 

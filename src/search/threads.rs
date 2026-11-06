@@ -179,22 +179,16 @@ fn select_parallel_result(
 /// With more than one line the main thread owns every reported line and the
 /// move, and the helpers, having searched one line, do not vote. Under a depth
 /// limit only the main thread searches to that depth, and a helper's depth says
-/// only how far it got before the main thread finished; a main thread stopped
-/// inside its first iteration has no result yet, so the vote stands in.
+/// only how far it got before the main thread finished. Anything else votes,
+/// `go mate` included.
 fn pool_answer(
     results: &[SearchResult],
     root_moves: &[Move],
     lines: usize,
     limits: &SearchLimits,
 ) -> Option<(usize, SearchResult)> {
-    let main = results.first();
-    if lines > 1 {
-        return main.cloned().map(|result| (0, result));
-    }
-    if limits.depth.is_some()
-        && let Some(main) = main.filter(|result| is_root_result(result, root_moves))
-    {
-        return Some((0, main.clone()));
+    if lines > 1 || limits.depth.is_some() {
+        return results.first().cloned().map(|result| (0, result));
     }
     select_parallel_result(results, root_moves)
 }
@@ -282,7 +276,7 @@ impl Searcher {
     ) -> SearchResult {
         let game_ply = 2 * root.fullmove().saturating_sub(1) as u32
             + (root.side_to_move() == Color::Black) as u32;
-        // Helpers must NOT inherit the main thread's fixed depth.
+        // Helpers must NOT inherit the main thread's fixed depth or mate plies.
         //
         // Under a clock this is invisible — every thread runs until the main
         // thread's time manager stops the pool. But under `go depth N` a helper
@@ -292,6 +286,7 @@ impl Searcher {
         // main thread alone owns the depth contract and the reported result.
         let mut helper_limits = limits.clone();
         helper_limits.depth = None;
+        helper_limits.mate_plies = None;
         self.reset_search_state(
             &helper_limits,
             engine_options,
@@ -672,10 +667,10 @@ mod tests {
         assert_eq!(index, 0);
     }
 
-    /// A main thread stopped inside its first iteration holds only the first
-    /// root move, unsearched; a helper that finished one does better.
+    /// The depth limit decides alone, as in Stockfish: a main thread stopped
+    /// inside its first iteration still answers, with the first root move.
     #[test]
-    fn a_main_thread_without_a_result_leaves_the_answer_to_the_vote() {
+    fn a_depth_limit_is_the_main_threads_even_before_its_first_iteration_ends() {
         let e2e4 = Move::from_uci("e2e4").expect("valid move");
         let d2d4 = Move::from_uci("d2d4").expect("valid move");
         let results = vec![
@@ -685,6 +680,26 @@ mod tests {
 
         let (index, selected) =
             pool_answer(&results, &[e2e4, d2d4], 1, &depth_limit(6)).expect("answered");
+
+        assert_eq!(index, 0);
+        assert_eq!(selected.bestmove, e2e4);
+    }
+
+    /// `go mate` is not a depth limit: a mate only a helper found is the answer.
+    #[test]
+    fn a_mate_search_is_answered_by_the_vote() {
+        let e2e4 = Move::from_uci("e2e4").expect("valid move");
+        let d2d4 = Move::from_uci("d2d4").expect("valid move");
+        let results = vec![
+            test_search_result(e2e4, 40, 5),
+            test_search_result(d2d4, TB_WIN_SCORE, 4),
+        ];
+        let limits = SearchLimits {
+            mate_plies: Some(5),
+            ..SearchLimits::default()
+        };
+
+        let (index, selected) = pool_answer(&results, &[e2e4, d2d4], 1, &limits).expect("answered");
 
         assert_eq!(index, 1);
         assert_eq!(selected.bestmove, d2d4);
