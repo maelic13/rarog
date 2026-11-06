@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.4 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.5 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.6 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.7 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -586,11 +585,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
          and `parallel_result_key` ranked them by vote first; now the shortest
          decides (`a458e17`). Pinned by a forced test for wins and losses, not
          measured in games. It moves at `Threads > 1` only.
-    - **D.5.4 Helper start-up — `I1`.** (DRIVER-14, TT-8): each helper builds and discards a
-     64 MiB table (`Searcher::default()` then `TranspositionTable::new(1)`),
-     touches about 32 MB of tables, and `isready` does not wait for any of it;
-     a helper constructor without the default table, and the worker
-     acknowledges its init and `NewGame` so `readyok` means ready.
+    - **D.5.4 Helper start-up — `I1`, DONE 2026-11-06.** (DRIVER-14, TT-8.) Each helper
+     built and discarded a 64 MiB table and touched about 32 MB of tables, and
+     `isready` waited for none of it. `be12cb5`: `Searcher::helper` starts on the
+     1 MiB table a helper keeps between jobs, and a helper acknowledges its
+     start-up and each `NewGame`, so `readyok` means ready. New helpers start
+     together and are waited for together; `ucinewgame` tells them first and
+     they clear alongside the main thread. A helper that died has dropped its
+     sender, so the wait cannot hang. Read, `Threads 8`, three fresh processes,
+     private bytes at `readyok`: 388 MiB each time, peak the same, against 362,
+     535 and 606 with peaks to 641 on `af2bb1f`, whose helpers were still
+     allocating. The cost is that `readyok` now waits for that start-up; it was
+     not timed, the host being busy, and no search is on the clock for it.
+     Stand-in slow helpers pin both waits; dropping either wait fails, dropping
+     a real helper's acknowledgement hangs the suite. Fingerprint 14,749,043 /
+     EBF 2.564 on both slider backends; debug and release suites, fmt and
+     clippy clean.
     - **D.5.5 The `Hash` rounding notice — `I1`.** (TT-7): `Hash` is floored to a power of
      two with no word (1000 → 512 MiB, 2000 → 1024, 3000 → 2048, 32000 →
      16384); an `info string` notice from `configure`, a README sentence, a

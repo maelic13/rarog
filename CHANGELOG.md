@@ -73,6 +73,8 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   old table stayed in memory until the next search.
 - **`go depth` keeps to its depth.** With more than one thread, the answer
   could come from a search shallower or deeper than the depth asked for.
+- **`readyok` means ready.** With more than one thread, the engine could
+  answer `isready` while its threads were still starting or clearing.
 - **Mates with more than one thread.** The engine now always takes the
   shortest mate its threads found, and always shows a mate that a helper thread
   found.
