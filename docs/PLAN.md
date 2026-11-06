@@ -519,18 +519,29 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      depth limit and the weighted vote ran for every single-line search, so
      `go depth N` at `Threads > 1` could report a helper's result, deeper or
      shallower than N: at Threads 4 and `go depth 4` the main thread reached 4
-     while helpers stopped at 2 to 5. `32bb806`: `pool_answer` holds the whole
-     decision, and under a depth limit, `go mate N` included, the main thread
-     answers. One case keeps the vote: a main thread stopped inside its first
-     iteration has no result, so `go depth 30` with an early `stop` still takes
-     a helper's. `pool_answer`'s tests catch the branch's removal every time
-     (3 of 3); the whole-path test at Threads 4, 30 searches, only sometimes
-     (1 of 3), since helpers race. Read, 30 fresh `go depth 10` per row, last
-     `info depth`: all 10 at Threads 2 and at Threads 4, against 8 to 9 in 5
-     of 30 and 8 to 11 in 3 of 30 on `8859e67`. `go depth 30` with `stop`
-     answered 30 of 30, and MultiPV 2 reached its depth. Fingerprint
+     while helpers stopped at 2 to 5. `32bb806` and `7f05301`: `pool_answer`
+     holds the whole decision and takes Stockfish 19's rule (the development
+     tree of 2026-10-28 has the same): a depth limit is the main thread's, even
+     stopped inside its first iteration, and anything else votes. `go mate N`
+     has its own `mate_plies` field, because a mate search is no depth limit
+     there; `32bb806` had taken it off the vote by reading the shared field,
+     and had kept a vote for that first iteration, both corrected by maintainer
+     decision 2026-11-06. `pool_answer`'s tests fail on either side's mutation;
+     the whole-path test at Threads 4, 30 searches, caught a removed branch
+     only 1 time in 3, since helpers race. Read, 30 fresh `go depth 10` per
+     row, last `info depth`: all 10 at Threads 2 and at Threads 4, against 8 to
+     9 in 5 of 30 and 8 to 11 in 3 of 30 on `8859e67`. `go depth 30` with
+     `stop` answered 30 of 30, and MultiPV 2 reached its depth. `go mate` over
+     WAC's 300 positions at Threads 4, against `8859e67`, which also votes: 29
+     mates to 28 at `go mate 3`, 54 to 54 at `go mate 5`, with three positions
+     found only by each binary, so that much is run-to-run noise. Fingerprint
      14,749,043 / EBF 2.564 on both slider backends; debug and release suites,
-     fmt and clippy clean.
+     fmt and clippy clean. Still unlike Stockfish, and not changed here:
+     MultiPV is the main thread's where Stockfish votes, since Rarog's helpers
+     search one line; `go mate` stops at `2N - 1` plies where Stockfish runs
+     until a mate is proved or it is stopped; and the vote weighs score by
+     depth where Stockfish 19 weighs score alone, which is a change at the
+     rated configuration and so needs a gate.
     - **D.5.4 Helper start-up — `I1`.** (DRIVER-14, TT-8): each helper builds and discards a
      64 MiB table (`Searcher::default()` then `TranspositionTable::new(1)`),
      touches about 32 MB of tables, and `isready` does not wait for any of it;

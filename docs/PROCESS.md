@@ -173,13 +173,15 @@ presented as mature.
 
 ### The independence boundary
 
-Donors: **Reckless** for search, threading, time management and NNUE;
-**Stockfish 11** for the classical evaluation (tag `sf_11`; the king-safety and
+Donors: **Reckless** for search, threading, time management and NNUE, and
+**Stockfish** by area (maintainer decision 2026-11-06, widening 2026-09-09's;
+PLAN rule 1 points here). **Stockfish 19** (tag `sf_19`) is the reference for
+everything that is not the classical evaluation, and the latest development
+tree, named by its date, where a question needs it. **Stockfish 11** is the
+reference for the classical evaluation (tag `sf_11`; the king-safety and
 threat fixtures, and the forms fitted from them, follow `9587eeeb` of
-2020-07-30: `analysis/engine_review_2026-11-01.md`, EVAL-4); **Stockfish 19**
-for NNUE and
-SMP details where Reckless is silent (maintainer decision 2026-09-09; PLAN
-rule 1 points here).
+2020-07-30: `analysis/engine_review_2026-11-01.md`, EVAL-4), or a later
+classical evaluation once one is shown to be the best there is.
 
 **Triumviratus** (Francesco Torsello, GPL-3.0; `github.com/Tors3/Triumviratus`
 at `0c18907`, its networks repository at `5f3dc60`) is a third donor, for
