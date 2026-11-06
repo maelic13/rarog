@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **15,625,852 / EBF 2.563** at engine source `1450340` (D.5.5: `Hash` at any size moved every slot, RAR-S106 pending; before it 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.99.1`) | RAR-S105, RAR-P36 |
+| Fingerprint | `bench 13` **15,625,852 / EBF 2.563** at engine source `1450340` (D.5.5: `Hash` at any size moved every slot, RAR-S106; before it 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.99.1`) | RAR-S105, RAR-P36 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.5 | GAME_GATE | I1 | Built (`1450340`); RAR-S106's speed read passed, its 2,000-game harm read is the maintainer's |
 | D.5.6 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.7 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.8 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -601,7 +600,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      a real helper's acknowledgement hangs the suite. Fingerprint 14,749,043 /
      EBF 2.564 on both slider backends; debug and release suites, fmt and
      clippy clean.
-    - **D.5.5 `Hash` at any size — `I1`.** (TT-7.) `Hash` was floored to a power of two
+    - **D.5.5 `Hash` at any size — `I1`, DONE 2026-11-06.** (TT-7.) `Hash` was floored to a power of two
      with no word (1000 → 512 MiB, 2000 → 1024, 3000 → 2048, 32000 → 16384).
      Reckless and Stockfish 19 size exactly, so the notice planned here gave
      way to the repair by maintainer decision 2026-11-06, moving it up from
@@ -616,7 +615,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      mapping were fixed first, in their own commit (`9b8538d`), and pass on both
      tables. Debug and release suites, fmt and clippy clean; mutants of the tag
      and of the floor fail. Gate: RAR-S106, AGENTS' repair case 2, a no-regression
-     speed read and a 2,000-game fixed read with a harm rule at −13 nElo.
+     speed read and a 2,000-game fixed read with a harm rule at −13 nElo. Both
+     passed: speed +1.07% (different trees, so it only rules out a large cost)
+     and nElo +2.1 ± 15.2, so the repair stays, with no strength claimed.
     - **D.5.6 The dead quiescence type parameter — `I1`.** (NODE-6): `quiescence<NODE>` never
      reads `NODE` (the PV bit comes from the stored form since B.4), so `Pv`
      and `NonPv` are two identical 355-line copies of the hottest recursion;

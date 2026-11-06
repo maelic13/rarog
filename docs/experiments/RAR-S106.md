@@ -108,3 +108,26 @@ disposition, since both donors pay the multiply and the repair is for users.
 the multiply would set the size of the difference; the trees' mix, named only
 as a failure mode, was larger than the range allowed. Nothing here is a speed
 gain: the interval touches zero and the two arms search different trees.
+
+## Result: `stc` (2026-11-06)
+
+**The harm rule did not fire: nElo +2.1 ± 15.2, against the rule's −13.** Elo
++1.2 ± 8.6, candidate 1003.5 of 2,000, pentanomial 22, 228, 494, 233, 23, with
+no time losses and no engine or infrastructure faults. Host 0.3% busy at start,
+no waiver; both binaries' hashes in the manifest match the table above.
+Manifest: `tools/results/colosseum_match_rar-s106-stc_20261106_211745.manifest.txt`.
+
+This keeps the repair and claims no strength. By the registered power, "kept"
+means no harm beyond roughly −20 nElo.
+
+In these games the candidate ran 2.38M nodes a second against 2.34M at 66.5 and
+66.7 ms a move. That is a description, not a speed read: the trees still differ.
+
+**Calibration (games):** a hit. The prediction was 0 ± 15 nElo with P(no harm)
+0.95, and the read is +2.1. It cannot say more than that: an interval of ±15
+would have held any effect this repair was likely to have.
+
+## Disposition (2026-11-06)
+
+**Neither read failed: D.5.5 closes.** The fingerprint 15,625,852 / EBF 2.563
+stands, and the changelog has its entry.
