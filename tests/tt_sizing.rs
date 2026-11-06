@@ -69,6 +69,20 @@ fn shared_table_does_not_shrink_entry_capacity() {
     }
 }
 
+/// `Hash` is the size asked for, in both forms: these were floored to 64 and
+/// 256 when the table's size had to be a power of two.
+#[test]
+fn hash_need_not_be_a_power_of_two() {
+    for mb in [100, 300] {
+        let mut tt = TranspositionTable::new(mb);
+        assert_eq!(tt.allocated_bytes(), mb << 20, "local {mb}");
+        let local_entries = tt.capacity_entries();
+        tt.make_shared(mb);
+        assert_eq!(tt.allocated_bytes(), mb << 20, "shared {mb}");
+        assert_eq!(tt.capacity_entries(), local_entries, "{mb}");
+    }
+}
+
 #[test]
 fn make_shared_is_idempotent() {
     let mut tt = TranspositionTable::new(64);

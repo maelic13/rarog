@@ -73,7 +73,7 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
     assert_eq!(shared_entry.score, 123);
     assert_eq!(shared_entry.bound(), Some(Bound::Exact));
     assert_eq!(shared_entry.best_move(), Some(best));
-    // Verification is the top-16 tag, NOT the full 64-bit key. The shared
+    // Verification is the low-16 tag, NOT the full 64-bit key. The shared
     // table used to store `key ^ data` alongside `data` — 16 B per slot — to
     // verify all 64 bits. That bought a guarantee the single-threaded table
     // has never had (it compares a plain `key16`) at the price of 60% more
@@ -81,7 +81,7 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
     // could remember. The slot is now 10 B and verifies 16 bits, matching the
     // local backend exactly; a differing tag must still be rejected.
     assert!(
-        table.probe(key ^ 0x8000_0000_0000_0000).is_none(),
+        table.probe(key ^ 0x8000).is_none(),
         "shared TT must reject a key whose verification tag differs"
     );
 

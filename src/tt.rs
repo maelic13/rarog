@@ -6,7 +6,6 @@ use std::sync::{
 
 use crate::board::Move;
 use crate::eval::{MATE_SCORE, VALUE_NONE};
-use crate::infra;
 
 const MAX_PLY: i32 = 128;
 /// The decisive band's floor: a tablebase win or anything better. Below
@@ -118,7 +117,6 @@ impl ClusterSlots for LocalCluster {
 
 struct LocalTable {
     clusters: Vec<LocalCluster>,
-    mask: usize,
     age: u8,
 }
 
@@ -287,7 +285,6 @@ const _: () = assert!(
 
 struct SharedTable {
     clusters: Box<[SharedCluster]>,
-    mask: usize,
     age: AtomicU8,
 }
 
@@ -390,7 +387,6 @@ impl TranspositionTable {
         };
         self.storage = TtStorage::Local(LocalTable {
             clusters: Vec::new(),
-            mask: 0,
             age,
         });
         let table = Arc::new(
@@ -487,8 +483,8 @@ impl TranspositionTable {
     #[inline(always)]
     pub fn prefetch(&self, key: u64) {
         match &self.storage {
-            TtStorage::Local(table) => prefetch_cluster(&table.clusters, table.mask, key),
-            TtStorage::Shared(table) => prefetch_cluster(&table.clusters, table.mask, key),
+            TtStorage::Local(table) => prefetch_cluster(&table.clusters, key),
+            TtStorage::Shared(table) => prefetch_cluster(&table.clusters, key),
         }
     }
 
@@ -585,11 +581,22 @@ fn prefetch_ptr<T>(ptr: *const T) {
     }
 }
 
-/// Upper 16 bits of the hash — the cluster-entry verification tag. The
-/// truncation IS the design (a 16-bit tag), hence the scoped allow.
+/// Low 16 bits of the hash — the cluster-entry verification tag. The cluster
+/// comes from the high bits ([`cluster_index`]), so the two stay independent.
+/// The truncation IS the design (a 16-bit tag), hence the scoped allow.
 #[inline(always)]
+#[expect(clippy::cast_possible_truncation)]
 fn key16_of(key: u64) -> u16 {
-    (key >> 48) as u16
+    key as u16
+}
+
+/// The cluster of `key` in a table of `clusters`: the high half of their
+/// product, which maps the keys evenly onto any count, so `Hash` need not be a
+/// power of two. The product's high half is below `clusters`, so it fits.
+#[inline(always)]
+#[expect(clippy::cast_possible_truncation)]
+fn cluster_index(key: u64, clusters: usize) -> usize {
+    ((u128::from(key) * clusters as u128) >> 64) as usize
 }
 
 #[inline(always)]
@@ -783,28 +790,22 @@ impl TtProbe {
 }
 
 fn new_local_table(mb: usize) -> Option<LocalTable> {
-    let power = cluster_count::<LocalCluster>(mb);
+    let count = cluster_count::<LocalCluster>(mb);
     let mut clusters = Vec::new();
-    clusters.try_reserve_exact(power).ok()?;
-    clusters.resize(power, LocalCluster::default());
-    LocalTable {
-        clusters,
-        mask: power - 1,
-        age: 0,
-    }
-    .into()
+    clusters.try_reserve_exact(count).ok()?;
+    clusters.resize(count, LocalCluster::default());
+    LocalTable { clusters, age: 0 }.into()
 }
 
 fn new_shared_table(mb: usize, age: u8) -> Option<SharedTable> {
     // Sized from the byte budget with SharedCluster's own size — see
     // `make_shared` for why inheriting the local cluster count was wrong.
-    let power = cluster_count::<SharedCluster>(mb);
+    let count = cluster_count::<SharedCluster>(mb);
     let mut clusters = Vec::new();
-    clusters.try_reserve_exact(power).ok()?;
-    clusters.resize_with(power, SharedCluster::default);
+    clusters.try_reserve_exact(count).ok()?;
+    clusters.resize_with(count, SharedCluster::default);
     SharedTable {
         clusters: clusters.into_boxed_slice(),
-        mask: power - 1,
         age: AtomicU8::new(age),
     }
     .into()
@@ -812,18 +813,13 @@ fn new_shared_table(mb: usize, age: u8) -> Option<SharedTable> {
 
 fn cluster_count<T>(mb: usize) -> usize {
     let bytes = mb.max(1).saturating_mul(1024).saturating_mul(1024);
-    let count = (bytes / size_of::<T>()).max(1);
-    let mut power = 1usize;
-    while power <= count / 2 {
-        power *= 2;
-    }
-    power
+    (bytes / size_of::<T>()).max(1)
 }
 
 #[inline(always)]
 fn probe_local(table: &LocalTable, key: u64) -> Option<TtEntry> {
     let key16 = key16_of(key);
-    let entries = &table.clusters[crate::infra::index(key) & table.mask].entries;
+    let entries = &table.clusters[cluster_index(key, table.clusters.len())].entries;
     let entry = entries[0];
     if entry.key16 == key16 && entry.is_occupied() {
         return Some(entry);
@@ -842,14 +838,15 @@ fn probe_local(table: &LocalTable, key: u64) -> Option<TtEntry> {
 #[inline(always)]
 fn probe_shared(table: &SharedTable, key: u64) -> Option<TtEntry> {
     let key16 = key16_of(key);
-    let cluster = &table.clusters[crate::infra::index(key) & table.mask];
+    let cluster = &table.clusters[cluster_index(key, table.clusters.len())];
     (0..SHARED_CLUSTER_ENTRIES).find_map(|index| cluster.load(index, key16))
 }
 
 #[inline(always)]
 fn store_local(table: &mut LocalTable, e: TtStore, bound_bits: u8) {
     let key16 = key16_of(e.key);
-    let cluster = &mut table.clusters[crate::infra::index(e.key) & table.mask];
+    let count = table.clusters.len();
+    let cluster = &mut table.clusters[cluster_index(e.key, count)];
     if let Some((index, entry)) = replacement(cluster, table.age, key16, e, bound_bits) {
         cluster.entries[index] = entry;
     }
@@ -859,7 +856,7 @@ fn store_local(table: &mut LocalTable, e: TtStore, bound_bits: u8) {
 fn store_shared(table: &SharedTable, e: TtStore, bound_bits: u8) {
     let age = table.age.load(Ordering::Relaxed);
     let key16 = key16_of(e.key);
-    let cluster = &table.clusters[crate::infra::index(e.key) & table.mask];
+    let cluster = &table.clusters[cluster_index(e.key, table.clusters.len())];
     if let Some((index, entry)) = replacement(cluster, age, key16, e, bound_bits) {
         cluster.store(index, key16, entry);
     }
@@ -961,8 +958,12 @@ fn clear_in_parallel<T: Send>(chunks: impl Iterator<Item = T>, clear: impl Fn(T)
 }
 
 #[inline(always)]
-fn prefetch_cluster<T>(clusters: &[T], mask: usize, key: u64) {
-    prefetch_ptr(clusters.as_ptr().wrapping_add(infra::index(key) & mask));
+fn prefetch_cluster<T>(clusters: &[T], key: u64) {
+    prefetch_ptr(
+        clusters
+            .as_ptr()
+            .wrapping_add(cluster_index(key, clusters.len())),
+    );
 }
 
 #[inline(always)]
@@ -1001,7 +1002,10 @@ fn entry_quality(entry: TtEntry, age: u8) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{Bound, TB_VALUE, TB_WIN_SCORE, TtProbe, score_from_tt, score_to_tt};
+    use super::{
+        Bound, LocalCluster, SharedCluster, TB_VALUE, TB_WIN_SCORE, TtProbe, cluster_count,
+        cluster_index, key16_of, score_from_tt, score_to_tt, size_of,
+    };
     use crate::eval::{MATE_SCORE, VALUE_NONE};
 
     #[test]
@@ -1158,6 +1162,58 @@ mod tests {
         assert!(stored.pv_line(false));
         assert!(TtProbe::MISS.pv_line(true));
         assert!(!TtProbe::MISS.pv_line(false));
+    }
+
+    /// Every key lands in the table at any count, the extremes included, and
+    /// the keys cover it evenly at a count that is no power of two.
+    #[test]
+    fn cluster_index_covers_any_table_evenly() {
+        for clusters in [1usize, 3, 1000, 32_000_000, 1 << 40] {
+            assert_eq!(cluster_index(0, clusters), 0);
+            assert_eq!(cluster_index(u64::MAX, clusters), clusters - 1);
+        }
+        const CLUSTERS: usize = 1000;
+        let mut hits = [0u32; CLUSTERS];
+        let mut key = 0x9E37_79B9_7F4A_7C15_u64;
+        for _ in 0..1_000_000 {
+            key = key.wrapping_mul(0x5851_F42D_4C95_7F2D).wrapping_add(1);
+            hits[cluster_index(key, CLUSTERS)] += 1;
+        }
+        let (least, most) = (hits.iter().min(), hits.iter().max());
+        assert!(
+            least >= Some(&800) && most <= Some(&1200),
+            "{least:?} {most:?}"
+        );
+    }
+
+    /// The tag and the cluster read opposite ends of the key, so keys that
+    /// share a cluster still differ in the tag.
+    #[test]
+    fn the_tag_is_independent_of_the_cluster() {
+        let key = 0x0123_4567_89AB_CDEF_u64;
+        assert_eq!(key16_of(key), 0xCDEF);
+        assert_eq!(key16_of(key ^ 0xFFFF_0000_0000_0000), 0xCDEF);
+        assert_eq!(
+            cluster_index(key, 1 << 20),
+            cluster_index(key ^ 0xFFFF, 1 << 20)
+        );
+    }
+
+    /// `Hash` is the size asked for: these were floored to 512, 1024, 2048 and
+    /// 16384 when a table's size had to be a power of two.
+    #[test]
+    fn a_table_takes_the_whole_hash_at_any_size() {
+        for mb in [1000usize, 2000, 3000, 32_000] {
+            let bytes = mb << 20;
+            assert_eq!(
+                cluster_count::<LocalCluster>(mb) * size_of::<LocalCluster>(),
+                bytes
+            );
+            assert_eq!(
+                cluster_count::<SharedCluster>(mb) * size_of::<SharedCluster>(),
+                bytes
+            );
+        }
     }
 
     mod core {
