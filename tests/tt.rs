@@ -109,6 +109,35 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
 }
 
 #[test]
+fn a_shared_resize_replaces_the_table_and_a_refused_one_keeps_it() {
+    let key = 0x1234_5678_9abc_def0;
+    let mut table = TranspositionTable::new(1);
+    table.make_shared(1);
+    table.store(TtStore {
+        key,
+        depth: 5,
+        score: 123,
+        bound: Bound::Exact,
+        mv: Move::NULL,
+        ply: 0,
+        static_eval: 0,
+        is_pv: false,
+    });
+
+    assert!(!table.resize_shared(usize::MAX));
+    assert!(table.probe(key).is_some(), "a refused size keeps the table");
+    assert_eq!(table.allocated_bytes(), 1 << 20);
+
+    assert!(table.resize_shared(2));
+    assert!(table.probe(key).is_none(), "the new table starts empty");
+    assert_eq!(table.allocated_bytes(), 2 << 20);
+
+    let mut reference = TranspositionTable::new(2);
+    reference.make_shared(2);
+    assert_eq!(table.capacity_entries(), reference.capacity_entries());
+}
+
+#[test]
 fn transposition_table_hashfull_counts_only_current_generation_entries() {
     let best = Move::from_uci("e2e4").expect("valid UCI move");
     let key = 0xCAFE_0000_0000_0001;

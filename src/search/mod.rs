@@ -424,7 +424,12 @@ impl Searcher {
             HashRequest::NotSent => in_use,
         };
         if target != self.shared.hash_mb {
-            if self.shared.tt.resize(target) {
+            let resized = if options.threads > 1 {
+                self.shared.tt.resize_shared(target)
+            } else {
+                self.shared.tt.resize(target)
+            };
+            if resized {
                 self.shared.hash_mb = target;
             } else {
                 self.notice(format_args!(
@@ -2086,6 +2091,35 @@ mod tests {
         searcher.configure(&threads, HashRequest::Sent);
         assert_eq!(refusals(), 2, "the same Hash sent again is tried again");
         assert_eq!(searcher.shared.hash_mb, 64);
+    }
+
+    /// A `Hash` change lands in the form the next search uses, at the size
+    /// that form gives that `Hash`; a refused one keeps the table and what it
+    /// holds, at any thread count.
+    #[test]
+    fn a_hash_change_lands_in_the_searchs_form_and_a_refusal_keeps_the_table() {
+        let board = Board::default();
+        for threads in [1, 4] {
+            let mut searcher = Searcher::default();
+            let mut options = EngineOptions {
+                hash_mb: 2,
+                threads,
+                ..EngineOptions::default()
+            };
+            searcher.configure(&options, HashRequest::Sent);
+            assert_eq!(searcher.shared.tt.is_shared(), threads > 1);
+            assert_eq!(searcher.shared.tt.allocated_bytes(), 2 << 20);
+
+            store_static_eval(&mut searcher, &board, 17);
+            options.hash_mb = usize::MAX;
+            searcher.configure(&options, HashRequest::Sent);
+            assert_eq!(searcher.shared.hash_mb, 2);
+            assert_eq!(searcher.shared.tt.is_shared(), threads > 1);
+            assert!(
+                searcher.shared.tt.probe(board.hash()).is_some(),
+                "a refused Hash kept the entry at Threads {threads}"
+            );
+        }
     }
 
     /// `bestmove` must be the move the last `info` line names. A stopped

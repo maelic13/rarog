@@ -348,6 +348,19 @@ impl TranspositionTable {
         }
     }
 
+    /// [`Self::resize`] straight into the shared form, so a `Hash` change at
+    /// `Threads > 1` fills one table rather than a local one that conversion
+    /// drops. A refused size keeps the table in use, which is why the old
+    /// table is still held while the new one fills.
+    pub fn resize_shared(&mut self, mb: usize) -> bool {
+        if let Some(table) = new_shared_table(mb, 0) {
+            self.storage = TtStorage::Shared(Arc::new(table));
+            true
+        } else {
+            false
+        }
+    }
+
     pub(crate) fn ensure_local(&mut self, mb: usize) -> bool {
         if !matches!(self.storage, TtStorage::Local(_)) {
             if let Some(table) = new_local_table(mb) {
@@ -380,7 +393,9 @@ impl TranspositionTable {
             mask: 0,
             age,
         });
-        let table = Arc::new(new_shared_table(mb, age));
+        let table = Arc::new(
+            new_shared_table(mb, age).expect("the shared transposition table must allocate"),
+        );
         self.storage = TtStorage::Shared(Arc::clone(&table));
         SharedTt(table)
     }
@@ -780,19 +795,19 @@ fn new_local_table(mb: usize) -> Option<LocalTable> {
     .into()
 }
 
-fn new_shared_table(mb: usize, age: u8) -> SharedTable {
+fn new_shared_table(mb: usize, age: u8) -> Option<SharedTable> {
     // Sized from the byte budget with SharedCluster's own size — see
     // `make_shared` for why inheriting the local cluster count was wrong.
     let power = cluster_count::<SharedCluster>(mb);
-    let clusters = (0..power)
-        .map(|_| SharedCluster::default())
-        .collect::<Vec<_>>()
-        .into_boxed_slice();
+    let mut clusters = Vec::new();
+    clusters.try_reserve_exact(power).ok()?;
+    clusters.resize_with(power, SharedCluster::default);
     SharedTable {
-        clusters,
+        clusters: clusters.into_boxed_slice(),
         mask: power - 1,
         age: AtomicU8::new(age),
     }
+    .into()
 }
 
 fn cluster_count<T>(mb: usize) -> usize {
