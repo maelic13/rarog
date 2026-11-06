@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.1 | READY_FOR_IMPLEMENTATION | I1 | In order of value: the table handle and the helper lifecycle first |
 | D.5.2 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.3 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.4 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -489,16 +488,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   touches hot code (6, 9, 10) adds the allocation guard and one pooled-NPS
   read by PROCESS's method. No strength gate: AGENTS' repair case 1 with the
   named activation or correctness read. In order of value:
-    - **D.5.1 The table handle — `I1`.** (TT-1, TT-3, DRIVER-10, DRIVER-20; the 2026-10-06
-     audit in D.2): delete the `Clone` derives on `TranspositionTable`,
-     `TtStorage` and `LocalTable`; a `SharedTt(Arc<SharedTable>)` is the only
-     thing a `WorkerJob` carries, and the worker drops it after sending its
-     result, so an idle helper no longer pins the previous table through a
-     `Hash` change (today a resize holds old plus new until each helper's next
-     job, locked large-page memory included, and the comment that two are
-     never held at once is true only on the page-backing path). Read: `Threads
-     4`, `Hash 1024`, one search, `setoption Hash 2048`, the process's private
-     bytes; a Threads-2 depth smoke completes.
+    - **D.5.1 The table handle — `I1`, DONE 2026-11-06.** (TT-1, TT-3, DRIVER-10,
+     DRIVER-20; the 2026-10-06 audit in D.2.) `7f81c4e`: the `Clone` derives
+     on `TranspositionTable`, `TtStorage` and `LocalTable` are gone; a
+     `SharedTt(Arc<SharedTable>)`, which `make_shared` returns, is all a
+     `WorkerJob` carries of the table, and an idle helper no longer pins the
+     previous table through a `Hash` change. The helper releases the handle
+     before sending its result, not after as first written: the main thread
+     then holds the table alone once it has every result, which a test can
+     assert without a race (`a_helper_holds_the_table_only_for_its_job`;
+     keeping the handle fails it with 4 handles against 1). Read: `Threads
+     4`, `Hash 1024`, one search, `Hash 2048`: private bytes 2,211 MiB
+     against 3,229 on `4d906a9`, and that binary fell to 2,205 only after its
+     next search. A Threads-2 `go depth 10` completes on both. Fingerprint
+     14,749,043 / EBF 2.564 on both slider backends; debug and release
+     suites, fmt and clippy clean. The transient of old plus new during
+     `resize` stays, for D.5.2.
     - **D.5.2 A `Hash` change at `Threads > 1` fills the table twice — `I1`.** (TT-2):
      `configure` builds a local table that `make_shared` then drops; build the
      shared form directly. The property that a failed resize keeps the old
@@ -506,8 +511,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     - **D.5.3 The fixed-depth vote — `I1`.** (DRIVER-12): helpers drop the depth limit and
      the weighted vote runs for every single-line search, so `go depth N` at
      `Threads > 1` can report a deeper helper's result and print `info depth
-     N+1`; skip the vote under a depth limit (the donor answers with thread
-     0). A test at Threads 4.
+     N+1`, or a shallower one's: at Threads 4 and `go depth 4` the main thread
+     reached 4 and helpers stopped at 2 to 5, and one search returned a result
+     below depth 4 (seen 2026-11-06 in D.5.1's test). Skip the vote under a
+     depth limit (the donor answers with thread 0). A test at Threads 4.
     - **D.5.4 Helper start-up — `I1`.** (DRIVER-14, TT-8): each helper builds and discards a
      64 MiB table (`Searcher::default()` then `TranspositionTable::new(1)`),
      touches about 32 MB of tables, and `isready` does not wait for any of it;

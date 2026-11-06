@@ -66,6 +66,8 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   says so and keeps its current table, on every system; on macOS such a
   setting used to stall the engine. The `Hash` option's maximum is now
   the machine's memory.
+- **Changing `Hash` frees the old table.** With more than one thread, the
+  old table stayed in memory until the next search.
 
 ## [2.6.0] - 2026-10-22
 
