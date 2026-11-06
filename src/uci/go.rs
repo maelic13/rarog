@@ -109,9 +109,7 @@ pub fn parse(args: &[String]) -> Go {
     if let Some(index) = at(GoKeyword::Mate) {
         let mate: usize = parse_or_notice(args, index, "mate", &mut notices);
         if mate > 0 {
-            // Mate in N -> search 2N-1 plies.
-            let plies = mate.saturating_mul(2).saturating_sub(1);
-            limits.mate_plies = Some(u32::try_from(plies).unwrap_or(u32::MAX).max(1));
+            limits.mate = Some(u32::try_from(mate).unwrap_or(u32::MAX));
         }
     }
     if let Some(index) = at(GoKeyword::MovesToGo) {

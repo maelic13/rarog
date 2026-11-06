@@ -1090,6 +1090,11 @@ impl Searcher {
                 self.send_info(depth, best_score);
             }
 
+            if self.mate_limit_proved(best_score) {
+                self.stop_the_pool();
+                break;
+            }
+
             // Only one legal move: it will be played whatever the score is, so
             // in a CLOCK-MANAGED search there is nothing to buy by searching on.
             //
@@ -1263,6 +1268,23 @@ impl Searcher {
                 SearchExit::Stop
             },
             ponderhit: self.td.ponderhit,
+        }
+    }
+
+    /// Whether `score`, from a completed iteration, is a mate within `go mate`'s
+    /// limit, for either side. Only a completed iteration's score is exact.
+    fn mate_limit_proved(&self, score: i32) -> bool {
+        let distance = MATE_SCORE - score.abs();
+        self.cfg
+            .limits
+            .mate_plies
+            .is_some_and(|plies| distance < infra::to_i32(MAX_PLY) && distance <= plies)
+    }
+
+    /// End every thread's search; a serial search has no pool to tell.
+    fn stop_the_pool(&self) {
+        if let Some(shared) = self.shared.pool() {
+            shared.request_stop();
         }
     }
 
@@ -1517,6 +1539,11 @@ impl Searcher {
                 .iter()
                 .map(|&mv| self.reported_line(mv, depth, RootBound::Exact))
                 .collect();
+
+            if self.mate_limit_proved(best_score) {
+                self.stop_the_pool();
+                break;
+            }
 
             tot_best_move_changes /= 2.0;
             if bestmove != previous_bestmove {
@@ -1981,7 +2008,14 @@ impl Searcher {
     /// confirmed leaves that move's bound line last, and the pool's vote can
     /// choose a helper's move no line mentioned (GitHub issue #1).
     pub(super) fn report_result_line(&self, result: &SearchResult) {
-        if result.pv.is_empty() || self.td.last_reported_move.get() == result.bestmove {
+        if self.td.last_reported_move.get() != result.bestmove {
+            self.report_line(result);
+        }
+    }
+
+    /// Print `result`'s line whatever was printed last.
+    pub(super) fn report_line(&self, result: &SearchResult) {
+        if result.pv.is_empty() {
             return;
         }
         self.send_full_info_line(

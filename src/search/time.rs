@@ -27,6 +27,9 @@ pub(super) struct RuntimeLimits {
     /// caller wants an evaluation, not a move, and not under `searchmoves`,
     /// where one move left is the caller's choice of line, not a forced move.
     pub(super) forced_move_shortcut: bool,
+    /// `go mate N` as a distance: a mate within this many plies, for either
+    /// side, ends the search.
+    pub(super) mate_plies: Option<i32>,
     /// The search may end on a proved mate ([`MateWatch`]): a clock search
     /// that asked for a move and nothing else. Analysis, ponder, movetime,
     /// depth, node and `searchmoves` requests run to their own limit.
@@ -82,6 +85,7 @@ impl Default for RuntimeLimits {
             maximum_ms: f64::INFINITY,
             movetime_mode: false,
             forced_move_shortcut: true,
+            mate_plies: None,
             mate_stop: false,
             tb_extension_ms: None,
             tb_extension_latest_start_ms: f64::INFINITY,
@@ -113,10 +117,8 @@ pub(super) fn compute_runtime_limits(
     max_depth: usize,
 ) -> RuntimeLimits {
     // `None` = no depth limit.
-    let depth = [options.depth, options.mate_plies]
-        .into_iter()
-        .flatten()
-        .min()
+    let depth = options
+        .depth
         .map_or(max_depth, |d| (d as usize).clamp(1, max_depth));
     let mut optimum_ms = f64::INFINITY;
     let mut maximum_ms = f64::INFINITY;
@@ -225,7 +227,7 @@ pub(super) fn compute_runtime_limits(
             optimum_ms = optimum_ms.min(maximum_ms);
             mate_stop = !analysis_mode
                 && options.depth.is_none()
-                && options.mate_plies.is_none()
+                && options.mate.is_none()
                 && options.nodes == 0
                 && options.search_moves.is_empty();
         }
@@ -237,7 +239,12 @@ pub(super) fn compute_runtime_limits(
         optimum_ms,
         maximum_ms,
         movetime_mode,
-        forced_move_shortcut: !analysis_mode && options.search_moves.is_empty(),
+        forced_move_shortcut: !analysis_mode
+            && options.search_moves.is_empty()
+            && options.mate.is_none(),
+        mate_plies: options
+            .mate
+            .map(|moves| i32::try_from(moves).unwrap_or(i32::MAX).saturating_mul(2)),
         mate_stop,
         tb_extension_ms,
         tb_extension_latest_start_ms,
@@ -790,7 +797,7 @@ mod tests {
                 ..clock.clone()
             },
             SearchLimits {
-                mate_plies: Some(5),
+                mate: Some(3),
                 ..clock.clone()
             },
             SearchLimits {
@@ -987,18 +994,25 @@ mod tests {
         assert_eq!(unlimited.depth, 42);
     }
 
+    /// A mate search has no ply limit of its own, wants the mate rather than a
+    /// move, and reads N as a distance in plies.
     #[test]
-    fn a_mate_search_stops_at_its_plies_or_a_shallower_depth() {
+    fn a_mate_search_is_bounded_only_by_its_proof() {
         let mate = SearchLimits {
-            mate_plies: Some(5),
+            mate: Some(3),
             ..SearchLimits::default()
         };
-        assert_eq!(limits(0, &mate).depth, 5);
-        let both = |depth| SearchLimits {
-            depth: Some(depth),
-            ..mate.clone()
+        let plain = limits(0, &SearchLimits::default());
+        let limited = limits(0, &mate);
+        assert_eq!(limited.depth, plain.depth);
+        assert_eq!(limited.mate_plies, Some(6));
+        assert!(plain.forced_move_shortcut && !limited.forced_move_shortcut);
+        assert_eq!(plain.mate_plies, None);
+
+        let deep = SearchLimits {
+            mate: Some(u32::MAX),
+            ..SearchLimits::default()
         };
-        assert_eq!(limits(0, &both(3)).depth, 3);
-        assert_eq!(limits(0, &both(9)).depth, 5);
+        assert_eq!(limits(0, &deep).mate_plies, Some(i32::MAX));
     }
 }

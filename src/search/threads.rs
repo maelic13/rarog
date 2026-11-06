@@ -284,7 +284,7 @@ impl Searcher {
     ) -> SearchResult {
         let game_ply = 2 * root.fullmove().saturating_sub(1) as u32
             + (root.side_to_move() == Color::Black) as u32;
-        // Helpers must NOT inherit the main thread's fixed depth or mate plies.
+        // Helpers must NOT inherit the main thread's fixed depth.
         //
         // Under a clock this is invisible — every thread runs until the main
         // thread's time manager stops the pool. But under `go depth N` a helper
@@ -294,7 +294,6 @@ impl Searcher {
         // main thread alone owns the depth contract and the reported result.
         let mut helper_limits = limits.clone();
         helper_limits.depth = None;
-        helper_limits.mate_plies = None;
         self.reset_search_state(
             &helper_limits,
             engine_options,
@@ -418,6 +417,7 @@ impl Searcher {
                 .iter()
                 .any(|result| result.exit == SearchExit::Quit);
         let answer = pool_answer(&helper_results, root_moves, lines, limits);
+        let answering_thread = answer.as_ref().map_or(0, |(index, _)| *index);
         let mut best = answer.map(|(_, result)| result).unwrap_or(SearchResult {
             bestmove: root_moves[0],
             pondermove: Move::NULL,
@@ -447,14 +447,24 @@ impl Searcher {
         } else {
             SearchExit::Stop
         };
-        // Only the main thread prints, and its last line need not describe the
-        // move the vote chose; report the winner's line where it does not.
         if emit_info {
-            self.report_result_line(&best);
+            self.report_pool_answer(answering_thread, &best);
         }
         self.finish_tb_line(&mut best, lines, emit_info);
         self.shared.leave_pool();
         best
+    }
+
+    /// Only the main thread prints, so a helper's answer is printed here even
+    /// for the move the main thread's last line names: its score and line are
+    /// the helper's, a mate the main thread never saw among them. The main
+    /// thread's own answer prints only if its last line names another move.
+    fn report_pool_answer(&self, answering_thread: usize, result: &SearchResult) {
+        if answering_thread == 0 {
+            self.report_result_line(result);
+        } else {
+            self.report_line(result);
+        }
     }
 
     /// A root move's position in the search's full root list: the index of
@@ -555,12 +565,15 @@ impl Searcher {
 #[cfg(test)]
 mod tests {
     use std::sync::Mutex;
+    use std::time::{Duration, Instant};
 
     use super::*;
     use crate::eval::MATE_SCORE;
     use crate::search::options::{HashRequest, SearchOptions};
     use crate::search::{InfoReport, InfoSink};
     use crate::uci::info::report_line;
+
+    const SELF_STOP_LIMIT: Duration = Duration::from_secs(30);
 
     struct Recorder(Arc<Mutex<Vec<String>>>);
 
@@ -726,7 +739,7 @@ mod tests {
             test_search_result(d2d4, TB_WIN_SCORE, 4),
         ];
         let limits = SearchLimits {
-            mate_plies: Some(5),
+            mate: Some(3),
             ..SearchLimits::default()
         };
 
@@ -734,6 +747,110 @@ mod tests {
 
         assert_eq!(index, 1);
         assert_eq!(selected.bestmove, d2d4);
+    }
+
+    const MATE_IN_2: &str = "k7/8/2K5/8/8/8/8/7R w - - 0 1";
+    const MATED_IN_1: &str = "7k/8/5K2/8/8/8/6Q1/8 b - - 0 1";
+
+    /// A search meant to end itself: it stops here instead of hanging the
+    /// suite, and the elapsed time says which it was.
+    fn within_a_limit() -> impl FnMut() -> SearchEvent {
+        let start = Instant::now();
+        move || {
+            if start.elapsed() > SELF_STOP_LIMIT {
+                SearchEvent::Stop
+            } else {
+                SearchEvent::None
+            }
+        }
+    }
+
+    fn mate_search(fen: &str, mate: u32, threads: usize) -> SearchResult {
+        let mut options = SearchOptions::default();
+        options.engine.hash_mb = 1;
+        options.engine.threads = threads;
+        options.limits.mate = Some(mate);
+        let mut searcher = Searcher::default();
+        searcher.configure(&options.engine, HashRequest::Sent);
+        let board = Board::from_fen(fen).expect("valid FEN");
+        searcher.search(board, &options, false, within_a_limit())
+    }
+
+    #[test]
+    fn a_mate_search_ends_itself_on_the_proof_for_either_side() {
+        for threads in [1, 4] {
+            let start = Instant::now();
+            assert_eq!(
+                mate_search(MATE_IN_2, 2, threads).score,
+                MATE_SCORE - 3,
+                "Threads {threads}"
+            );
+            assert_eq!(
+                mate_search(MATED_IN_1, 1, threads).score,
+                2 - MATE_SCORE,
+                "Threads {threads}"
+            );
+            assert!(start.elapsed() < SELF_STOP_LIMIT, "Threads {threads}");
+        }
+    }
+
+    /// Either side's mate within the limit ends the search at once. The same
+    /// mate beyond a tighter limit ends nothing: the search goes on past it,
+    /// here as far as a search goes in so small a position.
+    #[test]
+    fn only_a_mate_within_the_limit_ends_the_search() {
+        let won = mate_search(MATE_IN_2, 2, 1);
+        let lost = mate_search(MATED_IN_1, 1, 1);
+        let beyond = mate_search(MATE_IN_2, 1, 1);
+        assert!(won.depth < 10, "{}", won.depth);
+        assert!(lost.depth < 10, "{}", lost.depth);
+        assert!(beyond.depth > 50, "{}", beyond.depth);
+        assert_eq!(beyond.score, MATE_SCORE - 3);
+    }
+
+    /// A helper's proof ends the pool's search: the main thread need not find
+    /// the mate itself.
+    #[test]
+    fn a_helpers_proof_stops_the_pool() {
+        let board = Board::from_fen(MATE_IN_2).expect("valid FEN");
+        let moves = board.generate_legal_moves();
+        let context = Arc::new(SharedContext::new(0, moves.len(), 2));
+        let mut helper = Searcher::default();
+        helper.shared.join_pool(Arc::clone(&context));
+        helper.td.thread_id = 1;
+        let limits = SearchLimits {
+            mate: Some(2),
+            ..SearchLimits::default()
+        };
+
+        let result = helper.search_worker(
+            board,
+            &limits,
+            &EngineOptions::default(),
+            &moves,
+            TbRootDecision::default(),
+            &mut within_a_limit(),
+        );
+
+        assert_eq!(result.score, MATE_SCORE - 3);
+        assert_eq!(context.stop_state.load(Ordering::Relaxed), STOP_SEARCH);
+    }
+
+    #[test]
+    fn a_helpers_answer_is_printed_even_for_the_move_already_shown() {
+        let e2e4 = Move::from_uci("e2e4").expect("valid move");
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        searcher.td.last_reported_move.set(e2e4);
+        let answer = test_search_result(e2e4, MATE_SCORE - 3, 5);
+
+        searcher.report_pool_answer(0, &answer);
+        assert!(lines.lock().unwrap().is_empty(), "the main thread said so");
+
+        searcher.report_pool_answer(2, &answer);
+        let printed = lines.lock().unwrap();
+        assert_eq!(printed.len(), 1);
+        assert!(printed[0].contains("score mate 2"), "{}", printed[0]);
     }
 
     /// The whole path at four threads: the result and the last line printed

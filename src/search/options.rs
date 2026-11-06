@@ -82,9 +82,10 @@ pub struct SearchLimits {
     /// Fixed-depth limit from `go depth N`. `None` = no depth limit (the
     /// search runs to the internal MAX_DEPTH ceiling).
     pub depth: Option<u32>,
-    /// The main thread's ply limit from `go mate N`, `2N - 1`. It is not a depth
-    /// limit: the pool's vote still chooses, so a mate a helper found counts.
-    pub mate_plies: Option<u32>,
+    /// `go mate N`: the search ends once a completed iteration on any thread
+    /// proves a mate within N moves, for either side, and otherwise runs until
+    /// stopped. It is no depth limit, so the pool's vote still chooses.
+    pub mate: Option<u32>,
     pub movestogo: usize,
     pub nodes: u64,
     pub infinite: bool,
