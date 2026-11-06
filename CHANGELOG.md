@@ -36,6 +36,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   `Rarog dev-20261104-209b555a`, and the start-up line names the CPU build.
 - **Building from source: `--native` is optional.** The build instructions no
   longer recommend it: it is not always faster, so compare with `bench`.
+- **`go mate` searches until it finds the mate.** It no longer stops at a fixed
+  depth, so it finds more mates. In a position without one it runs until
+  `stop`.
 
 ### Fixed
 
@@ -70,6 +73,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   old table stayed in memory until the next search.
 - **`go depth` keeps to its depth.** With more than one thread, the answer
   could come from a search shallower or deeper than the depth asked for.
+- **Mates with more than one thread.** The engine now always takes the
+  shortest mate its threads found, and always shows a mate that a helper thread
+  found.
 
 ## [2.6.0] - 2026-10-22
 

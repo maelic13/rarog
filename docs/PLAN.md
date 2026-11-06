@@ -335,9 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.3.1 | RESEARCH | R2 | The donors differ on who answers: the maintainer's decision first |
-| D.5.3.2 | RESEARCH | R2 | The donors differ on which thread may stop: the maintainer's decision first |
-| D.5.3.3 | RESEARCH | R2 | The donors differ on the weight: the maintainer's decision first |
 | D.5.4 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.5 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.6 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -513,8 +510,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      maintainer's trade: old and new are held together while the new one
      fills. No test sees the single fill, since form and size come out the
      same either way; the read does. `Threads 4`, `Hash 1024` to `4096`,
-     `setoption` to `readyok`, five alternating fresh processes: median 224
-     ms against 648 on `7f81c4e`. Private bytes unchanged from D.5.1 (2,211
+     `setoption` to `readyok`, five alternating fresh processes, on an idle
+     host: median 208 ms against 615 on `7f81c4e` (a first read, 224 against
+     648, ran beside another session's load and is superseded). Private bytes
+     unchanged from D.5.1 (2,211
      MiB). Fingerprint 14,749,043 / EBF 2.564 on both slider backends; debug
      and release suites, fmt and clippy clean. `make_shared` itself still
      cannot report a refusal, on a `Threads` change: TT-15, G.1's.
@@ -531,43 +530,62 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      and had kept a vote for that first iteration, both corrected by maintainer
      decision 2026-11-06. `pool_answer`'s tests fail on either side's mutation;
      the whole-path test at Threads 4, 30 searches, caught a removed branch
-     only 1 time in 3, since helpers race. Read, 30 fresh `go depth 10` per
-     row, last `info depth`: all 10 at Threads 2 and at Threads 4, against 8 to
-     9 in 5 of 30 and 8 to 11 in 3 of 30 on `8859e67`. `go depth 30` with
-     `stop` answered 30 of 30, and MultiPV 2 reached its depth. `go mate` over
-     WAC's 300 positions at Threads 4, against `8859e67`, which also votes: 29
-     mates to 28 at `go mate 3`, 54 to 54 at `go mate 5`, with three positions
-     found only by each binary, so that much is run-to-run noise. Fingerprint
-     14,749,043 / EBF 2.564 on both slider backends; debug and release suites,
-     fmt and clippy clean. Still unlike Stockfish, and not changed here:
-     MultiPV is the main thread's where Stockfish votes, since Rarog's helpers
-     search one line; `go mate` stops at `2N - 1` plies where Stockfish runs
-     until a mate is proved or it is stopped; and the vote weighs score by
-     depth where Stockfish 19 weighs score alone, which is a change at the
-     rated configuration and so needs a gate. Those three are the addenda
-     below, taken before D.5.4 by maintainer decision 2026-11-06.
-        - **D.5.3.1 Helpers and the answer under MultiPV — `R2`.** Rarog's helpers
-         search one line and the main thread answers, B.2.0.2's contract.
-         Both donors' helpers search every line. Reckless answers with thread 0;
-         Stockfish votes since its "multiPV: protect mated-ins and allow thread
-         selection" (PR 6728) and prints the winner's lines. Question: whether
-         helpers search every line, and who answers.
-        - **D.5.3.2 `go mate` without a ply limit — `R2`.** Rarog stops the main
-         thread at `2N - 1` plies. Both donors have no ply limit and run until a
-         mate within N is proved or they are stopped, so a position without one
-         runs until `stop`. Reckless lets only thread 0 end the search; Stockfish
-         lets any thread, from "Improve multi-threaded go-mate searches" (PR
-         6668), which guards against inexact mate scores from aborted searches.
-         No effect on games.
-        - **D.5.3.3 The vote's weight and its decisive order — `R2`.** Rarog
-         and Reckless weigh `(score - min + c) * depth`, with `c` 14 and 10;
-         Stockfish 19 weighs score alone (`c` 14) after "Simplify thread
+     only 1 time in 3, since helpers race. Read on an idle host, 30 fresh `go
+     depth 10` per row, last `info depth`: all 10 at Threads 2 and at Threads
+     4, with the addenda below in; `8859e67`, read beside another session's
+     load and not read again, gave 8 to 9 in 5 of 30 and 8 to 11 in 3 of 30.
+     `go depth 30` with `stop` answered 30 of 30, and MultiPV 2 reached its
+     depth. Fingerprint 14,749,043 / EBF 2.564 on both slider backends; debug
+     and release suites, fmt and clippy clean. MultiPV, `go mate` and the vote
+     then still differed from the donors: the addenda below, taken before D.5.4
+     by maintainer decision 2026-11-06.
+        - **D.5.3.1 Helpers and the answer under MultiPV — `R2`, DONE 2026-11-06.**
+         Rarog's helpers searched one line and the main thread answered,
+         B.2.0.2's contract, which this replaces. Both donors' helpers search
+         every line. Reckless answers with thread 0; Stockfish votes since its
+         "multiPV: protect mated-ins and allow thread selection" (PR 6728) and
+         prints the winner's lines. Maintainer decision: helpers search every
+         line and the main thread answers, as in Reckless, so the lines stay one
+         thread's list (`af2bb1f`). A helper's mate watch no longer ends it
+         alone. Nothing tests that `search_parallel` hands helpers the line
+         count; `a_helper_searches_every_line` calls `search_worker` directly.
+         Read, idle host, `go depth 16`, MultiPV 3, Threads 4, nine alternating
+         runs: 809 ms against 879 at the start position (0.92), 1,222 against
+         1,033 in a middlegame (1.18). Frozen prediction: medians within 10%,
+         and not done only if 10% or more slower on both. The rule did not fire.
+         Calibration: the prediction missed on the middlegame, in magnitude, and
+         single runs spread by about 40%, so nine runs do not resolve the sign;
+         time to depth also says nothing of the lines' quality.
+        - **D.5.3.2 `go mate` without a ply limit — `R2`, DONE 2026-11-06.** Rarog
+         stopped the main thread at `2N - 1` plies. Both donors have no ply limit
+         and run until a mate within N is proved or they are stopped. Reckless
+         lets only thread 0 end the search; Stockfish lets any thread, from
+         "Improve multi-threaded go-mate searches" (PR 6668). Maintainer
+         decision: no limit, and any thread (`bbc10d2`). A position without a
+         mate runs until `stop` or the maximum depth. Only a completed
+         iteration's score counts, and Rarog takes no other into its result, so
+         Stockfish's guard against aborted scores has no counterpart here. The
+         forced-move shortcut stands aside. A defect found by the read and fixed
+         here: a helper's answer printed its line only for a different move, so
+         a helper's proof could end the search with the main thread's last line
+         showing no mate, 10 of 36 searches over twelve positions; 0 of 36 now,
+         and both donors print whenever a helper answers. Read, idle host, WAC's
+         300 positions at 200 ms, mates within N, against `a458e17`: `go mate 3`
+         36 to 23 at one thread and 37 to 24 at four; `go mate 5` 60 to 46 and
+         61 to 51, none lost in any row; three more rounds of `go mate 5` at
+         four threads, 62, 62, 62 against 48, 51, 49. `stop` ended a search in
+         1 ms at both counts. No effect on games.
+        - **D.5.3.3 The vote's weight and its decisive order — `R2`, DONE 2026-11-06.**
+         Rarog and Reckless weigh `(score - min + c) * depth`, with `c` 14 and
+         10; Stockfish 19 weighs score alone (`c` 14) after "Simplify thread
          selection" (PR 6935), which passed as a non-regression at STC and LTC
          over 437,904 and 484,778 SMP games, so its evidence is neutrality, not
-         a gain. Separately, both donors take the shortest mate among decisive
-         results, Stockfish since a 2019 bug fix; Rarog's `parallel_result_key`
-         ranks decisive results by vote first, so it can pick a longer mate.
-         Changes move at `Threads > 1` only, not the fingerprint.
+         a gain. Maintainer decision: the weight stays, Reckless's form, with no
+         gate; retry only if the vote shows up as a defect. Both donors take the
+         shortest mate among decisive results, Stockfish since a 2019 bug fix,
+         and `parallel_result_key` ranked them by vote first; now the shortest
+         decides (`a458e17`). Pinned by a forced test for wins and losses, not
+         measured in games. It moves at `Threads > 1` only.
     - **D.5.4 Helper start-up — `I1`.** (DRIVER-14, TT-8): each helper builds and discards a
      64 MiB table (`Searcher::default()` then `TranspositionTable::new(1)`),
      touches about 32 MB of tables, and `isready` does not wait for any of it;
