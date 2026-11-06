@@ -173,6 +173,32 @@ fn select_parallel_result(
         .map(|(index, result)| (index, result.clone()))
 }
 
+/// The result that answers for the pool and the index of its thread; index 0
+/// is the main thread.
+///
+/// With more than one line the main thread owns every reported line and the
+/// move, and the helpers, having searched one line, do not vote. Under a depth
+/// limit only the main thread searches to that depth, and a helper's depth says
+/// only how far it got before the main thread finished; a main thread stopped
+/// inside its first iteration has no result yet, so the vote stands in.
+fn pool_answer(
+    results: &[SearchResult],
+    root_moves: &[Move],
+    lines: usize,
+    limits: &SearchLimits,
+) -> Option<(usize, SearchResult)> {
+    let main = results.first();
+    if lines > 1 {
+        return main.cloned().map(|result| (0, result));
+    }
+    if limits.depth.is_some()
+        && let Some(main) = main.filter(|result| is_root_result(result, root_moves))
+    {
+        return Some((0, main.clone()));
+    }
+    select_parallel_result(results, root_moves)
+}
+
 fn is_root_result(result: &SearchResult, root_moves: &[Move]) -> bool {
     result.depth > 0 && root_moves.contains(&result.bestmove)
 }
@@ -388,16 +414,8 @@ impl Searcher {
             || helper_results
                 .iter()
                 .any(|result| result.exit == SearchExit::Quit);
-        // With more than one line the main thread's line 1 is the answer; the
-        // helpers searched a single line and do not vote.
-        // With more than one line the main thread owns every reported line and
-        // the move, so its result is the answer and index 0 says so.
-        let voted = if lines > 1 {
-            helper_results.first().cloned().map(|result| (0, result))
-        } else {
-            select_parallel_result(&helper_results, root_moves)
-        };
-        let mut best = voted.map(|(_, result)| result).unwrap_or(SearchResult {
+        let answer = pool_answer(&helper_results, root_moves, lines, limits);
+        let mut best = answer.map(|(_, result)| result).unwrap_or(SearchResult {
             bestmove: root_moves[0],
             pondermove: Move::NULL,
             score: -INF_SCORE,
@@ -533,8 +551,23 @@ impl Searcher {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Mutex;
+
     use super::*;
     use crate::search::options::{HashRequest, SearchOptions};
+    use crate::search::{InfoReport, InfoSink};
+    use crate::uci::info::report_line;
+
+    struct Recorder(Arc<Mutex<Vec<String>>>);
+
+    impl InfoSink for Recorder {
+        fn line(&self, line: &str) {
+            self.0.lock().unwrap().push(line.to_string());
+        }
+        fn report(&self, report: &InfoReport<'_>) {
+            self.line(&report_line(report));
+        }
+    }
 
     #[test]
     fn parallel_result_selection_uses_weighted_helper_votes() {
@@ -590,6 +623,103 @@ mod tests {
         assert_eq!(index, 1);
         assert_eq!(selected.pv, vec![d2d4, e2e4]);
         assert_eq!(selected.seldepth, 17);
+    }
+
+    fn depth_limit(depth: u32) -> SearchLimits {
+        SearchLimits {
+            depth: Some(depth),
+            ..SearchLimits::default()
+        }
+    }
+
+    /// Helpers ahead of the main thread and behind it both outvote it, and
+    /// under a depth limit neither answers.
+    #[test]
+    fn a_depth_limit_is_answered_by_the_main_thread_whatever_the_vote_says() {
+        let e2e4 = Move::from_uci("e2e4").expect("valid move");
+        let d2d4 = Move::from_uci("d2d4").expect("valid move");
+        let root_moves = [e2e4, d2d4];
+        for helper_depth in [3, 7] {
+            let results = vec![
+                test_search_result(e2e4, 10, 6),
+                test_search_result(d2d4, 300, helper_depth),
+                test_search_result(d2d4, 300, helper_depth),
+                test_search_result(d2d4, 300, helper_depth),
+            ];
+            let (voted, _) =
+                pool_answer(&results, &root_moves, 1, &SearchLimits::default()).expect("answered");
+            assert_ne!(voted, 0, "on the clock the vote goes to a helper");
+
+            let (index, selected) =
+                pool_answer(&results, &root_moves, 1, &depth_limit(6)).expect("answered");
+            assert_eq!(index, 0);
+            assert_eq!((selected.bestmove, selected.depth), (e2e4, 6));
+        }
+    }
+
+    #[test]
+    fn more_than_one_line_is_answered_by_the_main_thread() {
+        let e2e4 = Move::from_uci("e2e4").expect("valid move");
+        let d2d4 = Move::from_uci("d2d4").expect("valid move");
+        let results = vec![
+            test_search_result(e2e4, 10, 6),
+            test_search_result(d2d4, 300, 9),
+        ];
+
+        let (index, _) =
+            pool_answer(&results, &[e2e4, d2d4], 2, &SearchLimits::default()).expect("answered");
+
+        assert_eq!(index, 0);
+    }
+
+    /// A main thread stopped inside its first iteration holds only the first
+    /// root move, unsearched; a helper that finished one does better.
+    #[test]
+    fn a_main_thread_without_a_result_leaves_the_answer_to_the_vote() {
+        let e2e4 = Move::from_uci("e2e4").expect("valid move");
+        let d2d4 = Move::from_uci("d2d4").expect("valid move");
+        let results = vec![
+            test_search_result(e2e4, -INF_SCORE, 0),
+            test_search_result(d2d4, 20, 2),
+        ];
+
+        let (index, selected) =
+            pool_answer(&results, &[e2e4, d2d4], 1, &depth_limit(6)).expect("answered");
+
+        assert_eq!(index, 1);
+        assert_eq!(selected.bestmove, d2d4);
+    }
+
+    /// The whole path at four threads: the result and the last line printed
+    /// both name the depth asked for, whatever the helpers reached. Helpers
+    /// race, so this catches a wrong answer only some of the time; the tests
+    /// on `pool_answer` above are the ones that always do.
+    #[test]
+    fn go_depth_at_four_threads_reports_that_depth() {
+        const DEPTH: usize = 6;
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let mut options = SearchOptions::default();
+        options.engine.hash_mb = 1;
+        options.engine.threads = 4;
+        options.limits.depth = Some(6);
+        let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        searcher.configure(&options.engine, HashRequest::Sent);
+
+        for run in 0..30 {
+            lines.lock().unwrap().clear();
+            searcher.new_game();
+            let result = searcher.search(Board::default(), &options, true, || SearchEvent::None);
+            assert_eq!(result.depth, DEPTH, "run {run}");
+            let printed = lines.lock().unwrap();
+            let last = printed
+                .iter()
+                .rfind(|line| line.starts_with("info depth"))
+                .expect("a depth line");
+            assert!(
+                last.starts_with(&format!("info depth {DEPTH} ")),
+                "run {run}: {last}"
+            );
+        }
     }
 
     /// Every helper has let go of the table by the time the search returns,
