@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.2 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.3 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.4 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.5 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -504,16 +503,27 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      14,749,043 / EBF 2.564 on both slider backends; debug and release
      suites, fmt and clippy clean. The transient of old plus new during
      `resize` stays, for D.5.2.
-    - **D.5.2 A `Hash` change at `Threads > 1` fills the table twice — `I1`.** (TT-2):
-     `configure` builds a local table that `make_shared` then drops; build the
-     shared form directly. The property that a failed resize keeps the old
-     table is pinned by a test and is the maintainer's trade.
+    - **D.5.2 A `Hash` change at `Threads > 1` fills the table twice — `I1`, DONE 2026-11-06.** (TT-2.)
+     `8859e67`: `configure` builds the shared form directly through
+     `resize_shared`, and the shared allocation can now refuse a size, so a
+     failed resize keeps the old table at any thread count; two tests pin
+     that, in the table and through `configure`. The price stays the
+     maintainer's trade: old and new are held together while the new one
+     fills. No test sees the single fill, since form and size come out the
+     same either way; the read does. `Threads 4`, `Hash 1024` to `4096`,
+     `setoption` to `readyok`, five alternating fresh processes: median 224
+     ms against 648 on `7f81c4e`. Private bytes unchanged from D.5.1 (2,211
+     MiB). Fingerprint 14,749,043 / EBF 2.564 on both slider backends; debug
+     and release suites, fmt and clippy clean. `make_shared` itself still
+     cannot report a refusal, on a `Threads` change: TT-15, G.1's.
     - **D.5.3 The fixed-depth vote — `I1`.** (DRIVER-12): helpers drop the depth limit and
      the weighted vote runs for every single-line search, so `go depth N` at
      `Threads > 1` can report a deeper helper's result and print `info depth
      N+1`, or a shallower one's: at Threads 4 and `go depth 4` the main thread
      reached 4 and helpers stopped at 2 to 5, and one search returned a result
-     below depth 4 (seen 2026-11-06 in D.5.1's test). Skip the vote under a
+     below depth 4 (seen 2026-11-06 in D.5.1's test); at Threads 2 and `go
+     depth 10` the last `info depth` was 8 or 9 in 3 of 20 runs, and 9 in 2 of
+     20 on `4d906a9`, before either repair. Skip the vote under a
      depth limit (the donor answers with thread 0). A test at Threads 4.
     - **D.5.4 Helper start-up — `I1`.** (DRIVER-14, TT-8): each helper builds and discards a
      64 MiB table (`Searcher::default()` then `TranspositionTable::new(1)`),
