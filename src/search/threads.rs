@@ -213,7 +213,7 @@ fn parallel_result_key(
     result: &SearchResult,
     vote: i64,
     main_thread: bool,
-) -> (i32, i64, bool, usize, i32, bool) {
+) -> (i32, i32, i64, bool, usize, i32, bool) {
     let decisive_rank = if result.score >= TB_WIN_SCORE {
         2
     } else if result.score <= -TB_WIN_SCORE {
@@ -221,8 +221,16 @@ fn parallel_result_key(
     } else {
         1
     };
+    // Among decisive results the shortest mate or conversion decides: each is
+    // proved, so a vote for a longer one would only delay the end.
+    let decisive_length = if decisive_rank == 1 {
+        0
+    } else {
+        result.score.abs()
+    };
     (
         decisive_rank,
+        decisive_length,
         vote,
         !result.pondermove.is_null(),
         result.depth,
@@ -549,6 +557,7 @@ mod tests {
     use std::sync::Mutex;
 
     use super::*;
+    use crate::eval::MATE_SCORE;
     use crate::search::options::{HashRequest, SearchOptions};
     use crate::search::{InfoReport, InfoSink};
     use crate::uci::info::report_line;
@@ -599,6 +608,28 @@ mod tests {
 
         assert_eq!(selected.bestmove, d2d4);
         assert_eq!(index, 1);
+    }
+
+    /// Three threads on a longer mate outvote the one that found the shortest,
+    /// which decides all the same; so does the nearest mate when all are lost.
+    #[test]
+    fn the_shortest_decisive_result_wins_whatever_the_vote_says() {
+        let e2e4 = Move::from_uci("e2e4").expect("valid move");
+        let d2d4 = Move::from_uci("d2d4").expect("valid move");
+        for sign in [1, -1] {
+            let results = vec![
+                test_search_result(d2d4, sign * (MATE_SCORE - 9), 12),
+                test_search_result(d2d4, sign * (MATE_SCORE - 9), 12),
+                test_search_result(d2d4, sign * (MATE_SCORE - 9), 12),
+                test_search_result(e2e4, sign * (MATE_SCORE - 3), 8),
+            ];
+
+            let (index, selected) =
+                select_parallel_result(&results, &[e2e4, d2d4]).expect("selected result");
+
+            assert_eq!(index, 3, "sign {sign}");
+            assert_eq!(selected.bestmove, e2e4);
+        }
     }
 
     /// The winner's own line is what the pool reports, so a result carries the
