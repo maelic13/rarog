@@ -1573,7 +1573,10 @@ impl Searcher {
             // Line 1's mate ends the search as in the one-line path. A root
             // fail-high does not: it would end the depth before the other
             // lines were searched at it.
-            if self.cfg.limits.mate_stop && mate_watch.completed(bestmove, best_score) {
+            if self.cfg.limits.mate_stop
+                && self.td.thread_id == 0
+                && mate_watch.completed(bestmove, best_score)
+            {
                 crate::diag_count!(tm_mate_stop);
                 break;
             }
@@ -1592,8 +1595,8 @@ impl Searcher {
                         self.td.stop_on_ponderhit = true;
                     }
                 } else if elapsed_ms >= soft_target {
-                    // The pool votes as in the one-line search; this is the
-                    // main thread, so it defers until a majority agrees.
+                    // The pool votes as in the one-line search: every thread
+                    // keeps searching until a majority agrees.
                     if let Some(shared) = self.shared.pool() {
                         if !cast_stop_vote {
                             cast_stop_vote = true;

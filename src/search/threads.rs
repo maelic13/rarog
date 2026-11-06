@@ -176,8 +176,9 @@ fn select_parallel_result(
 /// The result that answers for the pool and the index of its thread; index 0
 /// is the main thread.
 ///
-/// With more than one line the main thread owns every reported line and the
-/// move, and the helpers, having searched one line, do not vote. Under a depth
+/// With more than one line every thread searches them all, and the main
+/// thread owns the reported lines and the move, so they stay one thread's
+/// consistent list. Under a depth
 /// limit only the main thread searches to that depth, and a helper's depth says
 /// only how far it got before the main thread finished. Anything else votes,
 /// `go mate` included.
@@ -302,7 +303,12 @@ impl Searcher {
             false,
         );
         self.apply_tb_root(tb_root);
-        self.search_root(root, legal_moves, false, poll)
+        let lines = engine_options.multi_pv.clamp(1, legal_moves.len());
+        if lines > 1 {
+            self.search_root_multipv(root, legal_moves, lines, false, poll)
+        } else {
+            self.search_root(root, legal_moves, false, poll)
+        }
     }
 
     #[cold]
@@ -327,10 +333,6 @@ impl Searcher {
         let lines = engine_options.multi_pv.clamp(1, root_moves.len());
         let mut worker_engine_options = engine_options;
         worker_engine_options.threads = 1;
-        // Helpers search one line; with more, the main thread owns every
-        // reported line and the move, and the helpers feed it through the
-        // table.
-        worker_engine_options.multi_pv = 1;
         self.worker_pool.set_helper_count(helper_count);
         let root_moves_shared: Arc<[Move]> = root_moves.to_vec().into();
 
@@ -834,6 +836,46 @@ mod tests {
 
         assert_eq!(result.score, MATE_SCORE - 3);
         assert_eq!(context.stop_state.load(Ordering::Relaxed), STOP_SEARCH);
+    }
+
+    /// A mate search ends on a completed iteration, where each of the helper's
+    /// lines holds an exact score at that depth; one line would hold one.
+    #[test]
+    fn a_helper_searches_every_line() {
+        let board = Board::from_fen(MATE_IN_2).expect("valid FEN");
+        let moves = board.generate_legal_moves();
+        let context = Arc::new(SharedContext::new(0, moves.len(), 2));
+        let mut helper = Searcher::default();
+        helper.shared.join_pool(Arc::clone(&context));
+        helper.td.thread_id = 1;
+        let limits = SearchLimits {
+            mate: Some(2),
+            ..SearchLimits::default()
+        };
+        let engine = EngineOptions {
+            multi_pv: 3,
+            ..EngineOptions::default()
+        };
+
+        let result = helper.search_worker(
+            board,
+            &limits,
+            &engine,
+            &moves,
+            TbRootDecision::default(),
+            &mut within_a_limit(),
+        );
+
+        let depth = i32::try_from(result.depth).expect("a small depth");
+        let exact = (0..moves.len())
+            .filter(|&index| {
+                matches!(
+                    context.root_score(index),
+                    Some((at, _, RootBound::Exact)) if at == depth
+                )
+            })
+            .count();
+        assert_eq!(exact, 3);
     }
 
     #[test]
