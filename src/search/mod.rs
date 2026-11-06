@@ -2325,7 +2325,8 @@ mod tests {
         store_static_eval(&mut main, &board, 123);
 
         let mut helper = Searcher::default();
-        helper.shared.tt = main.shared.tt.clone();
+        helper.shared.tt =
+            TranspositionTable::attached(main.shared.tt.make_shared(main.shared.hash_mb));
         let mut options = EngineOptions::default();
         options.search_params.lazy_margin = 2_000;
         helper.reset_search_state(

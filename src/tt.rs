@@ -116,7 +116,6 @@ impl ClusterSlots for LocalCluster {
     }
 }
 
-#[derive(Clone)]
 struct LocalTable {
     clusters: Vec<LocalCluster>,
     mask: usize,
@@ -292,16 +291,20 @@ struct SharedTable {
     age: AtomicU8,
 }
 
-#[derive(Clone)]
 enum TtStorage {
     Local(LocalTable),
     Shared(Arc<SharedTable>),
 }
 
-#[derive(Clone)]
 pub struct TranspositionTable {
     storage: TtStorage,
 }
+
+/// A handle on the shared table, the one thing about the table that crosses
+/// to another thread. Only the shared form produces one, so handing a table
+/// to a helper can never copy it, and the table lives as long as its handles.
+#[derive(Clone)]
+pub struct SharedTt(Arc<SharedTable>);
 
 impl Default for TranspositionTable {
     fn default() -> Self {
@@ -366,27 +369,42 @@ impl TranspositionTable {
     ///
     /// The local table is dropped BEFORE the shared one is allocated, so the
     /// two are never held at once. The shared table starts empty, so nothing
-    /// is lost.
-    pub fn make_shared(&mut self, mb: usize) {
-        if matches!(self.storage, TtStorage::Shared(_)) {
-            return;
-        }
+    /// is lost. Returns a handle on the shared table.
+    pub fn make_shared(&mut self, mb: usize) -> SharedTt {
         let age = match &self.storage {
             TtStorage::Local(local) => local.age,
-            TtStorage::Shared(_) => unreachable!("returned above"),
+            TtStorage::Shared(table) => return SharedTt(Arc::clone(table)),
         };
         self.storage = TtStorage::Local(LocalTable {
             clusters: Vec::new(),
             mask: 0,
             age,
         });
-        self.storage = TtStorage::Shared(Arc::new(new_shared_table(mb, age)));
+        let table = Arc::new(new_shared_table(mb, age));
+        self.storage = TtStorage::Shared(Arc::clone(&table));
+        SharedTt(table)
+    }
+
+    /// The table a helper searches for one job.
+    pub(crate) fn attached(handle: SharedTt) -> Self {
+        Self {
+            storage: TtStorage::Shared(handle.0),
+        }
     }
 
     /// Whether the table is in the atomic form a multi-threaded search uses.
     #[cfg(test)]
     pub(crate) fn is_shared(&self) -> bool {
         matches!(self.storage, TtStorage::Shared(_))
+    }
+
+    /// Live handles on the shared table, this one included; 0 in local form.
+    #[cfg(test)]
+    pub(crate) fn shared_handles(&self) -> usize {
+        match &self.storage {
+            TtStorage::Local(_) => 0,
+            TtStorage::Shared(table) => Arc::strong_count(table),
+        }
     }
 
     /// Bytes actually handed to the allocator for the table itself.

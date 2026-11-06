@@ -9,7 +9,7 @@ use crate::board::{Board, Color, Move};
 use crate::eval::INF_SCORE;
 use crate::infra;
 use crate::search::options::{EngineOptions, SearchLimits};
-use crate::tt::TranspositionTable;
+use crate::tt::{SharedTt, TranspositionTable};
 
 use super::movepick::ScoredMoveList;
 use super::shared::{RootBound, STOP_QUIT, STOP_SEARCH, SharedContext, TbRootDecision};
@@ -20,7 +20,7 @@ struct WorkerJob {
     pub(super) root_moves: Arc<[Move]>,
     pub limits: SearchLimits,
     pub(super) engine_options: EngineOptions,
-    pub tt: TranspositionTable,
+    pub tt: SharedTt,
     pub hash_mb: usize,
     pub(super) root_move_offset: usize,
     /// Helper index (1-based); seeds the per-thread reduction jitter.
@@ -32,7 +32,7 @@ struct WorkerJob {
 }
 
 enum WorkerMessage {
-    // Boxed — WorkerJob is ~712 B while the other variants are unit, so
+    // Boxed — WorkerJob is large while the other variants are unit, so
     // every queued message paid the largest size. This is a per-search thread
     // handoff (not a hot path), so the indirection is free here.
     Search(Box<WorkerJob>),
@@ -101,9 +101,9 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
         .stack_size(infra::THREAD_STACK_SIZE)
         .spawn(move || {
             // Ready before the first search, which runs on the clock: a helper
-            // searches the pool's table, handed over with each job, so its own
-            // default table would only be dropped on that clock; and its
-            // history and cache pages are touched here, not by that search.
+            // searches the pool's table, held only for the job, so the one it
+            // keeps between jobs is the smallest there is; and its history and
+            // cache pages are touched here, not by that search.
             let mut worker = Searcher::default();
             worker.shared.tt = TranspositionTable::new(1);
             worker.reset_worker_state_for_new_game();
@@ -223,7 +223,8 @@ impl Searcher {
         job: WorkerJob,
         poll: &mut dyn FnMut() -> SearchEvent,
     ) -> SearchResult {
-        self.shared.tt = job.tt;
+        let idle_table =
+            std::mem::replace(&mut self.shared.tt, TranspositionTable::attached(job.tt));
         self.shared.hash_mb = job.hash_mb;
         self.shared.join_pool(Arc::clone(&job.shared_state));
         self.td.root_move_offset = job.root_move_offset;
@@ -237,6 +238,10 @@ impl Searcher {
             poll,
         );
         self.shared.leave_pool();
+        // The handle goes before the result does: the main thread holds the
+        // table alone once it has every result, so a `Hash` change that
+        // follows frees the old table rather than leaving it to an idle helper.
+        self.shared.tt = idle_table;
         result
     }
 
@@ -287,7 +292,7 @@ impl Searcher {
         // Reset BEFORE any helper exists, so nothing already counted
         // gets wiped by a late-starting thread.
         crate::diag::reset();
-        self.shared.tt.make_shared(self.shared.hash_mb);
+        let table = self.shared.tt.make_shared(self.shared.hash_mb);
         let helper_count = threads.saturating_sub(1);
         let root_len = root_moves.len();
         let shared_state = Arc::new(SharedContext::new(self.td.tb_hits, root_len, threads));
@@ -318,7 +323,7 @@ impl Searcher {
                 root_moves: Arc::clone(&root_moves_shared),
                 limits: limits.clone(),
                 engine_options: worker_engine_options.clone(),
-                tt: self.shared.tt.clone(),
+                tt: table.clone(),
                 hash_mb: self.shared.hash_mb,
                 root_move_offset: offset,
                 thread_id: index + 1,
@@ -331,6 +336,7 @@ impl Searcher {
             }
         }
         drop(result_tx);
+        drop(table);
 
         self.td.root_move_offset = 0;
         self.td.thread_id = 0;
@@ -528,6 +534,7 @@ impl Searcher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::search::options::{HashRequest, SearchOptions};
 
     #[test]
     fn parallel_result_selection_uses_weighted_helper_votes() {
@@ -583,6 +590,31 @@ mod tests {
         assert_eq!(index, 1);
         assert_eq!(selected.pv, vec![d2d4, e2e4]);
         assert_eq!(selected.seldepth, 17);
+    }
+
+    /// Every helper has let go of the table by the time the search returns,
+    /// so the main thread's handle is the only one, and a `Hash` change frees
+    /// the old table at once.
+    #[test]
+    fn a_helper_holds_the_table_only_for_its_job() {
+        let mut options = SearchOptions::default();
+        options.engine.hash_mb = 1;
+        options.engine.threads = 4;
+        options.limits.depth = Some(4);
+        let mut searcher = Searcher::default();
+        searcher.configure(&options.engine, HashRequest::Sent);
+
+        for _ in 0..3 {
+            let result = searcher.search(Board::default(), &options, false, || SearchEvent::None);
+            assert!(!result.bestmove.is_null());
+            assert_eq!(searcher.shared.tt.shared_handles(), 1);
+        }
+
+        options.engine.hash_mb = 2;
+        searcher.configure(&options.engine, HashRequest::Sent);
+        let result = searcher.search(Board::default(), &options, false, || SearchEvent::None);
+        assert!(!result.bestmove.is_null(), "the resized table searches");
+        assert_eq!(searcher.shared.tt.shared_handles(), 1);
     }
 
     fn test_search_result(bestmove: Move, score: i32, depth: usize) -> SearchResult {
