@@ -725,6 +725,21 @@ impl Searcher {
 mod tests {
     use super::*;
 
+    /// `as_mut_slice` exposes `..len` as initialized, so `len` must never pass
+    /// the last slot a push wrote: the push after a full list panics
+    /// instead (the debug assertion or, in release, the checked index).
+    #[test]
+    #[should_panic]
+    fn a_push_past_the_last_slot_panics() {
+        let mut list = ScoredMoveList::new();
+        let mv = Move::from_uci("e2e4").expect("valid UCI move shape");
+        for _ in 0..256 {
+            list.push(mv, 0, 0, 0);
+        }
+        assert_eq!(list.as_mut_slice().len(), 256);
+        list.push(mv, 0, 0, 0);
+    }
+
     /// The quiet stage without the early exit: select every remaining quiet,
     /// emit it unless skipping and it does not survive.
     fn next_quiet_reference(

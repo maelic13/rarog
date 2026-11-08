@@ -96,6 +96,16 @@ impl SliderEntry {
 #[inline(always)]
 fn slider_attacks(table: &[Bitboard], entry: &SliderEntry, occ: Bitboard) -> Bitboard {
     let slot = entry.slot(occ);
+    // The SAFETY claim below, checked on every lookup of the debug suite, whose
+    // slider test visits every blocker subset of every square on each backend.
+    debug_assert!(
+        slot >= entry.offset
+            && slot - entry.offset < 1 << entry.mask.count_ones()
+            && slot < table.len(),
+        "slot {slot} outside its square's run at {} of {} slots",
+        entry.offset,
+        1_usize << entry.mask.count_ones()
+    );
     // SAFETY: `build` fills exactly `entry.offset .. entry.offset +
     // 2^popcount(entry.mask)` of `table` for this square, and `slot` stays in
     // that run: PEXT yields the rank of a subset of the mask, below

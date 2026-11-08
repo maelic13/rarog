@@ -298,6 +298,21 @@ impl fmt::Display for Move {
 mod tests {
     use super::*;
 
+    /// `as_slice` exposes `..len` as initialized, so `len` must never pass the
+    /// last slot `push` wrote: the push after a full list panics
+    /// instead (the debug assertion or, in release, the checked index).
+    #[test]
+    #[should_panic]
+    fn a_push_past_the_last_slot_panics() {
+        let mut list = MoveList::new();
+        let mv = Move::from_uci("e2e4").expect("valid UCI move shape");
+        for _ in 0..256 {
+            list.push(mv);
+        }
+        assert_eq!(list.as_slice().len(), 256);
+        list.push(mv);
+    }
+
     /// Every legal move survives the trip through its text form: printed,
     /// parsed or converted, the board gives it back with its flags.
     #[test]
