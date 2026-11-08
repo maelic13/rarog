@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.5.11** (`I1`): The Fathom FFI layout guard.
+**Now: D.5.12** (`I1`): The PEXT tier in CI.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -49,7 +49,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.5.8** Dead Syzygy code — DONE 2026-11-08
     - [x] **D.5.9** The slider-table `unsafe` and the timer — DONE 2026-11-08
     - [x] **D.5.10** Stack-built tables — DONE 2026-11-08
-    - [ ] **D.5.11** The Fathom FFI layout guard — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.5.11** The Fathom FFI layout guard — DONE 2026-11-08
     - [ ] **D.5.12** The PEXT tier in CI — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.13** The `texel` and `tune` evaluation tests in CI — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.14** The KPK bitbase at compile time — **READY_FOR_IMPLEMENTATION / I1**

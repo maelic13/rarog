@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.11 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.12 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.13 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.14 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -700,11 +699,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       −0.22%, between). The prediction, frozen in the commit, was 0.0% ±
       0.4%. 1,891 of 144,122 instruction lines differ in the pext binary,
       282 of their 325 hunks in one region, where construction is inlined.
-    - **D.5.11 The Fathom FFI layout guard — `I1`.** (RUST-5): `const` size asserts for
+    - **D.5.11 The Fathom FFI layout guard — `I1`, DONE 2026-11-08.** (RUST-5): `const` size asserts for
       `TbRootMoveRaw` (528 B) and `TbRootMovesRaw` (101,908 B, align 4) and a
       test that parses `TB_MAX_MOVES` and `TB_MAX_PLY` out of
       `vendor/fathom/src/tbprobe.h`; a drift there would be silent memory
-      corruption.
+      corruption. `a21f647`: the asserts pin size and alignment of both, the
+      values the C compiler gives (clang on Fathom's header: 528 and 101,908,
+      align 4); the test checks all 18 constants Rarog mirrors from the
+      header, the two limits, the WDL values and the result masks and
+      shifts. A header `TB_MAX_MOVES` of `(192+2)` fails the test, and a
+      `pv_size` narrowed to `u16` fails the build. Fingerprint 15,625,852 /
+      EBF 2.563 on both backends; debug and release suites, fmt and clippy
+      clean.
     - **D.5.12 The PEXT tier in CI — `I1`.** (RUST-7, BOARD-5): `--cfg rarog_pext` without
       `+bmi2` compiles clean today, so add a `compile_error!` under
       `all(rarog_pext, target_arch = "x86_64", not(target_feature = "bmi2"))`,
