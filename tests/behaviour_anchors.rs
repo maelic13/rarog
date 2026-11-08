@@ -10,7 +10,7 @@
 use std::sync::{Mutex, MutexGuard};
 
 use rarog::bench::BENCH_FENS;
-use rarog::board::{Board, CastlingRights, Color, Move, Piece, Square};
+use rarog::board::{Board, CastlingRights, Color, Move, Piece, Square, UciMove};
 use rarog::eval::{Evaluator, MATE_SCORE};
 use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, SearchResult, Searcher};
@@ -71,6 +71,30 @@ fn mate_in_from_score(score: i32) -> i32 {
     (MATE_SCORE - score.abs() + 1) / 2
 }
 
+/// The score of `uci` searched alone to `depth`: the depth a fixture's own
+/// search reached, so the moves it chose between are read at its budget. The
+/// node cap only stops a runaway search, and the depth must be reached.
+fn alone(fen: &str, uci: &str, depth: usize) -> i32 {
+    let root = board(fen);
+    let mut options = SearchOptions {
+        board: root.clone(),
+        ..SearchOptions::default()
+    };
+    options.limits.depth = Some(u32::try_from(depth).expect("a search depth"));
+    options.limits.nodes = 4_000_000;
+    options.limits.search_moves = vec![UciMove::parse(uci).expect("a UCI move")];
+    options.engine.threads = 1;
+    let r = Searcher::default().search(root, &options, false, || SearchEvent::None);
+    assert_eq!(r.bestmove.to_string(), uci, "{uci} alone: {}", summary(&r));
+    assert_eq!(
+        r.depth,
+        depth,
+        "{uci} alone reached its depth: {}",
+        summary(&r)
+    );
+    r.score
+}
+
 fn summary(r: &SearchResult) -> String {
     format!(
         "bestmove {} score {} depth {} nodes {} pv {:?}",
@@ -117,8 +141,12 @@ fn shortest_mate_not_first_mate() {
 #[test]
 fn rook_promotion_where_the_queen_stalemates() {
     let _g = serial();
-    let r = search("8/5P1k/5K2/8/8/8/8/8 w - - 0 1", Some(8), 0);
-    assert_eq!(r.bestmove.to_string(), "f7f8r", "{}", summary(&r));
+    let fen = "8/5P1k/5K2/8/8/8/8/8 w - - 0 1";
+    let r = search(fen, Some(8), 0);
+    let s = summary(&r);
+    assert_eq!(r.bestmove.to_string(), "f7f8r", "{s}");
+    assert!(r.score >= MATE_BAND, "the rook mates: {s}");
+    assert_eq!(alone(fen, "f7f8q", r.depth), 0, "the queen stalemates");
 }
 
 /// `rook_promotions` 2: the rook line only transposes into the queen line,
@@ -126,10 +154,20 @@ fn rook_promotion_where_the_queen_stalemates() {
 #[test]
 fn queen_promotion_where_the_rook_only_transposes() {
     let _g = serial();
-    let r = search("3r4/P7/2K1p3/R7/5p2/6kP/8/8 w - - 2 66", None, 200_000);
+    let fen = "3r4/P7/2K1p3/R7/5p2/6kP/8/8 w - - 2 66";
+    let r = search(fen, None, 200_000);
     let s = summary(&r);
     assert_eq!(r.bestmove.to_string(), "a7a8q", "{s}");
     assert!(r.score > 0, "{s}");
+    // At the depth the budget reached the queen scores no lower than the
+    // rook (481 and 435 on 2026-11-08), so the choice is not a rook ahead
+    // held back by root order.
+    let (queen, rook) = (alone(fen, "a7a8q", r.depth), alone(fen, "a7a8r", r.depth));
+    assert!(
+        queen >= rook,
+        "queen {queen}, rook {rook} at depth {}",
+        r.depth
+    );
 }
 
 /// `rook_promotions` 3: the queen though the rook was searched first
@@ -137,22 +175,30 @@ fn queen_promotion_where_the_rook_only_transposes() {
 #[test]
 fn queen_promotion_though_the_rook_was_searched_first() {
     let _g = serial();
-    let r = search(
-        "2k2rr1/6P1/2P5/7p/1B2p3/4P3/5K2/8 w - - 0 46",
-        None,
-        100_000,
+    let fen = "2k2rr1/6P1/2P5/7p/1B2p3/4P3/5K2/8 w - - 0 46";
+    let r = search(fen, None, 100_000);
+    let s = summary(&r);
+    assert_eq!(r.bestmove.to_string(), "g7f8q", "{s}");
+    assert!(r.score > 0, "{s}");
+    // 753 against 575 on 2026-11-08: a margin, not a tie.
+    let (queen, rook) = (alone(fen, "g7f8q", r.depth), alone(fen, "g7f8r", r.depth));
+    assert!(
+        queen > rook,
+        "queen {queen}, rook {rook} at depth {}",
+        r.depth
     );
-    assert_eq!(r.bestmove.to_string(), "g7f8q", "{}", summary(&r));
 }
 
 /// `rook_promotions` 4: Saavedra, c8=R wins where c8=Q draws (100,000 nodes).
 #[test]
 fn saavedra_rook_promotion_wins() {
     let _g = serial();
-    let r = search("8/2P5/8/8/3r4/8/2K5/k7 w - - 0 6", None, 100_000);
+    let fen = "8/2P5/8/8/3r4/8/2K5/k7 w - - 0 6";
+    let r = search(fen, None, 100_000);
     let s = summary(&r);
     assert_eq!(r.bestmove.to_string(), "c7c8r", "{s}");
     assert!(r.score >= MATE_SCORE - 40, "{s}");
+    assert_eq!(alone(fen, "c7c8q", r.depth), 0, "the queen is drawn");
 }
 
 /// `tournament_infraction_positions`: legal best moves in two final positions
