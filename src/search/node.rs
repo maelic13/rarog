@@ -1596,21 +1596,13 @@ impl Searcher {
                 };
             }
 
-            let root_moves;
-            let legal_moves = if NODE::ROOT && !self.td.root_moves.is_empty() {
-                root_moves = legal_moves
-                    .iter()
-                    .copied()
-                    .filter(|mv| self.td.root_moves.contains(mv))
-                    .collect::<Vec<_>>();
-                if root_moves.is_empty() {
-                    legal_moves.as_slice()
-                } else {
-                    root_moves.as_slice()
-                }
-            } else {
-                legal_moves.as_slice()
-            };
+            // The search's root list narrows the legal moves, unless it names
+            // none of them.
+            let root_moves = &self.td.root_moves;
+            if !root_moves.is_empty() && legal_moves.iter().any(|mv| root_moves.contains(mv)) {
+                legal_moves.retain(|mv| root_moves.contains(&mv));
+            }
+            let legal_moves = legal_moves.as_slice();
 
             let mut scored = ScoredMoveList::new();
             self.score_moves(

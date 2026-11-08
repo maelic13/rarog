@@ -70,6 +70,21 @@ impl MoveList {
         // below `len` was initialized by `push`.
         unsafe { slice::from_raw_parts(self.moves.as_ptr().cast::<Move>(), self.len) }
     }
+
+    /// Keep the moves `keep` accepts, in their order, without allocating.
+    pub fn retain(&mut self, mut keep: impl FnMut(Move) -> bool) {
+        let mut kept = 0;
+        for read in 0..self.len {
+            let mv = self.as_slice()[read];
+            if keep(mv) {
+                // `kept <= read`, so every slot below the new `len` holds a
+                // move written by `push` or by this loop.
+                self.moves[kept].write(mv);
+                kept += 1;
+            }
+        }
+        self.len = kept;
+    }
 }
 
 impl Clone for MoveList {
@@ -230,5 +245,24 @@ impl fmt::Display for Move {
             write!(f, "{}", self.promo_piece().promo_char())?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn retain_keeps_the_accepted_moves_in_order() {
+        let mut list = MoveList::new();
+        for raw in 1..=8 {
+            list.push(Move(raw));
+        }
+        list.retain(|mv| mv.0 % 3 != 0);
+        assert_eq!(list.as_slice(), [1, 2, 4, 5, 7, 8].map(Move).as_slice());
+        list.retain(|mv| mv.0 > 4);
+        assert_eq!(list.as_slice(), [5, 7, 8].map(Move).as_slice());
+        list.retain(|_| false);
+        assert!(list.is_empty());
     }
 }
