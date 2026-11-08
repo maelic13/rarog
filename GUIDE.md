@@ -83,6 +83,8 @@ field, about 3,475 on CCRL's Blitz scale.
     - [ ] **D.6.22** `krpkr_scale`'s hard zeros on won positions — **RESEARCH / R2**
     - [ ] **D.6.23** Wrong-bishop draws still misread through leaves the recogniser does not cover — **RESEARCH / R2**
     - [ ] **D.6.24** The KQKP fortress's hard zeros on won positions — **RESEARCH / R2**
+    - [ ] **D.6.25** Two same-coloured bishops outscore a queen against a bare king — **RESEARCH / R2**
+    - [ ] **D.6.26** Pawnless endings a minor ahead read as wins — **RESEARCH / R2**
 - [ ] **D.7** Large pages on Linux: transparent huge pages for the big tables — **READY_FOR_IMPLEMENTATION / I1**
 - [ ] **D.8** Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — **I1**
     - [ ] **D.8.1** P0: the census as a tool — **READY_FOR_IMPLEMENTATION / I1**

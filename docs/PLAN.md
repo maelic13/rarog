@@ -336,7 +336,7 @@ twice (HISTORY's number map holds what moved).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.5.20 | READY_FOR_IMPLEMENTATION | I1 | Tooling; held 2026-11-08 on two maintainer decisions (Miri's nightly toolchain, a structured disposition field), the rest landed |
-| D.5.21 | READY_FOR_IMPLEMENTATION | I1 | The behaviour-test sweep |
+| D.5.21 | READY_FOR_IMPLEMENTATION | I1 | The behaviour-test sweep; the ported tests landed 2026-11-08, H8–H11 remain |
 | D.5.23 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, a unit test at an overflowing depth |
 | D.6.1 | RESEARCH | R2 | Screen first among the cards (castling's classification) |
 | D.6.2 | RESEARCH | R2 | Screen second (quiet queen promotions in quiescence) |
@@ -356,6 +356,8 @@ twice (HISTORY's number map holds what moved).
 | D.6.22 | RESEARCH | R2 | Screen: a per-site scale that keeps the draws near 0 and the wins above it; minutes |
 | D.6.23 | RESEARCH | R2 | Screen: raw against corrected at the non-verdict leaves near the verdicts in the 63 fixture searches; minutes |
 | D.6.24 | RESEARCH | R2 | Screen: a narrowed or discounted fortress on the same enumeration, draws kept at 0 and wins lifted; minutes |
+| D.6.25 | RESEARCH | R2 | Screen: does any search at the gate's budget pick the bishop promotion, or score the same-coloured pair above a draw at the root; minutes |
+| D.6.26 | RESEARCH | R2 | Screen: the pawnless one-minor-ahead classes against Syzygy over an enumeration, and their exposure in gate games; minutes |
 | D.7 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -975,6 +977,25 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       133/300 on 2026-07-19 and has no upper bound); fixtures that assert
       the score at a stated budget, not only the move (Basilisk's promotion
       fixture passed on a 4-cp tie held by root order).
+      **Ported 2026-11-08** (`9c30385`; the scratch run was two files of
+      Basilisk's tests through the public API and the UCI process). Thirty-four
+      pass and land as anchors (`tests/behaviour_anchors.rs`,
+      `tests/engine_anchors.rs`, and an in-module deep exact illegal TT move
+      at the root through a depth-6 search), debug and release, the timing
+      ones (a won ending, Hash before `readyok`, the ponder races) on six
+      runs each. Two fail, committed `#[ignore]`d as acceptance tests:
+      `bare_king_promotion_order` (from KBP-K the promotions read queen
+      1433, rook 990, knight 1097, bishop 1537; the bishop gives two
+      same-coloured bishops, a draw, and the search still promotes to a
+      queen at every depth 1–12): D.6.25; `pawnless_scale_truth_table`
+      (KR-KB 277, KRB-KR 253, KRN-KR 173 on Syzygy draws): D.6.26. Not ported
+      as differences of design, not gaps: Basilisk damps a bare-king score by
+      the clock and Rarog's evaluation reads no clock; Rarog shows a root
+      tablebase win the rule-50 counter spoils at clock 99 as `cp 0`, since
+      every move reaches clock 100, where Basilisk shows 1–49; Rarog has no
+      TT penalty to test. The illegal TT move is caught three times at the
+      root (`legal_move`, the root list, the picker): with the first two
+      removed the debug suite fails and release does not. H8–H11 remain.
     - **D.5.22 Measurement and gating methods from Basilisk — `I1`, DONE 2026-11-02.**
       Adopted: a repair's registration states its measured exposure; a
       written analysis of the fitted constants before a bake
@@ -1277,6 +1298,27 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       lifted. The registration states measured exposure (gate games
       reaching KQKP with a seventh-rank rook or bishop pawn); a narrowed zone
       that a static differential confines is case 1. `R2` card, minutes.
+    - **D.6.25 Two same-coloured bishops outscore a queen against a bare king — `R2`.** (D.5.21's
+      port of Basilisk's `bare_king_material_is_monotone`, 2026-11-08): from
+      `1B6/5P2/8/2k2K2/8/8/8/8 w` the promotions evaluate queen 1433, rook
+      990, knight 1097 and bishop 1537, and the bishop's position, two
+      bishops on one colour, is a dead draw; `endgames.epd`'s same-coloured
+      KBB-K draws (lines 62–63) read 1149 and 2550. The search is not misled
+      here (it promotes to a queen at every depth 1–12), so the cost is
+      where a static score decides: a choice between a draw and a win the
+      search cannot resolve. Screen: whether any search at the gate's budget
+      chooses the drawn material, and the exposure of KBB-K with one colour
+      in gate games. Acceptance test: `bare_king_promotion_order` in
+      `tests/behaviour_anchors.rs`, committed `#[ignore]`d. `R2` card.
+    - **D.6.26 Pawnless endings a minor ahead read as wins — `R2`.** (D.5.21's port of Basilisk's
+      `pawnless_scale_truth_table`, 2026-11-08): Rarog has no scale for a
+      pawnless side only a minor ahead, so Syzygy draws read KR-KB 277,
+      KRB-KR 253 and KRN-KR 173, where the dead KB-KN draw reads 0 and three
+      of the queen's classes read as wins. Screen: an enumeration of the
+      classes against Syzygy, as D.5.19's, and their exposure in gate games;
+      the repair form is a scale, as Stockfish 11's. Acceptance test:
+      `pawnless_scale_truth_table` in `tests/behaviour_anchors.rs`, committed
+      `#[ignore]`d (needs `RAROG_SYZYGY_PATH`). `R2` card.
   Evidence for items already here (H18–H21, H25): item 4 (NODE-2), the
   donor form read +3.3 ± 9.1 in Basilisk (2,000 games) and each of its
   consumers alone (IIR, the no-TT-move LMR term) threw a promotion fixture
