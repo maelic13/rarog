@@ -1,0 +1,216 @@
+diff --git a/src/eval/endgame/mod.rs b/src/eval/endgame/mod.rs
+index c4f8d01..c31053e 100644
+--- a/src/eval/endgame/mod.rs
++++ b/src/eval/endgame/mod.rs
+@@ -760,6 +760,211 @@ mod recogniser_tests {
+         "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+     ];
+ 
++    #[test]
++    #[ignore = "scratch: D.5.19 hard-zero read against Syzygy"]
++    fn scratch_hard_zeros_against_syzygy() {
++        use crate::syzygy::{self, Wdl};
++        let path = std::env::var("RAROG_SYZYGY_PATH").expect("RAROG_SYZYGY_PATH");
++        assert!(syzygy::initialize(&path) >= 5, "5-man tables load");
++
++        fn fen_of(pieces: &[(char, u8)], white_to_move: bool) -> Option<String> {
++            let mut grid = [' '; 64];
++            for &(c, s) in pieces {
++                if grid[usize::from(s)] != ' ' {
++                    return None;
++                }
++                grid[usize::from(s)] = c;
++            }
++            let mut out = String::new();
++            for rank in (0..8).rev() {
++                let mut empty = 0u8;
++                for file in 0..8 {
++                    let c = grid[rank * 8 + file];
++                    if c == ' ' {
++                        empty += 1;
++                    } else {
++                        if empty > 0 {
++                            out.push(char::from(b'0' + empty));
++                            empty = 0;
++                        }
++                        out.push(c);
++                    }
++                }
++                if empty > 0 {
++                    out.push(char::from(b'0' + empty));
++                }
++                if rank > 0 {
++                    out.push('/');
++                }
++            }
++            Some(format!("{out} {} - - 0 1", if white_to_move { 'w' } else { 'b' }))
++        }
++        // Legal: the side not to move is not in check, the kings apart.
++        fn legal(fen: &str) -> Option<Board> {
++            let board = Board::from_fen(fen).ok()?;
++            let stm = board.side_to_move();
++            let their_king = board.king_sq(!stm);
++            if board.attackers_to_color(their_king, board.occupied(), stm).any() {
++                return None;
++            }
++            if KING_DISTANCE[board.king_sq(stm).index()][their_king.index()] <= 1 {
++                return None;
++            }
++            Some(board)
++        }
++        fn quiet(board: &Board) -> bool {
++            !board.is_in_check()
++                && board
++                    .generate_legal_movelist()
++                    .iter()
++                    .all(|mv| !mv.is_capture() && !mv.is_promo())
++        }
++        #[derive(Default, Debug)]
++        struct Tally {
++            positions: u64,
++            zeros: u64,
++            quiet_zeros: u64,
++            draw: u64,
++            fifty_move_draw: u64,
++            strong_wins: u64,
++            weak_wins: u64,
++            quiet_strong_wins: u64,
++            first_wrong: Option<String>,
++        }
++        fn tally(t: &mut Tally, board: &Board, fen: &str, zero: bool, strong: Color) {
++            t.positions += 1;
++            if !zero {
++                return;
++            }
++            t.zeros += 1;
++            let is_quiet = quiet(board);
++            t.quiet_zeros += u64::from(is_quiet);
++            let wdl = syzygy::probe_wdl(board, false).expect("probe");
++            let strong_to_move = board.side_to_move() == strong;
++            match (wdl, strong_to_move) {
++                (Wdl::Draw, _) => t.draw += 1,
++                (Wdl::CursedWin | Wdl::BlessedLoss, _) => t.fifty_move_draw += 1,
++                (Wdl::Win, true) | (Wdl::Loss, false) => {
++                    t.strong_wins += 1;
++                    t.quiet_strong_wins += u64::from(is_quiet);
++                    if t.first_wrong.is_none() {
++                        t.first_wrong = Some(fen.to_string());
++                    }
++                }
++                (Wdl::Win, false) | (Wdl::Loss, true) => t.weak_wins += 1,
++            }
++        }
++        let rel = |c: Color, s: u8| if c == Color::White { s } else { s ^ 56 };
++        let letter = |c: Color, p: char| if c == Color::White { p.to_ascii_uppercase() } else { p };
++
++        // KQ vs KP: every pawn on the defender's seventh, every square else.
++        let mut kqkp = Tally::default();
++        for strong in [Color::White, Color::Black] {
++            let weak = !strong;
++            for file in 0..8u8 {
++                let p = rel(weak, 48 + file);
++                for sk in 0..64u8 {
++                    for wk in 0..64u8 {
++                        for q in 0..64u8 {
++                            for stm in [true, false] {
++                                let pieces = [
++                                    (letter(strong, 'k'), sk),
++                                    (letter(strong, 'q'), q),
++                                    (letter(weak, 'k'), wk),
++                                    (letter(weak, 'p'), p),
++                                ];
++                                let Some(fen) = fen_of(&pieces, stm) else { continue };
++                                let Some(board) = legal(&fen) else { continue };
++                                let zero = kqkp_fortress_scale(&board) == Some(0);
++                                tally(&mut kqkp, &board, &fen, zero, strong);
++                            }
++                        }
++                    }
++                }
++            }
++        }
++        println!("KQKP {kqkp:?}");
++        // The quiet zeros by side to move and the queen's king's distance to
++        // the queening square, and the queen side's wins among them.
++        let mut cells = std::collections::BTreeMap::<(bool, u8, char), (u64, u64)>::new();
++        for strong in [Color::White, Color::Black] {
++            let weak = !strong;
++            for file in 0..8u8 {
++                let p = rel(weak, 48 + file);
++                for sk in 0..64u8 {
++                    for wk in 0..64u8 {
++                        for q in 0..64u8 {
++                            for stm in [true, false] {
++                                let pieces = [
++                                    (letter(strong, 'k'), sk),
++                                    (letter(strong, 'q'), q),
++                                    (letter(weak, 'k'), wk),
++                                    (letter(weak, 'p'), p),
++                                ];
++                                let Some(fen) = fen_of(&pieces, stm) else { continue };
++                                let Some(board) = legal(&fen) else { continue };
++                                if kqkp_fortress_scale(&board) != Some(0) || !quiet(&board) {
++                                    continue;
++                                }
++                                let queening = promotion_square(weak, Square(p));
++                                let d = KING_DISTANCE[usize::from(sk)][queening.index()];
++                                let strong_to_move = board.side_to_move() == strong;
++                                let wdl = syzygy::probe_wdl(&board, false).expect("probe");
++                                let wins = matches!((wdl, strong_to_move), (Wdl::Win, true) | (Wdl::Loss, false));
++                                let pawn_file = char::from(b'a' + file);
++                                let cell = cells.entry((strong_to_move, d, pawn_file)).or_default();
++                                cell.0 += 1;
++                                cell.1 += u64::from(wins);
++                            }
++                        }
++                    }
++                }
++            }
++        }
++        for ((strong_to_move, d, f), (n, w)) in &cells {
++            println!("KQKP quiet strong_to_move={strong_to_move} king_distance={d} file={f}: {n} zeros, {w} queen wins");
++        }
++
++        // KB(P)(P) vs K: one or two pawns on one rook file, every square else.
++        let mut kbpk = Tally::default();
++        let mut kbppk = Tally::default();
++        for strong in [Color::White, Color::Black] {
++            let weak = !strong;
++            for file in [0u8, 7] {
++                let pawn_squares: Vec<u8> = (1..7u8).map(|r| rel(strong, r * 8 + file)).collect();
++                let mut pawn_sets: Vec<Vec<u8>> = pawn_squares.iter().map(|&s| vec![s]).collect();
++                for (i, &a) in pawn_squares.iter().enumerate() {
++                    for &b in &pawn_squares[i + 1..] {
++                        pawn_sets.push(vec![a, b]);
++                    }
++                }
++                for pawns in &pawn_sets {
++                    for sk in 0..64u8 {
++                        for wk in 0..64u8 {
++                            for bishop in 0..64u8 {
++                                for stm in [true, false] {
++                                    let mut pieces = vec![
++                                        (letter(strong, 'k'), sk),
++                                        (letter(strong, 'b'), bishop),
++                                        (letter(weak, 'k'), wk),
++                                    ];
++                                    pieces.extend(pawns.iter().map(|&s| (letter(strong, 'p'), s)));
++                                    let Some(fen) = fen_of(&pieces, stm) else { continue };
++                                    let Some(board) = legal(&fen) else { continue };
++                                    let zero = kbp_wrong_corner_draw(&board);
++                                    let t = if pawns.len() == 1 { &mut kbpk } else { &mut kbppk };
++                                    tally(t, &board, &fen, zero, strong);
++                                }
++                            }
++                        }
++                    }
++                }
++            }
++        }
++        println!("KBPK {kbpk:?}");
++        println!("KBPPK {kbppk:?}");
++    }
++
+     /// Each recogniser reads a position the same with the colours swapped:
+     /// the same scale factor, and the same evaluation for the side to move.
+     #[test]

@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.19 | READY_FOR_IMPLEMENTATION | I1 | Read 2026-11-02: the KPK verdicts agree with Syzygy and land as a test; won KPK and `krpkr_scale`'s wrong zeros went to D.6.21 and D.6.22; the KQKP, KRPKB and KBPK zeros unread |
 | D.5.20 | READY_FOR_IMPLEMENTATION | I1 | Tooling |
 | D.5.21 | READY_FOR_IMPLEMENTATION | I1 | The behaviour-test sweep |
 | D.5.23 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, a unit test at an overflowing depth |
@@ -356,6 +355,7 @@ twice (HISTORY's number map holds what moved).
 | D.6.21 | RESEARCH | R2 | Screen: does a one- or two-ply search already read the 88 above 0; minutes |
 | D.6.22 | RESEARCH | R2 | Screen: a per-site scale that keeps the draws near 0 and the wins above it; minutes |
 | D.6.23 | RESEARCH | R2 | Screen: raw against corrected at the non-verdict leaves near the verdicts in the 63 fixture searches; minutes |
+| D.6.24 | RESEARCH | R2 | Screen: a narrowed or discounted fortress on the same enumeration, draws kept at 0 and wins lifted; minutes |
 | D.7 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -861,7 +861,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       and release suites, fmt and clippy clean; fingerprint unchanged.
   Added 2026-11-02 from the Basilisk cross-check (`analysis/basilisk_crosscheck_2026-11-02.md`,
   read against Basilisk's work since its 2026-10-06 review):
-    - **D.5.19 The KPK evaluation and every hard draw verdict against Syzygy — `I1`.** (A3,
+    - **D.5.19 The KPK evaluation and every hard draw verdict against Syzygy — `I1`, DONE 2026-11-08.** (A3,
       widened by H7: Basilisk's port of the reference rook-ending rules
       called 18 of 3,000 random won KRPKR positions dead draws, BAS-E54;
       Rarog's `krpkr_scale` returns `Some(0)` at five sites,
@@ -893,6 +893,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       wins for the pawn side, 1,128 of them at sites 1 and 5: D.6.22.
       The KQKP fortress, `krpkb_scale` and the wrong-corner KBPK zeros stay
       unread (4- and 5-man tables, minutes each).
+      **Read 2026-11-08** (same analysis, §7), exhaustively over every
+      legal position meeting each recogniser's precondition. The wrong-corner
+      draw is exact: its 290,880 one-pawn and 646,296 two-pawn zeros are all
+      Syzygy draws. `krpkb_scale` has no hard zero. The KQKP fortress is not:
+      of its 172,256 zeros 32,360 are wins for the queen side, 18,628 of the
+      69,760 quiet ones (26.7%), most with the queen's king three or four
+      squares from the queening square: D.6.24. The partial scales stay
+      unread.
     - **D.5.20 CI hygiene — `I1`.** (A5): no job in `ci.yml` or `release.yml` has
       `timeout-minutes`, so a wedged child process burns the runner's
       six hours; check which mnemonics `xtask`'s ISA verifier forbids at
@@ -1221,6 +1229,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       leaves within a move of a verdict, raw against corrected, on the 63
       searches. Acceptance test: `wrong_bishop_draws_read_as_draws_with_cleared_and_trained_tables`
       in `tests/endgames.rs`, committed `#[ignore]`d. `R2` read, minutes.
+    - **D.6.24 The KQKP fortress's hard zeros on won positions — `R2`.** (D.5.19's read,
+      2026-11-08): over every legal KQvKP position with the pawn on the
+      defender's seventh, 5,552,520 of them, `kqkp_fortress_scale` returns 0
+      at 172,256: 131,256 Syzygy draws, 32,360 wins for the queen side and
+      8,640 for the pawn side, which err toward the truth. Of the 69,760
+      quiet zeros 18,628 (26.7%) are queen wins, where the rule's test of
+      the queen's king (more than two squares from the queening square) is
+      loosest: at three or four squares, 12,552 of the 14,760 with the queen
+      side to move and 3,860 of the 3,868 with the pawn side to move; from
+      five to seven only the queen side to move remains, 1,996 of its 2,208
+      on rook pawns (`analysis/draw_verdicts_2026-11-02.md`, §7). Repair
+      form (D.5.19): discount instead of zeroing, or narrow the zone to what
+      the tables call drawn (distance, side to move, file). Screen: the same
+      enumeration with the candidate rule, the draws kept at 0 and the wins
+      lifted. The registration states measured exposure (gate games
+      reaching KQKP with a seventh-rank rook or bishop pawn); a narrowed zone
+      that a static differential confines is case 1. `R2` card, minutes.
   Evidence for items already here (H18–H21, H25): item 4 (NODE-2), the
   donor form read +3.3 ± 9.1 in Basilisk (2,000 games) and each of its
   consumers alone (IIR, the no-TT-move LMR term) threw a promotion fixture

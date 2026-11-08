@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.5.19** (`I1`): The KPK evaluation and every hard draw verdict against Syzygy.
+**Now: D.5.20** (`I1`): CI hygiene.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -57,7 +57,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.5.16** Names and comments that mislead — DONE 2026-11-08
     - [x] **D.5.17** Tests the review found missing — DONE 2026-11-08
     - [x] **D.5.18** A record corrected — DONE 2026-11-08
-    - [ ] **D.5.19** The KPK evaluation and every hard draw verdict against Syzygy — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.5.19** The KPK evaluation and every hard draw verdict against Syzygy — DONE 2026-11-08
     - [ ] **D.5.20** CI hygiene — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.21** Basilisk's behaviour tests run against Rarog — **READY_FOR_IMPLEMENTATION / I1**
     - [x] **D.5.22** Measurement and gating methods from Basilisk — DONE 2026-11-02
@@ -82,6 +82,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [ ] **D.6.21** Won KPK positions read at or below 0 — **RESEARCH / R2**
     - [ ] **D.6.22** `krpkr_scale`'s hard zeros on won positions — **RESEARCH / R2**
     - [ ] **D.6.23** Wrong-bishop draws still misread through leaves the recogniser does not cover — **RESEARCH / R2**
+    - [ ] **D.6.24** The KQKP fortress's hard zeros on won positions — **RESEARCH / R2**
 - [ ] **D.7** Large pages on Linux: transparent huge pages for the big tables — **READY_FOR_IMPLEMENTATION / I1**
 - [ ] **D.8** Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — **I1**
     - [ ] **D.8.1** P0: the census as a tool — **READY_FOR_IMPLEMENTATION / I1**
