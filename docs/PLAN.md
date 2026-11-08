@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.15 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.16 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.17 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.18 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -748,11 +747,20 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       Syzygy KPK verdict test still passes. Start-up to `uciok` 29.1 ms to
       9.6 ms (medians of 12). Fingerprint 15,625,852 / EBF 2.563 on both
       backends; debug and release suites, fmt and clippy clean.
-    - **D.5.15 `Move::from_uci` into `make_move` — `I1`.** (BOARD-4): a non-canonical move
+    - **D.5.15 `Move::from_uci` into `make_move` — `I1`, DONE 2026-11-08.** (BOARD-4): a non-canonical move
       from the text constructor corrupts the board in release (a capture
       leaves the captured bit; `e1g1` castles without the rook); every caller
       canonicalises today. A `UciMove` newtype that only `legal_move` and
       `parse_move` turn into a `Move` makes the state unrepresentable.
+      `0e546cd`: UCI text parses into a `UciMove`, whose move only
+      `Board::legal_uci_move` (and `parse_move` through it) turns into a
+      `Move`; `searchmoves` holds `UciMove`s, and `Move::from_uci` survives
+      for unit tests only. `legal_move` keeps taking a `Move`: it is the
+      per-node check of a stored TT or PV move, and its code is unchanged.
+      The release binary's instructions are identical to the head's.
+      Every legal move of four positions, all fourteen flags among them,
+      round-trips through the text form. Fingerprint 15,625,852 / EBF 2.563
+      on both backends; debug and release suites, fmt and clippy clean.
     - **D.5.16 Names and comments that mislead — `I1`.** (EVAL-9, TT-13, DRIVER-13,
       BOARD-10; H12): seven ledger IDs and roadmap step numbers such as
       `mop_up.rs:129` and `144-149` remain in `src`, which AGENTS forbids
