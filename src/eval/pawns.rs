@@ -245,7 +245,7 @@ impl Evaluator {
                     // NB: the passed-pawn "free stop / safe stop" bonuses depend
                     // on non-pawn occupancy and enemy attacks, so they are NOT
                     // computed here — this function's result is cached by a
-                    // pawn-structure-only key (Phase 3.14 fix). They are scored
+                    // pawn-structure-only key. They are scored
                     // per-evaluation in `eval_passed_pawn_advance` instead.
                 }
 
@@ -264,8 +264,7 @@ impl Evaluator {
                     tr_mg!(self, pawn_isolated_mg, 0, -sign);
                     tr_eg!(self, pawn_isolated_eg, 0, -sign);
                 }
-                // Doubled *and* isolated — an extra penalty on top (Phase 3.8,
-                // seeded 0).
+                // Doubled *and* isolated — an extra penalty on top.
                 if is_doubled && is_isolated {
                     mg -= sign * self.params.pawn_doubled_isolated_mg[0];
                     eg -= sign * self.params.pawn_doubled_isolated_eg[0];
@@ -280,7 +279,7 @@ impl Evaluator {
                     tr_mg!(self, pawn_connected_mg, rel_rank, sign);
                     tr_eg!(self, pawn_connected_eg, rel_rank, sign);
                 }
-                // Phalanx (Phase 7.4, seeded 0): an own pawn directly beside
+                // Phalanx: an own pawn directly beside
                 // this one on the same rank — the west (sq-1) or east (sq+1)
                 // neighbour, guarded against file wrap. Distinct from support:
                 // phalanx pawns do not defend each other.
@@ -323,7 +322,7 @@ impl Evaluator {
                 }
             }
 
-            // Pawn islands (Phase 3.12, seeded 0): number of maximal groups of
+            // Pawn islands: number of maximal groups of
             // own pawns on consecutive files. Penalty grows with fragmentation.
             let mut file_mask = 0u16;
             for (f, &file_bb) in FILE_BBS.iter().enumerate().take(8) {

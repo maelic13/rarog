@@ -12,8 +12,8 @@ use crate::board::attacks::AttackTables;
 use crate::board::{ATTACKS, Bitboard, Board, Color, Piece};
 use crate::infra;
 
-// The two main diagonals (a1-h8, a8-h1) minus their corner squares (Phase
-// 3.10 bishop-on-long-diagonal term). Square index = rank*8 + file.
+// The two main diagonals (a1-h8, a8-h1) minus their corner squares, for the
+// bishop-on-long-diagonal term. Square index = rank*8 + file.
 const LONG_DIAGONALS: Bitboard = Bitboard(
     (1u64 << 9)
         | (1u64 << 18)
@@ -89,9 +89,8 @@ impl Evaluator {
                 tr_mg!(self, bishop_pair_mg, 0, sign);
                 tr_eg!(self, bishop_pair_eg, 0, sign);
 
-                // Bishop-pair value scales with fewer pawns on the board
-                // (Phase 3.10): seeded 0, additive on top of the flat bonus
-                // above so the flat term can be retired once this is tuned.
+                // Bishop-pair value scales with the pawns left on the board,
+                // additive on top of the flat bonus above.
                 let pawn_term = 8 - infra::to_i32((own_pawns | their_pawns).count());
                 *mg += sign * pawn_term * self.params.bishop_pair_pawn_mg[0];
                 *eg += sign * pawn_term * self.params.bishop_pair_pawn_eg[0];
@@ -99,7 +98,7 @@ impl Evaluator {
                 tr_eg!(self, bishop_pair_pawn_eg, 0, sign * pawn_term);
             }
 
-            // Per-bishop terms (Phase 3.10): outpost (mirrors the knight
+            // Per-bishop terms: outpost (mirrors the knight
             // outpost logic below), long diagonal bearing on the enemy king,
             // and bad bishop (own pawns on the bishop's own square colour).
             // Each per-piece test is a set membership, so each term is a
@@ -192,15 +191,15 @@ impl Evaluator {
             tr_eg!(self, knight_outpost_eg, 0, sign * knight_outposts);
 
             let mobility_area = maps.mobility_area[color as usize];
-            // One-hot per-count tables (Phase 3.7). Index clamped to the table
+            // One-hot per-count tables. Index clamped to the table
             // length for safety; the count never exceeds it in practice
             // (N≤8, B≤13, R≤14, Q≤27).
             //
-            // 9.7.5(d): each piece type gets its OWN loop, so the table pair is
+            // Each piece type gets its OWN loop, so the table pair is
             // a compile-time constant rather than a `match piece` re-evaluated
             // for every piece on the board. The match was loop-invariant across
             // the whole `while pieces.any()` — the same duplicated-dispatch
-            // shape 8.12(g2) found in move scoring, and the Rust equivalent of
+            // shape move scoring once had, and the Rust equivalent of
             // Basilisk's `if constexpr` specialisation (+0.89% there).
             macro_rules! mob_loop {
                 ($piece:expr, $mgf:ident, $egf:ident) => {{
@@ -236,8 +235,8 @@ impl Evaluator {
                 eg,
             );
 
-            // ---- Gauntlet-driven additions (Phase 3.12), all seeded 0 (bench
-            // unchanged), tuned in Phase 4. ----
+            // ---- Minors behind pawns, pawn islands, queen infiltration and
+            // king protectors. ----
             let own_king = board.king_sq(color);
             let minors = board.pieces(color, Piece::Knight) | board.pieces(color, Piece::Bishop);
 
@@ -388,8 +387,8 @@ impl Evaluator {
         }
     }
 
-    /// Closedness (Phase 3.10): value swing for knights/rooks as the centre
-    /// locks (rammed pawn count). Per-count-mobility (3.7) already penalises
+    /// Closedness: value swing for knights/rooks as the centre
+    /// locks (rammed pawn count). Per-count mobility already penalises
     /// a knight's reduced mobility in closed positions, so the only marginal
     /// lever here is the material-value swing itself — kept as one small
     /// weight per piece type rather than a full table.

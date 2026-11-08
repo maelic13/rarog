@@ -2169,8 +2169,8 @@ impl Searcher {
                         // does. The donor also re-searches a ply shallower when
                         // the move barely beat alpha; two tunes walked that
                         // margin below the point where it can fire, and read
-                        // as a switch it lost at the donor's value (RAR-S102),
-                        // so it is not here.
+                        // as a switch it lost at the donor's value, so it is
+                        // not here.
                         let deeper =
                             !NODE::ROOT && score > best_score + self.cfg.core.lmr_research_deeper;
                         new_depth += i32::from(deeper);

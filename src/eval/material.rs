@@ -7,9 +7,9 @@ use super::{Evaluator, color_sign};
 use crate::board::{Board, Color, Piece};
 use crate::infra;
 
-// Material values (Phase 4.6 fitted). King pinned 0. mg values rescaled up ~×1.1
-// vs the old PeSTO seeds to match the lower fitted K (1.70) — ratios-to-pawn are
-// essentially unchanged, so this is a benign scale shift, not a distortion.
+// Material values; the king's is pinned at 0. The mg values sit about ×1.1
+// above PeSTO's to match the fit's lower K (1.70), with the ratios to a pawn
+// about unchanged: a scale shift, not a distortion.
 pub(super) const MG_VAL: [i32; 6] = [103, 392, 420, 539, 1140, 0];
 pub(super) const EG_VAL: [i32; 6] = [138, 261, 317, 557, 952, 0];
 pub(super) const PHASE_W: [i32; 6] = [0, 1, 1, 2, 4, 0];
@@ -78,7 +78,7 @@ const EG_KING_PST: [i32; 64] = [
 
 /// Flatten the six per-piece PST consts into one `[i32; 384]` array in
 /// `Piece::ALL` order (Pawn,Knight,Bishop,Rook,Queen,King), white POV — the
-/// uniform `[i32; N]` shape every `EvalParams` field uses (Phase 3.1).
+/// uniform `[i32; N]` shape every `EvalParams` field uses.
 pub(super) const fn build_default_pst(mg: bool) -> [i32; 384] {
     let tables: [&[i32; 64]; 6] = if mg {
         [
@@ -113,11 +113,10 @@ pub(super) const fn build_default_pst(mg: bool) -> [i32; 384] {
 }
 
 impl Evaluator {
-    /// SF-style quadratic material imbalance (Phase 3.9). White-POV net value,
+    /// SF-style quadratic material imbalance. White-POV net value,
     /// added phase-independently to mg and eg. Imbalance "pieces" are indexed
     /// `[0]=bishop pair, [1]=pawn, [2]=knight, [3]=bishop, [4]=rook, [5]=queen`;
-    /// the coefficient matrices use the lower triangle (`pt2 <= pt1`). All
-    /// coefficients are seeded 0, so this contributes nothing today.
+    /// the coefficient matrices use the lower triangle (`pt2 <= pt1`).
     pub(super) fn eval_imbalance(&mut self, board: &Board, mg: &mut i32, eg: &mut i32) {
         let count = |c: Color| -> [i32; 6] {
             let bishops = infra::to_i32(board.pieces(c, Piece::Bishop).count());

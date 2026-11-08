@@ -19,7 +19,7 @@ def count(fen, rule, color=chess.WHITE):
 
 class EngineCases(unittest.TestCase):
     def test_the_trace_tests_positions(self):
-        # src/eval/trace.rs, phase_7_4_semantic_fixes (iii).
+        # src/eval/trace.rs, pawn_and_passer_terms_hold_on_their_counterexamples (iii).
         self.assertEqual(count("8/P7/1K6/8/8/8/8/7k w - - 0 1", "engine"), 1)
         self.assertEqual(count("8/P7/1K6/8/8/8/6n1/7k w - - 0 1", "engine"), 0)
 

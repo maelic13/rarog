@@ -29,9 +29,9 @@ macro_rules! define_eval_params {
             }
         }
 
-        /// (name, length) for every field. Consumed by the Phase 3.2/3.3
-        /// tune-time loader/dumper and by `tools/texel-tuner`, which imports
-        /// it directly — so this is live, not reserved.
+        /// (name, length) for every field. Consumed by the `tune` build's
+        /// loader and dumper, the `texel` trace and `tools/texel-tuner`, which
+        /// imports it directly — so this is live, not reserved.
         pub const EVAL_PARAM_NAMES: &[(&str, usize)] = &[
             $( (stringify!($field), $len), )*
         ];
@@ -65,8 +65,8 @@ macro_rules! eval_params {
             eg_val: 6 = EG_VAL;
             pst_mg: 384 = build_default_pst(true);
             pst_eg: 384 = build_default_pst(false);
-            // Passers & pawn structure (Phase 4.4 fitted). passed_*/connected per-rank
-            // tables; passed bonuses stay monotonic (rank 1/8 pinned 0).
+            // Passers and pawn structure: per-rank passed and connected tables; the
+            // passed bonuses stay monotonic, ranks 1 and 8 pinned at 0.
             passed_mg: 8 = [0, 2, 2, 12, 49, 102, 147, 0];
             passed_eg: 8 = [0, 1, 1, 15, 56, 121, 136, 0];
             passed_supported_mg: 1 = [9];
@@ -79,18 +79,16 @@ macro_rules! eval_params {
             pawn_doubled_eg: 1 = [16];
             pawn_isolated_mg: 1 = [0];
             pawn_isolated_eg: 1 = [0];
-            // Rank-scaled pawn *support* (Phase 3.8), Phase 4.4 fitted; indexed by the
-            // pawn's relative rank (0..7). NB despite the historical name, this term
-            // fires only for a pawn defended diagonally from behind by an own pawn
-            // (`atk.pawn(them, sq) & our_pawns`) — the *phalanx* case (pawns abreast on
-            // the same rank, which do not defend each other) is the separate
-            // `pawn_phalanx_*` table below. (Rename to `pawn_supported_*` deferred: it
-            // churns the tuner's string-keyed param list; see PLAN 7.4.)
+            // Rank-scaled pawn *support*, indexed by the pawn's relative rank (0..7).
+            // Despite its name, this term fires only for a pawn defended diagonally
+            // from behind by an own pawn (`atk.pawn(them, sq) & our_pawns`); pawns
+            // abreast on one rank, which do not defend each other, are the
+            // `pawn_phalanx_*` table below. The name stays because the tuner's
+            // parameter list is keyed by it.
             pawn_connected_mg: 8 = [7, 7, 27, 27, 33, 53, 175, 7];
             pawn_connected_eg: 8 = [5, 5, 9, 0, 10, 29, 22, 5];
-            // Same-rank phalanx (Phase 7.4, seeded 0): a pawn with an own pawn on an
-            // adjacent file *on the same rank* (d4+e4). Rank-scaled; the refit activates
-            // it. Was entirely unrepresented before 7.4.
+            // Same-rank phalanx: a pawn with an own pawn on an adjacent file *on the
+            // same rank* (d4+e4), by relative rank.
             pawn_phalanx_mg: 8 = [0, 1, 9, 20, 40, 13, 0, 0];
             pawn_phalanx_eg: 8 = [0, 0, 4, 11, 41, 26, 1, 0];
             pawn_backward_mg: 1 = [0];
@@ -140,10 +138,9 @@ macro_rules! eval_params {
             threat_rook_eg: 1 = [44];
             threat_queen_mg: 1 = [69];
             threat_queen_eg: 1 = [44];
-            // Threats package v2 (Phase 3.6), seeded 0; fitted in Phase 4.2. Per-victim
-            // arrays indexed by `Piece as usize` (0=pawn..5=king). The refined hanging
-            // term absorbed the old flat hanging penalty, which the joint fit drove to
-            // ~0 (see hanging_* below).
+            // Threats by victim, indexed by `Piece as usize` (0 = pawn .. 5 = king).
+            // The refined hanging term covers what the flat `hanging_*` penalty below
+            // did, which the joint fit holds at about 0.
             threat_by_minor_mg: 6 = [0, 37, 66, 72, 71, 0];
             threat_by_minor_eg: 6 = [6, 28, 2, 0, 0, 0];
             threat_by_rook_mg: 6 = [0, 19, 38, 4, 68, 0];
@@ -200,10 +197,8 @@ macro_rules! eval_params {
             // No pawn of either colour on the king's flank.
             pawnless_flank_mg: 1 = [8];
             pawnless_flank_eg: 1 = [60];
-            // Old flat hanging penalty (Phase 3.6). Phase 4.2 dropped it data-driven:
-            // the refined hanging term (`threat_hanging_refined`) generalises and fully
-            // absorbed it, so the joint fit drove these to ~0. Kept (not deleted) so the
-            // term stays available; the values are now near-inert.
+            // The flat hanging penalty. `threat_hanging_refined` generalises it, so
+            // the joint fit holds these at about 0; the term stays available to it.
             hanging_minor: 1 = [0];
             hanging_rook: 1 = [1];
             hanging_queen: 1 = [1];
@@ -217,22 +212,17 @@ macro_rules! eval_params {
             // trapped_bishop frozen at hand value (feature-support: too sparse to fit).
             trapped_bishop_mg: 1 = [60];
             trapped_bishop_eg: 1 = [40];
-            // Material imbalance (Phase 3.9), SF-style symmetric quadratic form, all
-            // coefficients seeded 0 (bench unchanged). Two 6x6 matrices indexed
-            // `pt1*6 + pt2` over the imbalance "piece" order
+            // Material imbalance, Stockfish's symmetric quadratic form. Two 6x6
+            // matrices indexed `pt1*6 + pt2` over the imbalance "piece" order
             // [bishop_pair, pawn, knight, bishop, rook, queen]; only the lower triangle
-            // (pt2 <= pt1) is used. `imbalance_ours[pt1][pt2]` weights our-pt1 × our-pt2
+            // (pt2 <= pt1) fires. `imbalance_ours[pt1][pt2]` weights our-pt1 × our-pt2
             // count products; `imbalance_theirs[pt1][pt2]` weights our-pt1 × their-pt2.
-            // Phase-independent (added equally to mg and eg). No SF `/16` divisor — the
-            // coefficients are direct per-count-product weights so the term is exactly
-            // linear and Texel-tunable; the scale is the tuner's to find (Phase 4.5).
-            // Phase 4.5 fitted (lower triangle; upper entries never fire). Rows/cols in
-            // the imbalance "piece" order [bishop_pair, pawn, knight, bishop, rook, queen].
+            // Phase-independent (added equally to mg and eg). No `/16` divisor: the
+            // coefficients are direct per-count-product weights, so the term is
+            // exactly linear for the fit.
             imbalance_ours: 36 = [25, 0, 0, 0, 0, 0, 6, 7, 0, 0, 0, 0, -9, 41, -24, 0, 0, 0, 25, 36, -34, -36, 0, 0, -7, 47, -58, -44, -49, 0, -4, 89, -113, -82, -156, -105];
             imbalance_theirs: 36 = [0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, -8, 45, 0, 0, 0, 0, 6, 48, -11, 0, 0, 0, -13, 64, 7, 9, 0, 0, 12, 125, 16, 37, 0, 0];
-            // Small positional terms (Phase 3.10), all seeded 0 (bench unchanged),
-            // tuned in Phase 4.4/4.5.
-            // Small positional terms (Phase 3.10), Phase 4.4 fitted.
+            // Small positional terms.
             bishop_pair_pawn_mg: 1 = [-1];
             bishop_pair_pawn_eg: 1 = [-4];
             bishop_outpost_mg: 1 = [37];
@@ -247,15 +237,16 @@ macro_rules! eval_params {
             // Closedness (rammed-pawn count) value swing: per own-piece-count, added
             // for knights (expected positive when tuned) and rooks (expected
             // negative). mg-only — see eval_closedness for the caveat that the
-            // marginal lever beyond 3.7's per-count mobility is the material-value
-            // swing alone, so this is deliberately kept as a single small weight.
+            // marginal lever beyond the per-count mobility tables is the
+            // material-value swing alone, so this is deliberately one small weight.
             closedness_knight_mg: 1 = [7];
             closedness_rook_mg: 1 = [-10];
             // Central-king / lost-castling danger: fires only when the king is still
             // on its home square, on a central file, with all castling rights for
             // that side gone.
             king_centrality_danger_mg: 1 = [65];
-            // Gauntlet-driven additions (Phase 3.12), Phase 4.4 fitted.
+            // Unstoppable passers, minors behind pawns, pawn islands, queen
+            // infiltration and king protectors.
             unstoppable_passer_eg: 1 = [88];
             minor_behind_pawn_mg: 1 = [15];
             minor_behind_pawn_eg: 1 = [0];
@@ -265,8 +256,6 @@ macro_rules! eval_params {
             queen_infiltration_eg: 1 = [87];
             king_protector_mg: 1 = [6];
             king_protector_eg: 1 = [5];
-            // Phase 6.2.1 refresh structure — all seeded 0 (inert, bench-identical);
-            // activated by the 6.2.2 on-policy joint refit.
             // Passed-pawn whole-path weighting: the entire path to promotion is empty
             // ("free path") / never attacked by the enemy ("safe path"), scaled by
             // relative rank like the existing free/safe-stop terms.
@@ -358,7 +347,7 @@ impl std::ops::Deref for CompiledTables {
     }
 }
 
-/// Tune-time loader/dumper (Phase 3.2) — `--features tune` only, so release
+/// Tune-time loader and dumper, `--features tune` only, so release
 /// builds expose neither the env-var load path nor the `dumpeval` command.
 /// File format: one `name index value` line per scalar, in `EVAL_PARAM_NAMES`
 /// order — the same format `dump` writes, so a tuner's output file loads

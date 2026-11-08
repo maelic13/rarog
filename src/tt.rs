@@ -108,7 +108,9 @@ impl ClusterSlots for LocalCluster {
         (entry.key16, entry)
     }
 
-    /// The local slot keeps its tag in the entry, and the tag alone decides.
+    /// The local slot keeps its tag in the entry, and the tag alone decides:
+    /// an empty slot's tag is 0, so a position tagged 0 takes an empty slot
+    /// as its own, which is where its store would land anyway.
     #[inline(always)]
     fn holds(slot_key16: u16, _entry: TtEntry, key16: u16) -> bool {
         slot_key16 == key16
@@ -259,24 +261,14 @@ trait ClusterSlots {
     fn holds(slot_key16: u16, entry: TtEntry, key16: u16) -> bool;
 }
 
-// The shared cluster must be exactly 64 bytes, and must store positions at the
-// same density as the local one. Both were violated silently before — asserting
-// them at compile time is free.
+// The shared cluster must be exactly 64 bytes, one x86-64 cache line, and
+// must store positions at the same density as the local one.
 //
-// ⚠ "64 bytes" IS "one cache line" on x86-64 and is NOT on Apple
-// Silicon. Measured on an M4: `hw.cachelinesize` is **128**, so two
-// independent `SharedCluster`s share one line there and two threads touching
-// unrelated TT entries can contend. Neither cluster type can ever STRADDLE a
-// 128 B line — 32 and 64 both divide 128 and both are aligned to their own size
-// — so the 128 B block wrapper this project twice considered was aimed at a
-// hazard that cannot occur; this is the real one.
-//
-// Both halves are measured. Threads>1 scaling shows no exposure (3.89x at 4T
-// against a >=3.8x bar), and a 128 B wrapper measured -0.12% on an M4, inside
-// the noise floor, because the allocator already returns 128 B-aligned table
-// bases at every Hash size. Do not reintroduce the wrapper without a
-// Threads>1 ARM result that contradicts the scaling measurement. Naive padding
-// to 128 B would also halve the density this second assert exists to hold.
+// Apple Silicon's line is 128 bytes, so two shared clusters share one there;
+// neither cluster type can straddle a line. A 128-byte wrapper measured
+// −0.12% on an M4 and four threads scaled 3.89x, so the clusters stay 64
+// bytes until a multi-thread ARM read shows contention; padding would also
+// halve the density the second assert holds.
 const _: () = assert!(size_of::<SharedCluster>() == 64);
 const _: () = assert!(
     SHARED_CLUSTER_ENTRIES * size_of::<LocalCluster>()
@@ -866,9 +858,10 @@ fn store_shared(table: &SharedTable, e: TtStore, bound_bits: u8) {
 /// written there, or `None` when the existing entry is kept.
 ///
 /// A slot that already holds the position is reused; otherwise the slot of
-/// lowest [`entry_quality`] is. A shallower non-exact result does not
-/// overwrite a current-generation entry for the same position more than three
-/// plies deeper, and a store without a move keeps the position's stored move.
+/// lowest [`entry_quality`] is. A result of any bound does not overwrite a
+/// current-generation entry for the same position at least four plies deeper
+/// (six for a PV store), though a new move still replaces its move; a store
+/// without a move keeps the position's stored move.
 #[inline(always)]
 fn replacement<C: ClusterSlots>(
     cluster: &C,

@@ -132,18 +132,18 @@ pub(super) fn knnkp_adjustment(board: &Board) -> Option<i32> {
     })
 }
 
-/// Specialised known-endgame scale factor (Phase 3.11), in `0..=SCALE_NORMAL`.
+/// Specialised known-endgame scale factor, in `0..=SCALE_NORMAL`.
 /// Returns `Some(sf)` for a recognised material pattern (the caller multiplies
 /// the tapered score by `sf / SCALE_NORMAL`), or `None` to fall through to the
 /// general scaling. Each pattern fires only on exact material absent from the
 /// bench suite, so `bench 13` is unchanged.
 ///
 /// Implemented: KPK bitbase, KBP wrong-corner draw, pawnless
-/// insufficient-mating-material draws (KK/KNK/KBK/minor-vs-minor), and the
-/// Phase-3.11c patterns — the KQKP fortress draw (rook/bishop pawn only) and a
-/// conservative KRKP partial scale. KNNK keeps its existing handling in
+/// insufficient-mating-material draws (KK/KNK/KBK/minor-vs-minor), the KQKP
+/// fortress draw (rook/bishop pawn only), a conservative KRKP partial scale,
+/// and the KRPKR and KRPKB draw zones. KNNK keeps its existing handling in
 /// `scale_endgame`. Deliberately omitted: KQ-vs-KR (a win — never scaled toward
-/// draw) and broad rook-endgame drawishness (a tunable Phase-4 term, not a
+/// draw) and broad rook-endgame drawishness (a term for the fit, not a
 /// hardcoded rule that could wrongly draw a won R+P vs R).
 pub(super) fn specialized_endgame_scale(board: &Board) -> Option<i32> {
     // KPK (king + single pawn vs lone king): exact bitbase verdict. A drawn KPK
@@ -160,25 +160,25 @@ pub(super) fn specialized_endgame_scale(board: &Board) -> Option<i32> {
     if kbp_wrong_corner_draw(board) {
         return Some(0);
     }
-    // KQ vs KP fortress (Phase 3.11c): only the textbook drawn case — a rook or
+    // KQ vs KP fortress: only the textbook drawn case — a rook or
     // bishop pawn on the 7th, its king guarding the queening square, the queen's
     // king too far to break through. Knight/centre pawns are wins and are left
     // untouched.
     if let Some(sf) = kqkp_fortress_scale(board) {
         return Some(sf);
     }
-    // KR vs KP (Phase 3.11c): conservative *partial* scale toward draw in the
+    // KR vs KP: conservative *partial* scale toward draw in the
     // clear draw zone (pawn on the 7th, escorted by its king, rook's king far).
     // Never a forced draw, so an actually-won KRKP keeps a clearly winning score.
     if let Some(sf) = krkp_drawish_scale(board) {
         return Some(sf);
     }
-    // KRP vs KR (Phase 4.9a.7): the highest-value open reference family, at
-    // 10.04% of real games.
+    // KRP vs KR: the most frequent family the reference engine converts
+    // better, at 10.04% of real games.
     if let Some(sf) = krpkr_scale(board) {
         return Some(sf);
     }
-    // KRP vs KB (Phase 4.9a.8): rook-pawn fortresses only; partial scales.
+    // KRP vs KB: rook-pawn fortresses only; partial scales.
     if let Some(sf) = krpkb_scale(board) {
         return Some(sf);
     }
@@ -296,11 +296,11 @@ fn kbp_wrong_corner_draw(board: &Board) -> bool {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 3.11c — narrow, high-confidence endgame knowledge. Each fires only on
-// an exact material pattern (verified absent from the bench suite, so the
-// fingerprint is unchanged). Two deliberate omissions vs the original plan list:
+// Narrow, high-confidence endgame knowledge. Each fires only on an exact
+// material pattern (verified absent from the bench suite, so the fingerprint
+// is unchanged). Two deliberate omissions:
 //   * KQ-vs-KR is a *win*, so it is never scaled toward draw; and
-//   * general rook-endgame drawishness is a tunable Phase-4 term, not a
+//   * general rook-endgame drawishness is a term for the fit, not a
 //     hardcoded rule that could wrongly draw a won R+P vs R.
 // ---------------------------------------------------------------------------
 
@@ -338,7 +338,7 @@ fn kqkp_fortress_scale(board: &Board) -> Option<i32> {
 /// ending is usually drawn (the rook must give itself for the pawn). A
 /// *partial* scale (≈¼) only — never a forced draw — so an actually-won KRKP
 /// keeps a clearly winning score and a wrong guess cannot throw the game.
-/// KRP vs KB (Phase 4.9a.8). The rook side is winning almost everywhere, so
+/// KRP vs KB. The rook side is winning almost everywhere, so
 /// the drawn subset is small -- 94 of 4,000 sampled positions, 2.35% -- and the
 /// evaluator was wrong about nearly all of it: **95.74% of drawn KRP-KB
 /// positions scored above +100 cp, mean +347.2, max +771**.
@@ -408,11 +408,11 @@ fn krpkb_scale(board: &Board) -> Option<i32> {
     None
 }
 
-/// KRP vs KR (Phase 4.9a.7), the highest-expected-value open reference family:
-/// 10.04% of real games by RAR-M15 occurrence.
+/// KRP vs KR, the most frequent family the reference engine converts better:
+/// 10.04% of real games.
 ///
 /// WHAT THE DEFECT ACTUALLY IS. The conversion number looks alarming and is
-/// not the problem: RAR-E11 measured Stockfish 18 converting this family at
+/// not the problem: Stockfish 18 converted this family at
 /// 47.9% against Rarog's 43.8% at the same node budget, so the reachable mark
 /// is about four points away, not fifty-five. The measured defect is the
 /// complementary cohort -- **37.1% of theoretically DRAWN KRP-KR positions
@@ -669,7 +669,7 @@ pub(crate) fn is_draw_verdict(board: &Board) -> bool {
 }
 
 #[cfg(test)]
-mod endgame_311c_tests {
+mod recogniser_tests {
     use super::*;
     use crate::eval::Evaluator;
 
@@ -889,7 +889,7 @@ mod endgame_311c_tests {
         );
     }
 
-    /// KRP-vs-KB rook-pawn fortresses (4.9a.8). Both FENs are Syzygy DRAW.
+    /// KRP-vs-KB rook-pawn fortresses. Both FENs are Syzygy DRAW.
     ///
     /// This is also the **live-wire proof** the null result needs: the drawn
     /// cohort's overclaim rate did not move at all (0.9574 before and after),
@@ -914,7 +914,7 @@ mod endgame_311c_tests {
         );
     }
 
-    /// KRP-vs-KR draw recognition (4.9a.7). Every FEN here was probed against
+    /// KRP-vs-KR draw recognition. Every FEN here was probed against
     /// Syzygy before it was written down, so these assert chess truth rather
     /// than the recognizer's own opinion of itself.
     #[test]

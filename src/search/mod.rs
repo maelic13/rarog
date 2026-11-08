@@ -253,7 +253,7 @@ impl RootMove {
 
     /// Add exactly one distribution sample for a COMPLETED iteration. Failed
     /// aspiration visits still update score/bounds/effort above, but must not
-    /// overweight volatile iterations in the statistics consumed by 10.2.
+    /// overweight volatile iterations in the per-move score statistics.
     fn complete_iteration(&mut self) {
         self.samples = self.samples.saturating_add(1);
         let weight = 1.0 / f64::from(self.samples);
@@ -304,7 +304,8 @@ struct ReportedLine {
 ///
 /// From depth 4 the window centres on `center` unless that is a mate score.
 /// Each failure widens the failing side by the growth parameters, re-centred
-/// on `center`; a fail-low also pulls beta to the middle of the old window. A
+/// on `center`; a fail-low also pulls beta to the midpoint of the new alpha
+/// and the old beta. A
 /// side opens fully after `asp_max_fails` failures, once its delta saturates,
 /// or when the failing score is in the mate range, so the loop terminates.
 struct Aspiration {

@@ -1746,7 +1746,7 @@ impl Board {
         let moving_piece = self.occupant_type(from);
 
         if flags == QUIET {
-            // 4.11b.9 fused ordinary relocation. `to` is empty and the piece
+            // Fused ordinary relocation. `to` is empty and the piece
             // keeps its identity, so one from/to mask and one paired key
             // reproduce remove_piece(from) + add_piece(to) exactly.
             self.move_piece(us, moving_piece, from, to);
@@ -1966,7 +1966,7 @@ impl Board {
 
         // Move the piece back from `to` to `from`
         if flags == QUIET {
-            // 4.11b.9 fused ordinary relocation; mirrors the make-side path.
+            // Fused ordinary relocation; mirrors the make-side path.
             debug_assert!(self.mailbox[to.index()] < 12);
             let p = self.occupant_type(to);
             self.move_piece(us, p, to, from);

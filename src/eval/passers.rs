@@ -58,7 +58,7 @@ impl Evaluator {
     /// stop square ("free stop") and an unattacked stop square ("safe stop").
     /// These are deliberately kept out of `eval_pawns` — whose result is cached
     /// by a pawn-structure-only key — so the whole evaluation stays a pure
-    /// function of the position (Phase 3.14).
+    /// function of the position.
     pub(super) fn eval_passed_pawn_advance(
         &self,
         board: &Board,
@@ -99,7 +99,7 @@ impl Evaluator {
                         tr_eg!(self, passed_safestop_eg_per_rank, 0, sign * rel_rank);
                     }
                 }
-                // Whole-path weighting (Phase 6.2.1, seeded 0): the free/safe-
+                // Whole-path weighting: the free/safe-
                 // stop above scores only the ONE square ahead; SF/Ethereal
                 // weight the entire path to promotion. free path = every path
                 // square empty; safe path = additionally, no path square
@@ -133,7 +133,7 @@ impl Evaluator {
         let them = !color;
         // Unstoppable passer (rule of the square): a passed pawn with a clear
         // path whose promotion the enemy king cannot reach in time. eg-only.
-        // Phase 7.4: the square rule only decides the race when the *king* is
+        // The square rule only decides the race when the *king* is
         // the sole defender — a knight/bishop/rook/queen can interpose or
         // capture on the path even when the king cannot arrive. Restrict to a
         // defender with no non-pawn material (passed pawns are already
@@ -182,12 +182,10 @@ impl Evaluator {
         mg: &mut i32,
         eg: &mut i32,
     ) {
-        // Phase 7.4: iterate over the *passers*, not the friendly rooks. The old
-        // form nested the enemy-rook check inside the friendly-rook loop, so the
-        // enemy-rook-behind penalty was only seen when a friendly rook shared the
-        // file, and doubled friendly rooks double-counted. Now each passer scores
+        // Iterate over the *passers*, not the friendly rooks: each passer scores
         // "is any own rook behind it" (bonus) and "is any enemy rook behind it"
-        // (penalty) independently and at most once — explicit blocker semantics.
+        // (penalty) independently and at most once, so an enemy rook counts
+        // without a friendly one on the file and doubled rooks count once.
         // "Behind" = same file, on the near side of the passer (toward our own
         // back rank). A passer has a rook behind it exactly when it stands on
         // the squares ahead of that rook on its file, so each term counts the
@@ -209,7 +207,7 @@ impl Evaluator {
         tr_eg!(self, enemy_rook_behind_passer_eg, 0, -sign * enemy);
     }
 
-    /// Passer/blockade detail needing piece squares (Phase 3.8; seeded 0):
+    /// Passer/blockade detail needing piece squares:
     /// a penalty when our own passed pawn is blocked by an enemy piece on its
     /// stop square, and a bonus for our knight as the ideal blockader directly
     /// in front of an enemy passed pawn.

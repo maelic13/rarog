@@ -414,7 +414,7 @@ mod tests {
         )
     }
 
-    /// The clock coordinates at D.1.3's seeds, the values these tests'
+    /// The clock coordinates' seeds, the values these tests'
     /// expectations are written in, so a fit that moves the defaults moves
     /// nothing here.
     fn seeds() -> SearchParams {
