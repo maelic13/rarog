@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.12 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.13 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.14 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.15 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -711,12 +710,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `pv_size` narrowed to `u16` fails the build. Fingerprint 15,625,852 /
       EBF 2.563 on both backends; debug and release suites, fmt and clippy
       clean.
-    - **D.5.12 The PEXT tier in CI — `I1`.** (RUST-7, BOARD-5): `--cfg rarog_pext` without
+    - **D.5.12 The PEXT tier in CI — `I1`, DONE 2026-11-08.** (RUST-7, BOARD-5): `--cfg rarog_pext` without
       `+bmi2` compiles clean today, so add a `compile_error!` under
       `all(rarog_pext, target_arch = "x86_64", not(target_feature = "bmi2"))`,
       and a CI step with `RUSTFLAGS="--cfg rarog_pext -C
       target-feature=+bmi2"` for clippy and `cargo test --test
-      slider_backends` (clean on this host).
+      slider_backends` (clean on this host). `a1c32e3` adds the
+      `compile_error!` beside `pext_index`, whose safety note now rests on
+      it; `cargo check` under `--cfg rarog_pext` alone fails with it.
+      `ba28374` adds the step to CI's lint job, in its own target
+      directory. Both of its commands pass on this host; GitHub's runner
+      has not run it yet. Fingerprint 15,625,852 / EBF 2.563 on both
+      backends; debug and release suites, fmt and clippy clean.
     - **D.5.13 The `texel` and `tune` evaluation tests in CI — `I1`.** (EVAL-1): the
       integer-exact trace reconstruction gate runs only under `--features
       texel` and CI never runs it (37 pass today); one CI step per feature and
