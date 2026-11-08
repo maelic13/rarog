@@ -1534,6 +1534,7 @@ fn build_with_pgo(config: &Config, purpose: Purpose) -> Result<PathBuf> {
 
     let profdata = pgo_dir.join("rarog.profdata");
     merge_profiles(&llvm_profdata, &raw_dir, &profdata, &config.target)?;
+    check_kernel_trained(&llvm_profdata, &profdata)?;
 
     let mut use_flags = vec![
         "-C".to_string(),
@@ -1781,6 +1782,91 @@ fn wait_child_with_timeout(
 fn kill_child(child: &mut Child) {
     let _ = child.kill();
     let _ = child.wait();
+}
+
+/// The search kernel's functions, as their mangled names spell them: every
+/// instantiation of each must have run in the training bench.
+const KERNEL_FUNCTIONS: [&str; 2] = ["Searcher7negamax", "Searcher10quiescence"];
+
+/// Fail when a copy of the search kernel has a profile that never ran.
+///
+/// A copy the training bench never reaches still has a profile record, with
+/// every count zero, so LLVM lays it out cold without a word: its
+/// missing-profile warning fires only for functions with no record at all.
+/// A kernel instantiated per caller once left every multi-thread search
+/// running untrained copies this way. The merged profile says which ran.
+fn check_kernel_trained(llvm_profdata: &Path, profdata: &Path) -> Result<()> {
+    let output = Command::new(llvm_profdata)
+        .args(["show", "--all-functions", "--counts"])
+        .arg(profdata)
+        .output()
+        .map_err(|err| format!("failed to run `{}`: {err}", llvm_profdata.display()))?;
+    if !output.status.success() {
+        return Err(format!(
+            "llvm-profdata show failed with status {}",
+            output.status
+        ));
+    }
+    for line in kernel_verdict(&String::from_utf8_lossy(&output.stdout))? {
+        println_flush(format_args!("{line}"));
+    }
+    Ok(())
+}
+
+/// The check's verdict on a dump: a line per kernel function when every copy
+/// ran, else the copies that did not.
+fn kernel_verdict(dump: &str) -> Result<Vec<String>> {
+    let copies = kernel_entry_counts(dump);
+    let mut lines = Vec::new();
+    for kernel in KERNEL_FUNCTIONS {
+        let trained = copies.iter().filter(|(name, _)| name.contains(kernel));
+        let (mut seen, mut cold) = (0, Vec::new());
+        for (name, entries) in trained {
+            seen += 1;
+            if *entries == 0 {
+                cold.push(name.as_str());
+            }
+        }
+        if seen == 0 {
+            return Err(format!("the profile has no `{kernel}` record"));
+        }
+        if !cold.is_empty() {
+            return Err(format!(
+                "{} of {seen} `{kernel}` copies never ran in training: {}",
+                cold.len(),
+                cold.join(", ")
+            ));
+        }
+        lines.push(format!("profile: all {seen} `{kernel}` copies trained"));
+    }
+    Ok(lines)
+}
+
+/// Each record of an `llvm-profdata show --all-functions --counts` dump
+/// naming a kernel function, with its entry count (its first block's).
+fn kernel_entry_counts(dump: &str) -> Vec<(String, u64)> {
+    let mut records = Vec::new();
+    let mut name: Option<&str> = None;
+    for line in dump.lines() {
+        let line = line.trim();
+        if let Some(record) = line.strip_suffix(':')
+            && !record.contains(' ')
+        {
+            name = KERNEL_FUNCTIONS
+                .iter()
+                .any(|kernel| record.contains(kernel))
+                .then_some(record);
+        } else if let (Some(record), Some(counts)) = (name, line.strip_prefix("Block counts: [")) {
+            let entry = counts
+                .split([',', ']'])
+                .next()
+                .and_then(|first| first.trim().parse().ok())
+                .unwrap_or(0);
+            records.push((record.to_string(), entry));
+            name = None;
+        }
+    }
+    records
 }
 
 fn merge_profiles(
@@ -2121,6 +2207,56 @@ fn sanitize(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    /// An excerpt of a real `llvm-profdata show --all-functions --counts`
+    /// dump: two kernel copies trained, one not, and an unrelated record.
+    const PROFILE_DUMP: &str = "Counters:
+  rarog.cgu.0;_RINvMs1_NtNtCs4_5rarog6search4nodeNtB8_8Searcher7negamaxNtB6_5NonPvE:
+    Hash: 0x033f7e9ac0d80e85
+    Counters: 496
+    Block counts: [12443005, 7727191, 400818, 0]
+  rarog.cgu.0;_RNvMs3_NtCs4_5rarog6searchNtB5_8Searcher19send_full_info_line:
+    Hash: 0x08c2aba3344fef37
+    Counters: 6
+    Block counts: [0, 0, 0]
+  rarog.cgu.0;_RINvMs1_NtNtCs4_5rarog6search4nodeNtB8_8Searcher7negamaxNtB6_2PvE:
+    Hash: 0x0e9dd448b466f90b
+    Counters: 342
+    Block counts: [0, 0, 10022]
+  rarog.cgu.0;_RINvMs1_NtNtCs4_5rarog6search4nodeNtB8_8Searcher10quiescenceE:
+    Hash: 0x0bcf9b0838dc3c7a
+    Counters: 203
+    Block counts: [5, 3]
+Instrumentation level: IR
+";
+
+    #[test]
+    fn kernel_records_are_read_with_their_entry_counts() {
+        let records = super::kernel_entry_counts(PROFILE_DUMP);
+        let counts: Vec<u64> = records.iter().map(|(_, entries)| *entries).collect();
+        assert_eq!(counts, [12_443_005, 0, 5], "{records:?}");
+        assert!(records[1].0.contains("Searcher7negamaxNtB6_2Pv"));
+        assert!(
+            records
+                .iter()
+                .all(|(name, _)| !name.contains("send_full_info_line"))
+        );
+    }
+
+    #[test]
+    fn an_untrained_kernel_copy_fails_the_build() {
+        let verdict = super::kernel_verdict(PROFILE_DUMP).expect_err("a copy never ran");
+        assert!(
+            verdict.starts_with("1 of 2 `Searcher7negamax` copies never ran"),
+            "{verdict}"
+        );
+        let trained =
+            PROFILE_DUMP.replace("Block counts: [0, 0, 10022]", "Block counts: [7, 0, 10022]");
+        let lines = super::kernel_verdict(&trained).expect("every copy ran");
+        assert_eq!(lines.len(), 2, "{lines:?}");
+        let missing = PROFILE_DUMP.replace("Searcher10quiescence", "Searcher10other_name");
+        assert!(super::kernel_verdict(&missing.replace("[0, 0, 10022]", "[1]")).is_err());
+    }
+
     use super::*;
 
     const ALL_ARCHES: [Arch; 6] = [
