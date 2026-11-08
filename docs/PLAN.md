@@ -670,7 +670,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      backends; debug and release suites, the allocation guard among them,
      fmt and clippy clean. Pooled NPS, four pext builds an arm, no
      regression by step 1: +0.04%, 95% interval −0.13% to +0.22%. The
-     prediction, frozen in the commit, was 0.0% ± 0.4%.
+     prediction, frozen in the commit, was 0.0% ± 0.4%. The unsafe floor is
+     17 (maintainer decision 2026-11-08), replacing 24.
     - **D.5.10 Stack-built tables — `I1`, DONE 2026-11-08.** (RUST-8): `HistoryTables::default` builds 64 KB
       and 21 KB tables in its frame and copies them to the heap, and
       `rank_root_moves` builds the 102 KB `TbRootMovesRaw` twice per tablebase
@@ -1031,8 +1032,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       as it is parsed, with a notice and the setting kept; an allocator
       refusal below it keeps the table; every `Hash` sent is checked and
       answered and no other option reports on it; a search runs on the
-      table in use. The unsafe floor is 24 (maintainer decision
-      2026-11-04). Record: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
+      table in use. The unsafe floor was 24 (maintainer decision
+      2026-11-04) until D.5.9 took it to 17. Record: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
   Not in this leaf: anything that moves the fingerprint (D.6), the
   simplification programme (D.8), the shell defects (D.3), the tablebase path
   (D.9).
