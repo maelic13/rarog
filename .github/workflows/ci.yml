@@ -301,6 +301,16 @@ jobs:
       - name: Build --features diag
         run: cargo build --release --features diag
 
+      # Tests that compile only under a feature: under `texel` the trace
+      # reconstruction gate (the trace must rebuild the evaluation exactly)
+      # and the term activation checks; under `tune` the parameter file round
+      # trip and the king-mask tests. Every one is a library test.
+      - name: Test --features texel
+        run: cargo test -p rarog --release --features texel --lib
+
+      - name: Test --features tune
+        run: cargo test -p rarog --release --features tune --lib
+
       # Single features are not enough. Which items arrive under a
       # given `cfg` differs per COMBINATION, so a module can compile under
       # `diag` and under `tune` and fail under both. This enumerates all 8
