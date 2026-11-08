@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.6 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.7 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.8 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.9 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -618,11 +617,24 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      speed read and a 2,000-game fixed read with a harm rule at −13 nElo. Both
      passed: speed +1.07% (different trees, so it only rules out a large cost)
      and nElo +2.1 ± 15.2, so the repair stays, with no strength claimed.
-    - **D.5.6 The dead quiescence type parameter — `I1`.** (NODE-6): `quiescence<NODE>` never
+    - **D.5.6 The dead quiescence type parameter — `I1`, DONE 2026-11-08.** (NODE-6): `quiescence<NODE>` never
      reads `NODE` (the PV bit comes from the stored form since B.4), so `Pv`
      and `NonPv` are two identical 355-line copies of the hottest recursion;
      drop the parameter. Fingerprint exact; the pooled-NPS read and one
-     `quiescence` body in the release binary.
+     `quiescence` body in the release binary. The premise held for rated
+     builds only: D.4's pricing build labelled its quiescence records with
+     `NODE`. `d36eee9` drops the parameter and keeps that label in a field
+     set at each hand-off from `negamax`, which a quiescence never calls.
+     One `quiescence` body in the release assembly against two. Fingerprint
+     15,625,852 / EBF 2.563 on both slider backends. The pricing build's
+     records are byte-identical to the head's over all 338,364 lines, and a
+     label forced false changes 1,290 of them, all in quiescence rules.
+     Debug and release suites, the allocation guard among them, fmt and
+     clippy clean. Pooled NPS, four pext builds an arm, no regression by step
+     2: +0.03%, 95% interval −0.22% to +0.28% over six cycles (step 1 −0.27%,
+     between). The prediction, frozen in the commit, was +0.2% ± 0.5%. The
+     read lies inside that range, but no gain is visible: one copy of the
+     recursion did not make it faster here.
     - **D.5.7 The root `searchmoves` filter — `I1`.** allocates a `Vec` per root call
      (NODE-13): filter in place.
     - **D.5.8 Dead Syzygy code — `I1`.** (PROTO-13): `syzygy::probe_root`, `RootProbe`, their

@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.5.6** (`I1`): The dead quiescence type parameter.
+**Now: D.5.7** (`I1`): The root `searchmoves` filter.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -44,7 +44,7 @@ field, about 3,475 on CCRL's Blitz scale.
         - [x] **D.5.3.3** The vote's weight and its decisive order — DONE 2026-11-06
     - [x] **D.5.4** Helper start-up — DONE 2026-11-06
     - [x] **D.5.5** `Hash` at any size — DONE 2026-11-06
-    - [ ] **D.5.6** The dead quiescence type parameter — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.5.6** The dead quiescence type parameter — DONE 2026-11-08
     - [ ] **D.5.7** The root `searchmoves` filter — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.8** Dead Syzygy code — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.9** The slider-table `unsafe` and the timer — **READY_FOR_IMPLEMENTATION / I1**
