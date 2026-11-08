@@ -86,11 +86,10 @@ const _: () = assert!(
 // KBNK mate (Phase 3.11): the bare king is driven to a corner the winning
 // bishop can actually reach — i.e. a corner of the bishop's own square colour.
 // A bishop can only reach corners that share its colour, so these sets are
-// exactly the corner squares contained in `Bitboard::LIGHT_SQUARES` /
-// `DARK_SQUARES`. NB this engine's colour convention puts a1 in LIGHT_SQUARES
-// (see bitboard.rs), so the "light" corners are a1(0) and h8(63).
-const KBNK_LIGHT_CORNERS: [usize; 2] = [0, 63]; // a1, h8 — on LIGHT_SQUARES
-const KBNK_DARK_CORNERS: [usize; 2] = [7, 56]; // h1, a8 — on DARK_SQUARES
+// exactly the corner squares contained in `Bitboard::DARK_SQUARES` /
+// `LIGHT_SQUARES`.
+const KBNK_DARK_CORNERS: [usize; 2] = [0, 63]; // a1, h8
+const KBNK_LIGHT_CORNERS: [usize; 2] = [7, 56]; // h1, a8
 
 // Const-evaluated init, same justification as `init_relative_ranks` above: the
 // `infra` helpers are not `const fn`, both operands are file/rank differences in
@@ -183,20 +182,20 @@ impl Evaluator {
                 // metric serves KXK and KBNK because they share that one defect,
                 // which is why one change fixes both.
                 let corners = match kbnk_winner_bishop(board, winning) {
-                    Some(true) => KBNK_LIGHT_CORNERS,
-                    Some(false) => KBNK_DARK_CORNERS,
+                    Some(true) => KBNK_DARK_CORNERS,
+                    Some(false) => KBNK_LIGHT_CORNERS,
                     // Generic KXK: drive toward whichever corner is already
                     // nearest. A corner is on the edge, so this subsumes the old
                     // edge push while giving the search an ordering to follow.
                     None => {
-                        if KING_DISTANCE[lksq.index()][KBNK_LIGHT_CORNERS[0]]
-                            .min(KING_DISTANCE[lksq.index()][KBNK_LIGHT_CORNERS[1]])
-                            <= KING_DISTANCE[lksq.index()][KBNK_DARK_CORNERS[0]]
-                                .min(KING_DISTANCE[lksq.index()][KBNK_DARK_CORNERS[1]])
+                        if KING_DISTANCE[lksq.index()][KBNK_DARK_CORNERS[0]]
+                            .min(KING_DISTANCE[lksq.index()][KBNK_DARK_CORNERS[1]])
+                            <= KING_DISTANCE[lksq.index()][KBNK_LIGHT_CORNERS[0]]
+                                .min(KING_DISTANCE[lksq.index()][KBNK_LIGHT_CORNERS[1]])
                         {
-                            KBNK_LIGHT_CORNERS
-                        } else {
                             KBNK_DARK_CORNERS
+                        } else {
+                            KBNK_LIGHT_CORNERS
                         }
                     }
                 };
@@ -219,7 +218,7 @@ impl Evaluator {
                 // anti-diagonal and rises to 7 at the a1/h8 corners, so it is
                 // plateau-free by construction and describes the actual
                 // technique: walk the king DOWN A DIAGONAL rather than at a
-                // corner. Mirroring the file serves the dark corner pair with
+                // corner. Mirroring the file serves the h1/a8 pair with
                 // one formula. Structure and scale both come from the reference
                 // HCE, whose corner term outweighs its king term by roughly 24
                 // to 1 -- and that RATIO is the whole mechanism. An earlier
@@ -228,12 +227,12 @@ impl Evaluator {
                 // 57.1%), which is why it was wrongly rejected once already.
                 let lfile = infra::to_i32(SQUARE_FILE[lksq.index()]);
                 let lrank = infra::to_i32(SQUARE_RANK[lksq.index()]);
-                let diag_file =
-                    if target == KBNK_LIGHT_CORNERS[0] || target == KBNK_LIGHT_CORNERS[1] {
-                        lfile
-                    } else {
-                        7 - lfile
-                    };
+                let diag_file = if target == KBNK_DARK_CORNERS[0] || target == KBNK_DARK_CORNERS[1]
+                {
+                    lfile
+                } else {
+                    7 - lfile
+                };
                 let diagonal = (7 - lrank - diag_file).abs();
                 sign * (MOPUP_DIAGONAL * diagonal
                     + MOPUP_KING_CHEB * (7 - king_distance)
@@ -251,7 +250,7 @@ impl Evaluator {
 
 /// True iff `winner` holds exactly king + one bishop + one knight while the
 /// loser has a bare king and neither side has pawns/rooks/queens (the KBNK
-/// mate). Returns whether the winning bishop is light-squared.
+/// mate). Returns whether the winning bishop is dark-squared.
 fn kbnk_winner_bishop(board: &Board, winner: Color) -> Option<bool> {
     let loser = !winner;
     if board.color_occ(loser) != Bitboard::from(board.king_sq(loser)) {
@@ -266,7 +265,7 @@ fn kbnk_winner_bishop(board: &Board, winner: Color) -> Option<bool> {
     let bishops = board.pieces(winner, Piece::Bishop);
     let knights = board.pieces(winner, Piece::Knight);
     if bishops.count() == 1 && knights.count() == 1 {
-        Some((bishops & Bitboard::LIGHT_SQUARES).any())
+        Some((bishops & Bitboard::DARK_SQUARES).any())
     } else {
         None
     }

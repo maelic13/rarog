@@ -521,14 +521,14 @@ impl Board {
         let zob = &ZOBRIST;
         let us = self.side_to_move;
         let (from, to) = (mv.from_sq(), mv.to_sq());
-        let piece = self.piece_type_at_unchecked(from);
+        let piece = self.occupant_type(from);
         let mut key =
             self.hash ^ zob.side() ^ zob.piece(us, piece, from) ^ zob.piece(us, piece, to);
         if self.ep_sq != 255 {
             key ^= zob.ep(Square(self.ep_sq).file());
         }
         if mv.flags() == CAPTURE {
-            key ^= zob.piece(!us, self.piece_type_at_unchecked(to), to);
+            key ^= zob.piece(!us, self.occupant_type(to), to);
         }
         key
     }
@@ -551,7 +551,7 @@ impl Board {
     #[inline(always)]
     pub fn moving_piece(&self, mv: Move) -> Piece {
         debug_assert!(self.mailbox[mv.from_sq().index()] < 12);
-        self.piece_type_at_unchecked(mv.from_sq())
+        self.occupant_type(mv.from_sq())
     }
 
     #[inline(always)]
@@ -811,7 +811,7 @@ impl Board {
             Some(Piece::Pawn)
         } else if flags == CAPTURE || flags >= PROMO_CAPTURE_KNIGHT {
             debug_assert!(self.mailbox[mv.to_sq().index()] < 12);
-            Some(self.piece_type_at_unchecked(mv.to_sq()))
+            Some(self.occupant_type(mv.to_sq()))
         } else {
             None
         }
@@ -1743,7 +1743,7 @@ impl Board {
         self.ep_sq = 255;
 
         debug_assert!(self.mailbox[from.index()] < 12);
-        let moving_piece = self.piece_type_at_unchecked(from);
+        let moving_piece = self.occupant_type(from);
 
         if flags == QUIET {
             // 4.11b.9 fused ordinary relocation. `to` is empty and the piece
@@ -1775,7 +1775,7 @@ impl Board {
             } else if flags == CAPTURE || flags >= PROMO_CAPTURE_KNIGHT {
                 // Regular capture (including promo-captures)
                 debug_assert!(self.mailbox[to.index()] < 12);
-                let captured_piece = self.piece_type_at_unchecked(to);
+                let captured_piece = self.occupant_type(to);
                 captured = encode_piece(them, captured_piece);
                 self.remove_piece(them, captured_piece, to);
                 self.hash ^= zob.piece(them, captured_piece, to);
@@ -1968,7 +1968,7 @@ impl Board {
         if flags == QUIET {
             // 4.11b.9 fused ordinary relocation; mirrors the make-side path.
             debug_assert!(self.mailbox[to.index()] < 12);
-            let p = self.piece_type_at_unchecked(to);
+            let p = self.occupant_type(to);
             self.move_piece(us, p, to, from);
         } else {
             let moved_piece = if flags >= PROMO_KNIGHT {
@@ -1978,7 +1978,7 @@ impl Board {
                 Piece::Pawn
             } else {
                 debug_assert!(self.mailbox[to.index()] < 12);
-                let p = self.piece_type_at_unchecked(to);
+                let p = self.occupant_type(to);
                 self.remove_piece(us, p, to);
                 p
             };
@@ -2086,8 +2086,10 @@ impl Board {
         self.toggle_derived_keys(color, piece, piece_key);
     }
 
+    /// The type of the piece on `sq`, which must be occupied: debug builds
+    /// check it, and a release read of an empty square yields some type.
     #[inline(always)]
-    fn piece_type_at_unchecked(&self, sq: Square) -> Piece {
+    fn occupant_type(&self, sq: Square) -> Piece {
         debug_assert!(self.mailbox[sq.index()] < 12);
         // `& 15` into the padded 16-entry table — check elided, no unsafe.
         PIECE_FROM_ENCODED[self.mailbox[sq.index()] as usize & 15]

@@ -282,9 +282,9 @@ fn kbp_wrong_corner_draw(board: &Board) -> bool {
         let queening_sq = Square(infra::to_u8(queening));
         // A bishop can only guard the queening square if it shares that square's
         // colour. Wrong colour → it can never evict the king from the corner.
-        let bishop_light = (bishops & Bitboard::LIGHT_SQUARES).any();
-        let queen_light = (Bitboard::from(queening_sq) & Bitboard::LIGHT_SQUARES).any();
-        if bishop_light == queen_light {
+        let bishop_dark = (bishops & Bitboard::DARK_SQUARES).any();
+        let queen_dark = (Bitboard::from(queening_sq) & Bitboard::DARK_SQUARES).any();
+        if bishop_dark == queen_dark {
             continue;
         }
         let weak_king = board.king_sq(weak);
@@ -567,9 +567,9 @@ pub(super) fn opposite_bishop_scale(board: &Board) -> Option<i32> {
     {
         return None;
     }
-    let white_dark = (white_bishops & Bitboard::DARK_SQUARES).any();
-    let black_dark = (black_bishops & Bitboard::DARK_SQUARES).any();
-    if white_dark == black_dark {
+    let white_light = (white_bishops & Bitboard::LIGHT_SQUARES).any();
+    let black_light = (black_bishops & Bitboard::LIGHT_SQUARES).any();
+    if white_light == black_light {
         return None;
     }
     let pawns = infra::to_i32(

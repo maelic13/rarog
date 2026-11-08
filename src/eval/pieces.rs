@@ -132,10 +132,10 @@ impl Evaluator {
 
             // Each bishop counts the own pawns on its square colour.
             let bad_count = infra::to_i32(
-                (bishops & Bitboard::LIGHT_SQUARES).count()
-                    * (own_pawns & Bitboard::LIGHT_SQUARES).count()
-                    + (bishops & Bitboard::DARK_SQUARES).count()
-                        * (own_pawns & Bitboard::DARK_SQUARES).count(),
+                (bishops & Bitboard::DARK_SQUARES).count()
+                    * (own_pawns & Bitboard::DARK_SQUARES).count()
+                    + (bishops & Bitboard::LIGHT_SQUARES).count()
+                        * (own_pawns & Bitboard::LIGHT_SQUARES).count(),
             );
             *mg -= sign * bad_count * self.params.bad_bishop_mg[0];
             *eg -= sign * bad_count * self.params.bad_bishop_eg[0];

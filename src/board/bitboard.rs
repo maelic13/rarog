@@ -26,9 +26,9 @@ impl Bitboard {
     pub(crate) const FILE_G: Self = Self(0x4040_4040_4040_4040);
     pub(crate) const FILE_H: Self = Self(0x8080_8080_8080_8080);
 
-    /// Light squares (a1 is dark, b1 is light in standard orientation)
-    pub(crate) const LIGHT_SQUARES: Self = Self(0xAA55_AA55_AA55_AA55);
-    pub(crate) const DARK_SQUARES: Self = Self(0x55AA_55AA_55AA_55AA);
+    /// The dark squares, a1's colour, and the light squares, h1's.
+    pub(crate) const DARK_SQUARES: Self = Self(0xAA55_AA55_AA55_AA55);
+    pub(crate) const LIGHT_SQUARES: Self = Self(0x55AA_55AA_55AA_55AA);
 
     #[inline(always)]
     pub const fn is_empty(self) -> bool {
@@ -258,5 +258,26 @@ impl fmt::Debug for Bitboard {
 impl fmt::Display for Bitboard {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self, f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::board::Square;
+
+    #[test]
+    fn the_colour_masks_hold_the_colours_they_name() {
+        for dark in [Square::A1, Square::H8, Square::E1] {
+            assert!(Bitboard::DARK_SQUARES.contains(dark), "{dark}");
+        }
+        for light in [Square::H1, Square::A8, Square::D1] {
+            assert!(Bitboard::LIGHT_SQUARES.contains(light), "{light}");
+        }
+        assert_eq!(Bitboard::DARK_SQUARES.0 & Bitboard::LIGHT_SQUARES.0, 0);
+        assert_eq!(
+            Bitboard::DARK_SQUARES.0 | Bitboard::LIGHT_SQUARES.0,
+            u64::MAX
+        );
     }
 }
