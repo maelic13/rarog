@@ -1,11 +1,14 @@
 #[path = "src/build_name.rs"]
 mod build_name;
+#[path = "src/eval/endgame/kpk_generate.rs"]
+mod kpk_generate;
 
 use std::path::Path;
 use std::process::Command;
 
 fn main() {
     println!("cargo:rustc-check-cfg=cfg(rarog_pext)");
+    write_kpk_bitbase();
 
     let target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
 
@@ -87,6 +90,14 @@ fn main() {
     if std::env::var("CARGO_CFG_UNIX").is_ok() {
         println!("cargo:rustc-link-lib=pthread");
     }
+}
+
+/// The KPK bitbase, for `kpk.rs` to include: generated here, the engine
+/// neither builds it at run time nor carries the generator.
+fn write_kpk_bitbase() {
+    let out = std::env::var("OUT_DIR").expect("cargo sets OUT_DIR");
+    std::fs::write(Path::new(&out).join("kpk.bin"), kpk_generate::bitbase())
+        .expect("write the KPK bitbase");
 }
 
 /// Bake the build's name into the engine: `RAROG_VERSION`, which `id name`
