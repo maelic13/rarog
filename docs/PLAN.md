@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.17 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.18 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.19 | READY_FOR_IMPLEMENTATION | I1 | Read 2026-11-02: the KPK verdicts agree with Syzygy and land as a test; won KPK and `krpkr_scale`'s wrong zeros went to D.6.21 and D.6.22; the KQKP, KRPKB and KBPK zeros unread |
 | D.5.20 | READY_FOR_IMPLEMENTATION | I1 | Tooling |
@@ -796,7 +795,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       binary's instructions identical to the head's; fingerprint 15,625,852 /
       EBF 2.563 on both backends; debug and release suites, the `texel` and
       `tune` library tests, fmt and clippy clean.
-    - **D.5.17 Tests the review found missing — `I1`.** (TT-12, NODE-14, DRIVER-21, BOARD-7,
+    - **D.5.17 Tests the review found missing — `I1`, DONE 2026-11-08.** (TT-12, NODE-14, DRIVER-21, BOARD-7,
       EVAL-2, PROTO-20): a deterministic torn-pair test and `false_hits <= 3`
       with a seeded set for the shared table (today's threshold cannot see an
       8-bit tag, and the eval-only test's `hashfull` assertion is a
@@ -818,7 +817,24 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       startpos moves …` line (read correct, untested); every child entry path
       (ordinary move, null move, ProbCut, exclusion, quiescence) starts a
       clean frame, as `push_move` and `clear_move` bracket them today. The
-      search-path perft is D.4.3.
+      search-path perft is D.4.3. `5740355` adds them all; every one passes,
+      so none became an item elsewhere. The false-hit test fills a 1 MiB
+      table instead, since at today's 5,000 entries in 16 MiB an 8-bit tag
+      expects 1.5 hits and `<= 3` could not see it: 0 of 20,000 never-stored
+      keys verify, an 8-bit tag lets 480 through, and the bound is 12. The
+      deterministic torn pair is rejected and its equal-fold converse
+      accepted. The hammer on one slot returns no foreign payload; a tag
+      without the fold returns about 30 a run in debug and about 1 in
+      release, whose loop rarely tears, so the debug suite carries it.
+      `gives_check_with` agrees with playing the move on 305,311 moves (6,433
+      checks) of a depth-3 walk from eight positions; dropping its
+      discovered-check clause fails it. All 128 suite lines and the 40
+      recogniser FENs evaluate equally mirrored, and a recogniser blind to
+      Black-only pawns fails both. The clean frame is a debug assertion at
+      `negamax` and `quiescence` entry; removing any of the three
+      `clear_move` calls fails 13 to 28 debug tests. Fingerprint 15,625,852 /
+      EBF 2.563 on both backends and the release binary's instructions
+      unchanged; debug and release suites, fmt and clippy clean.
     - **D.5.18 A record corrected — `I1`.** (BOARD-3): `analysis/draw_policy_2026-09-08.md`
       Policy 2 says a repetition scan crossing a null move can only be a false
       negative; two null moves by the same side while the opponent shuffles a
