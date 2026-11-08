@@ -3147,6 +3147,45 @@ mod tests {
         );
     }
 
+    /// An illegal move stored as the root's TT move, deep and exact, never
+    /// reaches the answer or any line a whole iterative deepening prints.
+    #[test]
+    fn a_deep_exact_illegal_tt_move_never_reaches_a_line_or_the_answer() {
+        let root = Board::from_fen("2k5/pp3pp1/5n2/2P5/bPP2P2/P3K3/6Pp/3Q1B1R w - - 0 23")
+            .expect("valid tournament-derived FEN");
+        let illegal = Move::from_uci("e3f4").expect("valid UCI move shape");
+        assert!(!root.is_legal(illegal));
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        searcher.shared.tt.store(TtStore {
+            key: root.hash(),
+            depth: 10,
+            score: 500,
+            bound: Bound::Exact,
+            mv: illegal,
+            ply: 0,
+            static_eval: VALUE_NONE,
+            is_pv: true,
+        });
+        let mut options = SearchOptions::default();
+        options.limits.depth = Some(6);
+        let result = searcher.search(root.clone(), &options, true, || SearchEvent::None);
+        assert!(root.is_legal(result.bestmove), "{}", result.bestmove);
+        let lines = lines.lock().unwrap();
+        let mut printed = 0;
+        for line in lines.iter().filter(|line| line.contains(" pv ")) {
+            let mut board = root.clone();
+            for token in line.split(" pv ").nth(1).expect("a pv").split_whitespace() {
+                let mv = board
+                    .parse_move(token)
+                    .unwrap_or_else(|| panic!("{token} is illegal in `{line}`"));
+                board.make_move(mv);
+            }
+            printed += 1;
+        }
+        assert!(printed >= 6, "{printed} lines with a pv");
+    }
+
     #[test]
     fn ponder_move_can_be_recovered_from_tt_child() {
         let mut searcher = Searcher::default();
