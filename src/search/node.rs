@@ -551,6 +551,12 @@ impl Searcher {
         if ply >= MAX_PLY - 1 {
             return self.corrected_eval(board, ply);
         }
+        // Every way in (a move, a null move, ProbCut, an exclusion search)
+        // finds this ply's frame clean: whoever made a move here cleared it.
+        debug_assert!(
+            self.td.stack[ply].mv.is_null() && self.td.stack[ply].cont_key == 0,
+            "ply {ply} entered with a move left in its frame"
+        );
         self.td.pv_len[ply] = ply;
         self.td.seldepth = self.td.seldepth.max(ply + 1);
 
@@ -2478,6 +2484,10 @@ impl Searcher {
         if ply >= MAX_PLY - 1 {
             return self.corrected_eval(board, MAX_PLY - 1);
         }
+        debug_assert!(
+            self.td.stack[ply].mv.is_null() && self.td.stack[ply].cont_key == 0,
+            "quiescence at ply {ply} entered with a move left in its frame"
+        );
         self.td.pv_len[ply] = ply;
         self.td.seldepth = self.td.seldepth.max(ply + 1);
 

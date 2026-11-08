@@ -681,6 +681,110 @@ mod recogniser_tests {
         Evaluator::default().evaluate(&board(fen))
     }
 
+    /// The same position with the colours swapped: ranks reversed, piece
+    /// letters' case swapped, the other side to move, castling rights swapped
+    /// and an en-passant square moved to the other side's third rank.
+    fn mirror(fen: &str) -> String {
+        let fields: Vec<&str> = fen.split_whitespace().collect();
+        let swap_case = |c: char| {
+            if c.is_ascii_uppercase() {
+                c.to_ascii_lowercase()
+            } else {
+                c.to_ascii_uppercase()
+            }
+        };
+        let placement = fields[0]
+            .split('/')
+            .rev()
+            .map(|rank| rank.chars().map(swap_case).collect::<String>())
+            .collect::<Vec<_>>()
+            .join("/");
+        let side = if fields[1] == "w" { "b" } else { "w" };
+        let castling = if fields[2] == "-" {
+            String::from("-")
+        } else {
+            let swapped: String = fields[2].chars().map(swap_case).collect();
+            "KQkq".chars().filter(|c| swapped.contains(*c)).collect()
+        };
+        let ep = match fields[3].as_bytes() {
+            [file, rank] => format!("{}{}", char::from(*file), char::from(b'9' - rank + b'0')),
+            _ => String::from("-"),
+        };
+        format!(
+            "{placement} {side} {castling} {ep} {} {}",
+            fields[4], fields[5]
+        )
+    }
+
+    /// Every position these tests use, each with White the stronger side.
+    const RECOGNISED: [&str; 40] = [
+        "k7/4p3/4K3/8/2N5/N7/8/8 w - - 0 1",
+        "K7/8/n7/2n5/4k3/4P3/8/8 b - - 0 1",
+        "k7/4p3/4K3/8/2N5/N3P3/8/8 w - - 0 1",
+        "k7/4p1p1/4K3/8/2N5/N7/8/8 w - - 0 1",
+        "k7/4p3/4K3/8/2N5/8/8/8 w - - 0 1",
+        "k7/8/4K3/8/2N5/N7/8/8 w - - 0 1",
+        "8/8/n7/2n5/8/4k3/4P3/K7 b - - 0 1",
+        "k7/8/4K3/4p3/4N3/N7/8/8 w - - 0 1",
+        "8/8/n7/4n3/4P3/4k3/8/K7 b - - 0 1",
+        "k7/8/4K3/4p3/2N5/N7/8/8 w - - 0 1",
+        "8/8/4K3/4p3/2Nk4/N7/8/8 w - - 0 1",
+        "k7/8/4K3/8/2N5/N3p3/8/8 w - - 0 1",
+        "k7/8/4K3/4p3/8/N1N5/8/8 w - - 0 1",
+        "k7/8/4K3/4p3/8/N7/N7/8 w - - 0 1",
+        "8/8/6K1/8/8/8/1kp5/7Q w - - 0 1",
+        "8/8/6K1/8/8/8/kp6/7Q w - - 0 1",
+        "8/8/6K1/8/8/8/1kp5/7R w - - 0 1",
+        "8/1kb5/8/P7/8/8/8/6KR w - - 0 1",
+        "8/2kb4/8/1P6/8/8/8/6KR w - - 0 1",
+        "8/3k4/r7/3PK3/8/8/8/7R w - - 0 1",
+        "R7/P6k/8/8/8/8/8/r5K1 w - - 0 1",
+        "1R6/1P6/8/8/8/7k/r7/6K1 w - - 0 1",
+        "8/8/1PK5/8/8/7k/r7/1R6 w - - 0 1",
+        "8/8/8/1PK5/8/7k/r7/1R6 w - - 0 1",
+        "8/8/6KQ/8/3k4/8/8/3r4 w - - 0 1",
+        "4k3/p7/8/3b4/8/8/P7/2B1K3 w - - 0 1",
+        "4k3/7p/P7/3b4/8/8/8/2B1K3 w - - 0 1",
+        "4k3/p7/8/3b4/8/8/PP6/2B1K3 w - - 0 1",
+        "4k3/7p/P7/3b4/8/8/P7/2B1K3 w - - 0 1",
+        "r3k3/p7/8/3b4/8/8/PP6/2B1K2R w - - 0 1",
+        "8/8/4k3/8/8/4K3/8/8 w - - 0 1",
+        "8/8/4k3/8/8/4K3/8/5N2 w - - 0 1",
+        "8/8/4k3/8/3n4/4K3/8/5B2 w - - 0 1",
+        "8/8/4k3/8/8/4K3/8/4NN2 w - - 0 1",
+        "7k/8/6KP/8/8/8/8/5B2 w - - 0 1",
+        "7k/8/8/8/8/8/7P/7K w - - 0 1",
+        "8/1rk5/8/8/8/8/3P1K1R/8 w - - 0 1",
+        "4k3/8/4K3/4P3/8/8/8/8 w - - 0 1",
+        "8/8/8/4k3/8/8/8/2B1KN2 w - - 0 1",
+        "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+    ];
+
+    /// Each recogniser reads a position the same with the colours swapped:
+    /// the same scale factor, and the same evaluation for the side to move.
+    #[test]
+    fn every_recogniser_position_reads_the_same_with_the_colours_swapped() {
+        for fen in RECOGNISED {
+            let mirrored = mirror(fen);
+            let (ours, theirs) = (board(fen), board(&mirrored));
+            assert_eq!(
+                specialized_endgame_scale(&ours),
+                specialized_endgame_scale(&theirs),
+                "{fen} against {mirrored}"
+            );
+            assert_eq!(
+                opposite_bishop_scale(&ours),
+                opposite_bishop_scale(&theirs),
+                "{fen} against {mirrored}"
+            );
+            assert_eq!(
+                static_eval(fen),
+                static_eval(&mirrored),
+                "{fen} against {mirrored}"
+            );
+        }
+    }
+
     #[test]
     fn knnkp_fires_only_on_exact_material() {
         assert!(knnkp_adjustment(&board("k7/4p3/4K3/8/2N5/N7/8/8 w - - 0 1")).is_some());

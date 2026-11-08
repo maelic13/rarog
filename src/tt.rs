@@ -1001,6 +1001,120 @@ mod tests {
     };
     use crate::eval::{MATE_SCORE, VALUE_NONE};
 
+    /// An entry whose every field derives from its key, so a load that pairs
+    /// one store's tag with another's payload shows as a mismatch.
+    fn keyed_entry(key16: u16) -> super::TtEntry {
+        super::TtEntry {
+            key16,
+            score: i16::from_ne_bytes(key16.to_ne_bytes()),
+            static_eval: i16::from_ne_bytes((key16 ^ 0xA5A5).to_ne_bytes()),
+            mv: key16,
+            depth: i8::try_from(key16 % 120).expect("below 120"),
+            flag_age: 1,
+        }
+    }
+
+    fn same_payload(a: super::TtEntry, b: super::TtEntry) -> bool {
+        (a.score, a.static_eval, a.mv, a.depth, a.flag_age)
+            == (b.score, b.static_eval, b.mv, b.depth, b.flag_age)
+    }
+
+    /// A slot holding one store's tag and another's payload, as a read racing
+    /// two writers can see it, reconstructs a key no probe holds when the
+    /// payloads' folds differ, and is rejected. Equal folds are the tag's
+    /// blind spot, the 2^-16 the tag's strength allows: that pair loads.
+    #[test]
+    fn a_torn_shared_slot_is_rejected_unless_the_folds_agree() {
+        use std::sync::atomic::Ordering::Relaxed;
+        let torn = |a: super::TtEntry, b: super::TtEntry| {
+            let cluster = SharedCluster::default();
+            cluster.store(0, a.key16, a);
+            cluster.store(1, b.key16, b);
+            cluster.data[0].store(cluster.data[1].load(Relaxed), Relaxed);
+            cluster
+        };
+        let a = keyed_entry(0x1234);
+        let b = keyed_entry(0x4321);
+        assert_ne!(
+            super::fold16(super::pack_entry(a)),
+            super::fold16(super::pack_entry(b))
+        );
+        let cluster = torn(a, b);
+        assert!(cluster.load(0, a.key16).is_none(), "torn pair accepted");
+        assert!(
+            cluster.load(0, b.key16).is_none(),
+            "torn pair accepted as the other"
+        );
+        assert!(cluster.load(1, b.key16).is_some(), "the untorn slot loads");
+
+        // Flipping the same bits in two 16-bit lanes keeps the fold.
+        let mut same_fold = a;
+        same_fold.score ^= 0x0F0F;
+        same_fold.static_eval ^= 0x0F0F;
+        same_fold.key16 = 0x4321;
+        assert_eq!(
+            super::fold16(super::pack_entry(a)),
+            super::fold16(super::pack_entry(same_fold))
+        );
+        let cluster = torn(a, same_fold);
+        let loaded = cluster.load(0, a.key16).expect("equal folds hide the tear");
+        assert!(
+            same_payload(loaded, same_fold),
+            "the payload is the other store's"
+        );
+    }
+
+    /// Four threads store into and probe one slot at once, as hard as two
+    /// writers can race. Every probe that verifies must return the payload of
+    /// the key it asked for: a torn pair reaches it only through the tag's
+    /// 2^-16 blind spot. A tag without the payload's fold returns about 30
+    /// wrong payloads a run in a debug build, whose slower loop tears far
+    /// more often than release's, so the debug suite is this test's teeth.
+    #[test]
+    fn four_threads_on_one_shared_cluster_never_return_a_torn_entry() {
+        const THREADS: u16 = 4;
+        const ROUNDS: u32 = 1_000_000;
+        let cluster = SharedCluster::default();
+        let start = std::sync::Barrier::new(usize::from(THREADS));
+        let (verified, wrong) = std::thread::scope(|scope| {
+            let workers: Vec<_> = (0..THREADS)
+                .map(|thread| {
+                    let (cluster, start) = (&cluster, &start);
+                    scope.spawn(move || {
+                        let (mut verified, mut wrong) = (0_u32, 0_u32);
+                        start.wait();
+                        for round in 0..ROUNDS {
+                            let key16 = (thread << 14)
+                                | u16::try_from(round & 0x3FFF).expect("fourteen bits");
+                            cluster.store(0, key16, keyed_entry(key16));
+                            // Widen the window in which another writer can
+                            // land between this store and its probe, and keep
+                            // the optimiser from handing the probe the value
+                            // this thread just stored.
+                            for _ in 0..16 {
+                                std::hint::spin_loop();
+                            }
+                            if let Some(entry) = std::hint::black_box(cluster).load(0, key16) {
+                                verified += 1;
+                                wrong += u32::from(!same_payload(entry, keyed_entry(key16)));
+                            }
+                        }
+                        (verified, wrong)
+                    })
+                })
+                .collect();
+            workers
+                .into_iter()
+                .map(|worker| worker.join().expect("worker thread"))
+                .fold((0, 0), |(v, w), (dv, dw)| (v + dv, w + dw))
+        });
+        assert!(verified > 0, "no probe verified");
+        assert!(
+            wrong <= 3,
+            "{wrong} of {verified} verified probes returned another store's payload"
+        );
+    }
+
     #[test]
     fn decisive_scores_round_trip_through_the_table_at_any_ply() {
         for ply in [0usize, 1, 127] {
@@ -1280,7 +1394,15 @@ mod tests {
                 assert_eq!(probe.node_cutoff_score(1, -1000, 1000, true), None);
                 assert_eq!(probe.cutoff_score(0, -1000, 1000), None);
                 assert_eq!(probe.refine_eval(55, 0), 55);
-                assert!(tt.hashfull() == 0 || tt.hashfull() > 0);
+            }
+            // Eval-only entries occupy their slots: a table holding nothing
+            // else reports them in `hashfull`.
+            for mut tt in both_backends() {
+                assert_eq!(tt.hashfull(), 0);
+                for i in 0..20_000_u64 {
+                    tt.store_eval(i.wrapping_mul(0x9E37_79B9_7F4A_7C15), -123, true);
+                }
+                assert!(tt.hashfull() > 0, "eval-only entries count as used");
             }
         }
 

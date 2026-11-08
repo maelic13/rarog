@@ -94,6 +94,58 @@ fn static_eval(fen: &str) -> i32 {
     evaluator.evaluate(&board)
 }
 
+/// The same position with the colours swapped: ranks reversed, piece letters'
+/// case swapped, the other side to move, castling rights swapped and an
+/// en-passant square moved to the other side's third rank.
+fn mirror_fen(fen: &str) -> String {
+    let fields: Vec<&str> = fen.split_whitespace().collect();
+    let swap_case = |c: char| {
+        if c.is_ascii_uppercase() {
+            c.to_ascii_lowercase()
+        } else {
+            c.to_ascii_uppercase()
+        }
+    };
+    let placement = fields[0]
+        .split('/')
+        .rev()
+        .map(|rank| rank.chars().map(swap_case).collect::<String>())
+        .collect::<Vec<_>>()
+        .join("/");
+    let side = if fields[1] == "w" { "b" } else { "w" };
+    let castling = if fields[2] == "-" {
+        String::from("-")
+    } else {
+        let swapped: String = fields[2].chars().map(swap_case).collect();
+        "KQkq".chars().filter(|c| swapped.contains(*c)).collect()
+    };
+    let ep = match fields[3].as_bytes() {
+        [file, rank] => format!("{}{}", char::from(*file), char::from(b'9' - rank + b'0')),
+        _ => String::from("-"),
+    };
+    let clocks = fields
+        .get(4..6)
+        .map_or(String::from("0 1"), |c| c.join(" "));
+    format!("{placement} {side} {castling} {ep} {clocks}")
+}
+
+/// Every suite position evaluates the same with the colours swapped, for the
+/// side to move: the suite's positions all have White the stronger side, and
+/// the recognisers must not depend on which colour that is.
+#[test]
+fn every_suite_position_evaluates_the_same_with_the_colours_swapped() {
+    for case in parse_cases() {
+        let mirrored = mirror_fen(&case.fen);
+        assert_eq!(
+            static_eval(&case.fen),
+            static_eval(&mirrored),
+            "{} ({}) against {mirrored}",
+            case.fen,
+            case.comment
+        );
+    }
+}
+
 /// Scores that mean "forced mate found". `MATE_SCORE` minus the ply horizon is
 /// the standard band; anything at or above it is a mate claim.
 const MATE_THRESHOLD: i32 = MATE_SCORE - 256;

@@ -2569,6 +2569,48 @@ mod tests {
         );
     }
 
+    /// `gives_check_with`, the search's fast check test, agrees with making
+    /// the move and asking whether the opponent is in check, for every legal
+    /// move of every position a depth-3 walk reaches from the standard perft
+    /// positions and two with promotions and en passant.
+    #[test]
+    fn the_fast_check_test_agrees_with_playing_the_move() {
+        fn walk(board: &mut Board, depth: u32, counts: &mut (u64, u64)) {
+            if depth == 0 {
+                return;
+            }
+            let ci = board.check_info();
+            for mv in board.generate_legal_moves() {
+                let fast = board.gives_check_with(mv, &ci);
+                board.make_move(mv);
+                let checks = board.is_in_check();
+                board.unmake_move(mv);
+                assert_eq!(fast, checks, "{mv} in {}", board.to_fen());
+                counts.0 += 1;
+                counts.1 += u64::from(checks);
+                board.make_move(mv);
+                walk(board, depth - 1, counts);
+                board.unmake_move(mv);
+            }
+        }
+        let mut counts = (0, 0);
+        for fen in [
+            STARTING_FEN,
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+            "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+            "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+            "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+            "8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1",
+            "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
+        ] {
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            walk(&mut board, 3, &mut counts);
+        }
+        // The walk is fixed, so its coverage is too.
+        assert_eq!(counts, (305_311, 6_433), "moves and checking moves seen");
+    }
+
     /// Shuffle both knights out and back: four plies that always exist from the
     /// starting position, so a walk of any even length can be built from them.
     const SHUFFLE: [&str; 4] = ["g1f3", "g8f6", "f3g1", "f6g8"];

@@ -2174,6 +2174,37 @@ mod tests {
         }
     }
 
+    /// The same `Hash` sent again keeps the table and what it holds, at any
+    /// thread count, where a different size starts an empty one.
+    #[test]
+    fn the_same_hash_sent_again_keeps_the_tables_contents() {
+        let board = Board::default();
+        for threads in [1, 4] {
+            let mut searcher = Searcher::default();
+            let options = EngineOptions {
+                hash_mb: 2,
+                threads,
+                ..EngineOptions::default()
+            };
+            searcher.configure(&options, HashRequest::Sent);
+            store_static_eval(&mut searcher, &board, 17);
+            searcher.configure(&options, HashRequest::Sent);
+            assert!(
+                searcher.shared.tt.probe(board.hash()).is_some(),
+                "the same Hash kept the entry at Threads {threads}"
+            );
+            let resized = EngineOptions {
+                hash_mb: 3,
+                ..options.clone()
+            };
+            searcher.configure(&resized, HashRequest::Sent);
+            assert!(
+                searcher.shared.tt.probe(board.hash()).is_none(),
+                "a new size starts empty at Threads {threads}"
+            );
+        }
+    }
+
     /// `bestmove` must be the move the last `info` line names. A stopped
     /// iteration can leave another move's bound line last, as can a vote for
     /// a helper: the result's own line is printed then, and only then.
