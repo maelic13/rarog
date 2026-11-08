@@ -1,14 +1,8 @@
-/// Declares every tunable search parameter **once**.
-///
-/// Before 9.0a each tunable lived in FOUR hand-synchronised places: the struct
-/// field, the `Default` value, the tune-gated UCI `option` string (carrying its
-/// own copy of default/min/max) and the setter arm (carrying its own copy of
-/// the clamp range). Nothing checked that the four agreed — and on 2026-07-19
-/// they did not: **12 UCI declarations advertised stale defaults** (e.g.
-/// `SeePruningCoeff` said 83 while the baked value was 51, and all six `Hist*`
-/// still advertised their pre-8.1 seeds). This macro makes that class of drift
-/// unrepresentable: one line per parameter generates all four, so a bake can
-/// only ever change one number.
+/// Declares every tunable search parameter **once**: one line generates the
+/// struct field, its `Default` value, the tune build's UCI `option` string and
+/// the setter's clamp range, so the four cannot disagree and a bake changes
+/// one number. Written separately, twelve UCI declarations once advertised
+/// stale defaults.
 ///
 /// Syntax: `struct Name, checks_module; field = default, "UciName", min..=max;`
 /// — doc comments and plain `//` section comments pass through as normal.
@@ -77,6 +71,15 @@ macro_rules! search_params {
                 )+
                 false
             }
+        }
+
+        #[cfg(test)]
+        impl $name {
+            /// Every parameter's UCI name, declared range and field, for the
+            /// tests that visit each one.
+            pub(crate) const FIELDS: &'static [(&'static str, i32, i32, fn(&mut Self) -> &mut i32)] = &[
+                $( ($uci, $min, $max, |p: &mut Self| &mut p.$field), )+
+            ];
         }
 
         #[cfg(test)]
@@ -150,48 +153,39 @@ search_params! {
     /// Initial aspiration window half-width (centipawns).
     aspiration_delta = 12, "AspirationDelta", 1..=100;
 
-    // ── 10.2(a) aspiration shape ─────────────────────────────────────────────
-    // The widening loop is parameterised so its shape can be SPSA'd rather than
-    // hardcoded. EVERY default below reproduces the pre-10.2 behaviour exactly,
-    // so this lands bench-identical and the tune activates it (principle #5).
-    // That staging is deliberate: lesson 13 records that adopting a modern
-    // aspiration shape WITHOUT re-tuning its constants measured −4.52, because
-    // `AspirationDelta` and the pruning group were fitted around the old
-    // dynamics. Ship the mechanism inert, fit it, then gate it.
+    // ── Aspiration shape ─────────────────────────────────────────────────────
+    // The widening loop is parameterised so the fit sets its shape. These are
+    // fitted together with `AspirationDelta` and the pruning group, which were
+    // fitted around the loop's dynamics: a modern shape adopted without
+    // refitting them measured −4.52 Elo.
     /// Delta growth per fail-LOW, in percent of the current delta.
-    /// 150 reproduces the old `d + d/2` (both are `floor(3d/2)`).
     asp_growth_pct = 164, "AspGrowthPct", 100..=400;
-    /// Delta growth per fail-HIGH, in percent. Separate from the fail-low side
-    /// so the growth can become asymmetric — fail-highs and fail-lows carry
-    /// different information, and nothing forced them to share a rate except
-    /// that the old code was written as one expression. 150 = old behaviour.
+    /// Delta growth per fail-HIGH, in percent. Separate from the fail-low
+    /// side, since fail-highs and fail-lows carry different information.
     asp_growth_high_pct = 165, "AspGrowthHighPct", 100..=400;
     /// Additive term applied with the growth, so a small delta still escapes
-    /// its own rounding. 5 = old behaviour.
+    /// its own rounding.
     asp_growth_add = 8, "AspGrowthAdd", 0..=50;
     /// ⛔ TERMINATION BY CONSTRUCTION. After this many consecutive fails on one
     /// side, that side opens to ±INF unconditionally, so it cannot fail again;
-    /// the loop is bounded at `2 × asp_max_fails` iterations regardless of
-    /// score magnitude. This is what lets 10.2(a) retire the 7.0b hang guard,
-    /// which special-cased mate scores and delta saturation instead.
+    /// the loop is bounded at `2 × asp_max_fails` iterations whatever the
+    /// score's magnitude, mate scores and a saturated delta included.
     ///
-    /// Seeded at 20 because the delta needs ~18 growth steps to saturate from
-    /// the seed, so the counter never fires first and behaviour is unchanged.
-    /// The interesting direction is DOWN — engines that re-search a bounded
-    /// number of times before opening fully spend far fewer nodes on a
-    /// runaway iteration — which is exactly what the tune explores.
+    /// A lower value bounds the re-searches of a runaway iteration, as engines
+    /// that open fully after a few fails do; that is the direction the tune
+    /// explores.
     asp_max_fails = 20, "AspMaxFails", 1..=32;
 
     // ── Qsearch SEE thresholds ───────────────────────────────────────────────
     // Coordinates so SEE's consumers can be re-tuned with SEE itself: a more
     // accurate SEE de-tunes the constants fitted around the old one.
     /// Qsearch capture SEE-prune margin: search a capture only if
-    /// `see_ge(alpha − stand_pat − qs_see_margin)` (clamped). Seed 200.
+    /// `see_ge(alpha − stand_pat − qs_see_margin)` (clamped).
     qs_see_margin = 247, "QsSeeMargin", 0..=600;
-    /// Upper clamp on the qsearch SEE-prune threshold. Seed 200.
+    /// Upper clamp on the qsearch SEE-prune threshold.
     qs_see_clamp_hi = 224, "QsSeeClampHi", 0..=600;
     /// Qsearch bad-capture SEE floor: an ordering-SEE-negative capture is
-    /// skipped unless `see_ge(qs_see_bad_floor)`. Seed −50.
+    /// skipped unless `see_ge(qs_see_bad_floor)`.
     qs_see_bad_floor = -43, "QsSeeBadFloor", -400..=0;
 
     /// Minimum non-pawn pieces the side to move must have for NMP.
@@ -207,17 +201,13 @@ search_params! {
     /// keep covering the boundary.
     nmp_min_non_pawn_pieces = 1, "NmpMinNonPawnPieces", 1..=3;
 
-    /// 4.7c PROBCUT MOVE FILTER. Two constants for the entry contract of the
-    /// speculative capture search; both are categorical-frozen defaults awaiting
-    /// the cluster fit, not tuned values.
-    ///
-    /// `probcut_see_gap_scale` is a percentage applied to the gap the capture
-    /// must bridge, `probcut_beta - static_eval`. At 100 the move must win at
-    /// least the whole gap by SEE; at 0 the gap is ignored and the filter
-    /// degenerates to the pre-4.7c `see_ge(mv, 0)`. The threshold is floored at
-    /// 0, so this can only ever tighten the old contract, never loosen it —
-    /// RAR-S55 v3 measured Rarog searching 5.17x the reference's normalised
-    /// ProbCut moves and converting 32.6% of them against 71.9%.
+    /// ProbCut's move filter, the entry contract of the speculative capture
+    /// search: a percentage applied to the gap the capture must bridge,
+    /// `probcut_beta - static_eval`. At 100 the move must win at least the
+    /// whole gap by SEE; at 0 the gap is ignored and the filter is
+    /// `see_ge(mv, 0)`. The threshold is floored at 0, so this only ever
+    /// tightens that test. Without it Rarog searched 5.17x the reference's
+    /// normalised ProbCut moves and converted 32.6% of them against 71.9%.
     probcut_see_gap_scale = 92, "ProbCutSeeGapScale", 0..=200;
 
     /// Lazy-eval margin: if the tapered material + PST + pawn score already
@@ -226,10 +216,10 @@ search_params! {
     /// evaluator's own seed and the margin `texel` fits use.
     lazy_margin = 475, "LazyMargin", 100..=2000;
 
-    // ── Time-management dynamic multipliers (Phase 5.1 TM group) ─────────────
+    // ── Time-management dynamic multipliers ──────────────────────────────────
     // The clock-mode between-iteration soft-stop scales `optimum_ms` by
     // falling-eval × best-move-instability × effort (`search_root` soft-stop block);
-    // these are the 2.2 SF-seeded constants, exposed for the TM SPSA group.
+    // seeded from Stockfish and exposed for the time-management tune.
     // Stored in ten-thousandths so the float defaults reconstruct bit-exactly
     // (`x / 10000.0` is correctly-rounded, identical to the original literal).
     // TM affects only clock play, never the depth-limited `bench` fingerprint.
@@ -375,7 +365,7 @@ search_params! {
     lmr_improvement = 333, "CoreLmrImprovement", 0..=2048;
     /// Bounds of the improvement term, in reduction units. Seeded at the
     /// donor's values; converting them to Rarog's evaluation scale measured
-    /// worse (RAR-S74), so the fit decides them.
+    /// worse, so the fit decides them.
     lmr_improvement_clamp_lo = -162, "CoreLmrImprovementClampLo", -1024..=0;
     lmr_improvement_clamp_hi = 1_065, "CoreLmrImprovementClampHi", 0..=4096;
     lmr_correction = 3_330, "CoreLmrCorrection", 0..=8192;
@@ -441,8 +431,8 @@ search_params! {
     /// improvement_term * improvement/1024 - cutoff * (child cutoffs < 2))`,
     /// evaluation units; the depth term is in quarters of a unit per ply.
     /// The null move runs only at nodes without the table's PV flag, so no
-    /// term for that flag belongs here (RAR-S80 read the donors' population,
-    /// which admits such nodes, and it was not taken).
+    /// term for that flag belongs here (the donors admit such nodes; that
+    /// form was read and not taken).
     nmp_base = 159, "CoreNmpBase", 0..=400;
     nmp_depth = 14, "CoreNmpDepth", 0..=80;
     nmp_improvement = 52, "CoreNmpImprovement", 0..=200;
@@ -486,7 +476,7 @@ search_params! {
     /// A stored lower bound seeds a singular candidate only when it is at
     /// most this many plies shallower than the node; 2 here, not the
     /// accepted search's `SingularTtDepthMargin` of 3, because 2 measured
-    /// +12.9 ± 9.4 Elo on this arm in 2,000 games (RAR-S80).
+    /// +12.9 ± 9.4 Elo on this arm in 2,000 games.
     singular_tt_depth_margin = 2, "CoreSingularTtDepthMargin", 0..=4;
     /// A singular move extends twice when its exclusion score falls this far
     /// below the singular beta: `pv_term * PV + not_tt_pv * (PV and not

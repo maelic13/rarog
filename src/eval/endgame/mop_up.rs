@@ -10,15 +10,15 @@ use crate::infra;
 
 /// Manhattan (taxicab) distance between squares, used only by the mate drive.
 ///
-/// 4.9a.4: the drive was pure Chebyshev, and Chebyshev is FLAT -- every square
-/// in a ring around the target scores identically. Measured over 300
+/// Chebyshev distance alone is FLAT -- every square in a ring around the
+/// target scores identically. Measured over 300
 /// theoretically won KBNK positions, the 19 legal moves collapsed into a median
 /// of 3 distinct mop-up values and **94% of positions had a tied best move**,
 /// median best-vs-second gap 0 cp. A term that cannot order its own moves
 /// cannot steer a search, which is why raising the magnitude alone would have
 /// changed nothing: 40x a 0 cp gap is still 0. Manhattan breaks the rings.
 const MANHATTAN_DISTANCE: [[u8; 64]; 64] = init_manhattan_distance();
-/// Mate-drive weights (4.9a.4). Chebyshev carries the coarse pull and Manhattan
+/// Mate-drive weights. Chebyshev carries the coarse pull and Manhattan
 /// supplies the resolution that breaks its rings; the pair is what takes the
 /// tied-best-move rate from 94% to 11% on won KBNK positions.
 ///
@@ -63,7 +63,7 @@ pub(crate) const MOPUP_ASSUMED_MAX_PLY: i32 = 128;
 /// A guidance term must never reach the band the search reads as a forced mate.
 ///
 /// This is a `const` assertion rather than a debug check or a validator inside
-/// an option-setter, and that is the point (PLAN 4.10.11): the SHIPPED default
+/// an option-setter, and that is the point: the SHIPPED default
 /// is what plays the games, so the bound has to hold in every build type
 /// including release, not only where a tuning build happens to compile a
 /// setter. Basilisk shipped exactly that gap -- its bound was enforced only in
@@ -83,14 +83,13 @@ const _: () = assert!(
     "mop-up drive can reach the search's decisive band; lower MOPUP_DIAGONAL"
 );
 
-// KBNK mate (Phase 3.11): the bare king is driven to a corner the winning
+// KBNK mate: the bare king is driven to a corner the winning
 // bishop can actually reach — i.e. a corner of the bishop's own square colour.
 // A bishop can only reach corners that share its colour, so these sets are
-// exactly the corner squares contained in `Bitboard::LIGHT_SQUARES` /
-// `DARK_SQUARES`. NB this engine's colour convention puts a1 in LIGHT_SQUARES
-// (see bitboard.rs), so the "light" corners are a1(0) and h8(63).
-const KBNK_LIGHT_CORNERS: [usize; 2] = [0, 63]; // a1, h8 — on LIGHT_SQUARES
-const KBNK_DARK_CORNERS: [usize; 2] = [7, 56]; // h1, a8 — on DARK_SQUARES
+// exactly the corner squares contained in `Bitboard::DARK_SQUARES` /
+// `LIGHT_SQUARES`.
+const KBNK_DARK_CORNERS: [usize; 2] = [0, 63]; // a1, h8
+const KBNK_LIGHT_CORNERS: [usize; 2] = [7, 56]; // h1, a8
 
 // Const-evaluated init, same justification as `init_relative_ranks` above: the
 // `infra` helpers are not `const fn`, both operands are file/rank differences in
@@ -126,7 +125,7 @@ impl Evaluator {
     /// Mate-drive "mop-up": when one side is clearly winning, nudge the losing
     /// king toward the edge/corner (the bishop's corner for KBNK). Extracted
     /// from `eval_piece_activity` so it also runs on the lazy-eval early-return
-    /// path (Phase 3.16) — mating technique must survive a lazy skip. Frozen
+    /// path — mating technique must survive a lazy skip. Frozen
     /// (non-tunable) term, so it lands in the tuner's `rest`.
     pub(in crate::eval) fn apply_mop_up(&self, board: &Board, mg: &mut i32, eg: &mut i32) {
         let approximate = (*mg + *eg) / 2;
@@ -141,16 +140,16 @@ impl Evaluator {
             let lksq = board.king_sq(losing);
             let wksq = board.king_sq(winning);
             let king_distance = KING_DISTANCE[wksq.index()][lksq.index()] as i32;
-            // KBNK (Phase 3.11): the generic corner-drive cannot win K+B+N vs K
+            // KBNK: the generic corner-drive cannot win K+B+N vs K
             // because it pushes the bare king to the nearest corner, not the
             // bishop-coloured one. For that exact material pattern, drive the
             // losing king to a corner matching the winning bishop's colour
             // instead; keep the generic drive for every other won ending.
-            // 4.9a.4. The finer drive applies ONLY when the losing side is a
+            // The finer drive applies ONLY when the losing side is a
             // bare king at the point of evaluation. KXK/KBNK match directly,
             // but a pawn-root family can enter this material shape after an
             // under-promotion and exchange; its real scope is the dispatcher's
-            // promotion closure (4.11.9), never root material alone. The enclosing
+            // promotion closure, never root material alone. The enclosing
             // gate is `|approximate| > 200`, which is "up two pawns" and fires
             // in plenty of middlegames; scaling the drive there moved `bench 13`
             // by +7.9% (7,226,051 -> 7,800,345) purely by perturbing positions
@@ -183,20 +182,20 @@ impl Evaluator {
                 // metric serves KXK and KBNK because they share that one defect,
                 // which is why one change fixes both.
                 let corners = match kbnk_winner_bishop(board, winning) {
-                    Some(true) => KBNK_LIGHT_CORNERS,
-                    Some(false) => KBNK_DARK_CORNERS,
+                    Some(true) => KBNK_DARK_CORNERS,
+                    Some(false) => KBNK_LIGHT_CORNERS,
                     // Generic KXK: drive toward whichever corner is already
                     // nearest. A corner is on the edge, so this subsumes the old
                     // edge push while giving the search an ordering to follow.
                     None => {
-                        if KING_DISTANCE[lksq.index()][KBNK_LIGHT_CORNERS[0]]
-                            .min(KING_DISTANCE[lksq.index()][KBNK_LIGHT_CORNERS[1]])
-                            <= KING_DISTANCE[lksq.index()][KBNK_DARK_CORNERS[0]]
-                                .min(KING_DISTANCE[lksq.index()][KBNK_DARK_CORNERS[1]])
+                        if KING_DISTANCE[lksq.index()][KBNK_DARK_CORNERS[0]]
+                            .min(KING_DISTANCE[lksq.index()][KBNK_DARK_CORNERS[1]])
+                            <= KING_DISTANCE[lksq.index()][KBNK_LIGHT_CORNERS[0]]
+                                .min(KING_DISTANCE[lksq.index()][KBNK_LIGHT_CORNERS[1]])
                         {
-                            KBNK_LIGHT_CORNERS
-                        } else {
                             KBNK_DARK_CORNERS
+                        } else {
+                            KBNK_LIGHT_CORNERS
                         }
                     }
                 };
@@ -219,7 +218,7 @@ impl Evaluator {
                 // anti-diagonal and rises to 7 at the a1/h8 corners, so it is
                 // plateau-free by construction and describes the actual
                 // technique: walk the king DOWN A DIAGONAL rather than at a
-                // corner. Mirroring the file serves the dark corner pair with
+                // corner. Mirroring the file serves the h1/a8 pair with
                 // one formula. Structure and scale both come from the reference
                 // HCE, whose corner term outweighs its king term by roughly 24
                 // to 1 -- and that RATIO is the whole mechanism. An earlier
@@ -228,12 +227,12 @@ impl Evaluator {
                 // 57.1%), which is why it was wrongly rejected once already.
                 let lfile = infra::to_i32(SQUARE_FILE[lksq.index()]);
                 let lrank = infra::to_i32(SQUARE_RANK[lksq.index()]);
-                let diag_file =
-                    if target == KBNK_LIGHT_CORNERS[0] || target == KBNK_LIGHT_CORNERS[1] {
-                        lfile
-                    } else {
-                        7 - lfile
-                    };
+                let diag_file = if target == KBNK_DARK_CORNERS[0] || target == KBNK_DARK_CORNERS[1]
+                {
+                    lfile
+                } else {
+                    7 - lfile
+                };
                 let diagonal = (7 - lrank - diag_file).abs();
                 sign * (MOPUP_DIAGONAL * diagonal
                     + MOPUP_KING_CHEB * (7 - king_distance)
@@ -251,7 +250,7 @@ impl Evaluator {
 
 /// True iff `winner` holds exactly king + one bishop + one knight while the
 /// loser has a bare king and neither side has pawns/rooks/queens (the KBNK
-/// mate). Returns whether the winning bishop is light-squared.
+/// mate). Returns whether the winning bishop is dark-squared.
 fn kbnk_winner_bishop(board: &Board, winner: Color) -> Option<bool> {
     let loser = !winner;
     if board.color_occ(loser) != Bitboard::from(board.king_sq(loser)) {
@@ -266,7 +265,7 @@ fn kbnk_winner_bishop(board: &Board, winner: Color) -> Option<bool> {
     let bishops = board.pieces(winner, Piece::Bishop);
     let knights = board.pieces(winner, Piece::Knight);
     if bishops.count() == 1 && knights.count() == 1 {
-        Some((bishops & Bitboard::LIGHT_SQUARES).any())
+        Some((bishops & Bitboard::DARK_SQUARES).any())
     } else {
         None
     }

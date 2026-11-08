@@ -6,7 +6,6 @@ use std::sync::{
 
 use crate::board::Move;
 use crate::eval::{MATE_SCORE, VALUE_NONE};
-use crate::infra;
 
 const MAX_PLY: i32 = 128;
 /// The decisive band's floor: a tablebase win or anything better. Below
@@ -109,17 +108,17 @@ impl ClusterSlots for LocalCluster {
         (entry.key16, entry)
     }
 
-    /// The local slot keeps its tag in the entry, and the tag alone decides.
+    /// The local slot keeps its tag in the entry, and the tag alone decides:
+    /// an empty slot's tag is 0, so a position tagged 0 takes an empty slot
+    /// as its own, which is where its store would land anyway.
     #[inline(always)]
     fn holds(slot_key16: u16, _entry: TtEntry, key16: u16) -> bool {
         slot_key16 == key16
     }
 }
 
-#[derive(Clone)]
 struct LocalTable {
     clusters: Vec<LocalCluster>,
-    mask: usize,
     age: u8,
 }
 
@@ -262,24 +261,14 @@ trait ClusterSlots {
     fn holds(slot_key16: u16, entry: TtEntry, key16: u16) -> bool;
 }
 
-// The shared cluster must be exactly 64 bytes, and must store positions at the
-// same density as the local one. Both were violated silently before — asserting
-// them at compile time is free.
+// The shared cluster must be exactly 64 bytes, one x86-64 cache line, and
+// must store positions at the same density as the local one.
 //
-// ⚠ "64 bytes" IS "one cache line" on x86-64 and is NOT on Apple
-// Silicon. Measured on an M4: `hw.cachelinesize` is **128**, so two
-// independent `SharedCluster`s share one line there and two threads touching
-// unrelated TT entries can contend. Neither cluster type can ever STRADDLE a
-// 128 B line — 32 and 64 both divide 128 and both are aligned to their own size
-// — so the 128 B block wrapper this project twice considered was aimed at a
-// hazard that cannot occur; this is the real one.
-//
-// Both halves are measured. Threads>1 scaling shows no exposure (3.89x at 4T
-// against a >=3.8x bar), and a 128 B wrapper measured -0.12% on an M4, inside
-// the noise floor, because the allocator already returns 128 B-aligned table
-// bases at every Hash size. Do not reintroduce the wrapper without a
-// Threads>1 ARM result that contradicts the scaling measurement. Naive padding
-// to 128 B would also halve the density this second assert exists to hold.
+// Apple Silicon's line is 128 bytes, so two shared clusters share one there;
+// neither cluster type can straddle a line. A 128-byte wrapper measured
+// −0.12% on an M4 and four threads scaled 3.89x, so the clusters stay 64
+// bytes until a multi-thread ARM read shows contention; padding would also
+// halve the density the second assert holds.
 const _: () = assert!(size_of::<SharedCluster>() == 64);
 const _: () = assert!(
     SHARED_CLUSTER_ENTRIES * size_of::<LocalCluster>()
@@ -288,20 +277,23 @@ const _: () = assert!(
 
 struct SharedTable {
     clusters: Box<[SharedCluster]>,
-    mask: usize,
     age: AtomicU8,
 }
 
-#[derive(Clone)]
 enum TtStorage {
     Local(LocalTable),
     Shared(Arc<SharedTable>),
 }
 
-#[derive(Clone)]
 pub struct TranspositionTable {
     storage: TtStorage,
 }
+
+/// A handle on the shared table, the one thing about the table that crosses
+/// to another thread. Only the shared form produces one, so handing a table
+/// to a helper can never copy it, and the table lives as long as its handles.
+#[derive(Clone)]
+pub struct SharedTt(Arc<SharedTable>);
 
 impl Default for TranspositionTable {
     fn default() -> Self {
@@ -345,6 +337,19 @@ impl TranspositionTable {
         }
     }
 
+    /// [`Self::resize`] straight into the shared form, so a `Hash` change at
+    /// `Threads > 1` fills one table rather than a local one that conversion
+    /// drops. A refused size keeps the table in use, which is why the old
+    /// table is still held while the new one fills.
+    pub fn resize_shared(&mut self, mb: usize) -> bool {
+        if let Some(table) = new_shared_table(mb, 0) {
+            self.storage = TtStorage::Shared(Arc::new(table));
+            true
+        } else {
+            false
+        }
+    }
+
     pub(crate) fn ensure_local(&mut self, mb: usize) -> bool {
         if !matches!(self.storage, TtStorage::Local(_)) {
             if let Some(table) = new_local_table(mb) {
@@ -366,27 +371,43 @@ impl TranspositionTable {
     ///
     /// The local table is dropped BEFORE the shared one is allocated, so the
     /// two are never held at once. The shared table starts empty, so nothing
-    /// is lost.
-    pub fn make_shared(&mut self, mb: usize) {
-        if matches!(self.storage, TtStorage::Shared(_)) {
-            return;
-        }
+    /// is lost. Returns a handle on the shared table.
+    pub fn make_shared(&mut self, mb: usize) -> SharedTt {
         let age = match &self.storage {
             TtStorage::Local(local) => local.age,
-            TtStorage::Shared(_) => unreachable!("returned above"),
+            TtStorage::Shared(table) => return SharedTt(Arc::clone(table)),
         };
         self.storage = TtStorage::Local(LocalTable {
             clusters: Vec::new(),
-            mask: 0,
             age,
         });
-        self.storage = TtStorage::Shared(Arc::new(new_shared_table(mb, age)));
+        let table = Arc::new(
+            new_shared_table(mb, age).expect("the shared transposition table must allocate"),
+        );
+        self.storage = TtStorage::Shared(Arc::clone(&table));
+        SharedTt(table)
+    }
+
+    /// The table a helper searches for one job.
+    pub(crate) fn attached(handle: SharedTt) -> Self {
+        Self {
+            storage: TtStorage::Shared(handle.0),
+        }
     }
 
     /// Whether the table is in the atomic form a multi-threaded search uses.
     #[cfg(test)]
     pub(crate) fn is_shared(&self) -> bool {
         matches!(self.storage, TtStorage::Shared(_))
+    }
+
+    /// Live handles on the shared table, this one included; 0 in local form.
+    #[cfg(test)]
+    pub(crate) fn shared_handles(&self) -> usize {
+        match &self.storage {
+            TtStorage::Local(_) => 0,
+            TtStorage::Shared(table) => Arc::strong_count(table),
+        }
     }
 
     /// Bytes actually handed to the allocator for the table itself.
@@ -454,8 +475,8 @@ impl TranspositionTable {
     #[inline(always)]
     pub fn prefetch(&self, key: u64) {
         match &self.storage {
-            TtStorage::Local(table) => prefetch_cluster(&table.clusters, table.mask, key),
-            TtStorage::Shared(table) => prefetch_cluster(&table.clusters, table.mask, key),
+            TtStorage::Local(table) => prefetch_cluster(&table.clusters, key),
+            TtStorage::Shared(table) => prefetch_cluster(&table.clusters, key),
         }
     }
 
@@ -552,11 +573,22 @@ fn prefetch_ptr<T>(ptr: *const T) {
     }
 }
 
-/// Upper 16 bits of the hash — the cluster-entry verification tag. The
-/// truncation IS the design (a 16-bit tag), hence the scoped allow.
+/// Low 16 bits of the hash — the cluster-entry verification tag. The cluster
+/// comes from the high bits ([`cluster_index`]), so the two stay independent.
+/// The truncation IS the design (a 16-bit tag), hence the scoped allow.
 #[inline(always)]
+#[expect(clippy::cast_possible_truncation)]
 fn key16_of(key: u64) -> u16 {
-    (key >> 48) as u16
+    key as u16
+}
+
+/// The cluster of `key` in a table of `clusters`: the high half of their
+/// product, which maps the keys evenly onto any count, so `Hash` need not be a
+/// power of two. The product's high half is below `clusters`, so it fits.
+#[inline(always)]
+#[expect(clippy::cast_possible_truncation)]
+fn cluster_index(key: u64, clusters: usize) -> usize {
+    ((u128::from(key) * clusters as u128) >> 64) as usize
 }
 
 #[inline(always)]
@@ -750,47 +782,36 @@ impl TtProbe {
 }
 
 fn new_local_table(mb: usize) -> Option<LocalTable> {
-    let power = cluster_count::<LocalCluster>(mb);
+    let count = cluster_count::<LocalCluster>(mb);
     let mut clusters = Vec::new();
-    clusters.try_reserve_exact(power).ok()?;
-    clusters.resize(power, LocalCluster::default());
-    LocalTable {
-        clusters,
-        mask: power - 1,
-        age: 0,
+    clusters.try_reserve_exact(count).ok()?;
+    clusters.resize(count, LocalCluster::default());
+    LocalTable { clusters, age: 0 }.into()
+}
+
+fn new_shared_table(mb: usize, age: u8) -> Option<SharedTable> {
+    // Sized from the byte budget with SharedCluster's own size — see
+    // `make_shared` for why inheriting the local cluster count was wrong.
+    let count = cluster_count::<SharedCluster>(mb);
+    let mut clusters = Vec::new();
+    clusters.try_reserve_exact(count).ok()?;
+    clusters.resize_with(count, SharedCluster::default);
+    SharedTable {
+        clusters: clusters.into_boxed_slice(),
+        age: AtomicU8::new(age),
     }
     .into()
 }
 
-fn new_shared_table(mb: usize, age: u8) -> SharedTable {
-    // Sized from the byte budget with SharedCluster's own size — see
-    // `make_shared` for why inheriting the local cluster count was wrong.
-    let power = cluster_count::<SharedCluster>(mb);
-    let clusters = (0..power)
-        .map(|_| SharedCluster::default())
-        .collect::<Vec<_>>()
-        .into_boxed_slice();
-    SharedTable {
-        clusters,
-        mask: power - 1,
-        age: AtomicU8::new(age),
-    }
-}
-
 fn cluster_count<T>(mb: usize) -> usize {
     let bytes = mb.max(1).saturating_mul(1024).saturating_mul(1024);
-    let count = (bytes / size_of::<T>()).max(1);
-    let mut power = 1usize;
-    while power <= count / 2 {
-        power *= 2;
-    }
-    power
+    (bytes / size_of::<T>()).max(1)
 }
 
 #[inline(always)]
 fn probe_local(table: &LocalTable, key: u64) -> Option<TtEntry> {
     let key16 = key16_of(key);
-    let entries = &table.clusters[crate::infra::index(key) & table.mask].entries;
+    let entries = &table.clusters[cluster_index(key, table.clusters.len())].entries;
     let entry = entries[0];
     if entry.key16 == key16 && entry.is_occupied() {
         return Some(entry);
@@ -809,14 +830,15 @@ fn probe_local(table: &LocalTable, key: u64) -> Option<TtEntry> {
 #[inline(always)]
 fn probe_shared(table: &SharedTable, key: u64) -> Option<TtEntry> {
     let key16 = key16_of(key);
-    let cluster = &table.clusters[crate::infra::index(key) & table.mask];
+    let cluster = &table.clusters[cluster_index(key, table.clusters.len())];
     (0..SHARED_CLUSTER_ENTRIES).find_map(|index| cluster.load(index, key16))
 }
 
 #[inline(always)]
 fn store_local(table: &mut LocalTable, e: TtStore, bound_bits: u8) {
     let key16 = key16_of(e.key);
-    let cluster = &mut table.clusters[crate::infra::index(e.key) & table.mask];
+    let count = table.clusters.len();
+    let cluster = &mut table.clusters[cluster_index(e.key, count)];
     if let Some((index, entry)) = replacement(cluster, table.age, key16, e, bound_bits) {
         cluster.entries[index] = entry;
     }
@@ -826,7 +848,7 @@ fn store_local(table: &mut LocalTable, e: TtStore, bound_bits: u8) {
 fn store_shared(table: &SharedTable, e: TtStore, bound_bits: u8) {
     let age = table.age.load(Ordering::Relaxed);
     let key16 = key16_of(e.key);
-    let cluster = &table.clusters[crate::infra::index(e.key) & table.mask];
+    let cluster = &table.clusters[cluster_index(e.key, table.clusters.len())];
     if let Some((index, entry)) = replacement(cluster, age, key16, e, bound_bits) {
         cluster.store(index, key16, entry);
     }
@@ -836,9 +858,10 @@ fn store_shared(table: &SharedTable, e: TtStore, bound_bits: u8) {
 /// written there, or `None` when the existing entry is kept.
 ///
 /// A slot that already holds the position is reused; otherwise the slot of
-/// lowest [`entry_quality`] is. A shallower non-exact result does not
-/// overwrite a current-generation entry for the same position more than three
-/// plies deeper, and a store without a move keeps the position's stored move.
+/// lowest [`entry_quality`] is. A result of any bound does not overwrite a
+/// current-generation entry for the same position at least four plies deeper
+/// (six for a PV store), though a new move still replaces its move; a store
+/// without a move keeps the position's stored move.
 #[inline(always)]
 fn replacement<C: ClusterSlots>(
     cluster: &C,
@@ -928,8 +951,12 @@ fn clear_in_parallel<T: Send>(chunks: impl Iterator<Item = T>, clear: impl Fn(T)
 }
 
 #[inline(always)]
-fn prefetch_cluster<T>(clusters: &[T], mask: usize, key: u64) {
-    prefetch_ptr(clusters.as_ptr().wrapping_add(infra::index(key) & mask));
+fn prefetch_cluster<T>(clusters: &[T], key: u64) {
+    prefetch_ptr(
+        clusters
+            .as_ptr()
+            .wrapping_add(cluster_index(key, clusters.len())),
+    );
 }
 
 #[inline(always)]
@@ -968,8 +995,125 @@ fn entry_quality(entry: TtEntry, age: u8) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{Bound, TB_VALUE, TB_WIN_SCORE, TtProbe, score_from_tt, score_to_tt};
+    use super::{
+        Bound, LocalCluster, SharedCluster, TB_VALUE, TB_WIN_SCORE, TtProbe, cluster_count,
+        cluster_index, key16_of, score_from_tt, score_to_tt, size_of,
+    };
     use crate::eval::{MATE_SCORE, VALUE_NONE};
+
+    /// An entry whose every field derives from its key, so a load that pairs
+    /// one store's tag with another's payload shows as a mismatch.
+    fn keyed_entry(key16: u16) -> super::TtEntry {
+        super::TtEntry {
+            key16,
+            score: i16::from_ne_bytes(key16.to_ne_bytes()),
+            static_eval: i16::from_ne_bytes((key16 ^ 0xA5A5).to_ne_bytes()),
+            mv: key16,
+            depth: i8::try_from(key16 % 120).expect("below 120"),
+            flag_age: 1,
+        }
+    }
+
+    fn same_payload(a: super::TtEntry, b: super::TtEntry) -> bool {
+        (a.score, a.static_eval, a.mv, a.depth, a.flag_age)
+            == (b.score, b.static_eval, b.mv, b.depth, b.flag_age)
+    }
+
+    /// A slot holding one store's tag and another's payload, as a read racing
+    /// two writers can see it, reconstructs a key no probe holds when the
+    /// payloads' folds differ, and is rejected. Equal folds are the tag's
+    /// blind spot, the 2^-16 the tag's strength allows: that pair loads.
+    #[test]
+    fn a_torn_shared_slot_is_rejected_unless_the_folds_agree() {
+        use std::sync::atomic::Ordering::Relaxed;
+        let torn = |a: super::TtEntry, b: super::TtEntry| {
+            let cluster = SharedCluster::default();
+            cluster.store(0, a.key16, a);
+            cluster.store(1, b.key16, b);
+            cluster.data[0].store(cluster.data[1].load(Relaxed), Relaxed);
+            cluster
+        };
+        let a = keyed_entry(0x1234);
+        let b = keyed_entry(0x4321);
+        assert_ne!(
+            super::fold16(super::pack_entry(a)),
+            super::fold16(super::pack_entry(b))
+        );
+        let cluster = torn(a, b);
+        assert!(cluster.load(0, a.key16).is_none(), "torn pair accepted");
+        assert!(
+            cluster.load(0, b.key16).is_none(),
+            "torn pair accepted as the other"
+        );
+        assert!(cluster.load(1, b.key16).is_some(), "the untorn slot loads");
+
+        // Flipping the same bits in two 16-bit lanes keeps the fold.
+        let mut same_fold = a;
+        same_fold.score ^= 0x0F0F;
+        same_fold.static_eval ^= 0x0F0F;
+        same_fold.key16 = 0x4321;
+        assert_eq!(
+            super::fold16(super::pack_entry(a)),
+            super::fold16(super::pack_entry(same_fold))
+        );
+        let cluster = torn(a, same_fold);
+        let loaded = cluster.load(0, a.key16).expect("equal folds hide the tear");
+        assert!(
+            same_payload(loaded, same_fold),
+            "the payload is the other store's"
+        );
+    }
+
+    /// Four threads store into and probe one slot at once, as hard as two
+    /// writers can race. Every probe that verifies must return the payload of
+    /// the key it asked for: a torn pair reaches it only through the tag's
+    /// 2^-16 blind spot. A tag without the payload's fold returns about 30
+    /// wrong payloads a run in a debug build, whose slower loop tears far
+    /// more often than release's, so the debug suite is this test's teeth.
+    #[test]
+    fn four_threads_on_one_shared_cluster_never_return_a_torn_entry() {
+        const THREADS: u16 = 4;
+        const ROUNDS: u32 = 1_000_000;
+        let cluster = SharedCluster::default();
+        let start = std::sync::Barrier::new(usize::from(THREADS));
+        let (verified, wrong) = std::thread::scope(|scope| {
+            let workers: Vec<_> = (0..THREADS)
+                .map(|thread| {
+                    let (cluster, start) = (&cluster, &start);
+                    scope.spawn(move || {
+                        let (mut verified, mut wrong) = (0_u32, 0_u32);
+                        start.wait();
+                        for round in 0..ROUNDS {
+                            let key16 = (thread << 14)
+                                | u16::try_from(round & 0x3FFF).expect("fourteen bits");
+                            cluster.store(0, key16, keyed_entry(key16));
+                            // Widen the window in which another writer can
+                            // land between this store and its probe, and keep
+                            // the optimiser from handing the probe the value
+                            // this thread just stored.
+                            for _ in 0..16 {
+                                std::hint::spin_loop();
+                            }
+                            if let Some(entry) = std::hint::black_box(cluster).load(0, key16) {
+                                verified += 1;
+                                wrong += u32::from(!same_payload(entry, keyed_entry(key16)));
+                            }
+                        }
+                        (verified, wrong)
+                    })
+                })
+                .collect();
+            workers
+                .into_iter()
+                .map(|worker| worker.join().expect("worker thread"))
+                .fold((0, 0), |(v, w), (dv, dw)| (v + dv, w + dw))
+        });
+        assert!(verified > 0, "no probe verified");
+        assert!(
+            wrong <= 3,
+            "{wrong} of {verified} verified probes returned another store's payload"
+        );
+    }
 
     #[test]
     fn decisive_scores_round_trip_through_the_table_at_any_ply() {
@@ -1127,6 +1271,58 @@ mod tests {
         assert!(!TtProbe::MISS.pv_line(false));
     }
 
+    /// Every key lands in the table at any count, the extremes included, and
+    /// the keys cover it evenly at a count that is no power of two.
+    #[test]
+    fn cluster_index_covers_any_table_evenly() {
+        for clusters in [1usize, 3, 1000, 32_000_000, 1 << 40] {
+            assert_eq!(cluster_index(0, clusters), 0);
+            assert_eq!(cluster_index(u64::MAX, clusters), clusters - 1);
+        }
+        const CLUSTERS: usize = 1000;
+        let mut hits = [0u32; CLUSTERS];
+        let mut key = 0x9E37_79B9_7F4A_7C15_u64;
+        for _ in 0..1_000_000 {
+            key = key.wrapping_mul(0x5851_F42D_4C95_7F2D).wrapping_add(1);
+            hits[cluster_index(key, CLUSTERS)] += 1;
+        }
+        let (least, most) = (hits.iter().min(), hits.iter().max());
+        assert!(
+            least >= Some(&800) && most <= Some(&1200),
+            "{least:?} {most:?}"
+        );
+    }
+
+    /// The tag and the cluster read opposite ends of the key, so keys that
+    /// share a cluster still differ in the tag.
+    #[test]
+    fn the_tag_is_independent_of_the_cluster() {
+        let key = 0x0123_4567_89AB_CDEF_u64;
+        assert_eq!(key16_of(key), 0xCDEF);
+        assert_eq!(key16_of(key ^ 0xFFFF_0000_0000_0000), 0xCDEF);
+        assert_eq!(
+            cluster_index(key, 1 << 20),
+            cluster_index(key ^ 0xFFFF, 1 << 20)
+        );
+    }
+
+    /// `Hash` is the size asked for: these were floored to 512, 1024, 2048 and
+    /// 16384 when a table's size had to be a power of two.
+    #[test]
+    fn a_table_takes_the_whole_hash_at_any_size() {
+        for mb in [1000usize, 2000, 3000, 32_000] {
+            let bytes = mb << 20;
+            assert_eq!(
+                cluster_count::<LocalCluster>(mb) * size_of::<LocalCluster>(),
+                bytes
+            );
+            assert_eq!(
+                cluster_count::<SharedCluster>(mb) * size_of::<SharedCluster>(),
+                bytes
+            );
+        }
+    }
+
     mod core {
         use super::super::{
             AGE_MASK, AGE_QUALITY_DIVISOR, AGE_STRIDE, Bound, EVAL_ONLY_DEPTH, LocalTable, PV_BIT,
@@ -1198,7 +1394,15 @@ mod tests {
                 assert_eq!(probe.node_cutoff_score(1, -1000, 1000, true), None);
                 assert_eq!(probe.cutoff_score(0, -1000, 1000), None);
                 assert_eq!(probe.refine_eval(55, 0), 55);
-                assert!(tt.hashfull() == 0 || tt.hashfull() > 0);
+            }
+            // Eval-only entries occupy their slots: a table holding nothing
+            // else reports them in `hashfull`.
+            for mut tt in both_backends() {
+                assert_eq!(tt.hashfull(), 0);
+                for i in 0..20_000_u64 {
+                    tt.store_eval(i.wrapping_mul(0x9E37_79B9_7F4A_7C15), -123, true);
+                }
+                assert!(tt.hashfull() > 0, "eval-only entries count as used");
             }
         }
 

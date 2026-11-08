@@ -1,14 +1,23 @@
 //! Transposition table: store, probe, replacement, clearing, mate-score conversion and `hashfull`.
 
-use rarog::board::Move;
+use rarog::board::{Board, Move};
 use rarog::eval::MATE_SCORE;
 use rarog::tt::{Bound, TranspositionTable, TtStore, score_from_tt, score_to_tt};
+
+/// A key `hashfull` sees: it samples the first clusters of the table, so the
+/// key's low bits and its high bits are both small, whichever the table's
+/// cluster is drawn from. Keys of different `index` differ in both ends.
+const fn sampled_key(index: u64) -> u64 {
+    (index << 50) | index
+}
 
 #[test]
 fn transposition_table_store_probe_replace_clear_and_mate_scores() {
     let mut table = TranspositionTable::new(1);
-    let key = 0x1234_0000_0000_0000;
-    let best = Move::from_uci("e2e4").expect("valid UCI move");
+    let key = sampled_key(1);
+    let best = Board::starting_position()
+        .parse_move("e2e4")
+        .expect("legal move");
 
     table.store(TtStore {
         key,
@@ -28,7 +37,7 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
     assert_eq!(entry.best_move(), Some(best));
 
     table.store(TtStore {
-        key: 0x5678_0000_0000_0001,
+        key: sampled_key(2),
         depth: 1,
         score: 1,
         bound: Bound::Exact,
@@ -66,7 +75,7 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
     assert_eq!(shared_entry.score, 123);
     assert_eq!(shared_entry.bound(), Some(Bound::Exact));
     assert_eq!(shared_entry.best_move(), Some(best));
-    // Verification is the top-16 tag, NOT the full 64-bit key. The shared
+    // Verification is the low-16 tag, NOT the full 64-bit key. The shared
     // table used to store `key ^ data` alongside `data` — 16 B per slot — to
     // verify all 64 bits. That bought a guarantee the single-threaded table
     // has never had (it compares a plain `key16`) at the price of 60% more
@@ -74,7 +83,7 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
     // could remember. The slot is now 10 B and verifies 16 bits, matching the
     // local backend exactly; a differing tag must still be rejected.
     assert!(
-        table.probe(key ^ 0x8000_0000_0000_0000).is_none(),
+        table.probe(key ^ 0x8000).is_none(),
         "shared TT must reject a key whose verification tag differs"
     );
 
@@ -109,12 +118,43 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
 }
 
 #[test]
+fn a_shared_resize_replaces_the_table_and_a_refused_one_keeps_it() {
+    let key = 0x1234_5678_9abc_def0;
+    let mut table = TranspositionTable::new(1);
+    table.make_shared(1);
+    table.store(TtStore {
+        key,
+        depth: 5,
+        score: 123,
+        bound: Bound::Exact,
+        mv: Move::NULL,
+        ply: 0,
+        static_eval: 0,
+        is_pv: false,
+    });
+
+    assert!(!table.resize_shared(usize::MAX));
+    assert!(table.probe(key).is_some(), "a refused size keeps the table");
+    assert_eq!(table.allocated_bytes(), 1 << 20);
+
+    assert!(table.resize_shared(2));
+    assert!(table.probe(key).is_none(), "the new table starts empty");
+    assert_eq!(table.allocated_bytes(), 2 << 20);
+
+    let mut reference = TranspositionTable::new(2);
+    reference.make_shared(2);
+    assert_eq!(table.capacity_entries(), reference.capacity_entries());
+}
+
+#[test]
 fn transposition_table_hashfull_counts_only_current_generation_entries() {
-    let best = Move::from_uci("e2e4").expect("valid UCI move");
-    let key = 0xCAFE_0000_0000_0001;
-    let second_key = 0xCAFE_0000_0000_0002;
-    let fresh_key = 0xBABE_0000_0000_0003;
-    let second_fresh_key = 0xBABE_0000_0000_0004;
+    let best = Board::starting_position()
+        .parse_move("e2e4")
+        .expect("legal move");
+    let key = sampled_key(1);
+    let second_key = sampled_key(2);
+    let fresh_key = sampled_key(3);
+    let second_fresh_key = sampled_key(4);
 
     let mut table = TranspositionTable::new(1);
     table.store(TtStore {
@@ -198,12 +238,11 @@ fn transposition_table_hashfull_counts_only_current_generation_entries() {
     // `hashfull` reports per-mille of SLOTS over the sampled clusters, so two
     // entries in a 1 MiB shared table legitimately round to zero — it only
     // read non-zero before because the slot count per cluster was small enough
-    // to flatter the integer division. Fill enough of the sampled region (the
-    // cluster index is the key's low bits) to give the generation logic under
-    // test a real reading to move off.
+    // to flatter the integer division. Fill enough of the sampled region to
+    // give the generation logic under test a real reading to move off.
     for filler in 3..64u64 {
         shared.store(TtStore {
-            key: 0xCAFE_0000_0000_0000 | filler,
+            key: sampled_key(filler),
             depth: 3,
             score: 5,
             bound: Bound::Exact,

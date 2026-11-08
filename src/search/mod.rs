@@ -253,7 +253,7 @@ impl RootMove {
 
     /// Add exactly one distribution sample for a COMPLETED iteration. Failed
     /// aspiration visits still update score/bounds/effort above, but must not
-    /// overweight volatile iterations in the statistics consumed by 10.2.
+    /// overweight volatile iterations in the per-move score statistics.
     fn complete_iteration(&mut self) {
         self.samples = self.samples.saturating_add(1);
         let weight = 1.0 / f64::from(self.samples);
@@ -304,7 +304,8 @@ struct ReportedLine {
 ///
 /// From depth 4 the window centres on `center` unless that is a mate score.
 /// Each failure widens the failing side by the growth parameters, re-centred
-/// on `center`; a fail-low also pulls beta to the middle of the old window. A
+/// on `center`; a fail-low also pulls beta to the midpoint of the new alpha
+/// and the old beta. A
 /// side opens fully after `asp_max_fails` failures, once its delta saturates,
 /// or when the failing score is in the mate range, so the loop terminates.
 struct Aspiration {
@@ -396,6 +397,17 @@ impl Searcher {
         searcher
     }
 
+    /// A helper's searcher. It searches the pool's table, held only for each
+    /// job, so what it keeps of its own between jobs is the smallest table.
+    fn helper() -> Self {
+        Self {
+            worker_pool: WorkerPool::default(),
+            shared: SearchShared::with_table(TranspositionTable::new(1)),
+            cfg: SearchConfig::default(),
+            td: ThreadData::default(),
+        }
+    }
+
     fn notice(&self, message: std::fmt::Arguments<'_>) {
         self.td.sink.line(&format!("info string {message}"));
     }
@@ -424,7 +436,12 @@ impl Searcher {
             HashRequest::NotSent => in_use,
         };
         if target != self.shared.hash_mb {
-            if self.shared.tt.resize(target) {
+            let resized = if options.threads > 1 {
+                self.shared.tt.resize_shared(target)
+            } else {
+                self.shared.tt.resize(target)
+            };
+            if resized {
                 self.shared.hash_mb = target;
             } else {
                 self.notice(format_args!(
@@ -477,12 +494,15 @@ impl Searcher {
         self.shared.tt.clear();
     }
 
+    /// The helpers clear alongside this thread, and all are done on return, so
+    /// a `readyok` that follows means the whole pool is ready.
     pub fn new_game(&mut self) {
+        self.worker_pool.start_new_game();
         self.shared.tt.clear();
         self.clear_history();
         self.td.evaluator.clear_pawn_table();
         self.td.previous_search_score = None;
-        self.worker_pool.new_game();
+        self.worker_pool.finish_new_game();
     }
 
     pub(crate) fn clear_history(&mut self) {
@@ -558,7 +578,7 @@ impl Searcher {
                     limits
                         .search_moves
                         .iter()
-                        .any(|requested| mv.same_uci_move(*requested))
+                        .any(|requested| requested.names(*mv))
                 })
                 .collect::<Vec<_>>();
             if filtered_root_moves.is_empty() {
@@ -1085,6 +1105,11 @@ impl Searcher {
                 self.send_info(depth, best_score);
             }
 
+            if self.mate_limit_proved(best_score) {
+                self.stop_the_pool();
+                break;
+            }
+
             // Only one legal move: it will be played whatever the score is, so
             // in a CLOCK-MANAGED search there is nothing to buy by searching on.
             //
@@ -1258,6 +1283,23 @@ impl Searcher {
                 SearchExit::Stop
             },
             ponderhit: self.td.ponderhit,
+        }
+    }
+
+    /// Whether `score`, from a completed iteration, is a mate within `go mate`'s
+    /// limit, for either side. Only a completed iteration's score is exact.
+    fn mate_limit_proved(&self, score: i32) -> bool {
+        let distance = MATE_SCORE - score.abs();
+        self.cfg
+            .limits
+            .mate_plies
+            .is_some_and(|plies| distance < infra::to_i32(MAX_PLY) && distance <= plies)
+    }
+
+    /// End every thread's search; a serial search has no pool to tell.
+    fn stop_the_pool(&self) {
+        if let Some(shared) = self.shared.pool() {
+            shared.request_stop();
         }
     }
 
@@ -1513,6 +1555,11 @@ impl Searcher {
                 .map(|&mv| self.reported_line(mv, depth, RootBound::Exact))
                 .collect();
 
+            if self.mate_limit_proved(best_score) {
+                self.stop_the_pool();
+                break;
+            }
+
             tot_best_move_changes /= 2.0;
             if bestmove != previous_bestmove {
                 tot_best_move_changes += 1.0;
@@ -1541,7 +1588,10 @@ impl Searcher {
             // Line 1's mate ends the search as in the one-line path. A root
             // fail-high does not: it would end the depth before the other
             // lines were searched at it.
-            if self.cfg.limits.mate_stop && mate_watch.completed(bestmove, best_score) {
+            if self.cfg.limits.mate_stop
+                && self.td.thread_id == 0
+                && mate_watch.completed(bestmove, best_score)
+            {
                 crate::diag_count!(tm_mate_stop);
                 break;
             }
@@ -1560,8 +1610,8 @@ impl Searcher {
                         self.td.stop_on_ponderhit = true;
                     }
                 } else if elapsed_ms >= soft_target {
-                    // The pool votes as in the one-line search; this is the
-                    // main thread, so it defers until a majority agrees.
+                    // The pool votes as in the one-line search: every thread
+                    // keeps searching until a majority agrees.
                     if let Some(shared) = self.shared.pool() {
                         if !cast_stop_vote {
                             cast_stop_vote = true;
@@ -1976,7 +2026,14 @@ impl Searcher {
     /// confirmed leaves that move's bound line last, and the pool's vote can
     /// choose a helper's move no line mentioned (GitHub issue #1).
     pub(super) fn report_result_line(&self, result: &SearchResult) {
-        if result.pv.is_empty() || self.td.last_reported_move.get() == result.bestmove {
+        if self.td.last_reported_move.get() != result.bestmove {
+            self.report_line(result);
+        }
+    }
+
+    /// Print `result`'s line whatever was printed last.
+    pub(super) fn report_line(&self, result: &SearchResult) {
+        if result.pv.is_empty() {
             return;
         }
         self.send_full_info_line(
@@ -2039,6 +2096,180 @@ mod tests {
     use crate::eval::VALUE_NONE;
     use crate::tt::{Bound, TtStore};
 
+    /// Every search parameter is live: set to either end of its declared
+    /// range, it moves the tree of a fixed-depth search on a named position,
+    /// or, for a clock parameter, the time limits or the soft stop on a named
+    /// clock. The SPSA coverage audit reads the source; this reads behaviour,
+    /// so a parameter the search no longer consults, or consults only where no
+    /// named position reaches, fails here by name. Release only: the sweep is
+    /// about 300 searches.
+    #[test]
+    #[cfg_attr(
+        debug_assertions,
+        ignore = "about 300 searches; the release suite runs it"
+    )]
+    fn every_search_parameter_moves_what_it_tunes() {
+        const DEPTH: u32 = 8;
+        const KIWIPETE: &str =
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+        const SEMI_SLAV: &str =
+            "rnbqkb1r/pp3ppp/2p1pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 0 5";
+        // A knight up, so null moves see a surplus over beta.
+        const KNIGHT_UP: &str = "r1bqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        // Two pieces a side, and a rule-50 clock under way.
+        const TWO_PIECES: &str = "2r3k1/pp1n1ppp/4p3/3pP3/3P1P2/2RB2P1/PP5P/6K1 w - - 40 30";
+        const PAWN_ENDING: &str = "8/5pk1/6p1/8/4P3/5PK1/8/8 w - - 10 50";
+        const POSITIONS: [&str; 5] = [KIWIPETE, SEMI_SLAV, KNIGHT_UP, TWO_PIECES, PAWN_ENDING];
+        // Parameters that act only deeper than the sweep, each with the
+        // position and depth where an end of its range first moved the tree:
+        // a null move's surplus past 128, a singular extension at a new PV
+        // node, a capped singular reduction, and a pruned quiet at a node
+        // already at or above beta.
+        const DEEP: [(&str, &str, u32); 5] = [
+            ("CoreNmpRClamp", KIWIPETE, 10),
+            ("CoreSingDoubleNotTtPv", KNIGHT_UP, 10),
+            ("CoreSingTripleNotTtPv", KIWIPETE, 10),
+            ("CoreLmrSingularCap", KNIGHT_UP, 12),
+            ("CoreFpEvalAboveBeta", PAWN_ENDING, 13),
+        ];
+        // Proved live by a test of its own: a root fail-high stops the search
+        // at the low end of the range and not at the high end.
+        const ELSEWHERE: [(&str, &str); 1] = [(
+            "TmFailHighTarget",
+            "a_root_fail_high_past_the_soft_target_plays_the_move_with_its_lower_bound",
+        )];
+        let tree = |options: &SearchOptions, fen: &str, depth: u32| {
+            let board = Board::from_fen(fen).expect("valid FEN");
+            let mut options = options.clone();
+            options.limits.depth = Some(depth);
+            let mut searcher = Searcher::default();
+            let result = searcher.search(board, &options, false, || SearchEvent::None);
+            (result.nodes, result.score)
+        };
+        let clocks = [
+            (60_000, 600, 0, 0_u32),
+            (2_000, 20, 0, 60),
+            (30_000, 0, 20, 20),
+        ];
+        // Early in a search, and late, with the best move long held and
+        // most of the nodes spent on it.
+        let signals = [
+            IterationSignals {
+                score_fall: 25.0,
+                cross_move_fall: 15.0,
+                best_move_changes: 1.5,
+                stable_iterations: 3,
+                effort_share: 0.6,
+            },
+            IterationSignals {
+                score_fall: -10.0,
+                cross_move_fall: 0.0,
+                best_move_changes: 0.0,
+                stable_iterations: 20,
+                effort_share: 0.97,
+            },
+        ];
+        let clock = |options: &SearchOptions| -> Vec<u64> {
+            let mut view = Vec::new();
+            for (time, increment, movestogo, game_ply) in clocks {
+                let limits = SearchLimits {
+                    white_time: Some(time),
+                    black_time: Some(time),
+                    white_increment: increment,
+                    black_increment: increment,
+                    movestogo,
+                    ..SearchLimits::default()
+                };
+                let runtime = time::compute_runtime_limits(
+                    &limits,
+                    &options.engine,
+                    Color::White,
+                    game_ply,
+                    MAX_DEPTH,
+                );
+                for value in [
+                    runtime.optimum_ms,
+                    runtime.maximum_ms,
+                    runtime.tb_extension_latest_start_ms,
+                ] {
+                    view.push(value.to_bits());
+                }
+                for signals in signals {
+                    let soft = time::soft_stop(&options.engine.search_params, &runtime, signals);
+                    view.push(soft.target_ms.to_bits());
+                }
+            }
+            view
+        };
+        let base = SearchOptions::default();
+        let base_trees: Vec<_> = POSITIONS
+            .iter()
+            .map(|fen| tree(&base, fen, DEPTH))
+            .collect();
+        let base_clock = clock(&base);
+        let mut visited = Vec::new();
+        let mut dead = Vec::new();
+        let mut visit = |name: &str, min: i32, max: i32, set: &dyn Fn(&mut SearchOptions, i32)| {
+            visited.push(name.to_string());
+            if ELSEWHERE.iter().any(|(elsewhere, _)| *elsewhere == name) {
+                return;
+            }
+            let deep = DEEP.iter().find(|(deep, _, _)| *deep == name);
+            let deep_base = deep.map(|&(_, fen, depth)| tree(&base, fen, depth));
+            let live = [min, max].into_iter().any(|value| {
+                let mut options = base.clone();
+                set(&mut options, value);
+                if name.starts_with("Tm") {
+                    clock(&options) != base_clock
+                } else if let (Some(&(_, fen, depth)), Some(deep_base)) = (deep, deep_base) {
+                    tree(&options, fen, depth) != deep_base
+                } else {
+                    POSITIONS
+                        .iter()
+                        .zip(&base_trees)
+                        .any(|(fen, base_tree)| tree(&options, fen, DEPTH) != *base_tree)
+                }
+            });
+            if !live {
+                dead.push(name.to_string());
+            }
+        };
+        for &(name, min, max, field) in SearchParams::FIELDS {
+            visit(name, min, max, &|o, v| {
+                *field(&mut o.engine.search_params) = v;
+            });
+        }
+        for &(name, min, max, field) in CoreParams::FIELDS {
+            visit(name, min, max, &|o, v| {
+                *field(&mut o.engine.core_params) = v;
+            });
+        }
+        for &(name, min, max, field) in ProofParams::FIELDS {
+            visit(name, min, max, &|o, v| {
+                *field(&mut o.engine.proof_params) = v;
+            });
+        }
+        for &(name, min, max, field) in QuietParams::FIELDS {
+            visit(name, min, max, &|o, v| {
+                *field(&mut o.engine.quiet_params) = v;
+            });
+        }
+        assert!(
+            dead.is_empty(),
+            "moved nothing at either end of its range: {dead:?}"
+        );
+        for name in DEEP
+            .iter()
+            .map(|d| d.0)
+            .chain(ELSEWHERE.iter().map(|e| e.0))
+        {
+            assert!(
+                visited.iter().any(|v| v == name),
+                "{name} is no longer a parameter"
+            );
+        }
+    }
+
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, Instant};
 
@@ -2086,6 +2317,66 @@ mod tests {
         searcher.configure(&threads, HashRequest::Sent);
         assert_eq!(refusals(), 2, "the same Hash sent again is tried again");
         assert_eq!(searcher.shared.hash_mb, 64);
+    }
+
+    /// A `Hash` change lands in the form the next search uses, at the size
+    /// that form gives that `Hash`; a refused one keeps the table and what it
+    /// holds, at any thread count.
+    #[test]
+    fn a_hash_change_lands_in_the_searchs_form_and_a_refusal_keeps_the_table() {
+        let board = Board::default();
+        for threads in [1, 4] {
+            let mut searcher = Searcher::default();
+            let mut options = EngineOptions {
+                hash_mb: 2,
+                threads,
+                ..EngineOptions::default()
+            };
+            searcher.configure(&options, HashRequest::Sent);
+            assert_eq!(searcher.shared.tt.is_shared(), threads > 1);
+            assert_eq!(searcher.shared.tt.allocated_bytes(), 2 << 20);
+
+            store_static_eval(&mut searcher, &board, 17);
+            options.hash_mb = usize::MAX;
+            searcher.configure(&options, HashRequest::Sent);
+            assert_eq!(searcher.shared.hash_mb, 2);
+            assert_eq!(searcher.shared.tt.is_shared(), threads > 1);
+            assert!(
+                searcher.shared.tt.probe(board.hash()).is_some(),
+                "a refused Hash kept the entry at Threads {threads}"
+            );
+        }
+    }
+
+    /// The same `Hash` sent again keeps the table and what it holds, at any
+    /// thread count, where a different size starts an empty one.
+    #[test]
+    fn the_same_hash_sent_again_keeps_the_tables_contents() {
+        let board = Board::default();
+        for threads in [1, 4] {
+            let mut searcher = Searcher::default();
+            let options = EngineOptions {
+                hash_mb: 2,
+                threads,
+                ..EngineOptions::default()
+            };
+            searcher.configure(&options, HashRequest::Sent);
+            store_static_eval(&mut searcher, &board, 17);
+            searcher.configure(&options, HashRequest::Sent);
+            assert!(
+                searcher.shared.tt.probe(board.hash()).is_some(),
+                "the same Hash kept the entry at Threads {threads}"
+            );
+            let resized = EngineOptions {
+                hash_mb: 3,
+                ..options.clone()
+            };
+            searcher.configure(&resized, HashRequest::Sent);
+            assert!(
+                searcher.shared.tt.probe(board.hash()).is_none(),
+                "a new size starts empty at Threads {threads}"
+            );
+        }
     }
 
     /// `bestmove` must be the move the last `info` line names. A stopped
@@ -2183,7 +2474,7 @@ mod tests {
     #[cfg(feature = "diag")]
     #[test]
     fn decision_trace_is_bounded_to_searchmoves_and_plies_one_and_two() {
-        let run = |search_moves: Vec<Move>| {
+        let run = |search_moves: Vec<crate::board::UciMove>| {
             let lines = Arc::new(Mutex::new(Vec::new()));
             let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
             let mut options = SearchOptions::default();
@@ -2200,8 +2491,8 @@ mod tests {
 
         assert!(run(Vec::new()).is_empty(), "no searchmoves, no trace");
         let traced = run(vec![
-            Move::from_uci("e2e4").expect("valid move"),
-            Move::from_uci("d2d4").expect("valid move"),
+            crate::board::UciMove::parse("e2e4").expect("valid move"),
+            crate::board::UciMove::parse("d2d4").expect("valid move"),
         ]);
         assert!(!traced.is_empty(), "searchmoves must produce a trace");
         for line in &traced {
@@ -2325,7 +2616,8 @@ mod tests {
         store_static_eval(&mut main, &board, 123);
 
         let mut helper = Searcher::default();
-        helper.shared.tt = main.shared.tt.clone();
+        helper.shared.tt =
+            TranspositionTable::attached(main.shared.tt.make_shared(main.shared.hash_mb));
         let mut options = EngineOptions::default();
         options.search_params.lazy_margin = 2_000;
         helper.reset_search_state(
@@ -2567,7 +2859,7 @@ mod tests {
         let mv = board.parse_move("e2e4").expect("legal move");
         let limits = SearchLimits {
             depth: Some(6),
-            search_moves: vec![mv],
+            search_moves: vec![mv.into()],
             ..SearchLimits::default()
         };
         let mut searcher = Searcher::default();
@@ -3027,6 +3319,45 @@ mod tests {
             &root,
             &searcher.td.pv_table[0][..searcher.td.pv_len[0].min(MAX_PLY)],
         );
+    }
+
+    /// An illegal move stored as the root's TT move, deep and exact, never
+    /// reaches the answer or any line a whole iterative deepening prints.
+    #[test]
+    fn a_deep_exact_illegal_tt_move_never_reaches_a_line_or_the_answer() {
+        let root = Board::from_fen("2k5/pp3pp1/5n2/2P5/bPP2P2/P3K3/6Pp/3Q1B1R w - - 0 23")
+            .expect("valid tournament-derived FEN");
+        let illegal = Move::from_uci("e3f4").expect("valid UCI move shape");
+        assert!(!root.is_legal(illegal));
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        searcher.shared.tt.store(TtStore {
+            key: root.hash(),
+            depth: 10,
+            score: 500,
+            bound: Bound::Exact,
+            mv: illegal,
+            ply: 0,
+            static_eval: VALUE_NONE,
+            is_pv: true,
+        });
+        let mut options = SearchOptions::default();
+        options.limits.depth = Some(6);
+        let result = searcher.search(root.clone(), &options, true, || SearchEvent::None);
+        assert!(root.is_legal(result.bestmove), "{}", result.bestmove);
+        let lines = lines.lock().unwrap();
+        let mut printed = 0;
+        for line in lines.iter().filter(|line| line.contains(" pv ")) {
+            let mut board = root.clone();
+            for token in line.split(" pv ").nth(1).expect("a pv").split_whitespace() {
+                let mv = board
+                    .parse_move(token)
+                    .unwrap_or_else(|| panic!("{token} is illegal in `{line}`"));
+                board.make_move(mv);
+            }
+            printed += 1;
+        }
+        assert!(printed >= 6, "{printed} lines with a pv");
     }
 
     #[test]

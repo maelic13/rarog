@@ -17,7 +17,6 @@ fn syzygy_disabled_path_leaves_tablebase_probes_unavailable() {
     assert_eq!(syzygy::initialize(""), 0);
     assert_eq!(syzygy::largest(), 0);
     assert!(syzygy::probe_wdl(&board, true).is_none());
-    assert!(syzygy::probe_root(&board, true).is_none());
 }
 
 #[test]

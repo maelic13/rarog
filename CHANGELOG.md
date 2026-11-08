@@ -36,6 +36,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   `Rarog dev-20261104-209b555a`, and the start-up line names the CPU build.
 - **Building from source: `--native` is optional.** The build instructions no
   longer recommend it: it is not always faster, so compare with `bench`.
+- **`go mate` searches until it finds the mate.** It no longer stops at a fixed
+  depth, so it finds more mates. In a position without one it runs until
+  `stop`.
 
 ### Fixed
 
@@ -66,6 +69,17 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   says so and keeps its current table, on every system; on macOS such a
   setting used to stall the engine. The `Hash` option's maximum is now
   the machine's memory.
+- **`Hash` is the size you set.** A size that was not a power of two was
+  rounded down, sometimes to about half of what you asked for.
+- **Changing `Hash` frees the old table.** With more than one thread, the
+  old table stayed in memory until the next search.
+- **`go depth` keeps to its depth.** With more than one thread, the answer
+  could come from a search shallower or deeper than the depth asked for.
+- **`readyok` means ready.** With more than one thread, the engine could
+  answer `isready` while its threads were still starting or clearing.
+- **Mates with more than one thread.** The engine now always takes the
+  shortest mate its threads found, and always shows a mate that a helper thread
+  found.
 
 ## [2.6.0] - 2026-10-22
 

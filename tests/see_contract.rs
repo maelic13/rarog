@@ -240,6 +240,8 @@ fn threshold_parity_on_deterministic_legal_walks() {
             board.make_move(moves[index]);
         }
     }
-    assert!(checked >= 1000, "insufficient capture coverage: {checked}");
+    // The walks are deterministic: a different count means they changed, and
+    // the count moves only once the new walk is checked to cover as much.
+    assert_eq!(checked, 1802, "capture coverage changed: {checked}");
     println!("SEE parity: {checked} legal captures across four deterministic walks");
 }

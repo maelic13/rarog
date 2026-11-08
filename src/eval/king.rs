@@ -13,9 +13,10 @@ use crate::board::{ATTACKS, Bitboard, Board, CastlingRights, Color, Piece, Squar
 use crate::infra;
 
 /// The king-danger index is clamped here before the map, so one king's
-/// penalty is bounded whatever its inputs: 306 cp mg and 49 cp eg at the
-/// seed scales. The magnitude contract's instrument; it changes only with a
-/// new magnitude read.
+/// penalty is bounded whatever its inputs: `ks_map_mg × 625 / 100` cp mg and
+/// `ks_map_eg × 100 / 100` cp eg, 637 and 18 at the fitted weights and at
+/// most [`KS_MAP_MG_MAX`] mg. The magnitude contract's instrument; it changes
+/// only with a new magnitude read.
 pub(super) const KS_INDEX_CAP: i32 = 1600;
 
 /// The largest map scale the evaluation applies (and the tuner's bound), in
@@ -498,9 +499,9 @@ impl Evaluator {
         })
     }
 
-    /// Central-king / lost-castling danger (Phase 3.10): a king still on its
+    /// Central-king / lost-castling danger: a king still on its
     /// home square, on a central file, with all castling rights for that
-    /// side gone — separate from the king-ring attack model (3.5), which
+    /// side gone — separate from the king-ring attack model, which
     /// scores nothing until attackers actually arrive.
     pub(super) fn eval_king_centrality_danger(&self, board: &Board, mg: &mut i32) {
         for color in [Color::White, Color::Black] {
@@ -621,9 +622,8 @@ mod tests {
         let [white, _] = inputs(&board);
         let mut ev = Evaluator::default();
         let index = ev.king_danger_index(&white, false, false, 0, 0);
-        // The fitted danger weights move the fixture's index (3,381 at the
-        // 2.6.0-dev defaults, 3,149 after C.8's first refit); the property
-        // needs only an index past the cap.
+        // A refit of the danger weights moves the fixture's index; the
+        // property needs only an index past the cap.
         assert!(
             index > KS_INDEX_CAP,
             "the fixture must saturate the index: {index}"

@@ -19,9 +19,9 @@ fn shared_table(mb: usize) -> TranspositionTable {
     tt
 }
 
-/// Distinct, well-spread keys — the cluster index takes the low bits and the
-/// verification tag the top 16, so a bare counter would leave the tag constant
-/// and never exercise it.
+/// Distinct, well-spread keys — the cluster index takes the key's high bits
+/// and the verification tag its low 16, so a bare counter would leave the
+/// cluster constant and never exercise the table.
 fn key_for(i: u32) -> u64 {
     u64::from(i)
         .wrapping_mul(0x9E37_79B9_7F4A_7C15)
@@ -84,10 +84,14 @@ fn shared_store_then_probe_round_trips_every_field() {
 }
 
 #[test]
-fn shared_probe_almost_never_matches_keys_never_stored() {
-    let mut tt = shared_table(16);
+fn shared_probe_matches_keys_never_stored_only_at_the_tags_rate() {
+    // A full 1 MiB table: every probe of a key never stored reads six occupied
+    // slots, so a 16-bit tag lets through about 20,000 × 6 / 65,536 ≈ 1.8 of
+    // 20,000 probes, and an 8-bit tag about 470. The keys are fixed, so the
+    // count is too.
+    let mut tt = shared_table(1);
 
-    for i in 0..ENTRIES {
+    for i in 0..200_000 {
         tt.store(TtStore {
             key: key_for(i),
             depth: 10,
@@ -100,9 +104,7 @@ fn shared_probe_almost_never_matches_keys_never_stored() {
         });
     }
 
-    // Disjoint key space. Verification is 16-bit — the same strength the
-    // single-threaded table has always had — so a small collision rate is by
-    // design; anything approaching 1% would mean the tag is not being checked.
+    // Disjoint key space.
     let probes: usize = 20_000;
     let false_hits = (0..probes)
         .filter(|i| {
@@ -111,7 +113,7 @@ fn shared_probe_almost_never_matches_keys_never_stored() {
         })
         .count();
     assert!(
-        false_hits * 100 < probes,
+        false_hits <= 12,
         "{false_hits}/{probes} probes matched entries that were never stored"
     );
 }

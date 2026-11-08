@@ -551,6 +551,12 @@ impl Searcher {
         if ply >= MAX_PLY - 1 {
             return self.corrected_eval(board, ply);
         }
+        // Every way in (a move, a null move, ProbCut, an exclusion search)
+        // finds this ply's frame clean: whoever made a move here cleared it.
+        debug_assert!(
+            self.td.stack[ply].mv.is_null() && self.td.stack[ply].cont_key == 0,
+            "ply {ply} entered with a move left in its frame"
+        );
         self.td.pv_len[ply] = ply;
         self.td.seldepth = self.td.seldepth.max(ply + 1);
 
@@ -570,11 +576,11 @@ impl Searcher {
         }
 
         if depth <= 0 {
-            return if NODE::PV {
-                self.quiescence::<Pv, _>(board, alpha, beta, ply, 0, poll)
-            } else {
-                self.quiescence::<NonPv, _>(board, alpha, beta, ply, 0, poll)
-            };
+            #[cfg(feature = "pricing")]
+            {
+                self.td.pricing.q_pv = NODE::PV;
+            }
+            return self.quiescence(board, alpha, beta, ply, 0, poll);
         }
 
         // Counted after the hand-off to quiescence, so `nodes` means interior
@@ -892,7 +898,11 @@ impl Searcher {
                 "razor depth {depth} estimated {eval_for_pruning} margin {} alpha {alpha}",
                 self.cfg.core.razor_base + self.cfg.core.razor_square * depth * depth
             );
-            let score = self.quiescence::<NonPv, _>(board, alpha, beta, ply, 0, poll);
+            #[cfg(feature = "pricing")]
+            {
+                self.td.pricing.q_pv = false;
+            }
+            let score = self.quiescence(board, alpha, beta, ply, 0, poll);
             #[cfg(feature = "pricing")]
             if !NODE::ROOT
                 && excluded.is_null()
@@ -1302,14 +1312,12 @@ impl Searcher {
                     self.td.stack[ply].extension_spent = extension_spent;
                     board.make_move(mv);
                     self.shared.tt.prefetch(board.hash());
-                    let mut score = -self.quiescence::<NonPv, _>(
-                        board,
-                        -probcut_beta,
-                        -probcut_beta + 1,
-                        ply + 1,
-                        0,
-                        poll,
-                    );
+                    #[cfg(feature = "pricing")]
+                    {
+                        self.td.pricing.q_pv = false;
+                    }
+                    let mut score =
+                        -self.quiescence(board, -probcut_beta, -probcut_beta + 1, ply + 1, 0, poll);
                     #[cfg(feature = "diag")]
                     let qsearch_score = score;
                     let mut probcut_depth = (base_depth
@@ -1594,21 +1602,13 @@ impl Searcher {
                 };
             }
 
-            let root_moves;
-            let legal_moves = if NODE::ROOT && !self.td.root_moves.is_empty() {
-                root_moves = legal_moves
-                    .iter()
-                    .copied()
-                    .filter(|mv| self.td.root_moves.contains(mv))
-                    .collect::<Vec<_>>();
-                if root_moves.is_empty() {
-                    legal_moves.as_slice()
-                } else {
-                    root_moves.as_slice()
-                }
-            } else {
-                legal_moves.as_slice()
-            };
+            // The search's root list narrows the legal moves, unless it names
+            // none of them.
+            let root_moves = &self.td.root_moves;
+            if !root_moves.is_empty() && legal_moves.iter().any(|mv| root_moves.contains(mv)) {
+                legal_moves.retain(|mv| root_moves.contains(&mv));
+            }
+            let legal_moves = legal_moves.as_slice();
 
             let mut scored = ScoredMoveList::new();
             self.score_moves(
@@ -2175,8 +2175,8 @@ impl Searcher {
                         // does. The donor also re-searches a ply shallower when
                         // the move barely beat alpha; two tunes walked that
                         // margin below the point where it can fire, and read
-                        // as a switch it lost at the donor's value (RAR-S102),
-                        // so it is not here.
+                        // as a switch it lost at the donor's value, so it is
+                        // not here.
                         let deeper =
                             !NODE::ROOT && score > best_score + self.cfg.core.lmr_research_deeper;
                         new_depth += i32::from(deeper);
@@ -2467,7 +2467,7 @@ impl Searcher {
         best_score
     }
 
-    pub(super) fn quiescence<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
+    pub(super) fn quiescence<P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
         mut alpha: i32,
@@ -2484,6 +2484,10 @@ impl Searcher {
         if ply >= MAX_PLY - 1 {
             return self.corrected_eval(board, MAX_PLY - 1);
         }
+        debug_assert!(
+            self.td.stack[ply].mv.is_null() && self.td.stack[ply].cont_key == 0,
+            "quiescence at ply {ply} entered with a move left in its frame"
+        );
         self.td.pv_len[ply] = ply;
         self.td.seldepth = self.td.seldepth.max(ply + 1);
 
@@ -2618,7 +2622,7 @@ impl Searcher {
                         rule: Rule::QDelta,
                         depth: infra::to_i32(qply),
                         ply,
-                        node: NodeKind::of(NODE::PV, false),
+                        node: NodeKind::of(self.td.pricing.q_pv, false),
                         move_count: 0,
                         tail: 0,
                         quiet: None,
@@ -2627,7 +2631,7 @@ impl Searcher {
                         returned: stand_pat,
                         alpha,
                     };
-                    self.price_q_node::<NODE, _>(board, &decision, &pricing_q_entry, verdict, poll);
+                    self.price_q_node(board, &decision, &pricing_q_entry, verdict, poll);
                 }
                 return stand_pat;
             }
@@ -2722,7 +2726,7 @@ impl Searcher {
                             rule: Rule::QFutility,
                             depth: infra::to_i32(qply),
                             ply,
-                            node: NodeKind::of(NODE::PV, false),
+                            node: NodeKind::of(self.td.pricing.q_pv, false),
                             move_count: infra::to_i32(tactical_count),
                             tail: 0,
                             quiet: Some(false),
@@ -2734,7 +2738,7 @@ impl Searcher {
                             beta,
                             qply,
                         };
-                        self.price_q_capture::<NODE, _>(board, &decision, &capture, poll);
+                        self.price_q_capture(board, &decision, &capture, poll);
                     }
                     continue;
                 }
@@ -2757,7 +2761,7 @@ impl Searcher {
                                 rule: Rule::QCount,
                                 depth: infra::to_i32(qply),
                                 ply,
-                                node: NodeKind::of(NODE::PV, false),
+                                node: NodeKind::of(self.td.pricing.q_pv, false),
                                 move_count: infra::to_i32(tactical_count),
                                 tail: 0,
                                 quiet: Some(false),
@@ -2769,7 +2773,7 @@ impl Searcher {
                                 beta,
                                 qply,
                             };
-                            self.price_q_capture::<NODE, _>(board, &decision, &capture, poll);
+                            self.price_q_capture(board, &decision, &capture, poll);
                         }
                         continue;
                     }
@@ -2801,7 +2805,7 @@ impl Searcher {
                                 rule: Rule::QSee,
                                 depth: infra::to_i32(qply),
                                 ply,
-                                node: NodeKind::of(NODE::PV, false),
+                                node: NodeKind::of(self.td.pricing.q_pv, false),
                                 move_count: infra::to_i32(tactical_count),
                                 tail: 0,
                                 quiet: Some(false),
@@ -2813,7 +2817,7 @@ impl Searcher {
                                 beta,
                                 qply,
                             };
-                            self.price_q_capture::<NODE, _>(board, &decision, &capture, poll);
+                            self.price_q_capture(board, &decision, &capture, poll);
                         }
                         continue;
                     }
@@ -2826,7 +2830,7 @@ impl Searcher {
                             rule: Rule::QBadFloor,
                             depth: infra::to_i32(qply),
                             ply,
-                            node: NodeKind::of(NODE::PV, false),
+                            node: NodeKind::of(self.td.pricing.q_pv, false),
                             move_count: infra::to_i32(tactical_count),
                             tail: 0,
                             quiet: Some(false),
@@ -2838,7 +2842,7 @@ impl Searcher {
                             beta,
                             qply,
                         };
-                        self.price_q_capture::<NODE, _>(board, &decision, &capture, poll);
+                        self.price_q_capture(board, &decision, &capture, poll);
                     }
                     continue;
                 }
@@ -2854,7 +2858,7 @@ impl Searcher {
                 None => board.make_move(mv),
             }
             self.shared.tt.prefetch(board.hash());
-            let score = -self.quiescence::<NODE, _>(board, -beta, -alpha, ply + 1, qply + 1, poll);
+            let score = -self.quiescence(board, -beta, -alpha, ply + 1, qply + 1, poll);
             board.unmake_move(mv);
             self.clear_move(ply);
             if self.td.stopped || self.td.quit {
@@ -3960,8 +3964,7 @@ mod tests {
     }
 
     /// The quiescence's depth-0 store carries on a PV bit an earlier search
-    /// stored for the position; it never marks a position on its own, even at
-    /// a PV node.
+    /// stored for the position; it never marks a position on its own.
     #[test]
     fn quiescence_store_keeps_a_stored_pv_bit() {
         let fen = "4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1";
@@ -3979,7 +3982,7 @@ mod tests {
             static_eval: VALUE_NONE,
             is_pv: true,
         });
-        searcher.quiescence::<NonPv, _>(&mut board, -INF_SCORE, INF_SCORE, 1, 0, &mut || {
+        searcher.quiescence(&mut board, -INF_SCORE, INF_SCORE, 1, 0, &mut || {
             SearchEvent::None
         });
         let entry = searcher.shared.tt.probe(board.hash()).expect("stored");
@@ -3992,7 +3995,7 @@ mod tests {
 
         let mut searcher = Searcher::default();
         let mut board = Board::from_fen(fen).expect("valid FEN");
-        searcher.quiescence::<Pv, _>(&mut board, -INF_SCORE, INF_SCORE, 1, 0, &mut || {
+        searcher.quiescence(&mut board, -INF_SCORE, INF_SCORE, 1, 0, &mut || {
             SearchEvent::None
         });
         let entry = searcher.shared.tt.probe(board.hash()).expect("stored");
@@ -4006,10 +4009,9 @@ mod tests {
             Board::from_fen("rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3")
                 .expect("valid fool's mate FEN");
 
-        let score =
-            searcher.quiescence::<NonPv, _>(&mut board, -INF_SCORE, INF_SCORE, 0, 1, &mut || {
-                SearchEvent::None
-            });
+        let score = searcher.quiescence(&mut board, -INF_SCORE, INF_SCORE, 0, 1, &mut || {
+            SearchEvent::None
+        });
 
         assert_eq!(score, -MATE_SCORE);
     }
@@ -4020,7 +4022,7 @@ mod tests {
         let mut board = Board::from_fen("4k3/8/8/8/3q4/8/8/4KQ2 w - - 0 1").expect("valid FEN");
         let before = board.to_fen();
 
-        let score = searcher.quiescence::<NonPv, _>(
+        let score = searcher.quiescence(
             &mut board,
             -INF_SCORE,
             INF_SCORE,

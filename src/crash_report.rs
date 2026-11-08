@@ -176,10 +176,7 @@ mod tests {
         let _ = panic::take_hook();
 
         assert!(result.is_err(), "the probe must actually panic");
-        let lines = captured()
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .clone();
+        let lines = probe_reports("deliberate probe");
         assert_eq!(lines.len(), 1, "exactly one report per panic: {lines:?}");
         assert!(lines[0].contains("deliberate probe 7"), "{}", lines[0]);
         // Not `src/crash_report.rs` — `Location::file()` uses the platform's
@@ -209,10 +206,7 @@ mod tests {
         let _ = panic::take_hook();
 
         assert!(joined.is_err(), "the probe thread must actually panic");
-        let lines = captured()
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .clone();
+        let lines = probe_reports("helper probe");
         assert_eq!(lines.len(), 1, "exactly one report per panic: {lines:?}");
         assert!(lines[0].contains("thread=rarog-search-1"), "{}", lines[0]);
         assert!(lines[0].contains("helper probe"), "{}", lines[0]);
@@ -236,10 +230,20 @@ mod tests {
         let _ = panic::take_hook();
 
         assert!(result.is_err());
-        let lines = captured()
+        let lines = probe_reports("chained probe");
+        assert_eq!(lines.len(), 2, "both hooks must fire: {lines:?}");
+    }
+
+    /// The captured reports of one probe's panic. The hook is the process's,
+    /// so a test that panics on purpose on another thread meanwhile is
+    /// reported too, and counting every line would count it.
+    fn probe_reports(probe: &str) -> Vec<String> {
+        captured()
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .clone();
-        assert_eq!(lines.len(), 2, "both hooks must fire: {lines:?}");
+            .iter()
+            .filter(|line| line.contains(probe))
+            .cloned()
+            .collect()
     }
 }

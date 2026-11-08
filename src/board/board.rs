@@ -12,7 +12,7 @@ use super::movegen::generate_legal_moves;
 use super::moves::{
     CAPTURE, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, DOUBLE_PUSH, EN_PASSANT, Move, MoveList,
     PROMO_BISHOP, PROMO_CAPTURE_BISHOP, PROMO_CAPTURE_KNIGHT, PROMO_CAPTURE_QUEEN,
-    PROMO_CAPTURE_ROOK, PROMO_KNIGHT, PROMO_QUEEN, PROMO_ROOK, QUIET,
+    PROMO_CAPTURE_ROOK, PROMO_KNIGHT, PROMO_QUEEN, PROMO_ROOK, QUIET, UciMove,
 };
 use super::piece::{CastlingRights, Color, Piece};
 use super::square::{Rank, Square};
@@ -521,14 +521,14 @@ impl Board {
         let zob = &ZOBRIST;
         let us = self.side_to_move;
         let (from, to) = (mv.from_sq(), mv.to_sq());
-        let piece = self.piece_type_at_unchecked(from);
+        let piece = self.occupant_type(from);
         let mut key =
             self.hash ^ zob.side() ^ zob.piece(us, piece, from) ^ zob.piece(us, piece, to);
         if self.ep_sq != 255 {
             key ^= zob.ep(Square(self.ep_sq).file());
         }
         if mv.flags() == CAPTURE {
-            key ^= zob.piece(!us, self.piece_type_at_unchecked(to), to);
+            key ^= zob.piece(!us, self.occupant_type(to), to);
         }
         key
     }
@@ -551,7 +551,7 @@ impl Board {
     #[inline(always)]
     pub fn moving_piece(&self, mv: Move) -> Piece {
         debug_assert!(self.mailbox[mv.from_sq().index()] < 12);
-        self.piece_type_at_unchecked(mv.from_sq())
+        self.occupant_type(mv.from_sq())
     }
 
     #[inline(always)]
@@ -560,7 +560,13 @@ impl Board {
     }
 
     pub fn parse_move(&self, input: &str) -> Option<Move> {
-        self.legal_move(Move::from_uci(input)?)
+        self.legal_uci_move(UciMove::parse(input)?)
+    }
+
+    /// The legal move `mv` names, with the flags this position gives it: the
+    /// only way from UCI text to a move that can be played.
+    pub fn legal_uci_move(&self, mv: UciMove) -> Option<Move> {
+        self.legal_move(mv.0)
     }
 
     fn pseudo_legal_move(&self, mv: Move) -> Option<Move> {
@@ -694,8 +700,8 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn is_pseudo_legal(&self, mv: Move) -> bool {
-        self.pseudo_legal_move(mv).is_some()
+    pub fn is_pseudo_legal(&self, mv: impl Into<UciMove>) -> bool {
+        self.pseudo_legal_move(mv.into().0).is_some()
     }
 
     pub fn legal_move(&self, mv: Move) -> Option<Move> {
@@ -703,18 +709,13 @@ impl Board {
         self.king_safe_after(canonical).then_some(canonical)
     }
 
-    /// Legality as a plain boolean.
-    ///
-    /// This DISCARDS the canonical move that [`Board::legal_move`] returns.
-    /// `Move::from_uci` cannot know whether a move is a capture, a double
-    /// push, en passant or castling, so it always yields `QUIET`; only the
-    /// canonical move carries the correct flags. Use this when the answer is
-    /// the only thing wanted. **If the move is going to be played, use
-    /// [`Board::legal_move`] and play the move it returns**, never the input.
-    /// Playing a non-canonical move corrupts make/unmake.
+    /// Legality as a plain boolean, of a move or of UCI text's move. It
+    /// discards the canonical move [`Board::legal_move`] and
+    /// [`Board::legal_uci_move`] return, the only form that carries the flags
+    /// a played move needs.
     #[inline(always)]
-    pub fn is_legal(&self, mv: Move) -> bool {
-        self.legal_move(mv).is_some()
+    pub fn is_legal(&self, mv: impl Into<UciMove>) -> bool {
+        self.legal_move(mv.into().0).is_some()
     }
 
     /// Reserve room for `plies` further make/unmake pairs.
@@ -810,7 +811,7 @@ impl Board {
             Some(Piece::Pawn)
         } else if flags == CAPTURE || flags >= PROMO_CAPTURE_KNIGHT {
             debug_assert!(self.mailbox[mv.to_sq().index()] < 12);
-            Some(self.piece_type_at_unchecked(mv.to_sq()))
+            Some(self.occupant_type(mv.to_sq()))
         } else {
             None
         }
@@ -1742,10 +1743,10 @@ impl Board {
         self.ep_sq = 255;
 
         debug_assert!(self.mailbox[from.index()] < 12);
-        let moving_piece = self.piece_type_at_unchecked(from);
+        let moving_piece = self.occupant_type(from);
 
         if flags == QUIET {
-            // 4.11b.9 fused ordinary relocation. `to` is empty and the piece
+            // Fused ordinary relocation. `to` is empty and the piece
             // keeps its identity, so one from/to mask and one paired key
             // reproduce remove_piece(from) + add_piece(to) exactly.
             self.move_piece(us, moving_piece, from, to);
@@ -1774,7 +1775,7 @@ impl Board {
             } else if flags == CAPTURE || flags >= PROMO_CAPTURE_KNIGHT {
                 // Regular capture (including promo-captures)
                 debug_assert!(self.mailbox[to.index()] < 12);
-                let captured_piece = self.piece_type_at_unchecked(to);
+                let captured_piece = self.occupant_type(to);
                 captured = encode_piece(them, captured_piece);
                 self.remove_piece(them, captured_piece, to);
                 self.hash ^= zob.piece(them, captured_piece, to);
@@ -1965,9 +1966,9 @@ impl Board {
 
         // Move the piece back from `to` to `from`
         if flags == QUIET {
-            // 4.11b.9 fused ordinary relocation; mirrors the make-side path.
+            // Fused ordinary relocation; mirrors the make-side path.
             debug_assert!(self.mailbox[to.index()] < 12);
-            let p = self.piece_type_at_unchecked(to);
+            let p = self.occupant_type(to);
             self.move_piece(us, p, to, from);
         } else {
             let moved_piece = if flags >= PROMO_KNIGHT {
@@ -1977,7 +1978,7 @@ impl Board {
                 Piece::Pawn
             } else {
                 debug_assert!(self.mailbox[to.index()] < 12);
-                let p = self.piece_type_at_unchecked(to);
+                let p = self.occupant_type(to);
                 self.remove_piece(us, p, to);
                 p
             };
@@ -2085,8 +2086,10 @@ impl Board {
         self.toggle_derived_keys(color, piece, piece_key);
     }
 
+    /// The type of the piece on `sq`, which must be occupied: debug builds
+    /// check it, and a release read of an empty square yields some type.
     #[inline(always)]
-    fn piece_type_at_unchecked(&self, sq: Square) -> Piece {
+    fn occupant_type(&self, sq: Square) -> Piece {
         debug_assert!(self.mailbox[sq.index()] < 12);
         // `& 15` into the padded 16-entry table — check elided, no unsafe.
         PIECE_FROM_ENCODED[self.mailbox[sq.index()] as usize & 15]
@@ -2564,6 +2567,48 @@ mod tests {
             attackers.is_empty(),
             "with the king in place e1 is shielded"
         );
+    }
+
+    /// `gives_check_with`, the search's fast check test, agrees with making
+    /// the move and asking whether the opponent is in check, for every legal
+    /// move of every position a depth-3 walk reaches from the standard perft
+    /// positions and two with promotions and en passant.
+    #[test]
+    fn the_fast_check_test_agrees_with_playing_the_move() {
+        fn walk(board: &mut Board, depth: u32, counts: &mut (u64, u64)) {
+            if depth == 0 {
+                return;
+            }
+            let ci = board.check_info();
+            for mv in board.generate_legal_moves() {
+                let fast = board.gives_check_with(mv, &ci);
+                board.make_move(mv);
+                let checks = board.is_in_check();
+                board.unmake_move(mv);
+                assert_eq!(fast, checks, "{mv} in {}", board.to_fen());
+                counts.0 += 1;
+                counts.1 += u64::from(checks);
+                board.make_move(mv);
+                walk(board, depth - 1, counts);
+                board.unmake_move(mv);
+            }
+        }
+        let mut counts = (0, 0);
+        for fen in [
+            STARTING_FEN,
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+            "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+            "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+            "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+            "8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1",
+            "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
+        ] {
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            walk(&mut board, 3, &mut counts);
+        }
+        // The walk is fixed, so its coverage is too.
+        assert_eq!(counts, (305_311, 6_433), "moves and checking moves seen");
     }
 
     /// Shuffle both knights out and back: four plies that always exist from the

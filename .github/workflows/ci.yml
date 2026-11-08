@@ -35,7 +35,8 @@ concurrency:
 jobs:
   lint:
     name: fmt + clippy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
@@ -78,20 +79,33 @@ jobs:
       - name: cargo clippy (texel tuner, its own workspace)
         run: cargo clippy --manifest-path tools/texel-tuner/Cargo.toml --all-targets -- -D warnings
 
+      # The PEXT slider path compiles only under `rarog_pext`, so the steps
+      # above never lint or test it; `attacks.rs` refuses the cfg without
+      # BMI2. Its own target directory keeps these flags out of the default
+      # build's cache.
+      - name: cargo clippy and the slider test (PEXT tier)
+        env:
+          RUSTFLAGS: --cfg rarog_pext -C target-feature=+bmi2
+          CARGO_TARGET_DIR: target/pext
+        run: |
+          cargo clippy --all-targets -- -D warnings
+          cargo test --test slider_backends
+
   test:
     name: test ${{ matrix.os }} / ${{ matrix.profile }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        # macos-latest is arm64 — the only shipped platform that previously had
+        # macos-26 is arm64 — the only shipped platform that previously had
         # NO coverage at all, and the one that exercises the AArch64 codegen
         # path the three arm64 assets are built from. windows-11-arm and
         # ubuntu-24.04-arm are covered by bench-fingerprint below: that job
         # proves every shipped platform agrees on the node count, which is the
         # cross-platform invariant that matters, and running the whole suite on
         # three more ARM runners would be largely redundant codegen coverage.
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-24.04, windows-2025, macos-26]
         profile: [debug, release]
     steps:
       - uses: actions/checkout@v7
@@ -131,7 +145,7 @@ jobs:
         run: |
           status=0
           cargo test -p rarog --release --test endgames --test wac -- --ignored --exact \
-            kbnk_positions_are_driven_to_mate wac_solved_count_stays_above_floor \
+            kbnk_positions_are_driven_to_mate wac_solved_count_stays_in_its_band \
             > long-tier.log 2>&1 || status=$?
           cat long-tier.log
           if [ "$status" -ne 0 ]; then exit "$status"; fi
@@ -155,15 +169,16 @@ jobs:
   bench-fingerprint:
     name: bench ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             label: linux-x86-64
             isa_tier: base
             ext: ""
-          - os: windows-latest
+          - os: windows-2025
             label: windows-x86-64
             isa_tier: base
             ext: ".exe"
@@ -175,7 +190,7 @@ jobs:
             label: windows-arm64
             isa_tier: ""
             ext: ".exe"
-          - os: macos-latest
+          - os: macos-26
             label: macos-arm64
             isa_tier: ""
             ext: ""
@@ -240,7 +255,8 @@ jobs:
 
   bench-agreement:
     name: cross-platform determinism
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     needs: bench-fingerprint
     steps:
       - uses: actions/download-artifact@v7
@@ -267,7 +283,8 @@ jobs:
 
   features:
     name: feature builds
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
         with:
@@ -289,10 +306,20 @@ jobs:
       - name: Build --features diag
         run: cargo build --release --features diag
 
+      # Tests that compile only under a feature: under `texel` the trace
+      # reconstruction gate (the trace must rebuild the evaluation exactly)
+      # and the term activation checks; under `tune` the parameter file round
+      # trip and the king-mask tests. Every one is a library test.
+      - name: Test --features texel
+        run: cargo test -p rarog --release --features texel --lib
+
+      - name: Test --features tune
+        run: cargo test -p rarog --release --features tune --lib
+
       # Single features are not enough. Which items arrive under a
       # given `cfg` differs per COMBINATION, so a module can compile under
-      # `diag` and under `tune` and fail under both. This enumerates all 8
-      # subsets of the three declared features with
+      # `diag` and under `tune` and fail under both. This enumerates all 16
+      # subsets of the four declared features with
       # `cargo check --all-targets --no-default-features`, which catches the
       # same compilation errors far more cheaply than 8 builds. Every subset
       # starts from a clean slate.
@@ -301,7 +328,7 @@ jobs:
       # It enables `texel`, which bypasses the eval and pawn caches, and a
       # binary left in target/release by an --all-features test run must never
       # be measured (AGENTS.md).
-      - name: Feature matrix (all 8 subsets compile)
+      - name: Feature matrix (all 16 subsets compile)
         run: python tools/diag/feature_matrix.py
 
       - name: Build the texel tuner (uses --features texel)
@@ -309,3 +336,61 @@ jobs:
 
       - name: Build xtask and benches
         run: cargo build --release -p xtask --all-targets
+
+  documents:
+    name: documents and tools
+    # The documents' structure and citations and the tools' own tests, none
+    # of which another job runs. The tools were written on Windows, and some
+    # of their tests use its paths.
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          # Every commit: the citation check resolves each cited hash.
+          fetch-depth: 0
+
+      # A pull request's commits stay citable through its ref.
+      - name: Fetch the pull request refs
+        shell: bash
+        env:
+          TOKEN: ${{ github.token }}
+        run: >
+          git fetch --no-tags
+          "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git"
+          "+refs/pull/*/head:refs/remotes/origin/pr/*"
+
+      - name: Install the tools' Python packages
+        run: python -m pip install chess==1.11.2 numpy==2.4.6 pytest==9.0.3
+
+      - name: check_guide.py
+        run: python tools/diag/check_guide.py
+
+      - name: check_citations.py
+        run: python tools/diag/check_citations.py
+
+      - name: check_dispositions.py
+        run: python tools/diag/check_dispositions.py
+
+      - name: The tools' tests
+        run: python -m unittest discover -s tools/diag -p "test_*.py"
+
+  ci-ok:
+    name: CI passed
+    # The one check to require. A job skipped because a job it needs failed
+    # reports as skipped, which a required check reads as passing; this job
+    # always runs, and fails unless every job it gathers succeeded.
+    if: always()
+    needs: [lint, test, bench-fingerprint, bench-agreement, features, documents]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every gathered job succeeded
+        shell: bash
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+          FAILED: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}
+        run: |
+          echo "$RESULTS"
+          [ "$FAILED" = "false" ] || { echo "::error::a gathered job did not succeed"; exit 1; }

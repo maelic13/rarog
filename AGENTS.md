@@ -188,6 +188,10 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   `check_guide.py` when GUIDE or PLAN structure changes, and no Cargo builds,
   engine tests or bench. Tooling changes need their tests and a meaningful
   smoke or negative check of the changed path, not a rebuilt engine.
+- An evaluation, trace or parameter change also runs
+  `cargo test --release --features texel --lib` and
+  `cargo test --release --features tune --lib`: the trace reconstruction
+  gate and the parameter tests compile only there.
 - Run each required check once on the final relevant state, record command,
   exit status and coverage, and reuse the pass while its inputs are unchanged.
   Rerun after edits, failures or evidence of a gap; never call an old pass new.
@@ -201,7 +205,7 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   value and require the numbers to move. Proving the engine responds is not
   proving the instrument reports it.
 - A behaviour-neutral engine change reproduces the immediate development
-  fingerprint (currently **14,749,043 / EBF 2.564**) plus targeted checks
+  fingerprint (currently **15,625,852 / EBF 2.563**) plus targeted checks
   for behaviour the suite does not reach: an identical bench does not prove a
   narrow feature neutral (RAR-E10). Investigate a cross-platform mismatch
   (RAR-P14, RAR-P16). Docs-only work verifies the diff has no engine inputs.

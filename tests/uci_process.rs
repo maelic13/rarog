@@ -742,6 +742,29 @@ fn go_perft_runs_synchronously_before_following_quit() {
 }
 
 #[test]
+fn repeated_spaces_and_a_trailing_cr_read_as_the_command() {
+    let output = run_rarog("position   startpos  moves   e2e4   e7e5 \r\ngo  perft  1\r\nquit\r\n");
+
+    assert!(output.status.success(), "status: {:?}", output.status);
+    let out = stdout(&output);
+    assert!(out.contains("Nodes searched: 29"), "{out}");
+}
+
+/// A `position` line past 64 KB is read whole: only its last two moves give
+/// White 29 replies, where any cut through the knight shuffle leaves 20.
+#[test]
+fn a_position_line_past_64_kb_is_read_whole() {
+    let shuffle = "g1f3 g8f6 f3g1 f6g8 ".repeat(3_300);
+    let line = format!("position startpos moves {shuffle}e2e4 e7e5");
+    assert!(line.len() > 65_536, "{} bytes", line.len());
+    let output = run_rarog(&format!("{line}\ngo perft 1\nquit\n"));
+
+    assert!(output.status.success(), "status: {:?}", output.status);
+    let out = stdout(&output);
+    assert!(out.contains("Nodes searched: 29"), "{out}");
+}
+
+#[test]
 fn position_accepts_uppercase_move_text_before_perft() {
     let output = run_rarog("position startpos moves E2E4\ngo perft 2\nquit\n");
 

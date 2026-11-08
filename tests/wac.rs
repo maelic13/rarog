@@ -27,25 +27,16 @@ use rarog::search::{SearchEvent, Searcher};
 use rarog::wac::{move_matches_any, wac_positions};
 
 const TEST_DEPTH: u32 = 6;
-/// A deliberate FLOOR, not an exact count (Basilisk canary lesson: gate
-/// correctness, not shape) — ~8% headroom absorbs benign drift; only a
-/// tactical collapse trips it.
-///
-/// History:
-///   - 2026-07-15: calibrated 147/300 at the p5+7.0b head → FLOOR 135.
-///     Still 146/300 at the 7.2 SEE-bundle head, so Phase-7 work barely
-///     moved it.
-///   - 2026-07-19: **RE-BASELINED to 122 for the 8.2(a) head** (133/300).
-///     Removing the unconditional in-check extension deliberately shifts the
-///     fixed-depth shape: the engine does ~40% less work per nominal depth
-///     here (1.81M vs 3.07M nodes at depth 6), so a fixed-depth count drops
-///     even though the search got *stronger*. Measured at EQUAL node cost it
-///     is decisively better (203/300 in 28.4M nodes vs the old head's
-///     185/300 in 29.3M), and the change won its SPRT at **+30.75 ± 8.83,
-///     LOS 100%**. The floor was moved only AFTER that evidence, never to
-///     make the change pass — it tripped at 133 vs 135 during the gate and
-///     was left red on purpose until the SPRT decided.
-const FLOOR: usize = 122;
+/// A band around the calibrated count, not the count itself, so ordinary
+/// search changes do not flap it: about 8% each way. Below it a tactical
+/// regression has likely landed; above it the band is stale, and both bounds
+/// move to the new count, in the commit that moved it. A fixed-depth count
+/// can fall while the engine gets stronger (less work per nominal depth), so
+/// a fall is investigated, not reverted on sight. Calibrated 2026-11-08 at
+/// 178/300 (the development fingerprint 15,625,852).
+const CALIBRATED: usize = 178;
+const FLOOR: usize = 164;
+const CEILING: usize = 192;
 
 #[test]
 fn aspiration_terminates_on_sudden_mate_scores() {
@@ -80,7 +71,7 @@ fn aspiration_terminates_on_sudden_mate_scores() {
 
 #[test]
 #[ignore = "long tier: 300-position tactics floor at fixed depth; run by name with --ignored in release (PROCESS, Common commands)"]
-fn wac_solved_count_stays_above_floor() {
+fn wac_solved_count_stays_in_its_band() {
     let positions = wac_positions();
     assert_eq!(positions.len(), 300);
 
@@ -104,5 +95,10 @@ fn wac_solved_count_stays_above_floor() {
         solved >= FLOOR,
         "WAC solved {solved}/300 at depth {TEST_DEPTH} — below the floor {FLOOR}; \
          a tactical regression has likely landed"
+    );
+    assert!(
+        solved <= CEILING,
+        "WAC solved {solved}/300 at depth {TEST_DEPTH}, above the band's ceiling {CEILING} \
+         around {CALIBRATED}: recalibrate both bounds to the new count"
     );
 }

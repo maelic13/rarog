@@ -88,16 +88,14 @@ struct TbRootMoveRaw {
     tb_rank: i32,
 }
 
-impl Default for TbRootMoveRaw {
-    fn default() -> Self {
-        Self {
-            mv: 0,
-            pv: [0; TB_MAX_PLY],
-            pv_size: 0,
-            tb_score: 0,
-            tb_rank: 0,
-        }
-    }
+impl TbRootMoveRaw {
+    const EMPTY: Self = Self {
+        mv: 0,
+        pv: [0; TB_MAX_PLY],
+        pv_size: 0,
+        tb_score: 0,
+        tb_rank: 0,
+    };
 }
 
 #[repr(C)]
@@ -106,13 +104,19 @@ struct TbRootMovesRaw {
     moves: [TbRootMoveRaw; TB_MAX_MOVES],
 }
 
-impl Default for TbRootMovesRaw {
-    fn default() -> Self {
-        Self {
-            size: 0,
-            moves: [TbRootMoveRaw::default(); TB_MAX_MOVES],
-        }
-    }
+// Fathom's `struct TbRootMove` and `struct TbRootMoves` (`tbprobe.h`), as its
+// C compiler lays them out. Fathom writes into these buffers, so a layout
+// that drifted from the C one would corrupt memory silently.
+const _: () = assert!(size_of::<TbRootMoveRaw>() == 528 && align_of::<TbRootMoveRaw>() == 4);
+const _: () = assert!(size_of::<TbRootMovesRaw>() == 101_908 && align_of::<TbRootMovesRaw>() == 4);
+
+impl TbRootMovesRaw {
+    /// About 100 KB, so a box made from this constant is zeroed on the heap
+    /// rather than built in the caller's frame and copied.
+    const EMPTY: Self = Self {
+        size: 0,
+        moves: [TbRootMoveRaw::EMPTY; TB_MAX_MOVES],
+    };
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -129,12 +133,6 @@ pub struct RootMove {
     pub from: u8,
     pub to: u8,
     promotes: Option<Piece>,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct RootProbe {
-    pub(crate) wdl: Wdl,
-    pub best_move: Option<RootMove>,
 }
 
 #[derive(Copy, Clone)]
@@ -158,37 +156,23 @@ pub fn initialize(path: &str) -> usize {
         return largest();
     }
 
-    if path.is_empty() {
-        let empty = CString::new("").expect("empty string has no NUL");
-        // SAFETY: FFI into Fathom. `empty` outlives the call and `as_ptr`
-        // yields a valid NUL-terminated C string; `tb_init` copies what it
-        // needs and does not retain the pointer.
-        unsafe {
-            tb_init(empty.as_ptr());
-        }
-        *current_path = String::new();
-        LARGEST.store(0, Ordering::Relaxed);
-        return 0;
-    }
-
     let Ok(c_path) = CString::new(path) else {
         *current_path = String::new();
         LARGEST.store(0, Ordering::Relaxed);
         return 0;
     };
 
+    // `tb_init` returns `true` at both of its exits, so `TB_LARGEST` is its
+    // only result: zero for an empty path or when no table loaded.
     // SAFETY: FFI into Fathom. `c_path` is a live NUL-terminated CString that
-    // outlives the call; `tb_init` does not retain the pointer.
-    let ok = unsafe { tb_init(c_path.as_ptr()) };
-    let largest = if ok {
-        // SAFETY: reading an `extern "C"` global that `tb_init` just
-        // initialised; single-threaded at this point (guarded by the path
-        // mutex held by the caller).
-        unsafe { TB_LARGEST as usize }
-    } else {
-        0
+    // outlives the call, and `tb_init` does not retain the pointer. The
+    // `extern "C"` global it sets is read while this function holds the path
+    // mutex, so no other `initialize` runs.
+    let largest = unsafe {
+        tb_init(c_path.as_ptr());
+        TB_LARGEST as usize
     };
-    *current_path = if ok { path.to_string() } else { String::new() };
+    *current_path = path.to_string();
     LARGEST.store(largest, Ordering::Relaxed);
     largest
 }
@@ -254,40 +238,6 @@ pub fn probe_wdl(board: &Board, use_rule50: bool) -> Option<Wdl> {
         )
     };
     wdl_from_raw(result)
-}
-
-pub fn probe_root(board: &Board, use_rule50: bool) -> Option<RootProbe> {
-    if !can_probe(board, use_rule50, true) {
-        return None;
-    }
-
-    let pos = tb_position(board);
-    // SAFETY: FFI into Fathom, by-value position only (see `probe_wdl`).
-    let result = unsafe {
-        tb_probe_root_impl(
-            pos.white,
-            pos.black,
-            pos.kings,
-            pos.queens,
-            pos.rooks,
-            pos.bishops,
-            pos.knights,
-            pos.pawns,
-            pos.rule50,
-            pos.ep,
-            pos.turn,
-            std::ptr::null_mut(),
-        )
-    };
-    if result == TB_RESULT_FAILED {
-        return None;
-    }
-
-    let wdl = wdl_from_raw((result & TB_RESULT_WDL_MASK) >> TB_RESULT_WDL_SHIFT)?;
-    Some(RootProbe {
-        wdl,
-        best_move: root_move_from_result(result),
-    })
 }
 
 /// Rank scale of the root ranking: a clean win ranks `MAX_DTZ`, less its
@@ -459,9 +409,9 @@ fn rank_by_wdl(board: &Board, use_rule50: bool) -> Option<RootRanking> {
 
 fn probe_root_moves_wdl(board: &Board, use_rule50: bool) -> Option<Vec<(RootMove, i32)>> {
     let pos = tb_position(board);
-    let mut results = TbRootMovesRaw::default();
-    // SAFETY: FFI into Fathom. `results` is a live, default-initialised
-    // `TbRootMovesRaw` that outlives the call and is only written by Fathom.
+    let mut results = Box::new(TbRootMovesRaw::EMPTY);
+    // SAFETY: FFI into Fathom. `results` is a live, zeroed `TbRootMovesRaw`
+    // that outlives the call and is only written by Fathom.
     let ok = unsafe {
         tb_probe_root_wdl(
             pos.white,
@@ -477,7 +427,7 @@ fn probe_root_moves_wdl(board: &Board, use_rule50: bool) -> Option<Vec<(RootMove
             pos.ep,
             pos.turn,
             use_rule50,
-            &mut results,
+            &mut *results,
         )
     };
     if ok == 0 {
@@ -595,6 +545,66 @@ mod tests {
 
     fn encoded_tb_move(from: Square, to: Square, promotes: u16) -> u16 {
         ((from.0 as u16) << 6) | to.0 as u16 | (promotes << 12)
+    }
+
+    /// The value of `#define <name> <value>` in Fathom's header, where the
+    /// value is a number or a parenthesised sum of numbers.
+    fn fathom_define(header: &str, name: &str) -> u64 {
+        let values: Vec<&str> = header
+            .lines()
+            .filter_map(|line| {
+                let rest = line.trim().strip_prefix("#define")?.trim_start();
+                let rest = rest.strip_prefix(name)?;
+                rest.starts_with(char::is_whitespace).then_some(rest)
+            })
+            .collect();
+        assert_eq!(values.len(), 1, "{name} is defined once in tbprobe.h");
+        let value = values[0].split("/*").next().unwrap_or_default().trim();
+        value
+            .trim_start_matches('(')
+            .trim_end_matches(')')
+            .split('+')
+            .map(|term| {
+                let term = term.trim();
+                match term.strip_prefix("0x") {
+                    Some(hex) => u64::from_str_radix(hex, 16),
+                    None => term.parse(),
+                }
+                .unwrap_or_else(|_| panic!("{name}: {term:?} is not a number"))
+            })
+            .sum()
+    }
+
+    #[test]
+    fn mirrored_constants_match_fathoms_header() {
+        let header = fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/vendor/fathom/src/tbprobe.h"
+        ))
+        .expect("read Fathom's header");
+        let mirrored: [(&str, u64); 18] = [
+            ("TB_MAX_MOVES", TB_MAX_MOVES as u64),
+            ("TB_MAX_PLY", TB_MAX_PLY as u64),
+            ("TB_LOSS", TB_LOSS.into()),
+            ("TB_BLESSED_LOSS", TB_BLESSED_LOSS.into()),
+            ("TB_DRAW", TB_DRAW.into()),
+            ("TB_CURSED_WIN", TB_CURSED_WIN.into()),
+            ("TB_WIN", TB_WIN.into()),
+            ("TB_RESULT_FAILED", TB_RESULT_FAILED.into()),
+            ("TB_RESULT_WDL_MASK", TB_RESULT_WDL_MASK.into()),
+            ("TB_RESULT_TO_MASK", TB_RESULT_TO_MASK.into()),
+            ("TB_RESULT_FROM_MASK", TB_RESULT_FROM_MASK.into()),
+            ("TB_RESULT_PROMOTES_MASK", TB_RESULT_PROMOTES_MASK.into()),
+            ("TB_RESULT_DTZ_MASK", TB_RESULT_DTZ_MASK.into()),
+            ("TB_RESULT_WDL_SHIFT", TB_RESULT_WDL_SHIFT.into()),
+            ("TB_RESULT_TO_SHIFT", TB_RESULT_TO_SHIFT.into()),
+            ("TB_RESULT_FROM_SHIFT", TB_RESULT_FROM_SHIFT.into()),
+            ("TB_RESULT_PROMOTES_SHIFT", TB_RESULT_PROMOTES_SHIFT.into()),
+            ("TB_RESULT_DTZ_SHIFT", TB_RESULT_DTZ_SHIFT.into()),
+        ];
+        for (name, value) in mirrored {
+            assert_eq!(fathom_define(&header, name), value, "{name}");
+        }
     }
 
     #[test]

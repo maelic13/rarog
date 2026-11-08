@@ -63,8 +63,14 @@ pub(super) struct SearchShared {
 
 impl Default for SearchShared {
     fn default() -> Self {
+        Self::with_table(TranspositionTable::default())
+    }
+}
+
+impl SearchShared {
+    pub(super) fn with_table(tt: TranspositionTable) -> Self {
         Self {
-            tt: TranspositionTable::default(),
+            tt,
             hash_mb: 64,
             large_pages: true,
             syzygy: SyzygySettings::default(),
@@ -72,9 +78,7 @@ impl Default for SearchShared {
             context: Arc::new(SharedContext::new(0, 0, 1)),
         }
     }
-}
 
-impl SearchShared {
     /// The pool context, or `None` in a single-thread search.
     #[inline(always)]
     pub(super) fn pool(&self) -> Option<&SharedContext> {

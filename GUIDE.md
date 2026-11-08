@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.5.1** (`I1`): The table handle.
+**Now: D.6.1** (`R2`): Castling is neither quiet nor noisy.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -35,30 +35,33 @@ field, about 3,475 on CCRL's Blitz scale.
 - [x] **D.2** Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; RAR-M78's deficit verdict was measured in a packed slot and is superseded (RAR-M82), the sibling-free comparison is RAR-M83 — DONE 2026-11-04
 - [x] **D.3** Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — DONE 2026-11-04
 - [x] **D.4** Instruments from the Triumviratus review: the measurement-integrity reads, a search-path perft, pruning and reduction pricing, the loss table by cell, an identical-tree counter read — DONE 2026-11-06
-- [ ] **D.5** Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, the `Hash` notice, dead code, test and CI gaps — **I1**
-    - [ ] **D.5.1** The table handle — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.2** A `Hash` change at `Threads > 1` fills the table twice — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.3** The fixed-depth vote — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.4** Helper start-up — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.5** The `Hash` rounding notice — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.6** The dead quiescence type parameter — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.7** The root `searchmoves` filter — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.8** Dead Syzygy code — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.9** The slider-table `unsafe` and the timer — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.10** Stack-built tables — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.11** The Fathom FFI layout guard — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.12** The PEXT tier in CI — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.13** The `texel` and `tune` evaluation tests in CI — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.14** The KPK bitbase at compile time — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.15** `Move::from_uci` into `make_move` — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.16** Names and comments that mislead — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.17** Tests the review found missing — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.18** A record corrected — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.19** The KPK evaluation and every hard draw verdict against Syzygy — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.20** CI hygiene — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.21** Basilisk's behaviour tests run against Rarog — **READY_FOR_IMPLEMENTATION / I1**
+- [x] **D.5** Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, `Hash` at any size, dead code, test and CI gaps — DONE 2026-11-08
+    - [x] **D.5.1** The table handle — DONE 2026-11-06
+    - [x] **D.5.2** A `Hash` change at `Threads > 1` fills the table twice — DONE 2026-11-06
+    - [x] **D.5.3** The fixed-depth vote — DONE 2026-11-06
+        - [x] **D.5.3.1** Helpers and the answer under MultiPV — DONE 2026-11-06
+        - [x] **D.5.3.2** `go mate` without a ply limit — DONE 2026-11-06
+        - [x] **D.5.3.3** The vote's weight and its decisive order — DONE 2026-11-06
+    - [x] **D.5.4** Helper start-up — DONE 2026-11-06
+    - [x] **D.5.5** `Hash` at any size — DONE 2026-11-06
+    - [x] **D.5.6** The dead quiescence type parameter — DONE 2026-11-08
+    - [x] **D.5.7** The root `searchmoves` filter — DONE 2026-11-08
+    - [x] **D.5.8** Dead Syzygy code — DONE 2026-11-08
+    - [x] **D.5.9** The slider-table `unsafe` and the timer — DONE 2026-11-08
+    - [x] **D.5.10** Stack-built tables — DONE 2026-11-08
+    - [x] **D.5.11** The Fathom FFI layout guard — DONE 2026-11-08
+    - [x] **D.5.12** The PEXT tier in CI — DONE 2026-11-08
+    - [x] **D.5.13** The `texel` and `tune` evaluation tests in CI — DONE 2026-11-08
+    - [x] **D.5.14** The KPK bitbase at compile time — DONE 2026-11-08
+    - [x] **D.5.15** `Move::from_uci` into `make_move` — DONE 2026-11-08
+    - [x] **D.5.16** Names and comments that mislead — DONE 2026-11-08
+    - [x] **D.5.17** Tests the review found missing — DONE 2026-11-08
+    - [x] **D.5.18** A record corrected — DONE 2026-11-08
+    - [x] **D.5.19** The KPK evaluation and every hard draw verdict against Syzygy — DONE 2026-11-08
+    - [x] **D.5.20** CI hygiene — DONE 2026-11-08
+    - [x] **D.5.21** Basilisk's behaviour tests run against Rarog — DONE 2026-11-08
     - [x] **D.5.22** Measurement and gating methods from Basilisk — DONE 2026-11-02
-    - [ ] **D.5.23** The correction bonus overflows `i32` at extreme depth and residual — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.5.23** The correction bonus overflows `i32` at extreme depth and residual — DONE 2026-11-08
     - [x] **D.5.24** A `Hash` larger than the machine's physical memory is refused on every platform — DONE 2026-11-04
 - [ ] **D.6** Strength candidates from the engine review: kernel and evaluation deviations from the donor, each behind a zero-game screen and a registered gate — **R2**
     - [ ] **D.6.1** Castling is neither quiet nor noisy — **RESEARCH / R2**
@@ -79,6 +82,9 @@ field, about 3,475 on CCRL's Blitz scale.
     - [ ] **D.6.21** Won KPK positions read at or below 0 — **RESEARCH / R2**
     - [ ] **D.6.22** `krpkr_scale`'s hard zeros on won positions — **RESEARCH / R2**
     - [ ] **D.6.23** Wrong-bishop draws still misread through leaves the recogniser does not cover — **RESEARCH / R2**
+    - [ ] **D.6.24** The KQKP fortress's hard zeros on won positions — **RESEARCH / R2**
+    - [ ] **D.6.25** Two same-coloured bishops outscore a queen against a bare king — **RESEARCH / R2**
+    - [ ] **D.6.26** Pawnless endings a minor ahead read as wins — **RESEARCH / R2**
 - [ ] **D.7** Large pages on Linux: transparent huge pages for the big tables — **READY_FOR_IMPLEMENTATION / I1**
 - [ ] **D.8** Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — **I1**
     - [ ] **D.8.1** P0: the census as a tool — **READY_FOR_IMPLEMENTATION / I1**
@@ -149,7 +155,7 @@ field, about 3,475 on CCRL's Blitz scale.
 |---|---|
 | Next release | **2.7.0** at E.3 after Phases D and E, cut only after **E.3.0**'s originality disclosure (maintainer decision 2026-10-23; `analysis/originality_review_2.6.0_2026-10-22.md`) (maintainer decision 2026-10-22: 3.0.0 is reserved for the first NNUE release, F.9; E.2's four targets already pass at 1T and 4T, RAR-M73, RAR-M74, and its result is recorded, not a version). Later classical gains (E.4, F.4.1) release as 2.8.0 onward under Phase F's rule |
 | Released baseline | **2.6.0** on `master`, released 2026-10-22 from the `v2.6.0` tag; fingerprint **13,987,223 / EBF 2.565**. Over 2.5.0: +153.4 ± 10.7 at `3+0.03` 1T, +149.3 ± 15.1 at `10+0.1`, +149.7 ± 14.7 at 4T (RAR-M76). 2.5.0 (2026-10-05, 11,171,726 / EBF 2.512) was +272.4 over 2.4.0 at `3+0.03` (RAR-M64) |
-| Development head | `d4` from `master` at `5efe16f` (E.3.2's build names and E.3.3's universal binary, "Name builds by their commit and ship one universal x64 binary", PR #14, 2026-11-04; D.2 and D.3, "Harden the UCI protocol and keep draw verdicts", PR #13, 2026-11-04; D.1 is `703fe78`, PR #12; the 2.6.0 release is `0127e58`, PR #11), version **2.7.0-dev** (a build reports `dev-<date>-<hash>`): the 2.5.0 search with Phase C's evaluation, C.12's speed pass and large pages, C.10's search tune and D.1's clock; D.3's protocol and shell repairs, D.6.15's draw verdicts and D.5.24's physical-memory `Hash` bound; build names, a statically linked runtime and one universal x64 release binary; one PGO-trained kernel for every thread (`e057d84`); the classical evaluation frozen at engine source `9fb525e`; fingerprint **14,749,043 / EBF 2.564** since D.6.15 (`3a16fbb`; 13,987,223 / EBF 2.565 before); `rustc 1.99.1` (RAR-P36–P38, kept by maintainer decision). A registration names the revision it builds from and this fingerprint. Change records: `docs/HISTORY.md`, `docs/archive/PLAN-phaseD-done-2026-11-04.md`, `docs/archive/PLAN-closed-2026-10-22.md` |
+| Development head | `d5` from `master` at `7d5fc06`, with all of D.5 (the engine review's behaviour-neutral repairs, draft PR #16 until it lands) (D.4's instruments and the roadmap's order, "Add the search instruments and put the roadmap in working order", PR #15, 2026-11-06; E.3.2's build names and E.3.3's universal binary are `5efe16f`, PR #14; D.2 and D.3, "Harden the UCI protocol and keep draw verdicts", PR #13, 2026-11-04; D.1 is `703fe78`, PR #12; the 2.6.0 release is `0127e58`, PR #11), version **2.7.0-dev** (a build reports `dev-<date>-<hash>`): the 2.5.0 search with Phase C's evaluation, C.12's speed pass and large pages, C.10's search tune and D.1's clock; D.3's protocol and shell repairs, D.6.15's draw verdicts and D.5.24's physical-memory `Hash` bound; build names, a statically linked runtime and one universal x64 release binary; one PGO-trained kernel for every thread (`e057d84`); the classical evaluation frozen at engine source `9fb525e`; fingerprint **15,625,852 / EBF 2.563** since D.5.5 (`1450340`, RAR-S106; 14,749,043 / EBF 2.564 since D.6.15, `3a16fbb`; 13,987,223 / EBF 2.565 before); `rustc 1.99.1` (RAR-P36–P38, kept by maintainer decision). A registration names the revision it builds from and this fingerprint. Change records: `docs/HISTORY.md`, `docs/archive/PLAN-phaseD-done-2026-11-04.md`, `docs/archive/PLAN-closed-2026-10-22.md` |
 | Pool position, `3+0.03` 1T | **3,428.8 ± 19.2** (RAR-M73, the C head, 2026-10-21), **+142.3 ± 24.8 over the B.9 head's 3,286.5 ± 15.7** (RAR-M64; 2.4.0 rates 3,001): Houdini 3 +172.8, Critter 1.6a +231.5, Fritz 16 +256.2, Rybka 4.1 +330.2, so all four E.2 targets pass at 1T; Rarog 2.4.0 +363.2 |
 | Pool position, `3+0.03` 4T | **3,433.7 ± 19.3** (RAR-M74, the C head, 2026-10-21), **+93.7 ± 25.5 over the B.9 head's 3,340.0 ± 16.7** (RAR-M66): Houdini 3 +171.7, Critter 1.6a +242.2, Fritz 16 +249.1, Rybka 4.1 +350.3, all four E.2 targets pass at 4T. **Thread scaling fell:** in games the C head is 9.2% slower than the B.9 head at 4T while 29.8% faster at 1T (4T/1T 2.60 against 3.72; Colosseum CLI 0.4.0's figures), and its 4T performance is only +4.9 over its 1T rating (B.9 +53.5); held for D.2 |
 | Pool position, wider field, `3+0.03` 1T | **3,478.9 ± 15.1** (RAR-M75, the C head, 2026-10-22): fourth in a round robin of nine with Houdini 3 and Critter held; Dragon 1 3,628.7, Stockfish 11 3,568.2, Houdini 6.03 3,498.5 (head −9 ± 32), Komodo 13.3 3,416.6 (head +53), Komodo 10.4 3,387.4, Houdini 4 3,303.2 (held 3,310). **CCRL-equivalent:** Blitz 1CPU **3,475 ± 82** (the held scale near 1:1 with it here; about 70 below CCRL Blitz's top-100 cut), 40/15 1CPU 3,407 ± 78 |
@@ -157,7 +163,7 @@ field, about 3,475 on CCRL's Blitz scale.
 | Evaluation deficit | **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21): Stockfish's classical HCE over Rarog's frozen evaluation inside Stockfish's search, from +181.7 ± 19.0 at Phase C's start (RAR-O05), 82.5 ± 25.2 closed. The donor's remaining king signal is the index's structure (RAR-E72, RAR-E73); Phase F supersedes the classical evaluation, and an evaluation change under a fitted search follows PROCESS |
 | Speed | The C head (2026-10-21/22): **+28.92%** pooled-PGO bench NPS over the B.9 head (RAR-P39; `rustc 1.99.1`'s −1.63% included, RAR-P37, its code generation −3.6% without PGO, RAR-P38); in games (Colosseum CLI 0.4.0) +29.8% at 1T and −9.2% at 4T over the B.9 head (RAR-M73, RAR-M74), and −8.6% at 1T and −19.1% at 4T against Rarog 2.4.0 in the same games; the evaluation 21.1% of search samples, B.9's 24.3% (RAR-P40) |
 | Conversion | **13.8 draws and 0.0 losses per 1,000 games** after a persistent piece-up (RAR-M73's games, the C head; Poisson 95% 9.5–19.3 and 0–1.5), against the B.9 head's 15.8 and 0.8 (RAR-M64) and 2.4.0's 24.4 and 5.3: the draw rate's fall is not resolved |
-| Active experiment | None running. **Landed 2026-11-04 as `c69761d` (PR #13):** D.2 closed `NO_CHANGE` (RAR-M83: four threads are worth 1.37 doublings of Rarog's own time against Reckless's 1.49 and Stockfish's 1.54; one logical CPU per physical core is the placement for every rated multi-thread read); D.3 done, with the protocol behind `src/uci/`; D.5.24's `Hash` bound and D.6.15's draw verdicts. Triumviratus is registered as a mechanisms-only donor and its small gains wait in Phase H. **Landed 2026-11-04 as `5efe16f` (PR #14):** E.3.2's build names (`sse42` +8.06% over `base`, RAR-P55) and E.3.3's universal binary (RAR-P56: +0.45% over the pext build), the x64 release asset, whose Intel SDE selection matrix passed in the first `Release` run. D.4.3's search-path perft done 2026-11-04 on `d4`; D.4.4's pricing instrument done 2026-11-05 on `d4` (fifteen of sixteen labels plant-validated; razoring's probe reproduces its decisions but its label stays out of screens, `analysis/pruning_pricing_card_2026-11-04.md`); D.4.5's loss-table tool done 2026-11-05, its run on the C head withdrawn before any reading and the read moved to H.3, on the network head's games (`analysis/loss_table_card_2026-11-05.md`, sections 10–11). The roadmap was reordered the same day so that its numbering is the order of work, with no step waiting for a later one (HISTORY's number map): D.5's repairs, D.6's candidates, D.7, D.8 and D.9, then Phases E to H in order. D.4.6 closed `NO_CHANGE` 2026-11-06, which finishes D.4: no counter beats the pooled builds, so the pooled read stays the speed check, and a per-process two-state lead goes to H.4 (`analysis/identical_tree_counters_card_2026-11-05.md`). Finished steps' records: PLAN and `docs/archive/PLAN-phaseD-done-2026-11-04.md` |
+| Active experiment | None running. **Landed 2026-11-04 as `c69761d` (PR #13):** D.2 closed `NO_CHANGE` (RAR-M83: four threads are worth 1.37 doublings of Rarog's own time against Reckless's 1.49 and Stockfish's 1.54; one logical CPU per physical core is the placement for every rated multi-thread read); D.3 done, with the protocol behind `src/uci/`; D.5.24's `Hash` bound and D.6.15's draw verdicts. Triumviratus is registered as a mechanisms-only donor and its small gains wait in Phase H. **Landed 2026-11-04 as `5efe16f` (PR #14):** E.3.2's build names (`sse42` +8.06% over `base`, RAR-P55) and E.3.3's universal binary (RAR-P56: +0.45% over the pext build), the x64 release asset, whose Intel SDE selection matrix passed in the first `Release` run. **Landed 2026-11-06 as `7d5fc06` (PR #15):** D.4.3's search-path perft; D.4.4's pricing instrument (fifteen of sixteen labels plant-validated; razoring's probe reproduces its decisions but its label stays out of screens, `analysis/pruning_pricing_card_2026-11-04.md`); D.4.5's loss-table tool done 2026-11-05, its run on the C head withdrawn before any reading and the read moved to H.3, on the network head's games (`analysis/loss_table_card_2026-11-05.md`, sections 10–11). The roadmap was reordered the same day so that its numbering is the order of work, with no step waiting for a later one (HISTORY's number map): D.5's repairs, D.6's candidates, D.7, D.8 and D.9, then Phases E to H in order. D.4.6 closed `NO_CHANGE` 2026-11-06, which finishes D.4: no counter beats the pooled builds, so the pooled read stays the speed check, and a per-process two-state lead goes to H.4 (`analysis/identical_tree_counters_card_2026-11-05.md`). Finished steps' records: PLAN and `docs/archive/PLAN-phaseD-done-2026-11-04.md` |
 
 ## Holds and obligations
 

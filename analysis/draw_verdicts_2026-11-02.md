@@ -119,6 +119,7 @@ scratch_krpkr -- --ignored --nocapture`. The patch is
 D.5 item 19's other hard zeros (the KQKP fortress, `krpkb_scale`, the
 wrong-corner KBPK) and the partial scales stay unread; KBPvK and KQvKP are
 4-man tables, so an exhaustive read of those two costs minutes.
+*(Read 2026-11-08: §7. The partial scales stay unread.)*
 
 ## 5. The repair read, 2026-11-03 (D.6.15)
 
@@ -180,3 +181,43 @@ not a bound, since a search from six or seven men reaches five-man leaves
 too; the 3.5% is a lower bound on the games whose searches the repair
 changes, and the 45.8% the share that enters the domain on the board. Case
 1 stands by its rule; no strength gate is registered.
+
+## 7. The remaining hard zeros, 2026-11-08 (D.5.19)
+
+Read exhaustively rather than sampled: every placement of the pieces with
+each recogniser's material and pawn precondition, both colours strong and
+either to move, kept when legal (kings apart, the side not to move not in
+check). Each zero a recogniser returns is probed in `KQvKP`, `KBPvK` or
+`KBPPvK` (`D:/chess/tablebases/syzygy3456`) without the rule-50 counter;
+quiet means the side to move is not in check and has no capture or
+promotion. `krpkb_scale` returns only partial scales (24, 48, 8 on the
+`/64` basis), never a hard zero, so it has nothing to read here.
+
+| Recogniser | Positions | Zeros | Syzygy draw | Strong side wins | Defender wins | Quiet zeros | Quiet strong wins |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `kqkp_fortress_scale` (pawn on its 7th, any file) | 5,552,520 | 172,256 | 131,256 | 32,360 | 8,640 | 69,760 | 18,628 |
+| `kbp_wrong_corner_draw`, one rook pawn | 9,459,860 | 290,880 | 290,880 | 0 | 0 | 233,300 | 0 |
+| `kbp_wrong_corner_draw`, two on one rook file | 22,311,920 | 646,296 | 646,296 | 0 | 0 | 446,604 | 0 |
+
+No zero lands on a cursed win or blessed loss. The wrong-corner draw is
+exact on every position it fires on. The KQKP fortress is not: 26.7% of its
+quiet zeros are wins for the queen side. They sit where the rule's test of
+the queen's king, more than two squares from the queening square, is
+loosest:
+
+| Queen side's king to the queening square | Quiet zeros, queen side to move | Queen wins | Quiet zeros, pawn side to move | Queen wins |
+|---:|---:|---:|---:|---:|
+| 3 | 8,052 | 6,656 | 3,544 | 2,176 |
+| 4 | 9,628 | 5,896 | 4,404 | 1,684 |
+| 5 | 11,224 | 1,316 | 5,260 | 8 |
+| 6 | 8,960 | 420 | 4,408 | 0 |
+| 7 | 9,500 | 472 | 4,780 | 0 |
+
+At 6 and 7 the wins are all rook pawns with the queen side to move; at 5,
+1,104 of the 1,316 are. D.6.24 owns the repair.
+
+**Scratch recipe** (not committed): an `#[ignore]` unit test in the
+recogniser tests, `analysis/d519_hard_zeros_scratch.patch` against
+`ca8ebcf`; run with `RAROG_SYZYGY_PATH=D:/chess/tablebases/syzygy3456 cargo
+test --release --lib scratch_hard_zeros -- --ignored --nocapture` (33 s;
+logs in `analysis/artifacts/d519-hard-zeros-2026-11-08/`).

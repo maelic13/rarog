@@ -34,14 +34,6 @@ macro_rules! uci_println {
 #[cfg(not(target_pointer_width = "64"))]
 compile_error!("Rarog supports only 64-bit targets (u64 hash -> usize indexing relies on it).");
 
-/// Build every process-wide lookup table the compiler does not build. A table
-/// built on first use is built inside the first search that needs it and
-/// charged to that search's clock, so the engine builds them all before it
-/// reads a command.
-pub fn initialize_tables() {
-    eval::endgame::kpk::initialize();
-}
-
 /// The version `id name` reports: `X.Y.Z` at a release, the commit for a
 /// development build (`build.rs`, `src/build_name.rs`).
 pub const VERSION: &str = env!("RAROG_VERSION");

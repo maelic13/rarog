@@ -29,7 +29,7 @@ classification, not automatic changes to a heuristic.
 | Capture promotion, including underpromotion | Victim + initial promotion gain, then exchange with promoted piece | Same | Do not exempt these from correctness because another engine exempts promotions |
 | EP | +100, remove pawn from its actual square, then exchange on landing square | Same | External fixture opens rook file through removed pawn |
 | Ordinary quiet, including double push | 0 / 0 >= threshold; immediate-gain policy | Exchange from zero initial gain | Quiet-aware pruning is disabled by default; ordinary SEE is not a hanging-piece classifier |
-| Quiet promotion, including underpromotion | Promotion gain / gain >= threshold | Same shortcut | Keep explicit policy. No current production SEE call for this class; ordering uses separate promotion tier |
+| Quiet promotion, including underpromotion | Promotion gain / gain >= threshold | Same shortcut | Keep explicit policy. Quiet promotions are noisy, so the main search's SEE pruning reaches them through `see_ge_quiet_aware` with the noisy threshold, and the shortcut passes them (the threshold is at most 0). *(Corrected 2026-11-08, D.5.18: this row said no production SEE call reached the class.)* Ordering uses a separate promotion tier |
 | Castling | 0 / 0 >= threshold | Current implementation enters exchange but legal king destination has no legal recapture, hence same output in fixtures | No current SEE caller. Castling is excluded by is_quiet_move (flags <= DOUBLE_PUSH) |
 
 Quiet promotion a7a8q can be +800/true under the policy while its exchange

@@ -1,4 +1,4 @@
-//! KPK (king + pawn vs king) bitbase, generated once via the standard iterative
+//! KPK (king + pawn vs king) bitbase, generated via the standard iterative
 //! (retrograde) classification used by Stockfish. Lets the endgame
 //! scale-factor framework score KPK draws exactly without tablebases.
 //!
@@ -6,220 +6,28 @@
 //! whose pawn belongs to Black mirrors the board vertically (square `^ 56`) and
 //! swaps the side to move before probing.
 //!
-//! Index space is `stm(2) × wk(64) × bk(64) × pawn(64)`; pawn squares on ranks 1
-//! and 8 are simply marked invalid. The engine builds the table at start-up
-//! (`initialize`), because building it on first probe runs the ~34 ms
-//! generation inside whichever search first reaches KPK, on that search's
-//! clock; late in a fast game that loses on time.
-
-use crate::infra;
-use std::sync::OnceLock;
-
-// Result flags, OR-combined while classifying successors.
-const INVALID: u8 = 0;
-const UNKNOWN: u8 = 1;
-const DRAW: u8 = 2;
-const WIN: u8 = 4;
+//! Index space is `stm(2) × wk(64) × bk(64) × pawn(64)`. The build script
+//! generates the table (`kpk_generate.rs`) and the engine keeps one bit per
+//! position: generated at run time, it ran inside the first search that
+//! reached KPK, on that search's clock, or delayed start-up.
 
 const SIZE: usize = 2 * 64 * 64 * 64;
 
-static BITBASE: OnceLock<Vec<u8>> = OnceLock::new();
+/// One bit per position, set where the pawn's side wins: bit `i % 8` of byte
+/// `i / 8`, for `i` from [`index`].
+static BITBASE: [u8; SIZE / 8] = *include_bytes!(concat!(env!("OUT_DIR"), "/kpk.bin"));
 
 #[inline]
 fn index(stm: usize, wk: usize, bk: usize, p: usize) -> usize {
     ((stm * 64 + wk) * 64 + bk) * 64 + p
 }
 
-#[inline]
-fn rank_of(sq: usize) -> usize {
-    sq / 8
-}
-
-#[inline]
-fn bit(sq: usize) -> u64 {
-    1u64 << sq
-}
-
-#[inline]
-fn dist(a: usize, b: usize) -> usize {
-    let dr = (infra::to_i32(rank_of(a)) - infra::to_i32(rank_of(b))).abs();
-    let df = (infra::to_i32(a % 8) - infra::to_i32(b % 8)).abs();
-    infra::to_usize(dr.max(df))
-}
-
-fn king_attacks(sq: usize) -> u64 {
-    let r = infra::to_i32(rank_of(sq));
-    let f = infra::to_i32(sq % 8);
-    let mut bb = 0u64;
-    for dr in -1..=1 {
-        for df in -1..=1 {
-            if dr == 0 && df == 0 {
-                continue;
-            }
-            let nr = r + dr;
-            let nf = f + df;
-            if (0..8).contains(&nr) && (0..8).contains(&nf) {
-                bb |= bit(infra::to_usize(nr * 8 + nf));
-            }
-        }
-    }
-    bb
-}
-
-fn white_pawn_attacks(sq: usize) -> u64 {
-    let r = infra::to_i32(rank_of(sq));
-    let f = infra::to_i32(sq % 8);
-    let mut bb = 0u64;
-    for df in [-1i32, 1] {
-        let nr = r + 1;
-        let nf = f + df;
-        if (0..8).contains(&nr) && (0..8).contains(&nf) {
-            bb |= bit(infra::to_usize(nr * 8 + nf));
-        }
-    }
-    bb
-}
-
-/// Initial (terminal-or-unknown) classification of one position.
-fn classify_initial(stm: usize, wk: usize, bk: usize, p: usize) -> u8 {
-    let pr = rank_of(p);
-    // Pawn cannot stand on rank 1 or 8.
-    if pr == 0 || pr == 7 {
-        return INVALID;
-    }
-    // Pieces overlapping, or kings adjacent.
-    if dist(wk, bk) <= 1 || wk == p || bk == p {
-        return INVALID;
-    }
-    // White to move but the black king is already attacked by the pawn → the
-    // side not to move is in check → illegal.
-    if stm == 0 && (white_pawn_attacks(p) & bit(bk)) != 0 {
-        return INVALID;
-    }
-
-    if stm == 0 {
-        // White to move: immediate promotion win when the pawn is on the 7th and
-        // the promotion square is safe (king defends it or the black king is too
-        // far to capture the new queen).
-        if pr == 6 {
-            let q = p + 8;
-            if wk != q && (dist(bk, q) > 1 || (king_attacks(wk) & bit(q)) != 0) {
-                return WIN;
-            }
-        }
-        UNKNOWN
-    } else {
-        // Black to move: stalemate (no safe king move, and not in check) or a
-        // free capture of an undefended pawn are draws.
-        let escapes = king_attacks(bk) & !(king_attacks(wk) | white_pawn_attacks(p));
-        if escapes == 0 {
-            return DRAW;
-        }
-        if (king_attacks(bk) & bit(p) & !king_attacks(wk)) != 0 {
-            return DRAW;
-        }
-        UNKNOWN
-    }
-}
-
-/// Reclassify an `UNKNOWN` position from the current table state.
-fn reclassify(stm: usize, wk: usize, bk: usize, p: usize, db: &[u8]) -> u8 {
-    let mut r = 0u8;
-    if stm == 0 {
-        // White to move maximises toward WIN; illegal king moves land on
-        // INVALID(0) entries and are harmless to the OR.
-        let mut ka = king_attacks(wk);
-        while ka != 0 {
-            let ksq = ka.trailing_zeros() as usize;
-            ka &= ka - 1;
-            r |= db[index(1, ksq, bk, p)];
-        }
-        let pr = rank_of(p);
-        if pr < 6 {
-            let push = p + 8;
-            if push != wk && push != bk {
-                r |= db[index(1, wk, bk, push)];
-                if pr == 1 {
-                    let push2 = p + 16;
-                    if push2 != wk && push2 != bk {
-                        r |= db[index(1, wk, bk, push2)];
-                    }
-                }
-            }
-        }
-        if r & WIN != 0 {
-            WIN
-        } else if r & UNKNOWN != 0 {
-            UNKNOWN
-        } else {
-            DRAW
-        }
-    } else {
-        // Black to move minimises toward DRAW.
-        let mut ka = king_attacks(bk);
-        while ka != 0 {
-            let ksq = ka.trailing_zeros() as usize;
-            ka &= ka - 1;
-            r |= db[index(0, wk, ksq, p)];
-        }
-        if r & DRAW != 0 {
-            DRAW
-        } else if r & UNKNOWN != 0 {
-            UNKNOWN
-        } else {
-            WIN
-        }
-    }
-}
-
-fn generate() -> Vec<u8> {
-    let mut db = vec![INVALID; SIZE];
-    for stm in 0..2 {
-        for wk in 0..64 {
-            for bk in 0..64 {
-                for p in 0..64 {
-                    db[index(stm, wk, bk, p)] = classify_initial(stm, wk, bk, p);
-                }
-            }
-        }
-    }
-    loop {
-        let mut changed = false;
-        for stm in 0..2 {
-            for wk in 0..64 {
-                for bk in 0..64 {
-                    for p in 0..64 {
-                        let i = index(stm, wk, bk, p);
-                        if db[i] == UNKNOWN {
-                            let r = reclassify(stm, wk, bk, p, &db);
-                            if r != UNKNOWN {
-                                db[i] = r;
-                                changed = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if !changed {
-            break;
-        }
-    }
-    db
-}
-
 /// Returns true iff the side with the (White-oriented) pawn wins the KPK
 /// position. `white_to_move` is the side to move *after* any mirroring the
 /// caller applied; `wk`/`bk`/`p` are 0..63 square indices with the pawn White's.
-/// Build the table now if it is not built yet.
-pub(crate) fn initialize() {
-    BITBASE.get_or_init(generate);
-}
-
 pub fn probe(white_to_move: bool, wk: usize, bk: usize, p: usize) -> bool {
-    let db = BITBASE.get_or_init(generate);
-    let stm = if white_to_move { 0 } else { 1 };
-    db[index(stm, wk, bk, p)] == WIN
+    let i = index(usize::from(!white_to_move), wk, bk, p);
+    BITBASE[i / 8] >> (i % 8) & 1 != 0
 }
 
 #[cfg(test)]
@@ -229,6 +37,216 @@ mod tests {
     // Square indices: a1=0 .. h1=7, a2=8 ... rank*8 + file.
     const fn sq(file: usize, rank0: usize) -> usize {
         rank0 * 8 + file
+    }
+
+    /// The run-time generator the built table replaced, as it was: its own
+    /// geometry, loops and byte table, the built table's oracle.
+    mod reference {
+        use crate::infra;
+
+        // Result flags, OR-combined while classifying successors.
+        const INVALID: u8 = 0;
+        const UNKNOWN: u8 = 1;
+        const DRAW: u8 = 2;
+        pub(super) const WIN: u8 = 4;
+
+        const SIZE: usize = 2 * 64 * 64 * 64;
+
+        #[inline]
+        fn index(stm: usize, wk: usize, bk: usize, p: usize) -> usize {
+            ((stm * 64 + wk) * 64 + bk) * 64 + p
+        }
+
+        #[inline]
+        fn rank_of(sq: usize) -> usize {
+            sq / 8
+        }
+
+        #[inline]
+        fn bit(sq: usize) -> u64 {
+            1u64 << sq
+        }
+
+        #[inline]
+        fn dist(a: usize, b: usize) -> usize {
+            let dr = (infra::to_i32(rank_of(a)) - infra::to_i32(rank_of(b))).abs();
+            let df = (infra::to_i32(a % 8) - infra::to_i32(b % 8)).abs();
+            infra::to_usize(dr.max(df))
+        }
+
+        fn king_attacks(sq: usize) -> u64 {
+            let r = infra::to_i32(rank_of(sq));
+            let f = infra::to_i32(sq % 8);
+            let mut bb = 0u64;
+            for dr in -1..=1 {
+                for df in -1..=1 {
+                    if dr == 0 && df == 0 {
+                        continue;
+                    }
+                    let nr = r + dr;
+                    let nf = f + df;
+                    if (0..8).contains(&nr) && (0..8).contains(&nf) {
+                        bb |= bit(infra::to_usize(nr * 8 + nf));
+                    }
+                }
+            }
+            bb
+        }
+
+        fn white_pawn_attacks(sq: usize) -> u64 {
+            let r = infra::to_i32(rank_of(sq));
+            let f = infra::to_i32(sq % 8);
+            let mut bb = 0u64;
+            for df in [-1i32, 1] {
+                let nr = r + 1;
+                let nf = f + df;
+                if (0..8).contains(&nr) && (0..8).contains(&nf) {
+                    bb |= bit(infra::to_usize(nr * 8 + nf));
+                }
+            }
+            bb
+        }
+
+        /// Initial (terminal-or-unknown) classification of one position.
+        fn classify_initial(stm: usize, wk: usize, bk: usize, p: usize) -> u8 {
+            let pr = rank_of(p);
+            // Pawn cannot stand on rank 1 or 8.
+            if pr == 0 || pr == 7 {
+                return INVALID;
+            }
+            // Pieces overlapping, or kings adjacent.
+            if dist(wk, bk) <= 1 || wk == p || bk == p {
+                return INVALID;
+            }
+            // White to move but the black king is already attacked by the pawn → the
+            // side not to move is in check → illegal.
+            if stm == 0 && (white_pawn_attacks(p) & bit(bk)) != 0 {
+                return INVALID;
+            }
+
+            if stm == 0 {
+                // White to move: immediate promotion win when the pawn is on the 7th and
+                // the promotion square is safe (king defends it or the black king is too
+                // far to capture the new queen).
+                if pr == 6 {
+                    let q = p + 8;
+                    if wk != q && (dist(bk, q) > 1 || (king_attacks(wk) & bit(q)) != 0) {
+                        return WIN;
+                    }
+                }
+                UNKNOWN
+            } else {
+                // Black to move: stalemate (no safe king move, and not in check) or a
+                // free capture of an undefended pawn are draws.
+                let escapes = king_attacks(bk) & !(king_attacks(wk) | white_pawn_attacks(p));
+                if escapes == 0 {
+                    return DRAW;
+                }
+                if (king_attacks(bk) & bit(p) & !king_attacks(wk)) != 0 {
+                    return DRAW;
+                }
+                UNKNOWN
+            }
+        }
+
+        /// Reclassify an `UNKNOWN` position from the current table state.
+        fn reclassify(stm: usize, wk: usize, bk: usize, p: usize, db: &[u8]) -> u8 {
+            let mut r = 0u8;
+            if stm == 0 {
+                // White to move maximises toward WIN; illegal king moves land on
+                // INVALID(0) entries and are harmless to the OR.
+                let mut ka = king_attacks(wk);
+                while ka != 0 {
+                    let ksq = ka.trailing_zeros() as usize;
+                    ka &= ka - 1;
+                    r |= db[index(1, ksq, bk, p)];
+                }
+                let pr = rank_of(p);
+                if pr < 6 {
+                    let push = p + 8;
+                    if push != wk && push != bk {
+                        r |= db[index(1, wk, bk, push)];
+                        if pr == 1 {
+                            let push2 = p + 16;
+                            if push2 != wk && push2 != bk {
+                                r |= db[index(1, wk, bk, push2)];
+                            }
+                        }
+                    }
+                }
+                if r & WIN != 0 {
+                    WIN
+                } else if r & UNKNOWN != 0 {
+                    UNKNOWN
+                } else {
+                    DRAW
+                }
+            } else {
+                // Black to move minimises toward DRAW.
+                let mut ka = king_attacks(bk);
+                while ka != 0 {
+                    let ksq = ka.trailing_zeros() as usize;
+                    ka &= ka - 1;
+                    r |= db[index(0, wk, ksq, p)];
+                }
+                if r & DRAW != 0 {
+                    DRAW
+                } else if r & UNKNOWN != 0 {
+                    UNKNOWN
+                } else {
+                    WIN
+                }
+            }
+        }
+
+        pub(super) fn generate() -> Vec<u8> {
+            let mut db = vec![INVALID; SIZE];
+            for stm in 0..2 {
+                for wk in 0..64 {
+                    for bk in 0..64 {
+                        for p in 0..64 {
+                            db[index(stm, wk, bk, p)] = classify_initial(stm, wk, bk, p);
+                        }
+                    }
+                }
+            }
+            loop {
+                let mut changed = false;
+                for stm in 0..2 {
+                    for wk in 0..64 {
+                        for bk in 0..64 {
+                            for p in 0..64 {
+                                let i = index(stm, wk, bk, p);
+                                if db[i] == UNKNOWN {
+                                    let r = reclassify(stm, wk, bk, p, &db);
+                                    if r != UNKNOWN {
+                                        db[i] = r;
+                                        changed = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if !changed {
+                    break;
+                }
+            }
+            db
+        }
+    }
+
+    #[test]
+    fn the_built_table_matches_the_run_time_generator_at_every_index() {
+        let reference = reference::generate();
+        assert_eq!(reference.len(), SIZE);
+        let mut wins = 0;
+        for (i, &verdict) in reference.iter().enumerate() {
+            let built = BITBASE[i / 8] >> (i % 8) & 1 != 0;
+            assert_eq!(built, verdict == reference::WIN, "index {i}");
+            wins += usize::from(built);
+        }
+        assert!(wins > 0, "the table holds wins");
     }
 
     #[test]

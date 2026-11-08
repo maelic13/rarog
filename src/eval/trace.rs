@@ -15,7 +15,7 @@ use super::params::{EvalParams, eval_params};
 #[cfg(feature = "texel")]
 use crate::board::{Board, Color};
 
-// Texel trace recording (Phase 3.3). `tr_mg!`/`tr_eg!` add a net feature count
+// Texel trace recording. `tr_mg!`/`tr_eg!` add a net feature count
 // to the current `Evaluator::trace` at every `mg += sign·W·n` / `eg += ...`
 // site. Without `--features texel` they expand to nothing, so production builds
 // compile to byte-identical code and `self.trace` is never referenced.
@@ -46,7 +46,7 @@ pub(super) use tr_mg;
 #[cfg(feature = "texel")]
 macro_rules! define_eval_trace {
     ( $( $field:ident : $len:literal = $default:expr; )* ) => {
-        // ---- Texel trace machinery (Phase 3.3) — `--features texel` only ----
+        // ---- Texel trace machinery — `--features texel` only ----
         // EvalCounts mirrors EvalParams field-for-field but holds *net feature
         // counts* (white − black). The trace records, per scoring site, how
         // many times each weight entered the mg and/or eg accumulator, so the
@@ -180,7 +180,7 @@ pub fn linear_delta_scale(board: &Board) -> f64 {
     opposite_bishop_scale(board).map_or(1.0, |ocb| ocb as f64 / OCB_SCALE_NORMAL as f64)
 }
 
-// Phase 3.3 reconstruction acceptance gate: for a large, diverse set of
+// The reconstruction acceptance gate: for a large, diverse set of
 // positions, the trace must reconstruct the raw tapered eval `evaluate()`
 // computed *exactly* (integer-for-integer). A mismatch means a trace count is
 // wrong; that must be fixed before any tuning run, since the tuner's gradients
@@ -255,31 +255,31 @@ mod texel_tests {
         ev
     }
 
-    /// Phase 3 gate — **nonzero activation**: every new term must actually fire
-    /// on a position designed to trigger it, otherwise the Phase-4 feature-support
-    /// diagnostics would tune a dead term blind.
+    /// **Nonzero activation**: every term must actually fire on a position
+    /// designed to trigger it, otherwise the fit's feature-support diagnostics
+    /// would tune a dead term blind.
     #[test]
     fn new_terms_activate_on_curated_positions() {
         let mut ev = full_evaluator();
 
-        // Passers (3.8) + free-stop / safe-stop (3.14): a clear, unattacked passer.
+        // Passers and the free-stop / safe-stop terms: a clear, unattacked passer.
         let t = trace_of(&mut ev, "4k3/8/8/3P4/8/8/8/4K3 w - - 0 1");
         assert!(t.eg.passed_eg.iter().any(|&c| c != 0), "passed_eg dead");
         assert_ne!(t.eg.passed_freestop_eg_per_rank[0], 0, "free-stop dead");
         assert_ne!(t.eg.passed_safestop_eg_per_rank[0], 0, "safe-stop dead");
 
-        // Per-count knight mobility one-hot (3.7).
+        // Per-count knight mobility one-hot.
         let t = trace_of(&mut ev, "4k3/8/8/8/4N3/8/8/4K3 w - - 0 1");
         assert!(t.mg.mob_n_mg.iter().any(|&c| c != 0), "mob_n_mg dead");
 
-        // Material imbalance (3.9): 3 white pawns vs none → nonzero net products.
+        // Material imbalance: 3 white pawns vs none → nonzero net products.
         let t = trace_of(&mut ev, "4k3/8/8/8/8/8/PPP5/4K3 w - - 0 1");
         assert!(
             t.mg.imbalance_ours.iter().any(|&c| c != 0),
             "imbalance dead"
         );
 
-        // Threat-by-minor (3.6): white knight e4 attacks the black rook on d6.
+        // Threat-by-minor: white knight e4 attacks the black rook on d6.
         let t = trace_of(&mut ev, "4k3/8/3r4/8/4N3/8/8/4K3 w - - 0 1");
         assert!(
             t.mg.threat_by_minor_mg.iter().any(|&c| c != 0),
@@ -298,7 +298,7 @@ mod texel_tests {
             "threat_slider_on_queen dead"
         );
 
-        // Minor-behind-pawn (3.12): white knight d3 shielded by the pawn on d4.
+        // Minor-behind-pawn: white knight d3 shielded by the pawn on d4.
         let t = trace_of(&mut ev, "4k3/8/8/8/3P4/3N4/8/4K3 w - - 0 1");
         assert_ne!(t.mg.minor_behind_pawn_mg[0], 0, "minor_behind_pawn dead");
     }
@@ -426,9 +426,10 @@ mod texel_tests {
         assert_eq!(t.eg.unstoppable_passer_eg[0], 0);
     }
 
-    /// Phase 7.4 HCE semantics — counterexample tests for the four fixes.
+    /// Counterexamples for four pawn and passer terms that once fired on the
+    /// wrong positions.
     #[test]
-    fn phase_7_4_semantic_fixes() {
+    fn pawn_and_passer_terms_hold_on_their_counterexamples() {
         let mut ev = full_evaluator();
 
         // (iv) Phalanx fires for pawns abreast on the same rank (d4+e4)...

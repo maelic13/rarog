@@ -2,7 +2,7 @@
 //! and the position. The protocol fills these (`crate::uci`); the search
 //! reads them.
 
-use crate::board::{Board, Move};
+use crate::board::{Board, UciMove};
 use crate::search::params::CoreParams;
 use crate::search::params::ProofParams;
 use crate::search::params::QuietParams;
@@ -79,14 +79,18 @@ pub struct SearchLimits {
     pub white_increment: usize,
     pub black_time: Option<usize>,
     pub black_increment: usize,
-    /// Fixed-depth limit from `go depth N` / `go mate N`. `None` = no depth
-    /// limit (the search runs to the internal MAX_DEPTH ceiling).
+    /// Fixed-depth limit from `go depth N`. `None` = no depth limit (the
+    /// search runs to the internal MAX_DEPTH ceiling).
     pub depth: Option<u32>,
+    /// `go mate N`: the search ends once a completed iteration on any thread
+    /// proves a mate within N moves, for either side, and otherwise runs until
+    /// stopped. It is no depth limit, so the pool's vote still chooses.
+    pub mate: Option<u32>,
     pub movestogo: usize,
     pub nodes: u64,
     pub infinite: bool,
     pub ponder: bool,
-    pub search_moves: Vec<Move>,
+    pub search_moves: Vec<UciMove>,
     /// The instant the `go` command was parsed on the UCI thread.
     ///
     /// The harness charges the clock from the moment it writes `go`, so the

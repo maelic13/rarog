@@ -61,6 +61,7 @@ class Summary(unittest.TestCase):
             tm_activation.summarise([], tm_activation.SEEDS)
 
 
+@unittest.skipUnless(tm_activation.BOOK.is_file(), "the book is ignored local evidence; a clone has none")
 class Book(unittest.TestCase):
     def test_the_replay_takes_three_hundred_distinct_positions(self):
         fens = tm_activation.book_positions(300)

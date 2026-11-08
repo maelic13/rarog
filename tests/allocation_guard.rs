@@ -65,12 +65,10 @@ const SHALLOW_DEPTH: u32 = 5;
 /// census entry with no code path of its own.
 const DEEP_DEPTH: u32 = if cfg!(debug_assertions) { 11 } else { 13 };
 
-/// Allocations one iteration may add, per searching thread. The root node
-/// builds its move lists on every visit and each iteration reports a line;
-/// measured at most 25 per iteration per thread over these positions (the
-/// endgame, which re-searches its aspiration window most). The bound leaves
-/// room for that and still catches anything that allocates at more than about
-/// one node in a hundred.
+/// Allocations one iteration may add, per searching thread: the line it
+/// reports. Bench position 0 at one thread adds one allocation over eight
+/// iterations. The bound is loose on purpose and still catches anything that
+/// allocates at more than about one node in a hundred.
 const ALLOCATIONS_PER_ITERATION_PER_THREAD: u64 = 64;
 
 /// The deep search must be much larger than the shallow one, or a per-node

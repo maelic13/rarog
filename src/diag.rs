@@ -181,16 +181,16 @@ pub mod counters {
         // every evasion before picking any, so the scored count minus this
         // is what a staged in-check quiescence would save.
         q_check_moves_tried,
-        // B.5 research, all EXACT and Rarog-only. The aspiration loop's cost:
-        // nodes of every root window search from depth 4, and of those that
-        // failed low or high and were searched again.
+        // The aspiration loop's cost, all EXACT and Rarog-only: nodes of every
+        // root window search from depth 4, and of those that failed low or
+        // high and were searched again.
         asp_search_nodes,
         asp_fail_low_nodes,
         asp_fail_high_nodes,
         // A quiet evasion skipped because the side in check already has a
         // line that is not a loss.
         q_evasion_skip,
-        // B.4 research: where the quiescence search spends and prunes, all
+        // Where the quiescence search spends and prunes, all
         // EXACT and Rarog-only. `q_qply0` counts entries from the main
         // search, ProbCut and razoring; `q_tt_hit_pv` counts probes whose
         // entry carries the PV bit a depth-0 store would clear.
@@ -360,7 +360,7 @@ pub mod counters {
         // the classifier looks at. Without it an occurrence count cannot be
         // read as a rate.
         eg_classified,
-        // 4.11b.7 board cost census. These are exact call/work counters from
+        // Board cost census. These are exact call/work counters from
         // real search paths. They observe only and compile away completely
         // without `--features diag`.
         board_gen_vec_calls,

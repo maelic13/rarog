@@ -132,18 +132,18 @@ pub(super) fn knnkp_adjustment(board: &Board) -> Option<i32> {
     })
 }
 
-/// Specialised known-endgame scale factor (Phase 3.11), in `0..=SCALE_NORMAL`.
+/// Specialised known-endgame scale factor, in `0..=SCALE_NORMAL`.
 /// Returns `Some(sf)` for a recognised material pattern (the caller multiplies
 /// the tapered score by `sf / SCALE_NORMAL`), or `None` to fall through to the
 /// general scaling. Each pattern fires only on exact material absent from the
 /// bench suite, so `bench 13` is unchanged.
 ///
 /// Implemented: KPK bitbase, KBP wrong-corner draw, pawnless
-/// insufficient-mating-material draws (KK/KNK/KBK/minor-vs-minor), and the
-/// Phase-3.11c patterns — the KQKP fortress draw (rook/bishop pawn only) and a
-/// conservative KRKP partial scale. KNNK keeps its existing handling in
+/// insufficient-mating-material draws (KK/KNK/KBK/minor-vs-minor), the KQKP
+/// fortress draw (rook/bishop pawn only), a conservative KRKP partial scale,
+/// and the KRPKR and KRPKB draw zones. KNNK keeps its existing handling in
 /// `scale_endgame`. Deliberately omitted: KQ-vs-KR (a win — never scaled toward
-/// draw) and broad rook-endgame drawishness (a tunable Phase-4 term, not a
+/// draw) and broad rook-endgame drawishness (a term for the fit, not a
 /// hardcoded rule that could wrongly draw a won R+P vs R).
 pub(super) fn specialized_endgame_scale(board: &Board) -> Option<i32> {
     // KPK (king + single pawn vs lone king): exact bitbase verdict. A drawn KPK
@@ -160,25 +160,25 @@ pub(super) fn specialized_endgame_scale(board: &Board) -> Option<i32> {
     if kbp_wrong_corner_draw(board) {
         return Some(0);
     }
-    // KQ vs KP fortress (Phase 3.11c): only the textbook drawn case — a rook or
+    // KQ vs KP fortress: only the textbook drawn case — a rook or
     // bishop pawn on the 7th, its king guarding the queening square, the queen's
     // king too far to break through. Knight/centre pawns are wins and are left
     // untouched.
     if let Some(sf) = kqkp_fortress_scale(board) {
         return Some(sf);
     }
-    // KR vs KP (Phase 3.11c): conservative *partial* scale toward draw in the
+    // KR vs KP: conservative *partial* scale toward draw in the
     // clear draw zone (pawn on the 7th, escorted by its king, rook's king far).
     // Never a forced draw, so an actually-won KRKP keeps a clearly winning score.
     if let Some(sf) = krkp_drawish_scale(board) {
         return Some(sf);
     }
-    // KRP vs KR (Phase 4.9a.7): the highest-value open reference family, at
-    // 10.04% of real games.
+    // KRP vs KR: the most frequent family the reference engine converts
+    // better, at 10.04% of real games.
     if let Some(sf) = krpkr_scale(board) {
         return Some(sf);
     }
-    // KRP vs KB (Phase 4.9a.8): rook-pawn fortresses only; partial scales.
+    // KRP vs KB: rook-pawn fortresses only; partial scales.
     if let Some(sf) = krpkb_scale(board) {
         return Some(sf);
     }
@@ -282,9 +282,9 @@ fn kbp_wrong_corner_draw(board: &Board) -> bool {
         let queening_sq = Square(infra::to_u8(queening));
         // A bishop can only guard the queening square if it shares that square's
         // colour. Wrong colour → it can never evict the king from the corner.
-        let bishop_light = (bishops & Bitboard::LIGHT_SQUARES).any();
-        let queen_light = (Bitboard::from(queening_sq) & Bitboard::LIGHT_SQUARES).any();
-        if bishop_light == queen_light {
+        let bishop_dark = (bishops & Bitboard::DARK_SQUARES).any();
+        let queen_dark = (Bitboard::from(queening_sq) & Bitboard::DARK_SQUARES).any();
+        if bishop_dark == queen_dark {
             continue;
         }
         let weak_king = board.king_sq(weak);
@@ -296,11 +296,11 @@ fn kbp_wrong_corner_draw(board: &Board) -> bool {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 3.11c — narrow, high-confidence endgame knowledge. Each fires only on
-// an exact material pattern (verified absent from the bench suite, so the
-// fingerprint is unchanged). Two deliberate omissions vs the original plan list:
+// Narrow, high-confidence endgame knowledge. Each fires only on an exact
+// material pattern (verified absent from the bench suite, so the fingerprint
+// is unchanged). Two deliberate omissions:
 //   * KQ-vs-KR is a *win*, so it is never scaled toward draw; and
-//   * general rook-endgame drawishness is a tunable Phase-4 term, not a
+//   * general rook-endgame drawishness is a term for the fit, not a
 //     hardcoded rule that could wrongly draw a won R+P vs R.
 // ---------------------------------------------------------------------------
 
@@ -338,7 +338,7 @@ fn kqkp_fortress_scale(board: &Board) -> Option<i32> {
 /// ending is usually drawn (the rook must give itself for the pawn). A
 /// *partial* scale (≈¼) only — never a forced draw — so an actually-won KRKP
 /// keeps a clearly winning score and a wrong guess cannot throw the game.
-/// KRP vs KB (Phase 4.9a.8). The rook side is winning almost everywhere, so
+/// KRP vs KB. The rook side is winning almost everywhere, so
 /// the drawn subset is small -- 94 of 4,000 sampled positions, 2.35% -- and the
 /// evaluator was wrong about nearly all of it: **95.74% of drawn KRP-KB
 /// positions scored above +100 cp, mean +347.2, max +771**.
@@ -408,11 +408,11 @@ fn krpkb_scale(board: &Board) -> Option<i32> {
     None
 }
 
-/// KRP vs KR (Phase 4.9a.7), the highest-expected-value open reference family:
-/// 10.04% of real games by RAR-M15 occurrence.
+/// KRP vs KR, the most frequent family the reference engine converts better:
+/// 10.04% of real games.
 ///
 /// WHAT THE DEFECT ACTUALLY IS. The conversion number looks alarming and is
-/// not the problem: RAR-E11 measured Stockfish 18 converting this family at
+/// not the problem: Stockfish 18 converted this family at
 /// 47.9% against Rarog's 43.8% at the same node budget, so the reachable mark
 /// is about four points away, not fifty-five. The measured defect is the
 /// complementary cohort -- **37.1% of theoretically DRAWN KRP-KR positions
@@ -567,9 +567,9 @@ pub(super) fn opposite_bishop_scale(board: &Board) -> Option<i32> {
     {
         return None;
     }
-    let white_dark = (white_bishops & Bitboard::DARK_SQUARES).any();
-    let black_dark = (black_bishops & Bitboard::DARK_SQUARES).any();
-    if white_dark == black_dark {
+    let white_light = (white_bishops & Bitboard::LIGHT_SQUARES).any();
+    let black_light = (black_bishops & Bitboard::LIGHT_SQUARES).any();
+    if white_light == black_light {
         return None;
     }
     let pawns = infra::to_i32(
@@ -669,7 +669,7 @@ pub(crate) fn is_draw_verdict(board: &Board) -> bool {
 }
 
 #[cfg(test)]
-mod endgame_311c_tests {
+mod recogniser_tests {
     use super::*;
     use crate::eval::Evaluator;
 
@@ -679,6 +679,110 @@ mod endgame_311c_tests {
 
     fn static_eval(fen: &str) -> i32 {
         Evaluator::default().evaluate(&board(fen))
+    }
+
+    /// The same position with the colours swapped: ranks reversed, piece
+    /// letters' case swapped, the other side to move, castling rights swapped
+    /// and an en-passant square moved to the other side's third rank.
+    fn mirror(fen: &str) -> String {
+        let fields: Vec<&str> = fen.split_whitespace().collect();
+        let swap_case = |c: char| {
+            if c.is_ascii_uppercase() {
+                c.to_ascii_lowercase()
+            } else {
+                c.to_ascii_uppercase()
+            }
+        };
+        let placement = fields[0]
+            .split('/')
+            .rev()
+            .map(|rank| rank.chars().map(swap_case).collect::<String>())
+            .collect::<Vec<_>>()
+            .join("/");
+        let side = if fields[1] == "w" { "b" } else { "w" };
+        let castling = if fields[2] == "-" {
+            String::from("-")
+        } else {
+            let swapped: String = fields[2].chars().map(swap_case).collect();
+            "KQkq".chars().filter(|c| swapped.contains(*c)).collect()
+        };
+        let ep = match fields[3].as_bytes() {
+            [file, rank] => format!("{}{}", char::from(*file), char::from(b'9' - rank + b'0')),
+            _ => String::from("-"),
+        };
+        format!(
+            "{placement} {side} {castling} {ep} {} {}",
+            fields[4], fields[5]
+        )
+    }
+
+    /// Every position these tests use, each with White the stronger side.
+    const RECOGNISED: [&str; 40] = [
+        "k7/4p3/4K3/8/2N5/N7/8/8 w - - 0 1",
+        "K7/8/n7/2n5/4k3/4P3/8/8 b - - 0 1",
+        "k7/4p3/4K3/8/2N5/N3P3/8/8 w - - 0 1",
+        "k7/4p1p1/4K3/8/2N5/N7/8/8 w - - 0 1",
+        "k7/4p3/4K3/8/2N5/8/8/8 w - - 0 1",
+        "k7/8/4K3/8/2N5/N7/8/8 w - - 0 1",
+        "8/8/n7/2n5/8/4k3/4P3/K7 b - - 0 1",
+        "k7/8/4K3/4p3/4N3/N7/8/8 w - - 0 1",
+        "8/8/n7/4n3/4P3/4k3/8/K7 b - - 0 1",
+        "k7/8/4K3/4p3/2N5/N7/8/8 w - - 0 1",
+        "8/8/4K3/4p3/2Nk4/N7/8/8 w - - 0 1",
+        "k7/8/4K3/8/2N5/N3p3/8/8 w - - 0 1",
+        "k7/8/4K3/4p3/8/N1N5/8/8 w - - 0 1",
+        "k7/8/4K3/4p3/8/N7/N7/8 w - - 0 1",
+        "8/8/6K1/8/8/8/1kp5/7Q w - - 0 1",
+        "8/8/6K1/8/8/8/kp6/7Q w - - 0 1",
+        "8/8/6K1/8/8/8/1kp5/7R w - - 0 1",
+        "8/1kb5/8/P7/8/8/8/6KR w - - 0 1",
+        "8/2kb4/8/1P6/8/8/8/6KR w - - 0 1",
+        "8/3k4/r7/3PK3/8/8/8/7R w - - 0 1",
+        "R7/P6k/8/8/8/8/8/r5K1 w - - 0 1",
+        "1R6/1P6/8/8/8/7k/r7/6K1 w - - 0 1",
+        "8/8/1PK5/8/8/7k/r7/1R6 w - - 0 1",
+        "8/8/8/1PK5/8/7k/r7/1R6 w - - 0 1",
+        "8/8/6KQ/8/3k4/8/8/3r4 w - - 0 1",
+        "4k3/p7/8/3b4/8/8/P7/2B1K3 w - - 0 1",
+        "4k3/7p/P7/3b4/8/8/8/2B1K3 w - - 0 1",
+        "4k3/p7/8/3b4/8/8/PP6/2B1K3 w - - 0 1",
+        "4k3/7p/P7/3b4/8/8/P7/2B1K3 w - - 0 1",
+        "r3k3/p7/8/3b4/8/8/PP6/2B1K2R w - - 0 1",
+        "8/8/4k3/8/8/4K3/8/8 w - - 0 1",
+        "8/8/4k3/8/8/4K3/8/5N2 w - - 0 1",
+        "8/8/4k3/8/3n4/4K3/8/5B2 w - - 0 1",
+        "8/8/4k3/8/8/4K3/8/4NN2 w - - 0 1",
+        "7k/8/6KP/8/8/8/8/5B2 w - - 0 1",
+        "7k/8/8/8/8/8/7P/7K w - - 0 1",
+        "8/1rk5/8/8/8/8/3P1K1R/8 w - - 0 1",
+        "4k3/8/4K3/4P3/8/8/8/8 w - - 0 1",
+        "8/8/8/4k3/8/8/8/2B1KN2 w - - 0 1",
+        "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+    ];
+
+    /// Each recogniser reads a position the same with the colours swapped:
+    /// the same scale factor, and the same evaluation for the side to move.
+    #[test]
+    fn every_recogniser_position_reads_the_same_with_the_colours_swapped() {
+        for fen in RECOGNISED {
+            let mirrored = mirror(fen);
+            let (ours, theirs) = (board(fen), board(&mirrored));
+            assert_eq!(
+                specialized_endgame_scale(&ours),
+                specialized_endgame_scale(&theirs),
+                "{fen} against {mirrored}"
+            );
+            assert_eq!(
+                opposite_bishop_scale(&ours),
+                opposite_bishop_scale(&theirs),
+                "{fen} against {mirrored}"
+            );
+            assert_eq!(
+                static_eval(fen),
+                static_eval(&mirrored),
+                "{fen} against {mirrored}"
+            );
+        }
     }
 
     #[test]
@@ -889,7 +993,7 @@ mod endgame_311c_tests {
         );
     }
 
-    /// KRP-vs-KB rook-pawn fortresses (4.9a.8). Both FENs are Syzygy DRAW.
+    /// KRP-vs-KB rook-pawn fortresses. Both FENs are Syzygy DRAW.
     ///
     /// This is also the **live-wire proof** the null result needs: the drawn
     /// cohort's overclaim rate did not move at all (0.9574 before and after),
@@ -914,7 +1018,7 @@ mod endgame_311c_tests {
         );
     }
 
-    /// KRP-vs-KR draw recognition (4.9a.7). Every FEN here was probed against
+    /// KRP-vs-KR draw recognition. Every FEN here was probed against
     /// Syzygy before it was written down, so these assert chess truth rather
     /// than the recognizer's own opinion of itself.
     #[test]

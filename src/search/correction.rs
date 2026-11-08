@@ -229,8 +229,15 @@ impl Searcher {
             }
         }
         let p = &self.cfg.core;
-        let bonus =
-            (p.corr_update_slope * depth * diff / 128).clamp(p.corr_update_min, p.corr_update_max);
+        // A mate or tablebase residual against an evaluation at the opposite
+        // clamp is about 63,700, so `slope × depth × residual` passes
+        // `i32::MAX` from depth 135 at the default slope; formed in `i64`, it
+        // clamps with the residual's sign instead of wrapping.
+        let product = i64::from(p.corr_update_slope) * i64::from(depth) * i64::from(diff) / 128;
+        let bonus = i32::try_from(
+            product.clamp(i64::from(p.corr_update_min), i64::from(p.corr_update_max)),
+        )
+        .unwrap_or_else(|_| unreachable!("clamped into i32 bounds"));
         let slots = self.correction_slots(board, ply);
         let tables = &mut self.td.corr;
         #[cfg(feature = "diag")]
@@ -321,6 +328,26 @@ mod tests {
             late_eval.abs() < early_eval.abs(),
             "{late_eval} vs {early_eval}"
         );
+    }
+
+    /// At a mate residual and an extreme depth the training bonus's product
+    /// passes `i32::MAX`; the tables must still move in the residual's
+    /// direction, by the clamped bonus, never wrapped to the other sign.
+    #[test]
+    fn an_overflowing_training_bonus_keeps_the_residuals_sign() {
+        let board = Board::from_fen(FEN).expect("valid FEN");
+        for (diff, sign) in [(63_700, 1), (-63_700, -1)] {
+            let mut searcher = Searcher::default();
+            let slot = searcher.correction_slots(&board, 0).pawn;
+            let before = i32::from(searcher.td.corr.pawn[slot]);
+            searcher.train_correction(&board, 200, diff, 0);
+            let after = i32::from(searcher.td.corr.pawn[slot]);
+            assert_eq!(
+                (after - before).signum(),
+                sign,
+                "residual {diff}: {before} -> {after}"
+            );
+        }
     }
 
     #[test]

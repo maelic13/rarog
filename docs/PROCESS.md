@@ -55,8 +55,13 @@ Register an experiment before any games as its own file,
 index row (ID linked to the file, short title, disposition) to the
 `docs/EXPERIMENTS.md` section that owns it. Append the result and
 calibration to the file without rewriting the prediction, and update the
-index row's disposition in the same commit. A long analysis goes in an
-`analysis/` packet the entry cites.
+index row's disposition in the same commit. The entry's `- Disposition:` line
+and the index row's Disposition cell both start with the same one word,
+`open` until the experiment resolves, then the word it resolved to, followed
+by `,` `.` `;` `:` or ` — ` and any explanation; `check_dispositions.py`
+fails on a missing or disagreeing side (entries before 2026-11-08 are exempt,
+listed in `tools/diag/disposition_exempt.txt`, which only shrinks). A long
+analysis goes in an `analysis/` packet the entry cites.
 
 ```markdown
 # RAR-<area><number> — <short name>
@@ -81,8 +86,8 @@ index row's disposition in the same commit. A long analysis goes in an
 - Result:
   - Diagnostics: nodes, EBF, NPS, depth, counters, suites (not the verdict):
   - Games/verdict: games, W-D-L, Elo/nElo and CI, LLR:
-- Disposition: accepted / retained / rejected / neutral/inconclusive /
-  observation / no-change / deferred:
+- Disposition: one of accepted, retained, rejected, refuted, inconclusive,
+  observation, no-change, deferred, withdrawn, open
 - **PREDICTION CALIBRATION (append after exposure):**
   - Original prediction (do not rewrite):
   - Observed result; sign and magnitude reasonable?:
@@ -173,13 +178,19 @@ presented as mature.
 
 ### The independence boundary
 
-Donors: **Reckless** for search, threading, time management and NNUE;
-**Stockfish 11** for the classical evaluation (tag `sf_11`; the king-safety and
+Donors: **Reckless**, always at its latest commit, is the primary reference
+and donor, chiefly for function, implementation and logic: search, threading,
+time management and NNUE. For how the engine behaves Stockfish may be the
+better reference, and where the two differ the difference goes to the
+maintainer before anything is built (maintainer decision 2026-11-06, widening
+2026-09-09's; PLAN rule 1 points here). **Stockfish** is read by area.
+**Stockfish 19** (tag `sf_19`) is the reference for everything that is not the
+classical evaluation, and the latest development tree, named by its date,
+where a question needs it. **Stockfish 11** is the
+reference for the classical evaluation (tag `sf_11`; the king-safety and
 threat fixtures, and the forms fitted from them, follow `9587eeeb` of
-2020-07-30: `analysis/engine_review_2026-11-01.md`, EVAL-4); **Stockfish 19**
-for NNUE and
-SMP details where Reckless is silent (maintainer decision 2026-09-09; PLAN
-rule 1 points here).
+2020-07-30: `analysis/engine_review_2026-11-01.md`, EVAL-4), or a later
+classical evaluation once one is shown to be the best there is.
 
 **Triumviratus** (Francesco Torsello, GPL-3.0; `github.com/Tors3/Triumviratus`
 at `0c18907`, its networks repository at `5f3dc60`) is a third donor, for
@@ -909,7 +920,7 @@ cargo test -p rarog
 cargo test -p rarog --release
 # Long tier, for release qualification: the two play measurements ignored in the
 # suite, by exact name (CI's release leg runs the same command). Two must pass.
-cargo test -p rarog --release --test endgames --test wac -- --ignored --exact kbnk_positions_are_driven_to_mate wac_solved_count_stays_above_floor
+cargo test -p rarog --release --test endgames --test wac -- --ignored --exact kbnk_positions_are_driven_to_mate wac_solved_count_stays_in_its_band
 cargo test -p xtask
 # The texel tuner is its own workspace, so `texel` never unifies into the engine.
 cargo test --manifest-path tools/texel-tuner/Cargo.toml

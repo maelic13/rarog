@@ -192,7 +192,7 @@ impl Evaluator {
 }
 
 impl Evaluator {
-    /// Override the lazy-eval margin (Phase 5.1b `LazyMargin` UCI option).
+    /// Override the lazy-eval margin (the search's `LazyMargin` parameter).
     /// Returns whether the evaluation semantics changed, so the search owner
     /// can invalidate the raw evaluations it caches.
     pub fn set_lazy_margin(&mut self, margin: i32) -> bool {
@@ -223,7 +223,7 @@ impl Evaluator {
     }
 
     pub fn evaluate(&mut self, board: &Board) -> i32 {
-        // 4.9a search-tree occurrence, counted BEFORE the cache lookup: a
+        // Endgame-family occurrence in the search tree, counted BEFORE the cache lookup: a
         // cache hit is still the search reaching that family, and counting
         // only misses would undercount exactly the families the tree revisits
         // most. Compiled out entirely without `--features diag`.
@@ -293,18 +293,20 @@ impl Evaluator {
         let (pawn_mg, pawn_eg) = self.eval_pawns(board, atk, &mut passed, &mut pawn_attacks);
         mg += pawn_mg;
         eg += pawn_eg;
-        // Passed-pawn free-stop / safe-stop bonuses (Phase 3.14): occupancy- and
+        // Passed-pawn free-stop / safe-stop bonuses: occupancy- and
         // attack-dependent, so they run every evaluation rather than living in
         // the pawn-structure cache. Applied here — immediately after `eval_pawns`
-        // and before `eval_piece_activity` — so the running `mg`/`eg` totals seen
-        // by downstream nonlinear terms (e.g. the mop-up's `(mg+eg)/2` test)
-        // match the pre-3.14 ordering exactly; only the cache key changes.
+        // and before `eval_piece_activity` — because downstream nonlinear terms
+        // (e.g. the mop-up's `(mg+eg)/2` test) read the running totals.
         self.eval_passed_pawn_advance(board, &passed, &mut mg, &mut eg);
 
-        // Lazy eval (Phase 3.16): if the cheap material + PST + pawn margin
-        // already decides the position by more than any positional term could
-        // flip, skip the expensive block (piece activity = mobility / threats /
-        // king-safety / hanging / small-terms, plus imbalance). The mop-up still
+        // Lazy eval: once the cheap material + PST + pawn score passes the
+        // margin, skip the expensive block (piece activity = mobility / threats /
+        // king-safety / hanging / small-terms, plus imbalance). The block can
+        // still move the score further than the margin — the king-danger map
+        // alone by up to 637 cp — so this is no bound: it stays because
+        // evaluating the block above the margin lost about 105 Elo in games,
+        // at equal nodes as at equal time. The mop-up still
         // runs, so mating technique (KBNK, KXK) survives a lazy skip. The gate
         // applies in every build, `texel` included, so the tuner traces and
         // fits the function the engine plays: above the gate a position's
@@ -318,8 +320,8 @@ impl Evaluator {
             self.apply_mop_up(board, &mut mg, &mut eg);
         } else {
             self.eval_piece_activity(board, atk, &mut mg, &mut eg, &passed, &pawn_attacks, phase);
-            // Mop-up keeps its pre-3.16 position (after activity, before
-            // imbalance) so the full-eval path is byte-identical.
+            // Mop-up runs after activity and before imbalance here too: its
+            // trigger reads the running totals.
             self.apply_mop_up(board, &mut mg, &mut eg);
             self.eval_imbalance(board, &mut mg, &mut eg);
         }
@@ -357,7 +359,7 @@ impl Evaluator {
 }
 #[inline(always)]
 pub fn piece_value(piece: Piece) -> i32 {
-    // 9.0: safe indexing — `piece as usize` from a 6-variant enum is provably
+    // Safe indexing — `piece as usize` from a 6-variant enum is provably
     // 0..=5, so LLVM elides the bounds check; identical codegen, no unsafe.
     PIECE_VALUES[piece as usize]
 }

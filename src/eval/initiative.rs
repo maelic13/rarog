@@ -8,10 +8,10 @@ use crate::board::{Board, Color, Piece};
 use crate::infra;
 
 impl Evaluator {
-    /// Initiative / complexity (Phase 3.10): nudges the endgame score away
+    /// Initiative / complexity: nudges the endgame score away
     /// from (or toward) a draw based on a cheap complexity proxy — total
     /// pawns, king-file separation, and pawns on both flanks — mirroring
-    /// SF's `Initiative` adjustment. Seeded 0, so it is a no-op until tuned.
+    /// SF's `Initiative` adjustment, scaled by `initiative_weight`.
     pub(super) fn eval_initiative(&self, board: &Board, eg: &mut i32) {
         let pawns =
             board.pieces(Color::White, Piece::Pawn) | board.pieces(Color::Black, Piece::Pawn);
