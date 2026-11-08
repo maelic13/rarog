@@ -78,6 +78,18 @@ jobs:
       - name: cargo clippy (texel tuner, its own workspace)
         run: cargo clippy --manifest-path tools/texel-tuner/Cargo.toml --all-targets -- -D warnings
 
+      # The PEXT slider path compiles only under `rarog_pext`, so the steps
+      # above never lint or test it; `attacks.rs` refuses the cfg without
+      # BMI2. Its own target directory keeps these flags out of the default
+      # build's cache.
+      - name: cargo clippy and the slider test (PEXT tier)
+        env:
+          RUSTFLAGS: --cfg rarog_pext -C target-feature=+bmi2
+          CARGO_TARGET_DIR: target/pext
+        run: |
+          cargo clippy --all-targets -- -D warnings
+          cargo test --test slider_backends
+
   test:
     name: test ${{ matrix.os }} / ${{ matrix.profile }}
     runs-on: ${{ matrix.os }}
