@@ -23,6 +23,6 @@ pub use board::{
     Board, CROSS_ENGINE_SEE_VALUES, GameResult, PRODUCTION_SEE_VALUES, STARTING_FEN, SeeValues,
     Threats,
 };
-pub use moves::{Move, MoveList};
+pub use moves::{Move, MoveList, UciMove};
 pub use piece::{CastlingRights, Color, Piece};
 pub use square::{File, Rank, Square};

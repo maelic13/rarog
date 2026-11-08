@@ -3,7 +3,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use rarog::board::{Board, Move};
+use rarog::board::{Board, Move, UciMove};
 use rarog::search::options::SearchOptions;
 use rarog::search::{InfoReport, InfoSink, SearchEvent, Searcher};
 
@@ -160,7 +160,7 @@ fn lines_are_drawn_from_the_searchmoves_set() {
         options.engine.multi_pv = 3;
         options.limits.search_moves = requested
             .iter()
-            .map(|uci| Move::from_uci(uci).expect("valid move"))
+            .map(|uci| UciMove::parse(uci).expect("valid move"))
             .collect();
     });
     assert_well_formed(fen, &lines, 2);

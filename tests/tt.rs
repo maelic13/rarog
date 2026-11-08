@@ -1,6 +1,6 @@
 //! Transposition table: store, probe, replacement, clearing, mate-score conversion and `hashfull`.
 
-use rarog::board::Move;
+use rarog::board::{Board, Move};
 use rarog::eval::MATE_SCORE;
 use rarog::tt::{Bound, TranspositionTable, TtStore, score_from_tt, score_to_tt};
 
@@ -15,7 +15,9 @@ const fn sampled_key(index: u64) -> u64 {
 fn transposition_table_store_probe_replace_clear_and_mate_scores() {
     let mut table = TranspositionTable::new(1);
     let key = sampled_key(1);
-    let best = Move::from_uci("e2e4").expect("valid UCI move");
+    let best = Board::starting_position()
+        .parse_move("e2e4")
+        .expect("legal move");
 
     table.store(TtStore {
         key,
@@ -146,7 +148,9 @@ fn a_shared_resize_replaces_the_table_and_a_refused_one_keeps_it() {
 
 #[test]
 fn transposition_table_hashfull_counts_only_current_generation_entries() {
-    let best = Move::from_uci("e2e4").expect("valid UCI move");
+    let best = Board::starting_position()
+        .parse_move("e2e4")
+        .expect("legal move");
     let key = sampled_key(1);
     let second_key = sampled_key(2);
     let fresh_key = sampled_key(3);

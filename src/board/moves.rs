@@ -198,7 +198,38 @@ impl Move {
         }
     }
 
-    pub fn from_uci(input: &str) -> Option<Move> {
+    /// Test-only: the move UCI text names with its flags unset, which the
+    /// board must canonicalise before it is played. The engine reads text as
+    /// a [`UciMove`].
+    #[cfg(test)]
+    pub(crate) fn from_uci(input: &str) -> Option<Move> {
+        UciMove::parse(input).map(|mv| mv.0)
+    }
+
+    #[inline(always)]
+    pub fn same_uci_move(self, other: Move) -> bool {
+        self.from_sq() == other.from_sq()
+            && self.to_sq() == other.to_sq()
+            && self.promotion() == other.promotion()
+    }
+
+    /// Is this a null move sentinel?
+    #[inline(always)]
+    pub fn is_null(self) -> bool {
+        self.0 == 0
+    }
+}
+
+/// A move as UCI text names it: its squares and promotion piece, without
+/// the capture, double-push, castling and en-passant flags the position
+/// gives it. Played as it stands it would corrupt make/unmake, so only
+/// [`Board::legal_uci_move`](super::Board::legal_uci_move) turns one into a
+/// [`Move`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct UciMove(pub(in crate::board) Move);
+
+impl UciMove {
+    pub fn parse(input: &str) -> Option<UciMove> {
         // UCI moves are ASCII. Check that before byte-indexing: a four-byte
         // UTF-8 token such as `aé1` has no valid [0..2] character boundary.
         if !input.is_ascii() || (input.len() != 4 && input.len() != 5) {
@@ -218,20 +249,35 @@ impl Move {
         } else {
             QUIET
         };
-        Some(Move::new(from, to, flags))
+        Some(UciMove(Move::new(from, to, flags)))
     }
 
+    /// Whether `mv` is the move this text names: the same squares and
+    /// promotion.
     #[inline(always)]
-    pub fn same_uci_move(self, other: Move) -> bool {
-        self.from_sq() == other.from_sq()
-            && self.to_sq() == other.to_sq()
-            && self.promotion() == other.promotion()
+    pub fn names(self, mv: Move) -> bool {
+        self.0.same_uci_move(mv)
     }
+}
 
-    /// Is this a null move sentinel?
-    #[inline(always)]
-    pub fn is_null(self) -> bool {
-        self.0 == 0
+impl From<Move> for UciMove {
+    /// The text form of a move: its squares and promotion, its other flags
+    /// dropped.
+    fn from(mv: Move) -> Self {
+        // A promotion's flags are `PROMO_KNIGHT` plus its piece in the low
+        // two bits, with or without the capture bit.
+        let flags = if mv.is_promo() {
+            PROMO_KNIGHT | (mv.flags() & 3)
+        } else {
+            QUIET
+        };
+        UciMove(Move::new(mv.from_sq(), mv.to_sq(), flags))
+    }
+}
+
+impl fmt::Display for UciMove {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -251,6 +297,33 @@ impl fmt::Display for Move {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every legal move survives the trip through its text form: printed,
+    /// parsed or converted, the board gives it back with its flags.
+    #[test]
+    fn a_legal_move_round_trips_through_uci_move() {
+        let mut flagged = std::collections::BTreeSet::new();
+        for fen in [
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
+            "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1",
+            "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N w - - 0 1",
+        ] {
+            let board = crate::board::Board::from_fen(fen).expect("valid FEN");
+            let legal = board.generate_legal_movelist();
+            flagged.extend(legal.iter().map(|mv| mv.flags()));
+            for &mv in &legal {
+                let text = UciMove::from(mv);
+                assert_eq!(text.to_string(), mv.to_string(), "{fen}");
+                assert_eq!(UciMove::parse(&mv.to_string()), Some(text), "{fen} {mv}");
+                assert!(text.names(mv), "{fen} {mv}");
+                assert_eq!(board.legal_uci_move(text), Some(mv), "{fen} {mv}");
+            }
+        }
+        // Every flag a legal move can carry occurred.
+        let all = [0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15];
+        assert_eq!(flagged, std::collections::BTreeSet::from(all));
+    }
 
     #[test]
     fn retain_keeps_the_accepted_moves_in_order() {

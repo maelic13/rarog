@@ -805,7 +805,7 @@ mod tests {
                 ..clock.clone()
             },
             SearchLimits {
-                search_moves: vec![Move::from_uci("e2e4").expect("valid move")],
+                search_moves: vec![Move::from_uci("e2e4").expect("valid move").into()],
                 ..clock
             },
             SearchLimits {

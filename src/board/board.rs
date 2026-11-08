@@ -12,7 +12,7 @@ use super::movegen::generate_legal_moves;
 use super::moves::{
     CAPTURE, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, DOUBLE_PUSH, EN_PASSANT, Move, MoveList,
     PROMO_BISHOP, PROMO_CAPTURE_BISHOP, PROMO_CAPTURE_KNIGHT, PROMO_CAPTURE_QUEEN,
-    PROMO_CAPTURE_ROOK, PROMO_KNIGHT, PROMO_QUEEN, PROMO_ROOK, QUIET,
+    PROMO_CAPTURE_ROOK, PROMO_KNIGHT, PROMO_QUEEN, PROMO_ROOK, QUIET, UciMove,
 };
 use super::piece::{CastlingRights, Color, Piece};
 use super::square::{Rank, Square};
@@ -560,7 +560,13 @@ impl Board {
     }
 
     pub fn parse_move(&self, input: &str) -> Option<Move> {
-        self.legal_move(Move::from_uci(input)?)
+        self.legal_uci_move(UciMove::parse(input)?)
+    }
+
+    /// The legal move `mv` names, with the flags this position gives it: the
+    /// only way from UCI text to a move that can be played.
+    pub fn legal_uci_move(&self, mv: UciMove) -> Option<Move> {
+        self.legal_move(mv.0)
     }
 
     fn pseudo_legal_move(&self, mv: Move) -> Option<Move> {
@@ -694,8 +700,8 @@ impl Board {
     }
 
     #[inline(always)]
-    pub fn is_pseudo_legal(&self, mv: Move) -> bool {
-        self.pseudo_legal_move(mv).is_some()
+    pub fn is_pseudo_legal(&self, mv: impl Into<UciMove>) -> bool {
+        self.pseudo_legal_move(mv.into().0).is_some()
     }
 
     pub fn legal_move(&self, mv: Move) -> Option<Move> {
@@ -703,18 +709,13 @@ impl Board {
         self.king_safe_after(canonical).then_some(canonical)
     }
 
-    /// Legality as a plain boolean.
-    ///
-    /// This DISCARDS the canonical move that [`Board::legal_move`] returns.
-    /// `Move::from_uci` cannot know whether a move is a capture, a double
-    /// push, en passant or castling, so it always yields `QUIET`; only the
-    /// canonical move carries the correct flags. Use this when the answer is
-    /// the only thing wanted. **If the move is going to be played, use
-    /// [`Board::legal_move`] and play the move it returns**, never the input.
-    /// Playing a non-canonical move corrupts make/unmake.
+    /// Legality as a plain boolean, of a move or of UCI text's move. It
+    /// discards the canonical move [`Board::legal_move`] and
+    /// [`Board::legal_uci_move`] return, the only form that carries the flags
+    /// a played move needs.
     #[inline(always)]
-    pub fn is_legal(&self, mv: Move) -> bool {
-        self.legal_move(mv).is_some()
+    pub fn is_legal(&self, mv: impl Into<UciMove>) -> bool {
+        self.legal_move(mv.into().0).is_some()
     }
 
     /// Reserve room for `plies` further make/unmake pairs.

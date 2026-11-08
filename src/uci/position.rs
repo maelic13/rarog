@@ -1,6 +1,6 @@
 //! `position`: the board a `startpos` or `fen` line and its moves describe.
 
-use crate::board::{Board, Move};
+use crate::board::{Board, UciMove};
 
 /// The position `args` describe, `None` when they name none (no arguments, or
 /// a first word that is neither `startpos` nor `fen`), or why they cannot be
@@ -35,7 +35,7 @@ pub fn parse(args: &[String]) -> Result<Option<Board>, String> {
         .map_or(args.len(), |index| index + 1);
 
     for move_text in &args[moves_start_index..] {
-        if Move::from_uci(move_text).is_none() {
+        if UciMove::parse(move_text).is_none() {
             return Err(format!("Illegal move: {move_text}"));
         }
         if !board.play_uci(move_text) {

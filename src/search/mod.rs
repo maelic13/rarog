@@ -577,7 +577,7 @@ impl Searcher {
                     limits
                         .search_moves
                         .iter()
-                        .any(|requested| mv.same_uci_move(*requested))
+                        .any(|requested| requested.names(*mv))
                 })
                 .collect::<Vec<_>>();
             if filtered_root_moves.is_empty() {
@@ -2268,7 +2268,7 @@ mod tests {
     #[cfg(feature = "diag")]
     #[test]
     fn decision_trace_is_bounded_to_searchmoves_and_plies_one_and_two() {
-        let run = |search_moves: Vec<Move>| {
+        let run = |search_moves: Vec<crate::board::UciMove>| {
             let lines = Arc::new(Mutex::new(Vec::new()));
             let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
             let mut options = SearchOptions::default();
@@ -2285,8 +2285,8 @@ mod tests {
 
         assert!(run(Vec::new()).is_empty(), "no searchmoves, no trace");
         let traced = run(vec![
-            Move::from_uci("e2e4").expect("valid move"),
-            Move::from_uci("d2d4").expect("valid move"),
+            crate::board::UciMove::parse("e2e4").expect("valid move"),
+            crate::board::UciMove::parse("d2d4").expect("valid move"),
         ]);
         assert!(!traced.is_empty(), "searchmoves must produce a trace");
         for line in &traced {
@@ -2653,7 +2653,7 @@ mod tests {
         let mv = board.parse_move("e2e4").expect("legal move");
         let limits = SearchLimits {
             depth: Some(6),
-            search_moves: vec![mv],
+            search_moves: vec![mv.into()],
             ..SearchLimits::default()
         };
         let mut searcher = Searcher::default();

@@ -118,7 +118,7 @@ fn a_stored_win_never_answers_a_position_repeating_the_game_history() {
         };
         options.limits.depth = Some(depth);
         if let Some(uci) = root_move {
-            options.limits.search_moves = vec![mv(board, uci)];
+            options.limits.search_moves = vec![mv(board, uci).into()];
         }
         searcher
             .search(board.clone(), &options, false, || SearchEvent::None)

@@ -2,7 +2,7 @@
 //! and the position. The protocol fills these (`crate::uci`); the search
 //! reads them.
 
-use crate::board::{Board, Move};
+use crate::board::{Board, UciMove};
 use crate::search::params::CoreParams;
 use crate::search::params::ProofParams;
 use crate::search::params::QuietParams;
@@ -90,7 +90,7 @@ pub struct SearchLimits {
     pub nodes: u64,
     pub infinite: bool,
     pub ponder: bool,
-    pub search_moves: Vec<Move>,
+    pub search_moves: Vec<UciMove>,
     /// The instant the `go` command was parsed on the UCI thread.
     ///
     /// The harness charges the clock from the moment it writes `go`, so the

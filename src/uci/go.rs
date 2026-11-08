@@ -1,6 +1,6 @@
 //! `go`: one search's limits, or a `perft` count.
 
-use crate::board::Move;
+use crate::board::UciMove;
 use crate::search::options::SearchLimits;
 
 /// What a `go` asks for.
@@ -130,7 +130,7 @@ pub fn parse(args: &[String]) -> Go {
             if GoKeyword::parse(token).is_some() {
                 break;
             }
-            if let Some(mv) = Move::from_uci(token) {
+            if let Some(mv) = UciMove::parse(token) {
                 limits.search_moves.push(mv);
             } else {
                 notices.push(format!("Invalid searchmoves move: {token}"));

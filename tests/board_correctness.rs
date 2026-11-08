@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use rarog::board::{Bitboard, Board, Color, GameResult, Move, Piece, STARTING_FEN, Square};
+use rarog::board::{Bitboard, Board, Color, GameResult, Piece, STARTING_FEN, Square, UciMove};
 use rarog::eval::piece_value;
 
 const ORACLE_FENS: &[&str] = &[
@@ -104,7 +104,7 @@ fn impossible_and_friendly_occupied_moves_are_not_legal() {
         let board = Board::from_fen(fen).unwrap_or_else(|err| panic!("{fen}: {err}"));
         let generated = board.generate_legal_movelist();
         for illegal in illegal_moves {
-            let raw = Move::from_uci(illegal).expect("valid UCI move shape");
+            let raw = UciMove::parse(illegal).expect("valid UCI move shape");
 
             assert!(
                 !board.is_pseudo_legal(raw),
@@ -116,7 +116,7 @@ fn impossible_and_friendly_occupied_moves_are_not_legal() {
                 "{illegal} must not parse as legal in {fen}"
             );
             assert!(
-                !generated.iter().any(|&mv| mv.same_uci_move(raw)),
+                !generated.iter().any(|&mv| raw.names(mv)),
                 "{illegal} must not be generated as legal in {fen}"
             );
         }
@@ -126,7 +126,7 @@ fn impossible_and_friendly_occupied_moves_are_not_legal() {
 #[test]
 fn pseudo_legal_pinned_moves_are_rejected_as_illegal() {
     let board = Board::from_fen("k3r3/8/8/8/8/8/4R3/4K3 w - - 0 1").expect("valid FEN");
-    let pinned = Move::from_uci("e2f2").expect("valid UCI move shape");
+    let pinned = UciMove::parse("e2f2").expect("valid UCI move shape");
 
     assert!(board.is_pseudo_legal(pinned));
     assert!(!board.is_legal(pinned));
@@ -135,7 +135,7 @@ fn pseudo_legal_pinned_moves_are_rejected_as_illegal() {
         !board
             .generate_legal_movelist()
             .iter()
-            .any(|&mv| mv.same_uci_move(pinned))
+            .any(|&mv| pinned.names(mv))
     );
 }
 
@@ -155,7 +155,7 @@ fn legal_move_validation_accepts_capturing_checker() {
         );
     }
 
-    let recapture = Move::from_uci("g7f6").expect("valid UCI move shape");
+    let recapture = UciMove::parse("g7f6").expect("valid UCI move shape");
     assert!(board.is_pseudo_legal(recapture));
     assert!(board.is_legal(recapture));
     assert!(board.parse_move("g7f6").is_some());
@@ -166,16 +166,16 @@ fn legal_move_validation_canonicalizes_move_flags() {
     let capture_board =
         Board::from_fen("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")
             .expect("valid FEN");
-    let raw_capture = Move::from_uci("e4d5").expect("valid UCI move shape");
+    let raw_capture = UciMove::parse("e4d5").expect("valid UCI move shape");
     let capture = capture_board
-        .legal_move(raw_capture)
+        .legal_uci_move(raw_capture)
         .expect("e4d5 must be legal");
     assert!(capture.is_capture());
 
     let castle_board = Board::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1").expect("valid FEN");
-    let raw_castle = Move::from_uci("e1g1").expect("valid UCI move shape");
+    let raw_castle = UciMove::parse("e1g1").expect("valid UCI move shape");
     let castle = castle_board
-        .legal_move(raw_castle)
+        .legal_uci_move(raw_castle)
         .expect("e1g1 must be legal");
     assert!(castle.is_castling());
 
@@ -183,8 +183,8 @@ fn legal_move_validation_canonicalizes_move_flags() {
     for mv in ["e2e4", "a7a6", "e4e5", "d7d5"] {
         assert!(ep_board.play_uci(mv), "{mv} must be legal");
     }
-    let raw_ep = Move::from_uci("e5d6").expect("valid UCI move shape");
-    let ep = ep_board.legal_move(raw_ep).expect("e5d6 must be legal");
+    let raw_ep = UciMove::parse("e5d6").expect("valid UCI move shape");
+    let ep = ep_board.legal_uci_move(raw_ep).expect("e5d6 must be legal");
     assert!(ep.is_en_passant());
 }
 
@@ -1092,7 +1092,7 @@ fn fullmove_boundary_saturates_and_unmakes_for_real_and_null_moves() {
 fn malformed_uci_move_tokens_are_rejected_without_panicking() {
     let board = Board::starting_position();
     for input in ["aé1", "é2e4", "e2é4", "e2e4é", "e2e4qé"] {
-        let parsed = std::panic::catch_unwind(|| Move::from_uci(input));
+        let parsed = std::panic::catch_unwind(|| UciMove::parse(input));
         assert!(parsed.is_ok(), "{input:?} must not panic");
         assert_eq!(parsed.expect("panic already checked"), None, "{input:?}");
         assert_eq!(board.parse_move(input), None, "{input:?}");
