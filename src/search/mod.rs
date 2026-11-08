@@ -2172,12 +2172,14 @@ mod tests {
         let clock = |options: &SearchOptions| -> Vec<u64> {
             let mut view = Vec::new();
             for (time, increment, movestogo, game_ply) in clocks {
-                let mut limits = SearchLimits::default();
-                limits.white_time = Some(time);
-                limits.black_time = Some(time);
-                limits.white_increment = increment;
-                limits.black_increment = increment;
-                limits.movestogo = movestogo;
+                let limits = SearchLimits {
+                    white_time: Some(time),
+                    black_time: Some(time),
+                    white_increment: increment,
+                    black_increment: increment,
+                    movestogo,
+                    ..SearchLimits::default()
+                };
                 let runtime = time::compute_runtime_limits(
                     &limits,
                     &options.engine,
@@ -2234,22 +2236,22 @@ mod tests {
         };
         for &(name, min, max, field) in SearchParams::FIELDS {
             visit(name, min, max, &|o, v| {
-                *field(&mut o.engine.search_params) = v
+                *field(&mut o.engine.search_params) = v;
             });
         }
         for &(name, min, max, field) in CoreParams::FIELDS {
             visit(name, min, max, &|o, v| {
-                *field(&mut o.engine.core_params) = v
+                *field(&mut o.engine.core_params) = v;
             });
         }
         for &(name, min, max, field) in ProofParams::FIELDS {
             visit(name, min, max, &|o, v| {
-                *field(&mut o.engine.proof_params) = v
+                *field(&mut o.engine.proof_params) = v;
             });
         }
         for &(name, min, max, field) in QuietParams::FIELDS {
             visit(name, min, max, &|o, v| {
-                *field(&mut o.engine.quiet_params) = v
+                *field(&mut o.engine.quiet_params) = v;
             });
         }
         assert!(
