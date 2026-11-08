@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.9 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.10 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.11 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.12 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -663,13 +662,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      empty value, the fixture again and a two-folder path, searching KQK and
      KRK after each, is identical to the head's over all 196 lines: tables
      load, unload to no probes, and reload.
-    - **D.5.9 The slider-table `unsafe` and the timer — `I1`.** (RUST-2): the four identical
+    - **D.5.9 The slider-table `unsafe` and the timer — `I1`, DONE 2026-11-08.** (RUST-2): the four identical
      `get_unchecked` sites in `attacks.rs` become one `#[inline(always)]`
      helper (codegen `pext; add; mov` unchanged, checked in the assembly), and
      `timeBeginPeriod` is declared `pub safe fn` in the `unsafe extern` block
      (compile-checked on 1.99.1), removing the block in `main.rs`. After
      item 8 the count is 21 and this leaf takes it to 17; the floor is the
-     maintainer's decision and this leaf proposes it.
+     maintainer's decision and this leaf proposes it. `7d046b6`: one
+     `slider_attacks` holds the unchecked load, with the slot computed by
+     `SliderEntry::slot`; `main` calls `timeBeginPeriod` without a block.
+     `unsafe` sites 21 to 17; proposed floor 17. The release binaries'
+     instructions are identical to the head's on both backends, operands
+     included once addresses are masked (146,411 magic and 144,122 pext
+     instructions, 112 `pext`). Fingerprint 15,625,852 / EBF 2.563 on both
+     backends; debug and release suites, the allocation guard among them,
+     fmt and clippy clean. Pooled NPS, four pext builds an arm, no
+     regression by step 1: +0.04%, 95% interval −0.13% to +0.22%. The
+     prediction, frozen in the commit, was 0.0% ± 0.4%.
     - **D.5.10 Stack-built tables — `I1`.** (RUST-8): `HistoryTables::default` builds 64 KB
       and 21 KB tables in its frame and copies them to the heap, and
       `rank_root_moves` builds the 102 KB `TbRootMovesRaw` twice per tablebase
