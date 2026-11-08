@@ -335,7 +335,7 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.20 | READY_FOR_IMPLEMENTATION | I1 | Tooling |
+| D.5.20 | READY_FOR_IMPLEMENTATION | I1 | Tooling; held 2026-11-08 on two maintainer decisions (Miri's nightly toolchain, a structured disposition field), the rest landed |
 | D.5.21 | READY_FOR_IMPLEMENTATION | I1 | The behaviour-test sweep |
 | D.5.23 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, a unit test at an overflowing depth |
 | D.6.1 | RESEARCH | R2 | Screen first among the cards (castling's classification) |
@@ -924,6 +924,37 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the `unsafe` sites outside the FFI (TT cluster, slider tables), as a
       nightly job. A development build's `id name` carrying its commit and a
       dirty mark moved to E.3.2 on 2026-11-04.
+      **Landed 2026-11-08.** `d10643c`: every job in both workflows has
+      `timeout-minutes`; the runner labels name the images `-latest` named
+      that day (`ubuntu-24.04`, `windows-2025`, `macos-26` with Xcode 26.6
+      and Clang 21), so the macOS toolchain major is pinned with them; a
+      documents job on `windows-2025` runs `check_guide.py`,
+      `check_citations.py` with the pull request refs fetched and the
+      `tools/diag` tests; each workflow gains an aggregator, `CI passed` and
+      `Release candidate passed`, that always runs and fails unless every
+      job it gathers succeeded. Making them the required checks is a
+      repository setting, the maintainer's. The tools' suite was not
+      passing: `test_feature_matrix` failed because the matrix lacked
+      `pricing`, so CI had compiled no `pricing` combination; `d391702` adds
+      it and all 16 subsets compile. The ISA verifier already forbids SSE4.1,
+      AVX (the `v` prefix) and BMI1's `andn` at the baseline tier and permits
+      `tzcnt` on purpose (`TZCNT_IS_BASELINE_SAFE`: LLVM emits it as `rep
+      bsf`, correct on a pre-BMI1 CPU), so it needs no change. The Linux
+      assets are statically linked and the release job refuses a dynamic one,
+      so they have no glibc floor. The PGO item's premise was false:
+      `-pgo-warn-missing-function` fires only for a function with no profile
+      record, and a copy the training never reaches keeps a record with every
+      count zero (`send_full_info_line` in today's profile), so it would not
+      have seen `e057d84`'s cold copies. `7b81dc0` reads the merged profile
+      instead and fails the build unless every `negamax` and `quiescence`
+      copy ran: the pext PGO build reads 2 and 1 trained, and a function the
+      bench never calls, listed as kernel, fails it. None of the workflow
+      changes has run on GitHub yet; each command the new steps run passes
+      here. **Held:** the Miri job needs a nightly toolchain with Miri,
+      which this machine lacks, to check which unit tests it can run before
+      the job lands; and the ledger check needs a disposition both an index
+      row and its entry state in one form: 269 of 377 entries have no
+      disposition a pattern can find, and the two vocabularies differ.
     - **D.5.21 Basilisk's behaviour tests run against Rarog — `I1`.** (§D of the
       cross-check; about 20, among them shortest mate rather than the
       first mate, an injected illegal TT move never searched, every
