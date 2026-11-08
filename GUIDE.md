@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.5.16** (`I1`): Names and comments that mislead.
+**Now: D.5.17** (`I1`): Tests the review found missing.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -54,7 +54,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.5.13** The `texel` and `tune` evaluation tests in CI — DONE 2026-11-08
     - [x] **D.5.14** The KPK bitbase at compile time — DONE 2026-11-08
     - [x] **D.5.15** `Move::from_uci` into `make_move` — DONE 2026-11-08
-    - [ ] **D.5.16** Names and comments that mislead — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.5.16** Names and comments that mislead — DONE 2026-11-08
     - [ ] **D.5.17** Tests the review found missing — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.18** A record corrected — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.19** The KPK evaluation and every hard draw verdict against Syzygy — **READY_FOR_IMPLEMENTATION / I1**

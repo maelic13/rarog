@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.16 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.17 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.18 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.19 | READY_FOR_IMPLEMENTATION | I1 | Read 2026-11-02: the KPK verdicts agree with Syzygy and land as a test; won KPK and `krpkr_scale`'s wrong zeros went to D.6.21 and D.6.22; the KQKP, KRPKB and KBPK zeros unread |
@@ -761,7 +760,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       Every legal move of four positions, all fourteen flags among them,
       round-trips through the text form. Fingerprint 15,625,852 / EBF 2.563
       on both backends; debug and release suites, fmt and clippy clean.
-    - **D.5.16 Names and comments that mislead — `I1`.** (EVAL-9, TT-13, DRIVER-13,
+    - **D.5.16 Names and comments that mislead — `I1`, DONE 2026-11-08.** (EVAL-9, TT-13, DRIVER-13,
       BOARD-10; H12): seven ledger IDs and roadmap step numbers such as
       `mop_up.rs:129` and `144-149` remain in `src`, which AGENTS forbids
       (a census by script first); `LIGHT_SQUARES` holds the dark squares and its comment says
@@ -777,7 +776,26 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       fitted terms, the lazy-gate rationale (the king map alone can subtract
       637 cp against a 475 cp margin; the gate's support is RAR-E19/E20),
       the stale king-cap bound, the Apple cache-line paragraph and the 193
-      retired-number references. Comment-only commits.
+      retired-number references. Comment-only commits. `332bf53` swaps the
+      two colour masks' names with the KBNK corner pairs and the locals that
+      read them, so `DARK_SQUARES` holds a1 (a test pins a1, e1 dark and h1,
+      d1 light), and renames `piece_type_at_unchecked` to `occupant_type`;
+      no value or operation changes. `5923951` is the comment pass: the
+      census (the review's patterns, by line) found 198 hits on 122 lines,
+      and what it finds now, 22 hits on 18 lines, are measurements such as
+      `−7.21 ± 6.03 Elo`; no `RAR-` ID is left in `src`. The fitted terms'
+      "seeded 0" notes, the aspiration and SEE notes' pre-fit defaults, the
+      lazy gate's rationale (now: the king map can move the score 637 cp, and
+      the gate stands on its games, about −105 Elo without it), the king cap's
+      bound (now a formula with today's 637 and 18 cp), the `replacement` doc
+      (no bound clause; four plies, six for a PV store), the aspiration
+      fail-low (beta to the midpoint of the new alpha and the old beta),
+      `LocalCluster::holds` and the Apple paragraph say what the code does.
+      Two test names carrying step numbers are renamed with their
+      references. `zobrist.rs` held none. Both commits leave the release
+      binary's instructions identical to the head's; fingerprint 15,625,852 /
+      EBF 2.563 on both backends; debug and release suites, the `texel` and
+      `tune` library tests, fmt and clippy clean.
     - **D.5.17 Tests the review found missing — `I1`.** (TT-12, NODE-14, DRIVER-21, BOARD-7,
       EVAL-2, PROTO-20): a deterministic torn-pair test and `false_hits <= 3`
       with a seeded set for the shared table (today's threshold cannot see an
