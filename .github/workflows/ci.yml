@@ -370,6 +370,9 @@ jobs:
       - name: check_citations.py
         run: python tools/diag/check_citations.py
 
+      - name: check_dispositions.py
+        run: python tools/diag/check_dispositions.py
+
       - name: The tools' tests
         run: python -m unittest discover -s tools/diag -p "test_*.py"
 
