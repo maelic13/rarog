@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.14 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.15 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.16 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.17 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -733,11 +732,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       fails the `texel` step on two tests, the gate among them. GitHub's
       runner has not run them yet. AGENTS' verification list names both
       commands for evaluation, trace or parameter changes.
-    - **D.5.14 The KPK bitbase at compile time — `I1`.** (RUST-4): the one table built at run
+    - **D.5.14 The KPK bitbase at compile time — `I1`, DONE 2026-11-08.** (RUST-4): the one table built at run
       time, 524,288 bytes, exactly the large-page threshold, so it takes a 2
       MB locked page; a bit-packed `[u64; 1024]` (65 KB) built by `const`
       evaluation or `build.rs`, checked equal to `generate()` over every
-      index, after which `initialize_tables` goes.
+      index, after which `initialize_tables` goes. One bit for each of the
+      524,288 positions is 65,536 bytes, `[u64; 8192]`, not 1,024 words.
+      `const` evaluation made a library check take 112 s against 1.4 s, so
+      `3334794` runs the generator (`kpk_generate.rs`) in `build.rs`, which
+      adds about 0.5 s to a check after an edit, and the engine includes the
+      bits as a `[u8; 65536]` in its read-only data. `initialize_tables` and
+      its two calls are gone. The tests keep the run-time generator as it
+      was and check the built table against it at all 524,288 indices; a
+      pawn-attack mask swapped in the generator fails at index 968. The
+      Syzygy KPK verdict test still passes. Start-up to `uciok` 29.1 ms to
+      9.6 ms (medians of 12). Fingerprint 15,625,852 / EBF 2.563 on both
+      backends; debug and release suites, fmt and clippy clean.
     - **D.5.15 `Move::from_uci` into `make_move` — `I1`.** (BOARD-4): a non-canonical move
       from the text constructor corrupts the board in release (a capture
       leaves the captured bit; `e1g1` castles without the rook); every caller
