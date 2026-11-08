@@ -51,11 +51,21 @@ Semantically a null is not a move and arguably should not advance a rule-50
 clock, but changing it was inside both losing RAR-S18 arms and is not revisited
 on semantic tidiness alone.
 
-The **cross-null repetition question** is separate and resolves on structure,
-not on Elo. `is_repetition` compares the full position hash, which includes side
-to move, so crossing a null can only ever produce a **false negative** (a real
-repetition missed because the stride-2 scan lands on the wrong parity), never a
-false positive. And the arbiter path is unaffected in principle, not just in
+The **cross-null repetition question** is separate. `is_repetition` compares
+full position hashes two plies apart across the whole history, null moves
+included, and the hash includes the side to move. A scan crossing a null can
+miss a real repetition (a **false negative**), and it can also find a **false
+positive**: two passes by the same side while the opponent shuffles a piece out
+and back, or one pass while the opponent loses a tempo round a triangle,
+return the starting position with the clock past four plies, and
+`can_declare_draw_in_search` scores it a twofold. Both forms are pinned in
+`tests/draw_semantics.rs`
+(`a_repetition_across_null_moves_scores_as_a_draw_in_search`). The engine
+review counted the false form at 46 of 16,593 search twofold hits in 7.6 M
+nodes at depth 12 on the bench positions, about six per million nodes
+(`analysis/engine_review_2026-11-01.md`, BOARD-3). *(Corrected 2026-11-08,
+D.5.18: this paragraph said a crossing could only ever be a false negative.)*
+The arbiter path is unaffected in principle, not just in
 practice: `can_declare_draw` is reached only from `game_result` and the root
 tablebase gate, both at game level where history contains no null moves.
 `can_declare_draw_in_search` is the only consumer that can see them, at

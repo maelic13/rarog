@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.18 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.19 | READY_FOR_IMPLEMENTATION | I1 | Read 2026-11-02: the KPK verdicts agree with Syzygy and land as a test; won KPK and `krpkr_scale`'s wrong zeros went to D.6.21 and D.6.22; the KQKP, KRPKB and KBPK zeros unread |
 | D.5.20 | READY_FOR_IMPLEMENTATION | I1 | Tooling |
 | D.5.21 | READY_FOR_IMPLEMENTATION | I1 | The behaviour-test sweep |
@@ -835,7 +834,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `clear_move` calls fails 13 to 28 debug tests. Fingerprint 15,625,852 /
       EBF 2.563 on both backends and the release binary's instructions
       unchanged; debug and release suites, fmt and clippy clean.
-    - **D.5.18 A record corrected — `I1`.** (BOARD-3): `analysis/draw_policy_2026-09-08.md`
+    - **D.5.18 A record corrected — `I1`, DONE 2026-11-08.** (BOARD-3): `analysis/draw_policy_2026-09-08.md`
       Policy 2 says a repetition scan crossing a null move can only be a false
       negative; two null moves by the same side while the opponent shuffles a
       piece out and back produce a false twofold through the public API
@@ -849,7 +848,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       reproduced); and correct `analysis/see_contract_2026-09-06.md` row 32,
       which says no production SEE call reaches a quiet promotion: quiet
       promotions are noisy and reach `see_ge_quiet_aware` (`node.rs:1687`),
-      whose shortcut passes them.
+      whose shortcut passes them. `ac71ee9` pins both forms through the public
+      API: from `4k3/8/8/8/8/8/PPP5/4K3 w`, two passes with `e8d8 d8e8`
+      between them, and one pass with `e8d8 e1d1 d8d7 d1e1 d7e8`, so the
+      single-null form is now reproduced; each reaches the start position,
+      the search scores the twofold a draw, the arbiter's draw does not
+      fire, and nothing reads drawn before the last step. Policy 2 now says a
+      crossing can be a false positive, with the review's rate (46 of 16,593
+      twofold hits at depth 12), and keeps its retry trigger; the SEE record's
+      quiet-promotion row says the main search's SEE pruning reaches them and
+      the shortcut passes them. Both corrections are dated in place. Debug
+      and release suites, fmt and clippy clean; fingerprint unchanged.
   Added 2026-11-02 from the Basilisk cross-check (`analysis/basilisk_crosscheck_2026-11-02.md`,
   read against Basilisk's work since its 2026-10-06 review):
     - **D.5.19 The KPK evaluation and every hard draw verdict against Syzygy — `I1`.** (A3,
