@@ -268,6 +268,10 @@ pub(super) struct Pricing {
     pub(super) probing: bool,
     /// The rule a node-level probe switched off, and the ply it is off at.
     pub(super) off: Option<(usize, Rule)>,
+    /// The running quiescence began at a PV node: the node type its rules'
+    /// records report. A quiescence never calls `negamax`, so its recursion
+    /// and its probes keep the value the hand-off set.
+    pub(super) q_pv: bool,
     /// Probes search with the compiled-in parameters, so a planted option
     /// acts only in the measured search.
     confine: bool,
@@ -293,6 +297,7 @@ impl Default for Pricing {
         Self {
             probing: false,
             off: None,
+            q_pv: false,
             confine: confine_from_env(),
             held: None,
             cold: cold_from_env(),
@@ -639,7 +644,7 @@ impl Searcher {
 
     /// A quiescence node whose delta rule returned, searched again with the
     /// rule off at its ply.
-    pub(super) fn price_q_node<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
+    pub(super) fn price_q_node<P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
         decision: &Decision,
@@ -647,20 +652,13 @@ impl Searcher {
         verdict: Verdict,
         poll: &mut P,
     ) {
-        self.q_node_probe::<NODE, _>(board, decision, entry, verdict, ProbeKind::Priced, poll);
+        self.q_node_probe(board, decision, entry, verdict, ProbeKind::Priced, poll);
         if self.td.pricing.identity {
-            self.q_node_probe::<NODE, _>(
-                board,
-                decision,
-                entry,
-                verdict,
-                ProbeKind::Identity,
-                poll,
-            );
+            self.q_node_probe(board, decision, entry, verdict, ProbeKind::Identity, poll);
         }
     }
 
-    fn q_node_probe<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
+    fn q_node_probe<P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
         decision: &Decision,
@@ -671,7 +669,7 @@ impl Searcher {
     ) {
         let saved = self.probe_begin();
         self.probe_switches(decision, kind);
-        let score = self.quiescence::<NODE, _>(
+        let score = self.quiescence(
             board,
             entry.alpha,
             entry.beta,
@@ -691,7 +689,7 @@ impl Searcher {
 
     /// A capture a quiescence rule skipped, searched as quiescence searches
     /// its captures.
-    pub(super) fn price_q_capture<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
+    pub(super) fn price_q_capture<P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
         decision: &Decision,
@@ -703,7 +701,7 @@ impl Searcher {
         self.push_move(board, ply, capture.mv, capture.piece);
         let gives_check = board.gives_check_with(capture.mv, &board.check_info());
         board.make_move_with_check(capture.mv, gives_check);
-        let score = -self.quiescence::<NODE, _>(
+        let score = -self.quiescence(
             board,
             -capture.beta,
             -capture.alpha,
