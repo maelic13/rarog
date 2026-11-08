@@ -75,6 +75,36 @@ impl SliderEntry {
             }
         }
     }
+
+    /// The slot of `occ`'s blockers in this square's run of its table.
+    #[inline(always)]
+    fn slot(&self, occ: Bitboard) -> usize {
+        #[cfg(all(rarog_pext, target_arch = "x86_64"))]
+        {
+            self.offset + pext_index(occ.0, self.mask)
+        }
+
+        #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
+        {
+            self.offset + infra::index(((occ.0 & self.mask).wrapping_mul(self.magic)) >> self.shift)
+        }
+    }
+}
+
+/// The attacks `table` holds for a slider whose square has `entry`, with
+/// `occ` on the board.
+#[inline(always)]
+fn slider_attacks(table: &[Bitboard], entry: &SliderEntry, occ: Bitboard) -> Bitboard {
+    let slot = entry.slot(occ);
+    // SAFETY: `build` fills exactly `entry.offset .. entry.offset +
+    // 2^popcount(entry.mask)` of `table` for this square, and `slot` stays in
+    // that run: PEXT yields the rank of a subset of the mask, below
+    // 2^popcount, and the magic index is masked to the run's width by
+    // `entry.shift`.
+    // KEEP-UNSAFE: safe indexing measured −0.5% NPS under PEXT and −1.5% with
+    // magics: the index is occupancy-derived, so the bounds check cannot
+    // elide, in the hottest load in the engine.
+    unsafe { *table.get_unchecked(slot) }
 }
 
 impl AttackTables {
@@ -99,56 +129,15 @@ impl AttackTables {
 
     #[inline(always)]
     pub fn bishop(&self, sq: Square, occ: Bitboard) -> Bitboard {
-        // Safe — `Square::index()` is masked to 0..=63, so the bounds
-        // check on this `[_; 64]` elides.
-        let e = &self.bishop[sq.index()];
-        #[cfg(all(rarog_pext, target_arch = "x86_64"))]
-        {
-            let idx = e.offset + pext_index(occ.0, e.mask);
-            // SAFETY: `pext_index` yields < 2^popcount(e.mask) by construction
-            // and `build` fills exactly that many entries from `e.offset`, so
-            // `idx` is always in bounds.
-            // KEEP-UNSAFE: safe indexing measured −0.5% NPS here (pext) and
-            // −1.5% on the magic path — the index is occupancy-derived, so the
-            // bounds check cannot elide, in the hottest load in the engine.
-            unsafe { *self.bishop_table.get_unchecked(idx) }
-        }
-
-        #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
-        {
-            let idx = e.offset + infra::index(((occ.0 & e.mask).wrapping_mul(e.magic)) >> e.shift);
-            // SAFETY: `idx` is in bounds — the magic index is masked to the
-            // per-square table width by `e.shift`, and `build` fills exactly
-            // `e.offset .. e.offset + 2^popcount(e.mask)` for that square.
-            // KEEP-UNSAFE: safe indexing measured −1.5% NPS on this path
-            // (the index is occupancy-derived, so the check cannot elide).
-            unsafe { *self.bishop_table.get_unchecked(idx) }
-        }
+        // `Square::index()` is masked to 0..=63, so the bounds check on this
+        // `[_; 64]` elides.
+        slider_attacks(&self.bishop_table, &self.bishop[sq.index()], occ)
     }
 
     #[inline(always)]
     pub fn rook(&self, sq: Square, occ: Bitboard) -> Bitboard {
-        // Safe — see `bishop()`.
-        let e = &self.rook[sq.index()];
-        #[cfg(all(rarog_pext, target_arch = "x86_64"))]
-        {
-            let idx = e.offset + pext_index(occ.0, e.mask);
-            // SAFETY: as in `bishop()`, `pext_index` yields < 2^popcount(e.mask)
-            // and `build` fills exactly that many entries from `e.offset`.
-            // KEEP-UNSAFE: see `bishop()`; the same measurement.
-            unsafe { *self.rook_table.get_unchecked(idx) }
-        }
-
-        #[cfg(not(all(rarog_pext, target_arch = "x86_64")))]
-        {
-            let idx = e.offset + infra::index(((occ.0 & e.mask).wrapping_mul(e.magic)) >> e.shift);
-            // SAFETY: `idx` is in bounds — the magic index is masked to the
-            // per-square table width by `e.shift`, and `build` fills exactly
-            // `e.offset .. e.offset + 2^popcount(e.mask)` for that square.
-            // KEEP-UNSAFE: safe indexing measured −1.5% NPS on this path
-            // (the index is occupancy-derived, so the check cannot elide).
-            unsafe { *self.rook_table.get_unchecked(idx) }
-        }
+        // Bounds as in `bishop()`.
+        slider_attacks(&self.rook_table, &self.rook[sq.index()], occ)
     }
 
     #[inline(always)]

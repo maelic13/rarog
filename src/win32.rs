@@ -50,7 +50,9 @@ pub struct MemoryStatusEx {
 #[link(name = "advapi32")]
 #[link(name = "winmm")]
 unsafe extern "system" {
-    pub fn timeBeginPeriod(period: u32) -> u32;
+    /// Safe: it takes a value and changes only the process's timer
+    /// resolution, which Windows reverts at exit.
+    pub safe fn timeBeginPeriod(period: u32) -> u32;
     pub fn GetCurrentProcess() -> Handle;
     pub fn CloseHandle(handle: Handle) -> i32;
     pub fn GetLastError() -> u32;

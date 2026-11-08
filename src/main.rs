@@ -110,11 +110,7 @@ fn main() {
 /// reverts it at exit, so no paired `timeEndPeriod` is needed.
 #[cfg(windows)]
 fn request_fine_grained_scheduling() {
-    // SAFETY: plain FFI call with no pointers or state; the only effect is a
-    // process-scoped timer-resolution request the OS reverts at exit.
-    unsafe {
-        rarog::win32::timeBeginPeriod(1);
-    }
+    rarog::win32::timeBeginPeriod(1);
 }
 
 #[cfg(not(windows))]
