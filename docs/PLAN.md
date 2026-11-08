@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.13 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.14 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.15 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.16 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -722,10 +721,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       directory. Both of its commands pass on this host; GitHub's runner
       has not run it yet. Fingerprint 15,625,852 / EBF 2.563 on both
       backends; debug and release suites, fmt and clippy clean.
-    - **D.5.13 The `texel` and `tune` evaluation tests in CI — `I1`.** (EVAL-1): the
+    - **D.5.13 The `texel` and `tune` evaluation tests in CI — `I1`, DONE 2026-11-08.** (EVAL-1): the
       integer-exact trace reconstruction gate runs only under `--features
       texel` and CI never runs it (37 pass today); one CI step per feature and
       a line in AGENTS' verification list for evaluation or trace changes.
+      Every feature-only test is a library test: `texel` runs 266 against
+      the default 259 (eight of its own, the gate among them, and one default
+      test it leaves out), `tune` 265 (six of its own). `3fc9be3` adds
+      `cargo test -p rarog --release --features <f> --lib` for each to CI's
+      feature job; both pass here, and a reconstruction planted one unit off
+      fails the `texel` step on two tests, the gate among them. GitHub's
+      runner has not run them yet. AGENTS' verification list names both
+      commands for evaluation, trace or parameter changes.
     - **D.5.14 The KPK bitbase at compile time — `I1`.** (RUST-4): the one table built at run
       time, 524,288 bytes, exactly the large-page threshold, so it takes a 2
       MB locked page; a bit-packed `[u64; 1024]` (65 KB) built by `const`

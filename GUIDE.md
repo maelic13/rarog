@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.5.13** (`I1`): The `texel` and `tune` evaluation tests in CI.
+**Now: D.5.14** (`I1`): The KPK bitbase at compile time.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -51,7 +51,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.5.10** Stack-built tables — DONE 2026-11-08
     - [x] **D.5.11** The Fathom FFI layout guard — DONE 2026-11-08
     - [x] **D.5.12** The PEXT tier in CI — DONE 2026-11-08
-    - [ ] **D.5.13** The `texel` and `tune` evaluation tests in CI — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.5.13** The `texel` and `tune` evaluation tests in CI — DONE 2026-11-08
     - [ ] **D.5.14** The KPK bitbase at compile time — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.15** `Move::from_uci` into `make_move` — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.16** Names and comments that mislead — **READY_FOR_IMPLEMENTATION / I1**
