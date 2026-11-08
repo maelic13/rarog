@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.10 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.11 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.12 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.13 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -679,11 +678,28 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      fmt and clippy clean. Pooled NPS, four pext builds an arm, no
      regression by step 1: +0.04%, 95% interval −0.13% to +0.22%. The
      prediction, frozen in the commit, was 0.0% ± 0.4%.
-    - **D.5.10 Stack-built tables — `I1`.** (RUST-8): `HistoryTables::default` builds 64 KB
+    - **D.5.10 Stack-built tables — `I1`, DONE 2026-11-08.** (RUST-8): `HistoryTables::default` builds 64 KB
       and 21 KB tables in its frame and copies them to the heap, and
       `rank_root_moves` builds the 102 KB `TbRootMovesRaw` twice per tablebase
       root rank; build them zeroed on the heap, and the assembly scan shows
-      the copies gone.
+      the copies gone. Both held in the head's assembly: frames of 98,344 and
+      204,424 bytes, and two table-sized `memcpy` calls. `Box::write` into
+      `Box::new_uninit` did not help; `dd1c66a` boxes an empty static (the
+      history tables) or an associated constant (Fathom's buffer) instead,
+      which compiles to `__rust_alloc_zeroed`, with no new `unsafe`. The
+      frames are 40 and 1,896 bytes and no table-sized `memcpy` is left;
+      `clear` assigns the same statics and still compiles to the six
+      in-place `memset` calls. Fingerprint 15,625,852 / EBF 2.563 on both
+      backends; debug and release suites, the allocation guard among them,
+      fmt and clippy clean. A MultiPV 3 session on five KPK roots, which
+      the fixture ranks by WDL alone (no DTZ file), is identical to the
+      head's over all 128 lines, and a mutant whose WDL root probe always
+      fails changes it. Pooled NPS, four pext builds an arm (the base pool
+      is D.5.9's candidate, the same engine source), no regression by step
+      2: −0.11%, 95% interval −0.34% to +0.11% over six cycles (step 1
+      −0.22%, between). The prediction, frozen in the commit, was 0.0% ±
+      0.4%. 1,891 of 144,122 instruction lines differ in the pext binary,
+      282 of their 325 hunks in one region, where construction is inlined.
     - **D.5.11 The Fathom FFI layout guard — `I1`.** (RUST-5): `const` size asserts for
       `TbRootMoveRaw` (528 B) and `TbRootMovesRaw` (101,908 B, align 4) and a
       test that parses `TB_MAX_MOVES` and `TB_MAX_PLY` out of
