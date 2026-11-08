@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.7 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.8 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.9 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.10 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -635,8 +634,21 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      between). The prediction, frozen in the commit, was +0.2% ± 0.5%. The
      read lies inside that range, but no gain is visible: one copy of the
      recursion did not make it faster here.
-    - **D.5.7 The root `searchmoves` filter — `I1`.** allocates a `Vec` per root call
-     (NODE-13): filter in place.
+    - **D.5.7 The root `searchmoves` filter — `I1`, DONE 2026-11-08.** allocates a `Vec` per root call
+     (NODE-13): filter in place. The search's root list is always set, so
+     every root visit allocated, not only under `searchmoves`. `125bf5c`
+     narrows the list in place with `MoveList::retain`, in its order and with
+     no new `unsafe`. Bench position 0 at one thread now adds one allocation
+     over eight iterations, against 77; the allocation guard's comment says so.
+     MultiPV 3 and `searchmoves` searches on six positions are identical to the
+     head's over all 323 output lines (the bench never narrows the list).
+     Fingerprint 15,625,852 / EBF 2.563 on both slider backends. Debug and
+     release suites, fmt and clippy clean; a `retain` that writes out of order
+     fails its test. Pooled NPS, four pext builds an arm, no regression by step
+     2: −0.25%, 95% interval −0.86% to +0.35% over six cycles. The first
+     step 1 was disturbed and discarded unread; its repeat read −0.31%,
+     between. The prediction, frozen in the commit, was +0.1% ± 0.4%: inside
+     the range, so a root allocation per visit had no visible cost.
     - **D.5.8 Dead Syzygy code — `I1`.** (PROTO-13): `syzygy::probe_root`, `RootProbe`, their
      constants and the dead `tb_init` branch (it returns `true` at both
      exits); one `unsafe` site fewer.
