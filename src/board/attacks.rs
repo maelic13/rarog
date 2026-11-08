@@ -447,11 +447,16 @@ const fn bishop_attacks_slow(sq: Square, occ: u64) -> u64 {
     att
 }
 
+// Without BMI2 as a target feature, `_pext_u64` still compiles, as a call
+// that is never inlined and faults on a CPU without the instruction.
+#[cfg(all(rarog_pext, target_arch = "x86_64", not(target_feature = "bmi2")))]
+compile_error!("`--cfg rarog_pext` needs `-C target-feature=+bmi2`");
+
 #[cfg(all(rarog_pext, target_arch = "x86_64"))]
 #[inline(always)]
 fn pext_index(occ: u64, mask: u64) -> usize {
-    // SAFETY: `_pext_u64` needs BMI2. This path is compiled only under
-    // `--cfg rarog_pext`, which `xtask --arch pext` sets together with
+    // SAFETY: `_pext_u64` needs BMI2. This path compiles only under
+    // `--cfg rarog_pext`, which refuses to build without
     // `-C target-feature=+bmi2`, so its binaries target BMI2 CPUs only.
     infra::index(unsafe { std::arch::x86_64::_pext_u64(occ, mask) })
 }
