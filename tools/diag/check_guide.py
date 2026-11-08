@@ -88,6 +88,7 @@ does not change it.
 import argparse
 import pathlib
 import re
+import subprocess
 import sys
 
 import guide_board
@@ -296,7 +297,14 @@ def ledger_problems(ledger_text, headings):
 
 
 def repository_path_exists(path):
-    return (ROOT / path.rstrip("/")).exists()
+    """On disk, or a path Git ignores: raw evidence lives in ignored places
+    (`analysis/artifacts/`, `tools/results/`, the books) on the machine that
+    made it, and a fresh clone, such as CI's, never has it."""
+    if (ROOT / path.rstrip("/")).exists():
+        return True
+    ignored = subprocess.run(["git", "check-ignore", "-q", "--no-index", path],
+                             cwd=ROOT, capture_output=True, check=False)
+    return ignored.returncode == 0
 
 
 def self_test():
