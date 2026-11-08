@@ -47,7 +47,8 @@ env:
 jobs:
   prepare:
     name: Validate the tag, the changelog and the declared fingerprint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     outputs:
       mode: ${{ steps.meta.outputs.mode }}
       version: ${{ steps.meta.outputs.version }}
@@ -117,6 +118,7 @@ jobs:
     name: Build ${{ matrix.os_name }} ${{ matrix.arch }}
     needs: prepare
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -129,7 +131,7 @@ jobs:
           # its run-time dispatch, which the ISA check rejects.
           - { runner: ubuntu-24.04, os_name: linux, arch: x64, universal: true, target: x86_64-unknown-linux-gnu, ext: "" }
           - { runner: ubuntu-24.04-arm, os_name: linux, arch: arm64, universal: false, target: aarch64-unknown-linux-gnu, ext: "" }
-          - { runner: windows-latest, os_name: windows, arch: x64, universal: true, target: x86_64-pc-windows-msvc, ext: ".exe" }
+          - { runner: windows-2025, os_name: windows, arch: x64, universal: true, target: x86_64-pc-windows-msvc, ext: ".exe" }
           # PGO here depends on a WORKAROUND, not on stock toolchain support:
           # linked with MSVC link.exe the instrumented binary emits .profraw
           # files with an empty symbol-name table and llvm-profdata refuses
@@ -137,7 +139,7 @@ jobs:
           # xtask/src/main.rs, rust-lang/rust#156675) — when that lands, drop
           # the override and re-test.
           - { runner: windows-11-arm, os_name: windows, arch: arm64, universal: false, target: aarch64-pc-windows-msvc, ext: ".exe" }
-          - { runner: macos-latest, os_name: macos, arch: arm64, universal: false, target: aarch64-apple-darwin, ext: "" }
+          - { runner: macos-26, os_name: macos, arch: arm64, universal: false, target: aarch64-apple-darwin, ext: "" }
     steps:
       - uses: actions/checkout@v7
         with:
@@ -256,8 +258,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { runner: ubuntu-latest, os_name: linux, ext: "" }
-          - { runner: windows-latest, os_name: windows, ext: ".exe" }
+          - { runner: ubuntu-24.04, os_name: linux, ext: "" }
+          - { runner: windows-2025, os_name: windows, ext: ".exe" }
     steps:
       - uses: actions/checkout@v7
         with:
@@ -287,7 +289,8 @@ jobs:
   collect:
     name: Verify the complete matrix
     needs: [prepare, build, select]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -328,7 +331,8 @@ jobs:
     # pull request or dispatch from reaching the write permission regardless.
     if: needs.prepare.outputs.mode == 'release' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: [prepare, collect]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
@@ -374,3 +378,22 @@ jobs:
           files: bundle/rarog-*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-ok:
+    name: Release candidate passed
+    # The one check to require. A job skipped because a job it needs failed
+    # reports as skipped, which a required check reads as passing; this job
+    # always runs, and fails unless every job it gathers succeeded.
+    if: always()
+    needs: [prepare, build, select, collect]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every gathered job succeeded
+        shell: bash
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+          FAILED: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}
+        run: |
+          echo "$RESULTS"
+          [ "$FAILED" = "false" ] || { echo "::error::a gathered job did not succeed"; exit 1; }
