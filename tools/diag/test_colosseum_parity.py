@@ -66,8 +66,11 @@ class ParityTests(unittest.TestCase):
             "concurrency": lambda d: d["resolved_configuration"]["execution"].update({"concurrency": 16}),
             "affinity_cpus": lambda d: d["resolved_configuration"]["execution"]["slots"][0]["engine_a"]["allocation"]["cpus"].append({"group": 0, "number": 0}),
         }
-        expected_collateral = {"engineA.executable": ["engineA.sha256"]}
         baseline = rows_for(load_dry())
+        # Without the binary on this host both sides of the hash row read as
+        # missing, so naming another executable cannot move it.
+        hashed_here = not str(baseline["engineA.sha256"]["colosseum"]).startswith("(")
+        expected_collateral = {"engineA.executable": ["engineA.sha256"]} if hashed_here else {}
         for field, mutate in mutations.items():
             with self.subTest(field=field):
                 dry = load_dry()
