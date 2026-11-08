@@ -74,6 +74,15 @@ macro_rules! search_params {
         }
 
         #[cfg(test)]
+        impl $name {
+            /// Every parameter's UCI name, declared range and field, for the
+            /// tests that visit each one.
+            pub(crate) const FIELDS: &'static [(&'static str, i32, i32, fn(&mut Self) -> &mut i32)] = &[
+                $( ($uci, $min, $max, |p: &mut Self| &mut p.$field), )+
+            ];
+        }
+
+        #[cfg(test)]
         mod $checks {
             use super::*;
 

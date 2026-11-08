@@ -2096,6 +2096,178 @@ mod tests {
     use crate::eval::VALUE_NONE;
     use crate::tt::{Bound, TtStore};
 
+    /// Every search parameter is live: set to either end of its declared
+    /// range, it moves the tree of a fixed-depth search on a named position,
+    /// or, for a clock parameter, the time limits or the soft stop on a named
+    /// clock. The SPSA coverage audit reads the source; this reads behaviour,
+    /// so a parameter the search no longer consults, or consults only where no
+    /// named position reaches, fails here by name. Release only: the sweep is
+    /// about 300 searches.
+    #[test]
+    #[cfg_attr(
+        debug_assertions,
+        ignore = "about 300 searches; the release suite runs it"
+    )]
+    fn every_search_parameter_moves_what_it_tunes() {
+        const DEPTH: u32 = 8;
+        const KIWIPETE: &str =
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+        const SEMI_SLAV: &str =
+            "rnbqkb1r/pp3ppp/2p1pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 0 5";
+        // A knight up, so null moves see a surplus over beta.
+        const KNIGHT_UP: &str = "r1bqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        // Two pieces a side, and a rule-50 clock under way.
+        const TWO_PIECES: &str = "2r3k1/pp1n1ppp/4p3/3pP3/3P1P2/2RB2P1/PP5P/6K1 w - - 40 30";
+        const PAWN_ENDING: &str = "8/5pk1/6p1/8/4P3/5PK1/8/8 w - - 10 50";
+        const POSITIONS: [&str; 5] = [KIWIPETE, SEMI_SLAV, KNIGHT_UP, TWO_PIECES, PAWN_ENDING];
+        // Parameters that act only deeper than the sweep, each with the
+        // position and depth where an end of its range first moved the tree:
+        // a null move's surplus past 128, a singular extension at a new PV
+        // node, a capped singular reduction, and a pruned quiet at a node
+        // already at or above beta.
+        const DEEP: [(&str, &str, u32); 5] = [
+            ("CoreNmpRClamp", KIWIPETE, 10),
+            ("CoreSingDoubleNotTtPv", KNIGHT_UP, 10),
+            ("CoreSingTripleNotTtPv", KIWIPETE, 10),
+            ("CoreLmrSingularCap", KNIGHT_UP, 12),
+            ("CoreFpEvalAboveBeta", PAWN_ENDING, 13),
+        ];
+        // Proved live by a test of its own: a root fail-high stops the search
+        // at the low end of the range and not at the high end.
+        const ELSEWHERE: [(&str, &str); 1] = [(
+            "TmFailHighTarget",
+            "a_root_fail_high_past_the_soft_target_plays_the_move_with_its_lower_bound",
+        )];
+        let tree = |options: &SearchOptions, fen: &str, depth: u32| {
+            let board = Board::from_fen(fen).expect("valid FEN");
+            let mut options = options.clone();
+            options.limits.depth = Some(depth);
+            let mut searcher = Searcher::default();
+            let result = searcher.search(board, &options, false, || SearchEvent::None);
+            (result.nodes, result.score)
+        };
+        let clocks = [
+            (60_000, 600, 0, 0_u32),
+            (2_000, 20, 0, 60),
+            (30_000, 0, 20, 20),
+        ];
+        // Early in a search, and late, with the best move long held and
+        // most of the nodes spent on it.
+        let signals = [
+            IterationSignals {
+                score_fall: 25.0,
+                cross_move_fall: 15.0,
+                best_move_changes: 1.5,
+                stable_iterations: 3,
+                effort_share: 0.6,
+            },
+            IterationSignals {
+                score_fall: -10.0,
+                cross_move_fall: 0.0,
+                best_move_changes: 0.0,
+                stable_iterations: 20,
+                effort_share: 0.97,
+            },
+        ];
+        let clock = |options: &SearchOptions| -> Vec<u64> {
+            let mut view = Vec::new();
+            for (time, increment, movestogo, game_ply) in clocks {
+                let mut limits = SearchLimits::default();
+                limits.white_time = Some(time);
+                limits.black_time = Some(time);
+                limits.white_increment = increment;
+                limits.black_increment = increment;
+                limits.movestogo = movestogo;
+                let runtime = time::compute_runtime_limits(
+                    &limits,
+                    &options.engine,
+                    Color::White,
+                    game_ply,
+                    MAX_DEPTH,
+                );
+                for value in [
+                    runtime.optimum_ms,
+                    runtime.maximum_ms,
+                    runtime.tb_extension_latest_start_ms,
+                ] {
+                    view.push(value.to_bits());
+                }
+                for signals in signals {
+                    let soft = time::soft_stop(&options.engine.search_params, &runtime, signals);
+                    view.push(soft.target_ms.to_bits());
+                }
+            }
+            view
+        };
+        let base = SearchOptions::default();
+        let base_trees: Vec<_> = POSITIONS
+            .iter()
+            .map(|fen| tree(&base, fen, DEPTH))
+            .collect();
+        let base_clock = clock(&base);
+        let mut visited = Vec::new();
+        let mut dead = Vec::new();
+        let mut visit = |name: &str, min: i32, max: i32, set: &dyn Fn(&mut SearchOptions, i32)| {
+            visited.push(name.to_string());
+            if ELSEWHERE.iter().any(|(elsewhere, _)| *elsewhere == name) {
+                return;
+            }
+            let deep = DEEP.iter().find(|(deep, _, _)| *deep == name);
+            let deep_base = deep.map(|&(_, fen, depth)| tree(&base, fen, depth));
+            let live = [min, max].into_iter().any(|value| {
+                let mut options = base.clone();
+                set(&mut options, value);
+                if name.starts_with("Tm") {
+                    clock(&options) != base_clock
+                } else if let (Some(&(_, fen, depth)), Some(deep_base)) = (deep, deep_base) {
+                    tree(&options, fen, depth) != deep_base
+                } else {
+                    POSITIONS
+                        .iter()
+                        .zip(&base_trees)
+                        .any(|(fen, base_tree)| tree(&options, fen, DEPTH) != *base_tree)
+                }
+            });
+            if !live {
+                dead.push(name.to_string());
+            }
+        };
+        for &(name, min, max, field) in SearchParams::FIELDS {
+            visit(name, min, max, &|o, v| {
+                *field(&mut o.engine.search_params) = v
+            });
+        }
+        for &(name, min, max, field) in CoreParams::FIELDS {
+            visit(name, min, max, &|o, v| {
+                *field(&mut o.engine.core_params) = v
+            });
+        }
+        for &(name, min, max, field) in ProofParams::FIELDS {
+            visit(name, min, max, &|o, v| {
+                *field(&mut o.engine.proof_params) = v
+            });
+        }
+        for &(name, min, max, field) in QuietParams::FIELDS {
+            visit(name, min, max, &|o, v| {
+                *field(&mut o.engine.quiet_params) = v
+            });
+        }
+        assert!(
+            dead.is_empty(),
+            "moved nothing at either end of its range: {dead:?}"
+        );
+        for name in DEEP
+            .iter()
+            .map(|d| d.0)
+            .chain(ELSEWHERE.iter().map(|e| e.0))
+        {
+            assert!(
+                visited.iter().any(|v| v == name),
+                "{name} is no longer a parameter"
+            );
+        }
+    }
+
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, Instant};
 
