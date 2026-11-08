@@ -876,6 +876,138 @@ mod tests {
         }
     }
 
+    /// The contract over arbitrary ordering, on random-walk positions with
+    /// randomised quiet, noisy and pawn histories and a random TT move: the
+    /// staged picker emits every legal move once; skipping quiets from a
+    /// random emission drops only quiets that neither check directly nor
+    /// promote, and no move after the skip is one of them; and ProbCut's list,
+    /// scored and selected as the search does, holds every legal capture once,
+    /// so its SEE filter keeps exactly the captures that pass it.
+    #[test]
+    fn the_picker_contract_holds_under_random_histories() {
+        let mut state = 0x2545_F491_4F6C_DD1D_u64;
+        let mut random = move |bound: usize| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            usize::try_from(state % u64::try_from(bound).expect("small")).expect("small")
+        };
+        let signed = |draw: usize, max: i32| i32::try_from(draw).expect("small") - max;
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen(FENS[1]).expect("valid FEN");
+        let (mut positions, mut plies) = (0, 0);
+        let (mut skipped, mut survived, mut tt_captures) = (0, 0, 0);
+        let (mut probcut_kept, mut probcut_dropped) = (0, 0);
+        while positions < 3_000 {
+            let legal = board.generate_legal_moves();
+            if legal.is_empty() || plies >= 80 {
+                board = Board::from_fen(FENS[random(FENS.len())]).expect("valid FEN");
+                plies = 0;
+                continue;
+            }
+            positions += 1;
+            let fen = board.to_fen();
+            let threats = board.threats();
+            let stm = board.side_to_move();
+            let row = HistoryTables::pawn_row(board.pawn_key());
+            for &mv in &legal {
+                let piece = board.moving_piece(mv);
+                let hist = &mut searcher.td.hist;
+                hist.update_quiet(threats.all, stm, mv, signed(random(16_385), 8_192));
+                hist.update_pawn(row, stm, piece, mv.to_sq(), signed(random(16_385), 8_192));
+                let captured = board.captured_piece(mv);
+                let bonus = signed(random(25_601), 12_800);
+                hist.update_noisy(threats.all, stm, piece, mv.to_sq(), captured, bonus);
+            }
+            let tt = if random(3) == 0 {
+                Move::NULL
+            } else {
+                legal[random(legal.len())]
+            };
+            let mut sorted = legal.clone();
+            sorted.sort_unstable_by_key(|m| m.0);
+
+            let mut picker = staged_filled(&searcher, &mut board, &threats, tt, 0);
+            let mut got: Vec<Move> = drain(&mut picker, &searcher, &mut board, &threats)
+                .into_iter()
+                .map(|(mv, _)| mv)
+                .collect();
+            got.sort_unstable_by_key(|m| m.0);
+            assert_eq!(got, sorted, "every legal move once: {fen} tt {tt}");
+
+            let check_info = board.check_info();
+            let survivors: Vec<Move> = legal
+                .iter()
+                .copied()
+                .filter(|&mv| {
+                    mv.is_promo()
+                        || check_info
+                            .direct_check_squares(board.moving_piece(mv))
+                            .contains(mv.to_sq())
+                })
+                .collect();
+            let survives = |mv: Move| survivors.contains(&mv);
+            let skip_from = random(legal.len() + 1);
+            let mut picker = staged_filled(&searcher, &mut board, &threats, tt, 0);
+            let mut emitted = Vec::new();
+            loop {
+                let skip = emitted.len() >= skip_from;
+                let Some(picked) = picker.next(&searcher, &mut board, &threats, skip, &mut None)
+                else {
+                    break;
+                };
+                if skip && picker.stage() == Stage::Quiets {
+                    assert!(survives(picked.mv), "{} after the skip: {fen}", picked.mv);
+                    survived += 1;
+                }
+                assert!(!emitted.contains(&picked.mv), "{} twice: {fen}", picked.mv);
+                emitted.push(picked.mv);
+            }
+            for &mv in &legal {
+                if !emitted.contains(&mv) {
+                    let quiet = !mv.is_capture() && mv != tt && !survives(mv);
+                    assert!(quiet, "{mv} dropped by the skip: {fen} tt {tt}");
+                    skipped += 1;
+                }
+            }
+
+            let threshold = signed(random(801), 400);
+            let mut captures = MoveList::new();
+            board.generate_legal_captures_into(&mut captures);
+            let mut scored = ScoredMoveList::new();
+            searcher.score_tactical_moves(&board, &threats, captures.as_slice(), tt, &mut scored);
+            let mut selected: Vec<Move> = (0..scored.len())
+                .map(|index| pick_next(scored.as_mut_slice(), index).mv)
+                .collect();
+            if tt.is_capture() {
+                assert_eq!(selected[0], tt, "the TT capture first: {fen}");
+                tt_captures += 1;
+            }
+            selected.sort_unstable_by_key(|m| m.0);
+            let all_captures: Vec<Move> =
+                sorted.iter().copied().filter(|m| m.is_capture()).collect();
+            assert_eq!(selected, all_captures, "ProbCut's list: {fen}");
+            for mv in selected {
+                if board.see_ge(mv, threshold) {
+                    probcut_kept += 1;
+                } else {
+                    probcut_dropped += 1;
+                }
+            }
+
+            board.make_move(legal[random(legal.len())]);
+            plies += 1;
+        }
+        assert!(
+            skipped > 0 && survived > 0 && tt_captures > 0,
+            "{skipped} {survived} {tt_captures}"
+        );
+        assert!(
+            probcut_kept > 0 && probcut_dropped > 0,
+            "{probcut_kept} {probcut_dropped}"
+        );
+    }
+
     /// Staged order: the TT move first, then good noisy, quiets, bad noisy,
     /// never returning to an earlier stage.
     #[test]
