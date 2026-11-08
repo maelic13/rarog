@@ -219,3 +219,38 @@ fn an_irreversible_move_makes_the_earlier_position_hash_unreachable() {
         );
     }
 }
+
+/// The search's repetition scan runs back across null moves, so a pass can
+/// complete a twofold the search then scores as a draw: two passes by White
+/// while Black's king steps out and back, or one pass while Black's king
+/// loses a tempo round a triangle. Pinned as it stands, either way it is
+/// changed: bounding the scan at the last null is a registered unit of its
+/// own. The arbiter's threefold never sees a null.
+#[test]
+fn a_repetition_across_null_moves_scores_as_a_draw_in_search() {
+    const FEN: &str = "4k3/8/8/8/8/8/PPP5/4K3 w - - 0 1";
+    let start = Board::from_fen(FEN).expect("valid FEN");
+    let play = |board: &mut Board, step: &str| {
+        if step == "null" {
+            board.make_null_move();
+        } else {
+            assert!(board.play_uci(step), "{step} in {}", board.to_fen());
+        }
+    };
+    for line in [
+        &["null", "e8d8", "null", "d8e8"][..],
+        &["null", "e8d8", "e1d1", "d8d7", "d1e1", "d7e8"][..],
+    ] {
+        let mut board = start.clone();
+        for (index, step) in line.iter().enumerate() {
+            assert!(
+                !board.can_declare_draw_in_search(),
+                "{line:?} before step {index}"
+            );
+            play(&mut board, step);
+        }
+        assert_eq!(board.hash(), start.hash(), "{line:?} returns to the start");
+        assert!(board.can_declare_draw_in_search(), "{line:?}");
+        assert!(!board.can_declare_draw(), "{line:?}: the arbiter's draw");
+    }
+}
