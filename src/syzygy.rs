@@ -131,12 +131,6 @@ pub struct RootMove {
     promotes: Option<Piece>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct RootProbe {
-    pub(crate) wdl: Wdl,
-    pub best_move: Option<RootMove>,
-}
-
 #[derive(Copy, Clone)]
 struct TbPosition {
     white: u64,
@@ -158,37 +152,23 @@ pub fn initialize(path: &str) -> usize {
         return largest();
     }
 
-    if path.is_empty() {
-        let empty = CString::new("").expect("empty string has no NUL");
-        // SAFETY: FFI into Fathom. `empty` outlives the call and `as_ptr`
-        // yields a valid NUL-terminated C string; `tb_init` copies what it
-        // needs and does not retain the pointer.
-        unsafe {
-            tb_init(empty.as_ptr());
-        }
-        *current_path = String::new();
-        LARGEST.store(0, Ordering::Relaxed);
-        return 0;
-    }
-
     let Ok(c_path) = CString::new(path) else {
         *current_path = String::new();
         LARGEST.store(0, Ordering::Relaxed);
         return 0;
     };
 
+    // `tb_init` returns `true` at both of its exits, so `TB_LARGEST` is its
+    // only result: zero for an empty path or when no table loaded.
     // SAFETY: FFI into Fathom. `c_path` is a live NUL-terminated CString that
-    // outlives the call; `tb_init` does not retain the pointer.
-    let ok = unsafe { tb_init(c_path.as_ptr()) };
-    let largest = if ok {
-        // SAFETY: reading an `extern "C"` global that `tb_init` just
-        // initialised; single-threaded at this point (guarded by the path
-        // mutex held by the caller).
-        unsafe { TB_LARGEST as usize }
-    } else {
-        0
+    // outlives the call, and `tb_init` does not retain the pointer. The
+    // `extern "C"` global it sets is read while this function holds the path
+    // mutex, so no other `initialize` runs.
+    let largest = unsafe {
+        tb_init(c_path.as_ptr());
+        TB_LARGEST as usize
     };
-    *current_path = if ok { path.to_string() } else { String::new() };
+    *current_path = path.to_string();
     LARGEST.store(largest, Ordering::Relaxed);
     largest
 }
@@ -254,40 +234,6 @@ pub fn probe_wdl(board: &Board, use_rule50: bool) -> Option<Wdl> {
         )
     };
     wdl_from_raw(result)
-}
-
-pub fn probe_root(board: &Board, use_rule50: bool) -> Option<RootProbe> {
-    if !can_probe(board, use_rule50, true) {
-        return None;
-    }
-
-    let pos = tb_position(board);
-    // SAFETY: FFI into Fathom, by-value position only (see `probe_wdl`).
-    let result = unsafe {
-        tb_probe_root_impl(
-            pos.white,
-            pos.black,
-            pos.kings,
-            pos.queens,
-            pos.rooks,
-            pos.bishops,
-            pos.knights,
-            pos.pawns,
-            pos.rule50,
-            pos.ep,
-            pos.turn,
-            std::ptr::null_mut(),
-        )
-    };
-    if result == TB_RESULT_FAILED {
-        return None;
-    }
-
-    let wdl = wdl_from_raw((result & TB_RESULT_WDL_MASK) >> TB_RESULT_WDL_SHIFT)?;
-    Some(RootProbe {
-        wdl,
-        best_move: root_move_from_result(result),
-    })
 }
 
 /// Rank scale of the root ranking: a clean win ranks `MAX_DTZ`, less its
