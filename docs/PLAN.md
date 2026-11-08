@@ -335,7 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.8 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.9 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.10 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
 | D.5.11 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, pooled NPS where hot |
@@ -649,16 +648,28 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      step 1 was disturbed and discarded unread; its repeat read −0.31%,
      between. The prediction, frozen in the commit, was +0.1% ± 0.4%: inside
      the range, so a root allocation per visit had no visible cost.
-    - **D.5.8 Dead Syzygy code — `I1`.** (PROTO-13): `syzygy::probe_root`, `RootProbe`, their
+    - **D.5.8 Dead Syzygy code — `I1`, DONE 2026-11-08.** (PROTO-13): `syzygy::probe_root`, `RootProbe`, their
      constants and the dead `tb_init` branch (it returns `true` at both
-     exits); one `unsafe` site fewer.
+     exits); one `unsafe` site fewer. `61bd513` deletes `probe_root`,
+     `RootProbe` and the test line that called it; no constant was the
+     probe's alone, since the root ranking decodes the same fields. Fathom's
+     `tb_init` returns `true` at both exits (`tbprobe.c:883`, `:1043`), an
+     empty path among them after it sets `TB_LARGEST` to 0, so
+     `initialize`'s failure arms were dead and its separate empty-path call
+     a duplicate: one call, then `TB_LARGEST`, is the whole result. Three
+     `unsafe` sites fewer, 24 to 21. Fingerprint 15,625,852 / EBF 2.563 on
+     both slider backends; debug and release suites, fmt and clippy clean.
+     A UCI session that sets the fixture, a missing folder, `<empty>`, an
+     empty value, the fixture again and a two-folder path, searching KQK and
+     KRK after each, is identical to the head's over all 196 lines: tables
+     load, unload to no probes, and reload.
     - **D.5.9 The slider-table `unsafe` and the timer — `I1`.** (RUST-2): the four identical
      `get_unchecked` sites in `attacks.rs` become one `#[inline(always)]`
      helper (codegen `pext; add; mov` unchanged, checked in the assembly), and
      `timeBeginPeriod` is declared `pub safe fn` in the `unsafe extern` block
-     (compile-checked on 1.99.1), removing the block in `main.rs`. With item 8
-     the count falls from 23 to 18; the floor is the maintainer's decision and
-     this leaf proposes it.
+     (compile-checked on 1.99.1), removing the block in `main.rs`. After
+     item 8 the count is 21 and this leaf takes it to 17; the floor is the
+     maintainer's decision and this leaf proposes it.
     - **D.5.10 Stack-built tables — `I1`.** (RUST-8): `HistoryTables::default` builds 64 KB
       and 21 KB tables in its frame and copies them to the heap, and
       `rank_root_moves` builds the 102 KB `TbRootMovesRaw` twice per tablebase
