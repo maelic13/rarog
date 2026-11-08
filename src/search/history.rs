@@ -68,11 +68,18 @@ fn zeroed<const N: usize>() -> Box<[i16; N]> {
 /// `[side to move][from threatened][to threatened][from][to]`.
 type QuietTable = [[[[[i16; 64]; 64]; 2]; 2]; 2];
 
+/// `[coloured piece and destination][captured type][destination threatened]`.
+type NoisyTable = [[[i16; 2]; CAPTURED_SLOTS]; PIECE_TO_SIZE];
+
+// Empty tables as statics: a box made from one is zeroed on the heap,
+// where an array expression is built in the caller's frame and copied.
+static EMPTY_QUIET: QuietTable = [[[[[0; 64]; 64]; 2]; 2]; 2];
+static EMPTY_NOISY: NoisyTable = [[[0; 2]; CAPTURED_SLOTS]; PIECE_TO_SIZE];
+
 /// One thread's move-ordering tables. None of them age between searches.
 pub(super) struct HistoryTables {
     quiet: Box<QuietTable>,
-    /// `[coloured piece and destination][captured type][destination threatened]`.
-    noisy: Box<[[[i16; 2]; CAPTURED_SLOTS]; PIECE_TO_SIZE]>,
+    noisy: Box<NoisyTable>,
     /// `[pawn-key slot][coloured piece and destination]`, flat.
     pawn: Box<[i16; PAWN_HISTORY_SIZE * PIECE_TO_SIZE]>,
     /// `[context][coloured piece and destination]`, flat; a context is a row
@@ -87,8 +94,8 @@ pub(super) struct HistoryTables {
 impl Default for HistoryTables {
     fn default() -> Self {
         Self {
-            quiet: Box::new([[[[[0; 64]; 64]; 2]; 2]; 2]),
-            noisy: Box::new([[[0; 2]; CAPTURED_SLOTS]; PIECE_TO_SIZE]),
+            quiet: Box::new(EMPTY_QUIET),
+            noisy: Box::new(EMPTY_NOISY),
             pawn: zeroed(),
             cont: zeroed(),
             #[cfg(feature = "pricing")]
@@ -100,8 +107,8 @@ impl Default for HistoryTables {
 impl HistoryTables {
     /// Forget everything, for a new game.
     pub(super) fn clear(&mut self) {
-        *self.quiet = [[[[[0; 64]; 64]; 2]; 2]; 2];
-        *self.noisy = [[[0; 2]; CAPTURED_SLOTS]; PIECE_TO_SIZE];
+        *self.quiet = EMPTY_QUIET;
+        *self.noisy = EMPTY_NOISY;
         self.pawn.fill(0);
         self.cont.fill(0);
     }

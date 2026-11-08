@@ -88,16 +88,14 @@ struct TbRootMoveRaw {
     tb_rank: i32,
 }
 
-impl Default for TbRootMoveRaw {
-    fn default() -> Self {
-        Self {
-            mv: 0,
-            pv: [0; TB_MAX_PLY],
-            pv_size: 0,
-            tb_score: 0,
-            tb_rank: 0,
-        }
-    }
+impl TbRootMoveRaw {
+    const EMPTY: Self = Self {
+        mv: 0,
+        pv: [0; TB_MAX_PLY],
+        pv_size: 0,
+        tb_score: 0,
+        tb_rank: 0,
+    };
 }
 
 #[repr(C)]
@@ -106,13 +104,13 @@ struct TbRootMovesRaw {
     moves: [TbRootMoveRaw; TB_MAX_MOVES],
 }
 
-impl Default for TbRootMovesRaw {
-    fn default() -> Self {
-        Self {
-            size: 0,
-            moves: [TbRootMoveRaw::default(); TB_MAX_MOVES],
-        }
-    }
+impl TbRootMovesRaw {
+    /// About 100 KB, so a box made from this constant is zeroed on the heap
+    /// rather than built in the caller's frame and copied.
+    const EMPTY: Self = Self {
+        size: 0,
+        moves: [TbRootMoveRaw::EMPTY; TB_MAX_MOVES],
+    };
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -405,9 +403,9 @@ fn rank_by_wdl(board: &Board, use_rule50: bool) -> Option<RootRanking> {
 
 fn probe_root_moves_wdl(board: &Board, use_rule50: bool) -> Option<Vec<(RootMove, i32)>> {
     let pos = tb_position(board);
-    let mut results = TbRootMovesRaw::default();
-    // SAFETY: FFI into Fathom. `results` is a live, default-initialised
-    // `TbRootMovesRaw` that outlives the call and is only written by Fathom.
+    let mut results = Box::new(TbRootMovesRaw::EMPTY);
+    // SAFETY: FFI into Fathom. `results` is a live, zeroed `TbRootMovesRaw`
+    // that outlives the call and is only written by Fathom.
     let ok = unsafe {
         tb_probe_root_wdl(
             pos.white,
@@ -423,7 +421,7 @@ fn probe_root_moves_wdl(board: &Board, use_rule50: bool) -> Option<Vec<(RootMove
             pos.ep,
             pos.turn,
             use_rule50,
-            &mut results,
+            &mut *results,
         )
     };
     if ok == 0 {
