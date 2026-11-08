@@ -334,7 +334,7 @@ fn packaged_fens_strictly_legal() {
     );
     assert_eq!(counts[0], 40);
     assert_eq!(counts[1], 300);
-    assert!(counts[2] >= 90, "endgames.epd rows: {}", counts[2]);
+    assert_eq!(counts[2], 91, "endgames.epd rows: {}", counts[2]);
     assert!(failures.is_empty(), "{failures:#?}");
 }
 

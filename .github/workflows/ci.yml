@@ -145,7 +145,7 @@ jobs:
         run: |
           status=0
           cargo test -p rarog --release --test endgames --test wac -- --ignored --exact \
-            kbnk_positions_are_driven_to_mate wac_solved_count_stays_above_floor \
+            kbnk_positions_are_driven_to_mate wac_solved_count_stays_in_its_band \
             > long-tier.log 2>&1 || status=$?
           cat long-tier.log
           if [ "$status" -ne 0 ]; then exit "$status"; fi

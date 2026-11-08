@@ -49,10 +49,11 @@ fn every_packaged_position_is_legal() {
         check("endgames.epd", &fen);
     }
 
-    // Guard against a data source silently emptying (e.g. a parser change):
-    // 40 bench + 300 WAC + the endgame suite.
-    assert!(
-        checked >= 340,
-        "canary swept only {checked} positions — a data source is missing"
+    // Every row of every source, so a parser change that drops some of them
+    // fails: 40 bench, 300 WAC and endgames.epd's 91. Adding rows updates the
+    // count in the same commit.
+    assert_eq!(
+        checked, 431,
+        "canary swept {checked} positions, not every row of its sources"
     );
 }

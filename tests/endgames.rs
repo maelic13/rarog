@@ -331,8 +331,8 @@ fn syzygy_won_positions_are_not_scored_as_drawn_or_lost() {
         );
         checked += 1;
     }
-    assert!(
-        checked >= 30,
+    assert_eq!(
+        checked, 38,
         "expected the frozen tb-win set, found {checked}"
     );
 }
@@ -355,8 +355,8 @@ fn syzygy_drawn_positions_are_never_claimed_as_forced_mate() {
         );
         checked += 1;
     }
-    assert!(
-        checked >= 25,
+    assert_eq!(
+        checked, 34,
         "expected the frozen tb-draw set, found {checked}"
     );
 }
@@ -364,23 +364,16 @@ fn syzygy_drawn_positions_are_never_claimed_as_forced_mate() {
 #[test]
 #[ignore = "long tier: engine playouts to mate, a strength measurement; run by name with --ignored in release (PROCESS, Common commands)"]
 fn kbnk_positions_are_driven_to_mate() {
-    // Thin-sample refusal (PLAN 4.10.4). Without a count, an EPD that stopped
-    // producing `kbnk-mate` rows -- a rename, a parse change, a bad filter --
-    // would make this test pass over an empty set. A guard that cannot fail is
-    // not a guard. The sibling Syzygy vetoes already carry `checked >= 30` and
-    // `checked >= 25`; this one carried nothing.
+    // Without a count, an EPD that stopped producing `kbnk-mate` rows (a
+    // rename, a parse change, a bad filter) would make this test pass over an
+    // empty set. Each frozen set's count is exact, so losing one row fails too.
     let mut checked = 0;
     for case in parse_cases().iter().filter(|c| c.verdict == "kbnk-mate") {
         assert_kbnk_mates(&case.fen, &case.comment);
         checked += 1;
     }
-    // The frozen set holds exactly ONE kbnk-mate case, which is thin for an
-    // anchor guarding the family 4.9a.4 rebuilt. The guard records the real
-    // number rather than an aspirational one; widening the set belongs to
-    // 4.12.21, which owns KBNK. What this guard does buy is that a parse or
-    // filter change cannot silently reduce it to zero.
-    assert!(
-        checked >= 4,
+    assert_eq!(
+        checked, 4,
         "expected the frozen kbnk-mate set, found {checked}"
     );
 }
