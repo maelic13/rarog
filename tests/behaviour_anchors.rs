@@ -338,17 +338,15 @@ fn packaged_fens_strictly_legal() {
     assert!(failures.is_empty(), "{failures:#?}");
 }
 
-/// The same sweep over the small frozen EPDs under `tools/books` and
-/// `tools/diag` (not shipped in the crate, but tracked and consumed).
+/// The same sweep over the small frozen EPDs the tools consume under
+/// `tools/diag` (tracked, not shipped in the crate). The opening books under
+/// `tools/books` are not tracked, so a fresh checkout cannot read them.
 #[test]
 fn tracked_tool_epds_strictly_legal() {
     let _g = serial();
     let mut failures = Vec::new();
     let mut checked = 0;
     for rel in [
-        "tools/books/endgame_cohort_v1.epd",
-        "tools/books/endgame_minor_v1.epd",
-        "tools/books/ocb_cohort_v1.epd",
         "tools/diag/board_search_profile_v1.epd",
         "tools/diag/phase4_suite_v1.epd",
     ] {
@@ -357,7 +355,7 @@ fn tracked_tool_epds_strictly_legal() {
         checked += sweep(rel, &epd_fens(&text), &mut failures);
     }
     eprintln!("checked {checked} tool EPD rows");
-    assert!(checked > 9_000, "{checked}");
+    assert_eq!(checked, 70, "rows read");
     assert!(
         failures.is_empty(),
         "{} failures: {failures:#?}",
