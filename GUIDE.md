@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.5.20** (`I1`): CI hygiene.
+**Now: D.6.1** (`R2`): Castling is neither quiet nor noisy.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -35,7 +35,7 @@ field, about 3,475 on CCRL's Blitz scale.
 - [x] **D.2** Lazy SMP quality at 4T/8T: diversity, shared TT and correction, soft-stop voting; 4T SPRT `[0,5]`; RAR-M78's deficit verdict was measured in a packed slot and is superseded (RAR-M82), the sibling-free comparison is RAR-M83 — DONE 2026-11-04
 - [x] **D.3** Engine lifecycle and protocol robustness; `src/uci/` (planned) move; score normalisation research card (`analysis/uci_info_review_2026-09-16.md` item 6); zero crashes over pool tournaments — DONE 2026-11-04
 - [x] **D.4** Instruments from the Triumviratus review: the measurement-integrity reads, a search-path perft, pruning and reduction pricing, the loss table by cell, an identical-tree counter read — DONE 2026-11-06
-- [ ] **D.5** Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, `Hash` at any size, dead code, test and CI gaps — **I1**
+- [x] **D.5** Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, `Hash` at any size, dead code, test and CI gaps — DONE 2026-11-08
     - [x] **D.5.1** The table handle — DONE 2026-11-06
     - [x] **D.5.2** A `Hash` change at `Threads > 1` fills the table twice — DONE 2026-11-06
     - [x] **D.5.3** The fixed-depth vote — DONE 2026-11-06
@@ -58,8 +58,8 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.5.17** Tests the review found missing — DONE 2026-11-08
     - [x] **D.5.18** A record corrected — DONE 2026-11-08
     - [x] **D.5.19** The KPK evaluation and every hard draw verdict against Syzygy — DONE 2026-11-08
-    - [ ] **D.5.20** CI hygiene — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.5.21** Basilisk's behaviour tests run against Rarog — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.5.20** CI hygiene — DONE 2026-11-08
+    - [x] **D.5.21** Basilisk's behaviour tests run against Rarog — DONE 2026-11-08
     - [x] **D.5.22** Measurement and gating methods from Basilisk — DONE 2026-11-02
     - [x] **D.5.23** The correction bonus overflows `i32` at extreme depth and residual — DONE 2026-11-08
     - [x] **D.5.24** A `Hash` larger than the machine's physical memory is refused on every platform — DONE 2026-11-04
@@ -155,7 +155,7 @@ field, about 3,475 on CCRL's Blitz scale.
 |---|---|
 | Next release | **2.7.0** at E.3 after Phases D and E, cut only after **E.3.0**'s originality disclosure (maintainer decision 2026-10-23; `analysis/originality_review_2.6.0_2026-10-22.md`) (maintainer decision 2026-10-22: 3.0.0 is reserved for the first NNUE release, F.9; E.2's four targets already pass at 1T and 4T, RAR-M73, RAR-M74, and its result is recorded, not a version). Later classical gains (E.4, F.4.1) release as 2.8.0 onward under Phase F's rule |
 | Released baseline | **2.6.0** on `master`, released 2026-10-22 from the `v2.6.0` tag; fingerprint **13,987,223 / EBF 2.565**. Over 2.5.0: +153.4 ± 10.7 at `3+0.03` 1T, +149.3 ± 15.1 at `10+0.1`, +149.7 ± 14.7 at 4T (RAR-M76). 2.5.0 (2026-10-05, 11,171,726 / EBF 2.512) was +272.4 over 2.4.0 at `3+0.03` (RAR-M64) |
-| Development head | `d5` from `master` at `7d5fc06` (D.4's instruments and the roadmap's order, "Add the search instruments and put the roadmap in working order", PR #15, 2026-11-06; E.3.2's build names and E.3.3's universal binary are `5efe16f`, PR #14; D.2 and D.3, "Harden the UCI protocol and keep draw verdicts", PR #13, 2026-11-04; D.1 is `703fe78`, PR #12; the 2.6.0 release is `0127e58`, PR #11), version **2.7.0-dev** (a build reports `dev-<date>-<hash>`): the 2.5.0 search with Phase C's evaluation, C.12's speed pass and large pages, C.10's search tune and D.1's clock; D.3's protocol and shell repairs, D.6.15's draw verdicts and D.5.24's physical-memory `Hash` bound; build names, a statically linked runtime and one universal x64 release binary; one PGO-trained kernel for every thread (`e057d84`); the classical evaluation frozen at engine source `9fb525e`; fingerprint **15,625,852 / EBF 2.563** since D.5.5 (`1450340`, RAR-S106; 14,749,043 / EBF 2.564 since D.6.15, `3a16fbb`; 13,987,223 / EBF 2.565 before); `rustc 1.99.1` (RAR-P36–P38, kept by maintainer decision). A registration names the revision it builds from and this fingerprint. Change records: `docs/HISTORY.md`, `docs/archive/PLAN-phaseD-done-2026-11-04.md`, `docs/archive/PLAN-closed-2026-10-22.md` |
+| Development head | `d5` from `master` at `7d5fc06`, with all of D.5 (the engine review's behaviour-neutral repairs, draft PR #16 until it lands) (D.4's instruments and the roadmap's order, "Add the search instruments and put the roadmap in working order", PR #15, 2026-11-06; E.3.2's build names and E.3.3's universal binary are `5efe16f`, PR #14; D.2 and D.3, "Harden the UCI protocol and keep draw verdicts", PR #13, 2026-11-04; D.1 is `703fe78`, PR #12; the 2.6.0 release is `0127e58`, PR #11), version **2.7.0-dev** (a build reports `dev-<date>-<hash>`): the 2.5.0 search with Phase C's evaluation, C.12's speed pass and large pages, C.10's search tune and D.1's clock; D.3's protocol and shell repairs, D.6.15's draw verdicts and D.5.24's physical-memory `Hash` bound; build names, a statically linked runtime and one universal x64 release binary; one PGO-trained kernel for every thread (`e057d84`); the classical evaluation frozen at engine source `9fb525e`; fingerprint **15,625,852 / EBF 2.563** since D.5.5 (`1450340`, RAR-S106; 14,749,043 / EBF 2.564 since D.6.15, `3a16fbb`; 13,987,223 / EBF 2.565 before); `rustc 1.99.1` (RAR-P36–P38, kept by maintainer decision). A registration names the revision it builds from and this fingerprint. Change records: `docs/HISTORY.md`, `docs/archive/PLAN-phaseD-done-2026-11-04.md`, `docs/archive/PLAN-closed-2026-10-22.md` |
 | Pool position, `3+0.03` 1T | **3,428.8 ± 19.2** (RAR-M73, the C head, 2026-10-21), **+142.3 ± 24.8 over the B.9 head's 3,286.5 ± 15.7** (RAR-M64; 2.4.0 rates 3,001): Houdini 3 +172.8, Critter 1.6a +231.5, Fritz 16 +256.2, Rybka 4.1 +330.2, so all four E.2 targets pass at 1T; Rarog 2.4.0 +363.2 |
 | Pool position, `3+0.03` 4T | **3,433.7 ± 19.3** (RAR-M74, the C head, 2026-10-21), **+93.7 ± 25.5 over the B.9 head's 3,340.0 ± 16.7** (RAR-M66): Houdini 3 +171.7, Critter 1.6a +242.2, Fritz 16 +249.1, Rybka 4.1 +350.3, all four E.2 targets pass at 4T. **Thread scaling fell:** in games the C head is 9.2% slower than the B.9 head at 4T while 29.8% faster at 1T (4T/1T 2.60 against 3.72; Colosseum CLI 0.4.0's figures), and its 4T performance is only +4.9 over its 1T rating (B.9 +53.5); held for D.2 |
 | Pool position, wider field, `3+0.03` 1T | **3,478.9 ± 15.1** (RAR-M75, the C head, 2026-10-22): fourth in a round robin of nine with Houdini 3 and Critter held; Dragon 1 3,628.7, Stockfish 11 3,568.2, Houdini 6.03 3,498.5 (head −9 ± 32), Komodo 13.3 3,416.6 (head +53), Komodo 10.4 3,387.4, Houdini 4 3,303.2 (held 3,310). **CCRL-equivalent:** Blitz 1CPU **3,475 ± 82** (the held scale near 1:1 with it here; about 70 below CCRL Blitz's top-100 cut), 40/15 1CPU 3,407 ± 78 |
@@ -170,7 +170,6 @@ field, about 3,475 on CCRL's Blitz scale.
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
 | Originality disclosure (2026-10-23 review of 2.6.0): Stockfish's time-budget constants and Reckless's move-ordering and history constants were copied unchanged, the evaluation design is Stockfish 11's, Fathom is not named, and the README credits only "inspiration". The code and the evaluation weights are Rarog's own, and the move-similarity screen reads Rarog like an unrelated engine against both donors (56.4% Stockfish 11, 54.2% Reckless; related controls 67–69%) | **E.3.0**: rerun the scans on the release head, the maintainer settles the licence (Reckless is AGPL-3.0), then README, PROCESS's boundary and the binaries' notices | E.3.4, the 2.7.0 release cut |
-| D.5.20, two items (2026-11-08): a Miri job for the unit tests that reach the `unsafe` outside the FFI, and a check that each ledger index row's disposition matches its entry's | the maintainer installs a nightly toolchain with Miri here (or decides the job lands unverified), and decides the disposition form both index and entry state | D.5 closes |
 
 Follow the earliest unblocked leaf in PLAN's register order, which the board's Now shows; the register is in ascending order, which is the order of work (maintainer decision 2026-11-03). Held items stay unticked in place.
 

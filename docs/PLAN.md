@@ -335,8 +335,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.5.20 | READY_FOR_IMPLEMENTATION | I1 | Tooling; held 2026-11-08 on two maintainer decisions (Miri's nightly toolchain, a structured disposition field), the rest landed |
-| D.5.21 | READY_FOR_IMPLEMENTATION | I1 | The behaviour-test sweep; the ported tests landed 2026-11-08, H8–H11 remain |
 | D.6.1 | RESEARCH | R2 | Screen first among the cards (castling's classification) |
 | D.6.2 | RESEARCH | R2 | Screen second (quiet queen promotions in quiescence) |
 | D.6.3 | RESEARCH | R2 | Screen before any implementation; screened with D.6.4 |
@@ -461,7 +459,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   speed check, and an unexplained two-state split between processes is H.4's
   lead (`analysis/identical_tree_counters_card_2026-11-05.md`). Full record,
   D.4.1 to D.4.6: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
-- **D.5 Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, `Hash` at any size, dead code, test and CI gaps — `I1`.**
+- **D.5 Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, `Hash` at any size, dead code, test and CI gaps — `I1`, DONE 2026-11-08.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` (its §5 lists
   every item with its reviewer ID; the reports are in
   `analysis/artifacts/engine-review-2026-11-01/`). Every item reproduces
@@ -903,7 +901,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       69,760 quiet ones (26.7%), most with the queen's king three or four
       squares from the queening square: D.6.24. The partial scales stay
       unread.
-    - **D.5.20 CI hygiene — `I1`.** (A5): no job in `ci.yml` or `release.yml` has
+    - **D.5.20 CI hygiene — `I1`, DONE 2026-11-08.** (A5): no job in `ci.yml` or `release.yml` has
       `timeout-minutes`, so a wedged child process burns the runner's
       six hours; check which mnemonics `xtask`'s ISA verifier forbids at
       the baseline tier (Basilisk's portable set missed SSE4.1, AVX1 and
@@ -952,12 +950,27 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       copy ran: the pext PGO build reads 2 and 1 trained, and a function the
       bench never calls, listed as kernel, fails it. None of the workflow
       changes has run on GitHub yet; each command the new steps run passes
-      here. **Held:** the Miri job needs a nightly toolchain with Miri,
-      which this machine lacks, to check which unit tests it can run before
-      the job lands; and the ledger check needs a disposition both an index
-      row and its entry state in one form: 269 of 377 entries have no
-      disposition a pattern can find, and the two vocabularies differ.
-    - **D.5.21 Basilisk's behaviour tests run against Rarog — `I1`.** (§D of the
+      here. The two items held that day were settled by the maintainer the
+      same day. No nightly job: Miri exists only on nightly, so the `unsafe`
+      sites' preconditions are checked on stable instead (`e3afb97`). The
+      plan's premise was partly false: the TT's two `unsafe` blocks are
+      prefetch hints, with nothing to check. The slider lookup asserts in
+      debug that its slot lies in its square's run, which the debug suite's
+      every-subset slider test drives on both backends (an off-by-one shift
+      fails it), and both move lists get a test that the push after the last
+      slot panics. The PEXT intrinsic is refused without BMI2 (D.5.12) and
+      the page allocator's calls are the operating system's. Those panicking
+      tests showed the crash-report tests counting other tests' panics
+      through the process-wide hook; they now count their own probe's
+      (`e458d27`). The ledger check takes the form for new entries only
+      (`a0effcb`): an entry's `- Disposition: <word>` line and its index row
+      start with the same word from a fixed list (PROCESS, *Experiment
+      registration*); the 377 entries written before 2026-11-08 are exempt
+      in `tools/diag/disposition_exempt.txt`, which only shrinks. An entry
+      taken off the list fails on both sides, and the documents job runs the
+      check. Release instructions are identical to the head's on both
+      backends.
+    - **D.5.21 Basilisk's behaviour tests run against Rarog — `I1`, DONE 2026-11-08.** (§D of the
       cross-check; about 20, among them shortest mate rather than the
       first mate, an injected illegal TT move never searched, every
       shipped FEN strictly legal, bare-king material monotone with the
@@ -995,7 +1008,39 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       every move reaches clock 100, where Basilisk shows 1–49; Rarog has no
       TT penalty to test. The illegal TT move is caught three times at the
       root (`legal_move`, the root list, the picker): with the first two
-      removed the debug suite fails and release does not. H8–H11 remain.
+      removed the debug suite fails and release does not.
+      **H8–H11 landed 2026-11-08.** H8 (`fd965bc`): over 3,000 random-walk
+      positions with randomised quiet, noisy and pawn histories, a random TT
+      move and a random skip point, the staged picker emits every legal move
+      once, a skip drops only quiets that neither check directly nor promote
+      (26,429 dropped, 836 survivors checked after a skip), and ProbCut's
+      list holds every legal capture once, the TT capture first; a skip that
+      emits every quiet, a dropped en passant and a ProbCut list without its
+      losing captures each fail it. H9 (`a4e25fc`): each of the 147 search
+      parameters, set to either end of its declared range, moves a depth-8
+      tree on one of five named positions, or for a clock parameter the time
+      limits or the soft stop on named clocks; five act only deeper and name
+      their own position and depth (null-move surplus clamp and two singular
+      terms at 10, the singular reduction cap at 12, the futility term above
+      beta in the pawn ending at 13), and `TmFailHighTarget` has its own
+      test. No parameter is dead. A hard-coded singular offset and stability
+      slope each fail it by name. Release only (about 300 searches). H10
+      (`fc1ebb3`): WAC solved 178/300 at depth 6 against a floor of 122; it
+      now holds a band, 164 to 192, and a count above it asks for
+      recalibration; the coverage floors over versioned fixtures (the canary
+      sweep 431, tb-win 38, tb-draw 34, kbnk-mate 4, endgames.epd 91 rows,
+      the SEE walks 1,802 captures) are exact. H11 (`59e3cb5`): each
+      promotion fixture searches the alternative alone to the depth its own
+      budget reached: the rook mates where the queen stalemates (0), the
+      queen scores no lower than the transposing rook (481 and 435 at depth
+      13, where depth 12 reads the rook 520 and the queen 458, so the margin
+      is depth's), the queen beats the rook searched first (753 and 575 at
+      depth 14), and Saavedra's queen is drawn. Basilisk's 4-cp tie is not
+      present here.
+      Qualified on the final state: debug 519 and release 521 tests pass,
+      `fmt` and `clippy --all-features --all-targets` clean, the `texel` and
+      `tune` library suites pass (280, 279), the long tier passes, and the
+      fingerprint is 15,625,852 / EBF 2.563 on both backends.
     - **D.5.22 Measurement and gating methods from Basilisk — `I1`, DONE 2026-11-02.**
       Adopted: a repair's registration states its measured exposure; a
       written analysis of the fitted constants before a bake

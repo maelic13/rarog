@@ -55,8 +55,13 @@ Register an experiment before any games as its own file,
 index row (ID linked to the file, short title, disposition) to the
 `docs/EXPERIMENTS.md` section that owns it. Append the result and
 calibration to the file without rewriting the prediction, and update the
-index row's disposition in the same commit. A long analysis goes in an
-`analysis/` packet the entry cites.
+index row's disposition in the same commit. The entry's `- Disposition:` line
+and the index row's Disposition cell both start with the same one word,
+`open` until the experiment resolves, then the word it resolved to, followed
+by `,` `.` `;` `:` or ` — ` and any explanation; `check_dispositions.py`
+fails on a missing or disagreeing side (entries before 2026-11-08 are exempt,
+listed in `tools/diag/disposition_exempt.txt`, which only shrinks). A long
+analysis goes in an `analysis/` packet the entry cites.
 
 ```markdown
 # RAR-<area><number> — <short name>
@@ -81,8 +86,8 @@ index row's disposition in the same commit. A long analysis goes in an
 - Result:
   - Diagnostics: nodes, EBF, NPS, depth, counters, suites (not the verdict):
   - Games/verdict: games, W-D-L, Elo/nElo and CI, LLR:
-- Disposition: accepted / retained / rejected / neutral/inconclusive /
-  observation / no-change / deferred:
+- Disposition: one of accepted, retained, rejected, refuted, inconclusive,
+  observation, no-change, deferred, withdrawn, open
 - **PREDICTION CALIBRATION (append after exposure):**
   - Original prediction (do not rewrite):
   - Observed result; sign and magnitude reasonable?:
@@ -915,7 +920,7 @@ cargo test -p rarog
 cargo test -p rarog --release
 # Long tier, for release qualification: the two play measurements ignored in the
 # suite, by exact name (CI's release leg runs the same command). Two must pass.
-cargo test -p rarog --release --test endgames --test wac -- --ignored --exact kbnk_positions_are_driven_to_mate wac_solved_count_stays_above_floor
+cargo test -p rarog --release --test endgames --test wac -- --ignored --exact kbnk_positions_are_driven_to_mate wac_solved_count_stays_in_its_band
 cargo test -p xtask
 # The texel tuner is its own workspace, so `texel` never unifies into the engine.
 cargo test --manifest-path tools/texel-tuner/Cargo.toml
