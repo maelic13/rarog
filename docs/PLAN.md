@@ -337,7 +337,6 @@ twice (HISTORY's number map holds what moved).
 |---|---|---|---|
 | D.5.20 | READY_FOR_IMPLEMENTATION | I1 | Tooling; held 2026-11-08 on two maintainer decisions (Miri's nightly toolchain, a structured disposition field), the rest landed |
 | D.5.21 | READY_FOR_IMPLEMENTATION | I1 | The behaviour-test sweep; the ported tests landed 2026-11-08, H8–H11 remain |
-| D.5.23 | READY_FOR_IMPLEMENTATION | I1 | In order of value; exact fingerprint, a unit test at an overflowing depth |
 | D.6.1 | RESEARCH | R2 | Screen first among the cards (castling's classification) |
 | D.6.2 | RESEARCH | R2 | Screen second (quiet queen promotions in quiescence) |
 | D.6.3 | RESEARCH | R2 | Screen before any implementation; screened with D.6.4 |
@@ -1008,7 +1007,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       night-queue launcher. Record: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
   Added 2026-11-03 from the Triumviratus review
   (`analysis/triumviratus_review_2026-11-03.md`, §4 item 12):
-    - **D.5.23 The correction bonus overflows `i32` at extreme depth and residual — `I1`.**
+    - **D.5.23 The correction bonus overflows `i32` at extreme depth and residual — `I1`, DONE 2026-11-08.**
       `train_correction` computes `corr_update_slope * depth * diff / 128` in
       `i32` (`src/search/correction.rs:228`). The search trains on mate and
       tablebase residuals on purpose, and `diff` is bounded only by a mate
@@ -1020,7 +1019,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       ceiling might. Fix: the product
       in `i64` before the clamp, a unit test at an overflowing depth and
       residual, exact fingerprint. Triumviratus lost to the same class of
-      defect in its correction decay in tablebase endgames.
+      defect in its correction decay in tablebase endgames. `24560a5` forms
+      the product in `i64`; the new test trains at depth 200 and a residual
+      of ±63,700. Under the old arithmetic it fails: release moved the table
+      by −1,692 for a residual of +63,700, and debug panics on the multiply.
+      Fingerprint 15,625,852 / EBF 2.563 on both backends; debug and release
+      suites, fmt and clippy clean.
     - **D.5.24 A `Hash` larger than the machine's physical memory is refused on every platform — `I1`, DONE 2026-11-04.**
       Found on PR #13's macOS CI. `db4e9ae` and `488608c`: `Hash`'s
       maximum is the machine's physical memory; a larger value is refused

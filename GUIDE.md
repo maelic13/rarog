@@ -61,7 +61,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [ ] **D.5.20** CI hygiene — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.5.21** Basilisk's behaviour tests run against Rarog — **READY_FOR_IMPLEMENTATION / I1**
     - [x] **D.5.22** Measurement and gating methods from Basilisk — DONE 2026-11-02
-    - [ ] **D.5.23** The correction bonus overflows `i32` at extreme depth and residual — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.5.23** The correction bonus overflows `i32` at extreme depth and residual — DONE 2026-11-08
     - [x] **D.5.24** A `Hash` larger than the machine's physical memory is refused on every platform — DONE 2026-11-04
 - [ ] **D.6** Strength candidates from the engine review: kernel and evaluation deviations from the donor, each behind a zero-game screen and a registered gate — **R2**
     - [ ] **D.6.1** Castling is neither quiet nor noisy — **RESEARCH / R2**
