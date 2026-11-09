@@ -163,12 +163,6 @@ pub(super) fn diversify_root_scores(moves: &mut [ScoredMove], offset: usize) {
     }
 }
 
-/// A noisy move is a capture or a promotion.
-#[inline(always)]
-pub(super) fn is_noisy(mv: Move) -> bool {
-    mv.is_capture() || mv.is_promo()
-}
-
 /// Picker stages, visited in declaration order and never revisited.
 ///
 /// Contract, covered by the tests below:
@@ -384,7 +378,7 @@ impl MovePicker {
                             // After three good noisy moves under a quiet TT
                             // move, only material-winning ones stay good.
                             let threshold = if !tt_move.is_null()
-                                && !is_noisy(*tt_move)
+                                && !tt_move.is_noisy()
                                 && *good_noisy_emitted > 2
                             {
                                 1
@@ -679,7 +673,7 @@ impl Searcher {
         for &mv in moves {
             if mv == tt_move {
                 scored.push(mv, 30_000_000, 0, 0);
-            } else if is_noisy(mv) {
+            } else if mv.is_noisy() {
                 let noisy = self.noisy_score(board, threats, mv);
                 let threshold = -noisy / GOOD_NOISY_SEE_DIVISOR + GOOD_NOISY_SEE_OFFSET;
                 if board.see_ge(mv, threshold) {

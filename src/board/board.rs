@@ -554,11 +554,6 @@ impl Board {
         self.occupant_type(mv.from_sq())
     }
 
-    #[inline(always)]
-    pub(crate) fn is_quiet_move(&self, mv: Move) -> bool {
-        mv.flags() <= DOUBLE_PUSH
-    }
-
     pub fn parse_move(&self, input: &str) -> Option<Move> {
         self.legal_uci_move(UciMove::parse(input)?)
     }
@@ -2496,6 +2491,42 @@ impl fmt::Display for Board {
 
 #[cfg(test)]
 mod tests {
+    /// The partition, judged from what each legal move does on the board and
+    /// not from its flags: a piece taken, a pawn changing file, or a pawn
+    /// reaching the last rank is noisy, and everything else is quiet.
+    #[test]
+    fn every_legal_move_is_quiet_or_noisy_by_what_it_does() {
+        let extra = [
+            "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+            "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",
+            "1n6/P6k/8/8/8/8/8/K7 w - - 0 1",
+            "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",
+        ];
+        let (mut castles, mut en_passants, mut promotions, mut under_promotions) = (0, 0, 0, 0);
+        for fen in crate::bench::BENCH_FENS.iter().chain(extra.iter()) {
+            let board = Board::from_fen(fen).expect("valid FEN");
+            for mv in board.generate_legal_moves() {
+                let (from, to) = (mv.from_sq().index(), mv.to_sq().index());
+                let pawn = board.moving_piece(mv) == Piece::Pawn;
+                let noisy = board.piece_at(mv.to_sq()).is_some()
+                    || (pawn && from % 8 != to % 8)
+                    || (pawn && (to / 8 == 0 || to / 8 == 7));
+                assert_eq!(mv.is_noisy(), noisy, "{mv} noisy in {fen}");
+                assert_eq!(mv.is_quiet(), !noisy, "{mv} quiet in {fen}");
+                castles += usize::from(mv.is_castling());
+                en_passants += usize::from(mv.is_en_passant());
+                if mv.is_promo() {
+                    promotions += 1;
+                    under_promotions += usize::from(mv.promo_piece() != Piece::Queen);
+                }
+            }
+        }
+        assert!(castles > 0, "no castling reached");
+        assert!(en_passants > 0, "no en passant reached");
+        assert!(promotions > 0, "no promotion reached");
+        assert!(under_promotions > 0, "no under-promotion reached");
+    }
+
     use super::*;
 
     /// `threats()` agrees with the attacker query on every square of positions

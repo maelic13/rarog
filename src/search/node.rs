@@ -7,9 +7,7 @@ use crate::infra;
 use crate::tt::{Bound, TtEntry, TtProbe, TtStore};
 
 use super::history::{BestMoveUpdate, SearchedMoves, cont_context};
-use super::movepick::{
-    MovePicker, ScoredMoveList, Stage, diversify_root_scores, is_noisy, pick_next,
-};
+use super::movepick::{MovePicker, ScoredMoveList, Stage, diversify_root_scores, pick_next};
 #[cfg(feature = "pricing")]
 use super::pricing::{
     Decision, HiddenMove, NodeEntry, NodeKind, QCapture, QEntry, ReSearch, Rule, Verdict,
@@ -404,7 +402,7 @@ impl Searcher {
         entry.captured = captured;
         entry.cont_key = cont_context(
             board.is_in_check(),
-            is_noisy(mv),
+            mv.is_noisy(),
             board.side_to_move(),
             piece,
             mv.to_sq(),
@@ -682,7 +680,7 @@ impl Searcher {
             if score >= beta
                 && self.td.stack.back(ply, 1).move_count < 4
                 && let Some(mv) = ev.mv.and_then(|mv| board.legal_move(mv))
-                && !is_noisy(mv)
+                && !mv.is_noisy()
             {
                 let stm = board.side_to_move();
                 let piece = board.moving_piece(mv);
@@ -774,7 +772,7 @@ impl Searcher {
         // parent stood was a good one for the parent.
         if !NODE::ROOT && !in_check && excluded.is_null() && (depth < 6 || tt_entry.is_none()) {
             let parent = *self.td.stack.back(ply, 1);
-            if !parent.mv.is_null() && !is_noisy(parent.mv) && parent.static_eval != VALUE_NONE {
+            if !parent.mv.is_null() && !parent.mv.is_noisy() && parent.static_eval != VALUE_NONE {
                 let bonus = (812 * -(static_eval + parent.static_eval) / 128).clamp(-144, 324);
                 self.td
                     .hist
@@ -888,7 +886,7 @@ impl Searcher {
             && eval_for_pruning
                 < alpha - self.cfg.core.razor_base - self.cfg.core.razor_square * depth * depth
             && alpha < RAZOR_ALPHA_LIMIT
-            && (tt_move.is_null() || is_noisy(tt_move))
+            && (tt_move.is_null() || tt_move.is_noisy())
             && ev.bound != Some(Bound::Lower)
         {
             crate::diag_count!(razor_drop);
@@ -1514,7 +1512,7 @@ impl Searcher {
                     singular_beta - score,
                     NODE::PV,
                     ev.pv_line(false),
-                    !is_noisy(tt_move),
+                    !tt_move.is_noisy(),
                     corr_abs,
                 );
                 node_extension = self.within_extension_budget(node_extension, extension_spent);
@@ -1669,7 +1667,7 @@ impl Searcher {
             // fetched for nothing, which costs less than waiting for it.
             self.shared.tt.prefetch(board.key_after_hint(mv));
             let is_capture = mv.is_capture();
-            let is_quiet = board.is_quiet_move(mv);
+            let is_quiet = mv.is_quiet();
             let mut search_count = 0u32;
             let moving_piece = board.moving_piece(mv);
             let captured_piece = board.captured_piece(mv);
@@ -2323,7 +2321,7 @@ impl Searcher {
                     );
                     // A fail-high above the static eval with a quiet move
                     // trains the correction; see the node's end.
-                    if !in_check && !is_noisy(mv) && score > static_eval {
+                    if !in_check && !mv.is_noisy() && score > static_eval {
                         self.train_correction(board, depth, score - static_eval, ply);
                     }
                     // Stored after the updates, which read no table entry it
@@ -2413,7 +2411,7 @@ impl Searcher {
         // with the residual's sign (a fail-low above the eval says nothing
         // about how far above).
         if !in_check
-            && !(bound == Bound::Exact && is_noisy(best_move))
+            && !(bound == Bound::Exact && best_move.is_noisy())
             && !(bound == Bound::Upper && best_score >= static_eval)
         {
             self.train_correction(board, depth, best_score - static_eval, ply);
@@ -2684,7 +2682,7 @@ impl Searcher {
         let mut evasion_best = -INF_SCORE;
         for index in 0..scored.len() {
             let picked = pick_next(scored.as_mut_slice(), index);
-            if in_check && !is_noisy(picked.mv) && !is_loss(evasion_best) {
+            if in_check && !picked.mv.is_noisy() && !is_loss(evasion_best) {
                 crate::diag_count!(q_evasion_skip);
                 continue;
             }
@@ -3252,7 +3250,7 @@ mod tests {
         let mate = board.parse_move("a1a8").expect("legal quiet mate");
         let threats = board.threats();
         for mv in board.generate_legal_moves() {
-            if mv != mate && board.is_quiet_move(mv) {
+            if mv != mate && mv.is_quiet() {
                 for _ in 0..64 {
                     searcher.td.hist.update_quiet(
                         threats.all,
@@ -3266,7 +3264,7 @@ mod tests {
         let quiets = board
             .generate_legal_moves()
             .into_iter()
-            .filter(|&mv| board.is_quiet_move(mv))
+            .filter(|&mv| mv.is_quiet())
             .count();
         assert!(quiets > 8, "the skip must be reachable: {quiets} quiets");
         let alpha = MATE_SCORE - 100;

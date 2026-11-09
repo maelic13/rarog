@@ -167,6 +167,19 @@ impl Move {
         self.flags() >= PROMO_KNIGHT
     }
 
+    /// A noisy move is a capture or a promotion.
+    #[inline(always)]
+    pub fn is_noisy(self) -> bool {
+        self.is_capture() || self.is_promo()
+    }
+
+    /// A quiet move is any other, castling included: the one partition of the
+    /// moves that ordering, pruning, reduction and the histories all read.
+    #[inline(always)]
+    pub fn is_quiet(self) -> bool {
+        !self.is_noisy()
+    }
+
     #[inline(always)]
     pub fn is_castling(self) -> bool {
         let f = self.flags();
