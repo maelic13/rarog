@@ -1,0 +1,294 @@
+diff --git a/src/diag.rs b/src/diag.rs
+index 9787e95..457e2fb 100644
+--- a/src/diag.rs
++++ b/src/diag.rs
+@@ -40,6 +40,28 @@ pub mod counters {
+     }
+ 
+     declare!(
++        // D.6.1's screen.
++        moves_seen,
++        castle_seen,
++        castle_tt,
++        castle_index_sum,
++        castle_shadow_lmp,
++        castle_shadow_fut,
++        castle_shadow_hp,
++        castle_see_noisy_fail,
++        castle_see_quiet_fail,
++        castle_lmr,
++        castle_lmr_delta_pos,
++        castle_lmr_delta_neg,
++        castle_lmr_big,
++        castle_searched,
++        castle_cutoff,
++        castle_noisy_malus,
++        castle_fail_low,
++        castle_write_wk,
++        castle_write_wq,
++        castle_write_bk,
++        castle_write_bq,
+         // Denominators. `qnodes` is EXACT, unlike `sampled_qnodes`: the
+         // oracle differential needs a qsearch denominator collected the same
+         // way the oracle collects it, and a 1/1024 sample cannot be joined
+diff --git a/src/search/history.rs b/src/search/history.rs
+index 80a7e5f..83b2aa1 100644
+--- a/src/search/history.rs
++++ b/src/search/history.rs
+@@ -174,6 +174,26 @@ impl HistoryTables {
+         );
+     }
+ 
++    /// D.6.1's screen: castling's four noisy slots and four quiet entries.
++    #[cfg(feature = "diag")]
++    pub(super) fn castle_slots(&self) -> [(&'static str, i32, i32); 4] {
++        let read = |color: Color, from: Square, to: Square| {
++            let noisy = i32::from(self.noisy[piece_to(color, Piece::King, to)][6][0]);
++            let quiet = i32::from(self.quiet[color as usize][0][0][from.index()][to.index()]);
++            (noisy, quiet)
++        };
++        let row = |name, color, from, to| {
++            let (noisy, quiet) = read(color, from, to);
++            (name, noisy, quiet)
++        };
++        [
++            row("wk", Color::White, Square::E1, Square::G1),
++            row("wq", Color::White, Square::E1, Square::C1),
++            row("bk", Color::Black, Square::E8, Square::G8),
++            row("bq", Color::Black, Square::E8, Square::C8),
++        ]
++    }
++
+     /// Row base of the pawn table for this pawn structure.
+     #[inline(always)]
+     pub(super) fn pawn_row(pawn_key: u64) -> usize {
+@@ -343,6 +363,15 @@ impl Searcher {
+             }
+         }
+         for &mv in u.noisies {
++            #[cfg(feature = "diag")]
++            if mv.is_castling() {
++                match (stm, mv.to_sq()) {
++                    (Color::White, Square::G1) => crate::diag_count!(castle_write_wk),
++                    (Color::White, _) => crate::diag_count!(castle_write_wq),
++                    (Color::Black, Square::G8) => crate::diag_count!(castle_write_bk),
++                    (Color::Black, _) => crate::diag_count!(castle_write_bq),
++                }
++            }
+             self.td.hist.update_noisy(
+                 threats,
+                 stm,
+diff --git a/src/search/mod.rs b/src/search/mod.rs
+index 815e616..0259f89 100644
+--- a/src/search/mod.rs
++++ b/src/search/mod.rs
+@@ -1261,6 +1261,10 @@ impl Searcher {
+         // dump lives in `search_parallel`, after the helpers are joined.
+         if self.shared.threads == 1 {
+             crate::diag::dump();
++            #[cfg(feature = "diag")]
++            for (name, noisy, quiet) in self.td.hist.castle_slots() {
++                crate::info_string!("castleslot {name} {noisy} {quiet}");
++            }
+             #[cfg(feature = "pricing")]
+             self.pricing_dump();
+         }
+@@ -1633,6 +1637,10 @@ impl Searcher {
+         }
+         if self.shared.threads == 1 {
+             crate::diag::dump();
++            #[cfg(feature = "diag")]
++            for (name, noisy, quiet) in self.td.hist.castle_slots() {
++                crate::info_string!("castleslot {name} {noisy} {quiet}");
++            }
+             #[cfg(feature = "pricing")]
+             self.pricing_dump();
+         }
+diff --git a/src/search/movepick.rs b/src/search/movepick.rs
+index 10817aa..8a3269d 100644
+--- a/src/search/movepick.rs
++++ b/src/search/movepick.rs
+@@ -163,6 +163,36 @@ pub(super) fn diversify_root_scores(moves: &mut [ScoredMove], offset: usize) {
+     }
+ }
+ 
++#[cfg(test)]
++mod d61_screen {
++    use super::is_noisy;
++    use crate::board::Board;
++
++    #[test]
++    fn quiet_and_noisy_agree_over_legal_moves() {
++        let extra = [
++            "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
++            "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",
++            "1n6/P6k/8/8/8/8/8/K7 w - - 0 1",
++            "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",
++        ];
++        let (mut total, mut disagreeing, mut castling) = (0, 0, 0);
++        for fen in crate::bench::BENCH_FENS.iter().chain(extra.iter()) {
++            let board = Board::from_fen(fen).expect("valid FEN");
++            for mv in board.generate_legal_moves() {
++                total += 1;
++                if board.is_quiet_move(mv) == is_noisy(mv) {
++                    disagreeing += 1;
++                    castling += usize::from(mv.is_castling());
++                    println!("disagree {mv} flags {} in {fen}", mv.flags());
++                }
++            }
++        }
++        println!("legal moves {total}, disagreeing {disagreeing}, of them castling {castling}");
++        assert_eq!(disagreeing, 0);
++    }
++}
++
+ /// A noisy move is a capture or a promotion.
+ #[inline(always)]
+ pub(super) fn is_noisy(mv: Move) -> bool {
+diff --git a/src/search/node.rs b/src/search/node.rs
+index 9bc5eff..136f68f 100644
+--- a/src/search/node.rs
++++ b/src/search/node.rs
+@@ -1671,6 +1671,29 @@ impl Searcher {
+             let is_capture = mv.is_capture();
+             let is_quiet = board.is_quiet_move(mv);
+             let mut search_count = 0u32;
++            #[cfg(feature = "diag")]
++            let diag_castle = !NODE::ROOT && mv.is_castling();
++            #[cfg(feature = "diag")]
++            let diag_castle_quiet_history = if diag_castle {
++                if mv == tt_move {
++                    self.quiet_pruning_history(board, threats.all, ply, mv)
++                } else {
++                    picked.quiet_history
++                }
++            } else {
++                0
++            };
++            #[cfg(feature = "diag")]
++            if !NODE::ROOT {
++                crate::diag_count!(moves_seen);
++                if diag_castle {
++                    crate::diag_count!(castle_seen);
++                    if mv == tt_move {
++                        crate::diag_count!(castle_tt);
++                    }
++                    crate::diag_add!(castle_index_sum, u64::try_from(move_count).unwrap_or(0));
++                }
++            }
+             let moving_piece = board.moving_piece(mv);
+             let captured_piece = board.captured_piece(mv);
+             // The TT move is emitted before quiets are scored, so its history
+@@ -1719,6 +1742,44 @@ impl Searcher {
+                     )
+                 };
+                 crate::diag_count!(prune_shadow_moves);
++                #[cfg(feature = "diag")]
++                if diag_castle {
++                    let h = diag_castle_quiet_history;
++                    let lmp_limit = (core.lmp_base
++                        + core.lmp_improvement * improvement / 16
++                        + core.lmp_square * depth * depth
++                        + core.lmp_history * h / 1024)
++                        / 1024;
++                    let fut = static_eval
++                        + core.fp_base
++                        + core.fp_linear * depth
++                        + core.fp_history * h / 1024
++                        + core.fp_eval_above_beta * i32::from(static_eval >= beta)
++                        + core.fp_correction * corr_abs / 1024;
++                    if !is_direct_check && beta < TB_WIN_SCORE && move_count >= lmp_limit {
++                        crate::diag_count!(castle_shadow_lmp);
++                    } else if !is_direct_check && depth < 14 && fut <= alpha {
++                        crate::diag_count!(castle_shadow_fut);
++                    } else if depth < 5 && h < -core.hp_slope * depth {
++                        crate::diag_count!(castle_shadow_hp);
++                    }
++                    let quiet_threshold = (-core.see_quiet_square * depth * depth
++                        + core.see_quiet_linear * depth
++                        - core.see_quiet_history * h / 1024
++                        + core.see_quiet_constant)
++                        .min(0);
++                    let noisy_threshold = (-core.see_noisy_square * depth * depth
++                        - core.see_noisy_linear * depth
++                        - core.see_noisy_history * history / 1024
++                        + core.see_noisy_constant)
++                        .min(0);
++                    if !board.see_ge_quiet_aware(mv, noisy_threshold) {
++                        crate::diag_count!(castle_see_noisy_fail);
++                    }
++                    if !board.see_ge_quiet_aware(mv, quiet_threshold) {
++                        crate::diag_count!(castle_see_quiet_fail);
++                    }
++                }
+ 
+                 // Late-move pruning: past a move count that grows with the
+                 // square of the depth, the remaining quiets are skipped. A
+@@ -2004,6 +2065,10 @@ impl Searcher {
+             // when it has one and kept its slot.
+             let extension = if move_count == 1 { node_extension } else { 0 };
+ 
++            #[cfg(feature = "diag")]
++            if diag_castle {
++                crate::diag_count!(castle_searched);
++            }
+             self.push_move(board, ply, mv, moving_piece);
+             self.record_move_order(ply, move_count);
+             {
+@@ -2056,6 +2121,31 @@ impl Searcher {
+                 // Late-move reductions: every move after the first, from depth
+                 // 2; never at the root or in check.
+                 if !NODE::ROOT && !in_check && depth >= 2 {
++                    #[cfg(feature = "diag")]
++                    if diag_castle {
++                        let core = &self.cfg.core;
++                        let noisy = self.td.hist.noisy(
++                            threats.all,
++                            !board.side_to_move(),
++                            moving_piece,
++                            mv.to_sq(),
++                            captured_piece,
++                        );
++                        let noisy_term = core.lmr_noisy - core.lmr_noisy_history * noisy / 1024;
++                        let quiet_term = core.lmr_quiet
++                            - core.lmr_quiet_history * diag_castle_quiet_history / 1024
++                            + core.lmr_alpha_gap
++                                * (alpha - eval_for_pruning)
++                                    .clamp(core.lmr_alpha_gap_lo, core.lmr_alpha_gap_hi)
++                                / 128;
++                        let delta = noisy_term - quiet_term;
++                        crate::diag_count!(castle_lmr);
++                        crate::diag_add!(castle_lmr_delta_pos, u64::try_from(delta.max(0)).unwrap_or(0));
++                        crate::diag_add!(castle_lmr_delta_neg, u64::try_from((-delta).max(0)).unwrap_or(0));
++                        if delta.abs() >= 512 {
++                            crate::diag_count!(castle_lmr_big);
++                        }
++                    }
+                     let tt_valid = ev.bound.is_some();
+                     let reduction = self.late_move_reduction(&LateMoveInputs {
+                         depth,
+@@ -2321,6 +2411,10 @@ impl Searcher {
+                             fail_high: true,
+                         },
+                     );
++                    #[cfg(feature = "diag")]
++                    if diag_castle {
++                        crate::diag_count!(castle_cutoff);
++                    }
+                     // A fail-high above the static eval with a quiet move
+                     // trains the correction; see the node's end.
+                     if !in_check && !is_noisy(mv) && score > static_eval {
+@@ -2354,6 +2448,13 @@ impl Searcher {
+                 }
+             }
+ 
++            #[cfg(feature = "diag")]
++            if diag_castle && !raised_alpha {
++                crate::diag_count!(castle_fail_low);
++                if move_count < 32 {
++                    crate::diag_count!(castle_noisy_malus);
++                }
++            }
+             if !raised_alpha && move_count < 32 {
+                 if is_quiet {
+                     quiet_moves.push(mv);

@@ -335,7 +335,7 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.1 | RESEARCH | R2 | Screen first among the cards (castling's classification) |
+| D.6.1 | GAME_GATE | R2 | Screen read and repair qualified (RAR-S107); its 2,000-game harm read is the maintainer's |
 | D.6.2 | RESEARCH | R2 | Screen second (quiet queen promotions in quiescence) |
 | D.6.3 | RESEARCH | R2 | Screen before any implementation; screened with D.6.4 |
 | D.6.4 | RESEARCH | R2 | Screen before any implementation |
@@ -517,7 +517,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      lands with the fix), and the four castling noisy slots after `bench 13`
      at stride 1 (expected strongly negative). Fix: define quiet once (`!is_capture() && !is_promo()`). Gate:
      case 2, a 2,000-game harm read, as a classification repair expected near
-     zero.
+     zero. Screen read 2026-11-09 (RAR-S107): the slots at or near their floor,
+     1 in 381 moves in the loop, between 49% and 71% of them decided differently,
+     castling legal in 95% of gate games, so no closing rule fired; the repair is
+     `72c4e60` on `d6`, the harm read not yet played.
     - **D.6.2 Quiescence cannot see a non-capturing queen promotion — `R2`.** (BOARD-2): pawn
      captures target enemy occupancy only, every non-capture promotion is
      generated with the quiets, and quiescence outside check generates

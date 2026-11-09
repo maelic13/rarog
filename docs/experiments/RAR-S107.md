@@ -140,3 +140,122 @@ Otherwise the item is `READY_FOR_IMPLEMENTATION` for the repair and gate below.
 - **Most likely failure mode:** the slots holding well above −6,000, because
   few of bench's positions keep castling legal and the slots then have few
   writes, which would be a miss in magnitude and not in mechanism.
+
+## Result: the screen (2026-11-09, appended after exposure)
+
+**No closing rule fired: D.6.1 is `READY_FOR_IMPLEMENTATION`.** The evidence
+layer is counters and node counts, not strength. Recipe:
+`analysis/arm_patches/d61-rar-s107-screen.patch` on `5c6fbd6`; its `bench 13`
+reproduced 15,625,852 in both runs, and the counters never steer.
+
+**Agreement test:** fails as predicted: of 1,256 legal moves, 7 disagree, all 7
+castling (`e1g1` ×3, `e1c1` ×2, `e8g8`, `e8c8`).
+
+**Counters over `bench 13`, one thread, stride 1:**
+
+| Read | Value |
+| --- | --- |
+| Moves in the non-root loop | 18,025,293 |
+| Castling among them | 47,279, or 0.262%, 1 in 381 |
+| Positions with castling in the loop | 4 of 40 (1, 2, 5, 14) |
+| Castling as the TT move | 6,200, or 13.1% |
+| Mean move index | 2.39 |
+| Quiet rules would prune | 10,335, or 21.9%: late-move 7,162, futility 3,126, history 47 |
+| Fails either SEE threshold | 0 and 0 |
+| Reached LMR | 23,604, or 49.9% |
+| Mean noisy term − quiet term | +3,395, 3.3 plies more reduction |
+| Differ by 512 or more | 23,133, or 98.0% of those |
+| Cut off / failed low | 7,794 (16.5%) / 39,316 |
+
+A move can count both as a shadow prune and in LMR, so the share of castling
+moves whose decision changes lies between 48.9% and 70.8%. The rule's bound was
+1%.
+
+**The slots at the end of `bench 13`:**
+
+| Castle | Noisy writes | Noisy slot | Quiet entry (end; range) |
+| --- | --- | --- | --- |
+| White kingside | 1,390 | −12,800 | −4,672; −6,985 to 7,180 |
+| White queenside | 880 | −12,800 | −365; −7,084 to 4,622 |
+| Black kingside | 931 | −12,800 | −2,605; −6,795 to 7,038 |
+| Black queenside | 62 | −11,539 | −4,248; −7,674 to 6,073 |
+
+No noisy slot rose above 0 at any position. The floor is reached fast: a single
+depth-9 search of one castling position takes a slot to −11,945.
+
+**Exposure,** from RAR-S106's 2,000 games: a castling right at the start in 96.2%,
+castling legal at a played position in 95.2%, played in 90.2%, and legal at 4.58%
+of all played positions.
+
+**A premise in this record was wrong.** "Its place in the quiet order can only
+rise" is false: the quiet table is indexed by from and to alone, so a rook or queen
+moving e1–g1 shares castling's entry, and those entries do go negative. Castling
+itself still never takes a malus there, and the mean LMR difference implies the
+entries were well above zero where castling was searched, roughly +7,000 if the
+gap term is taken as zero (an inference, not a read). That difference is against
+today's quiet history, which the repair will lower, so +3,395 overstates what
+the repair changes.
+
+### Calibration (the screen)
+
+| Prediction | Read | Verdict |
+| --- | --- | --- |
+| Agreement fails on castling only, 0.99 | 7 of 7 castling | Hit |
+| Slots never above 0, 0.99 | Never | Hit |
+| Slots with 50 or more writes at or below −6,000, 0.8 | All four, −11,539 or lower | Hit |
+| `castle_seen` 0.02% to 0.5%, 0.7 | 0.262% | Hit |
+| `castle_tt` under a quarter, 0.6 | 13.1% | Hit |
+| No SEE failure, 0.9 | None | Hit |
+| Shadow prunes 5% to 30%, 0.5 | 21.9% | Hit |
+| LMR mean +200 to +1,200, 0.6 | +3,395 | Miss in magnitude, right sign: the quiet term was taken at about zero history |
+| No closing rule, 0.85 | None fired | Hit |
+| Exposure 40% to 90% legal, 30% to 70% played, 0.7 | 95.2%, 90.2% | Miss in magnitude: most UHO lines keep castling open |
+| Fingerprint within ±3%, 0.8 | −23.55% | Miss in magnitude and mechanism, below |
+
+**The fingerprint.** `bench 13` reads 11,946,003 / EBF 2.547, against 15,625,852 /
+EBF 2.563. That is not the repair's tree size. Depth 13 in a fresh process per
+position (`per_position.py`, Hash 64): the 35 positions without castling rights
+search identical trees, one of the five with rights is a 46-node search that does
+not move, the other four read 1.168, 1.064, 0.944 and 1.178, and the total goes
+from 11,627,843 to 11,709,838, **+0.7%**. The −23.55% is the table and histories
+that bench carries from position to position, already known to swing it: valid
+table mappings alone spanned 11.9M to 15.6M (RAR-S106). The failed assumption is
+that a rare move could not move bench far. These are node counts and say nothing
+of Elo.
+
+## Implementation (2026-11-09)
+
+- **`abb2b71`, the test's precondition, in its own commit:** the repair moved the
+  trees of two of the liveness sweep's deep probes, so three singular parameters
+  read as dead on them; none of the three changed. A read at depths 8 to 13 on the
+  five positions, on both trees, gave probes live on both:
+  `CoreSingDoubleNotTtPv` on the pawn ending at 9, `CoreLmrSingularCap` on the two
+  pieces at 9 (neither has castling), and `CoreSingTripleNotTtPv` on the Semi-Slav
+  at 11, the only pin of that parameter live on both.
+- **`72c4e60`, the repair:** `Move::is_noisy` and `Move::is_quiet`, one the other's
+  negation; the two old predicates are gone. No constant or history shape moved.
+- **Tests:** every legal move's class judged from what it does on the board, and a
+  search that must leave castling's noisy slots at 0 and write its quiet entries.
+  With the old predicate put back, both fail (the slot read −11,945).
+- **Qualified:** `cargo fmt --check`, debug tests 521 passed, release tests 523
+  passed, `cargo clippy --all-features --all-targets -- -D warnings`, all exit 0.
+- **Fingerprint:** stays recorded as 15,625,852 until the disposition below.
+
+## Binaries (appended before any game)
+
+Built 2026-11-09, each from a clean worktree at its commit, rustc 1.99.1,
+`tools/build_test.ps1`. Command: `run_s107.ps1 -Step stc` in
+`analysis/artifacts/d61-castling-2026-11-09/`. Its dry run passed every preflight:
+idle host, runner pin, both fingerprints, build flavour, compiler and policy.
+
+| Arm | Commit | `id name` | Bench | SHA-256 |
+| --- | --- | --- | --- | --- |
+| `d61base` | `5c6fbd6` | `dev-20261109-5c6fbd6e` | 15,625,852 | `25eafd21c45e7c2257c543a4c6ae01891abc380e45a6717cea16144bf87a5fe2` |
+| `d61cand` | `72c4e60` | `dev-20261109-72c4e608` | 11,946,003 | `02a3290c379ef8aa84bd0f665f0d6ab2285e6bd6fc30d789760f89e7dd42e0e1` |
+
+## Dispositions (frozen)
+
+- **The harm rule does not fire:** D.6.1 closes, the fingerprint record moves to
+  11,946,003 / EBF 2.547, and the changelog gets its entry.
+- **The harm rule fires:** the repair leaves `d6` by the gate, the defect stays
+  open in D.6.1, and a refit of the constants tuned around it is a new registration.
