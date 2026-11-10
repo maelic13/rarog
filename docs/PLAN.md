@@ -335,8 +335,8 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.3 | RESEARCH | R2 | Cluster screen with D.6.4 registered (RAR-S110), not yet read |
-| D.6.4 | RESEARCH | R2 | Cluster screen with D.6.3 registered (RAR-S110), not yet read |
+| D.6.3 | RESEARCH | R2 | Cluster screen read (RAR-S110): three bench positions carry the coupling, so a fresh-process per-position read comes first; null half out |
+| D.6.4 | RESEARCH | R2 | In D.6.3's cluster (RAR-S110), read with it |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
@@ -580,6 +580,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      with arms 5 and 6, and measures reach by the null-move cut rate per
      arm and the tree beneath parents whose null move did not cut, not by
      the child's interior subtree.
+     Cluster screen read 2026-11-10 (RAR-S110): the null half fails its
+     reach floor (+4.84 points against 5.36) and leaves the cluster,
+     retried on a change to the null move's margin or reduction or the
+     cut-node consumers. The ProbCut half stays by its children's history
+     rewards (2.1% of noisy updates), so the cluster arm is ProbCut typed
+     `false` with D.6.4. The no-TT-move LMR term, the null decisions and
+     the TT cutoffs all carry part of the coupling, but three bench
+     positions carry 56.5% of it, so the item is back in research. Next is
+     a fresh-process per-position read, registered first. The canary rule's
+     treatment of a later settle is put to the maintainer (RAR-S110).
     - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`.** (NODE-2):
      `best_move` is set on every new best score, so an `Upper` entry carries
      the refuted move and overwrites the position's earlier move; the donor
@@ -596,6 +606,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      interior nodes, keeping IIR off at 338k of them. Its arm loses WAC.069
      and WAC.182 to a later settle at depth 10, so the item stays in
      research, in one cluster with D.6.3.
+     It stays in that cluster after RAR-S110 and is read with D.6.3.
     - **D.6.5 The exclusion search uses the table-refined estimate — `R2`.** (NODE-4):
      `eval_for_pruning` has no `excluded` guard; in a singular exclusion node
      the TT bound is Lower or Exact and the window sits below `tt_score`, so

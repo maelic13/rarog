@@ -265,3 +265,124 @@ what B would give, and adopts neither.
 11. **Most likely failure mode:** the null cut-rate floor, raised by D.6.4's own
     reshaping (seen at −3.01 and 4.26), swallows a real null-half effect, so the
     half is dropped although it reaches its parent.
+
+## Result: the screen (2026-11-10)
+
+Read by `analysis/artifacts/d63-d64-cluster-2026-11-10/read_screen.py` on
+`rarog-s110screen.exe` (SHA-256 `6ee8aab9…`), built from the screen patch on
+`ee0b3e4` with `--features diag` only. Applying the patch to `ee0b3e4`
+reproduces the screen's source tree, `d9fc7b7e…`. Before any read, arm 0's
+`bench 13` was checked at 13,038,236. Log `read.log` and `read.json` are beside
+the script. Every counter dumped 40 times in every arm.
+
+**Wire: passed.**
+- Arms 0, 1, 2, 3, 4 and 7 reproduced RAR-S109's counts exactly.
+- Arm 5 moved against arm 4 (−24.13%), arm 6 against arm 4 (−22.63%), and arm 8
+  against arm 0 (−7.94%).
+- The reduced LMR children failed high at 93.56%.
+
+| arm | `bench 13` | ratio | null cut | ProbCut cut / node | WAC 100k | canaries | lost, rule A |
+|---|---:|---:|---:|---:|---:|---:|---|
+| 0 | 13,038,236 | 1.0000 | 68.74% | 48.59% | 239 | 93 | — |
+| 1 | 12,385,895 | 0.9500 | 74.83% | 46.73% | 233 | 93 | none |
+| 2 | 13,148,505 | 1.0085 | 70.96% | 47.61% | 240 | 91 | WAC.115, WAC.182 |
+| 3 | 14,045,048 | 1.0772 | 70.57% | 46.98% | 241 | 92 | WAC.182 |
+| 4 | 12,785,308 | 0.9806 | 65.73% | 50.58% | 237 | 92 | WAC.069, WAC.182 |
+| 5 | 9,700,650 | 0.7440 | 70.57% | 50.89% | 235 | 92 | WAC.069, WAC.182 |
+| 6 | 9,892,346 | 0.7587 | 71.08% | 49.92% | 242 | 94 | WAC.069 |
+| 7 | 9,094,587 | 0.6975 | 73.39% | 50.42% | 245 | 94 | WAC.069 |
+| 8 | 12,003,117 | 0.9206 | 76.21% | 51.63% | — | — | — |
+| 11 | 13,253,797 | 1.0165 | 73.52% | 45.08% | — | — | — |
+| 12 | 10,319,650 | 0.7915 | 72.32% | 49.68% | — | — | — |
+| 15 | 9,583,725 | 0.7350 | 74.14% | 50.80% | — | — | — |
+
+Arms 6 and 7 gained WAC.168 and WAC.295, and arms 4 and 5 gained WAC.295. No
+arm leaves unsolved at 100k a canary that arm 0 solves there.
+
+**Parent-side reach, arm 0:**
+- **Null half.** 8.15% of null attempts have an interior child, and those fail
+  high at 34.43%. 35,171 parents searched their moves after a null move that did
+  not cut. Their loops held 6.31% of interior nodes, or 5.59% counting only the
+  outermost.
+- **ProbCut half.** 32.56% of ProbCut attempts reach a verification search.
+  93,005 parents searched their moves after a ProbCut that did not cut: 22.65%
+  of interior nodes, or 17.06% outermost. ProbCut children issued 34,406
+  fail-low rewards, 2.00% of the 1,718,840 noisy-history updates.
+
+**Reach, by the frozen floors:**
+- **Null half: out.**
+  - F_null is 5.36 points, set by the toggle 4→6 (unexposed). The other
+    members were +2.21, −4.26, +2.82, −3.02, −4.26, +0.13 and +2.82.
+  - The null half's toggles in D.6.4's presence moved the null cut rate by
+    +4.84 (4→5) and +2.30 (6→7), both under the floor.
+- **ProbCut half: in, by the reward channel.**
+  - F_pc is 4.16 (toggle 1→5).
+  - Its own toggles moved the per-node ProbCut cut rate by −0.66 (4→6) and
+    −0.47 (5→7), under the floor.
+  - Its children's rewards were 2.07% of noisy-history updates in arm 4, over
+    1%.
+- **The cluster arm is K = 6:** ProbCut children typed `false` and `Upper`
+  stores with no move.
+
+**Coupling:**
+- **C1 supported:** κ = 0.6603 and κ₈ = 0.8411. Zeroing the no-TT-move term
+  removes 53% of the coupling's deviation, just past the half the rule needs.
+- **C2 supported:** arm 5's ratio of 0.7440 is within five points of arm 7's
+  0.6975. Arm 6's 0.7587 is not.
+- **C3 supported:** κ_tt = 0.5847.
+- **C4 holds.** Interior nodes fell by 2,501,992 between arm 0 and arm 7, and
+  three positions carry 1,413,251 of that (56.5%):
+  - position 11, from 1,471,227 to 654,381;
+  - position 10, from 582,833 to 176,686;
+  - position 22, from 331,602 to 141,344.
+
+  The other positions move both ways: position 4, for example, goes from 94,302
+  to 213,006.
+
+**Verdict, by the frozen rules: `RESEARCH`, because C4 holds.** The bench cannot
+characterise the coupling while three positions, sharing one table with the
+rest, carry most of it. A fresh-process per-position read comes first. The
+other checks:
+- **WAC:** arm 6 is at 242, against a floor of 233. Passed.
+- **Canaries:** under rule A, arm 6 loses WAC.069 (a later settle). The cluster
+  would be held by the canary rule even without C4. Under rule B it would lose
+  none.
+- **`NO_CHANGE` for the cluster:** not fired. No canary is lost at 100k.
+- **The null half closes `NO_CHANGE` for this cluster,** as the reach rule
+  says. Its retry trigger is a change to the null move's margin or reduction,
+  or to the cut-node consumers. Typing the null child alone still moves
+  `bench 13` by −5.00%, but by the registered rule that is reshaping, not
+  reach. This record does not reopen it.
+
+**Calibration (screen).**
+
+1. The six seen arms reproduce (0.97): a hit.
+2. Arm 5 at 0.70 to 0.90: a hit at 0.744. Arm 6 at 0.95 to 1.10: a miss at
+   0.759. The ProbCut half couples with D.6.4 almost as strongly as the null
+   half, which RAR-S109's arm 2 (+0.85% alone) did not suggest.
+3. The null half in (0.4): it is out, at +4.84 against a floor of 5.36.
+4. The per-node ProbCut cut rate under F_pc on both toggles: a hit. Rewards at
+   least 1% in arm 4: a hit at 2.07%. The ProbCut half in (0.5): it is in.
+5. Interior null children at 15% to 40% of attempts: a miss at 8.15%. Their
+   fail-high rate at 25% to 45%: a hit at 34.43%. The prediction read 0.25
+   interior nodes per child as a quarter of children being interior. Most
+   interior children are small, a few are larger.
+6. `nf_nodes_outer` at least 50% of nodes: a miss in magnitude at 5.59%. The
+   parents whose null move fails are mostly shallow, and their loops are a
+   small part of the tree. The prediction pictured them near the root.
+7. C1 (0.4), C2 (0.5) and C3 (0.3) supported: all three. C4 (0.2) holding: it
+   holds. The coupling has several channels, and on this bench it is
+   concentrated.
+8. Arm 5 at or above 237: a miss at 235. Arm 6 within 4 of 237: a miss at 242.
+   Arm K above 233: a hit.
+9. Arm K loses a canary under rule A (0.7): a hit, WAC.069. Held by the canary
+   rule (0.65): it would be, but C4 decides first. None lost under rule B
+   (0.8): a hit.
+10. `READY` (0.15) and `NO_CHANGE` (0.05): neither happened.
+11. The named failure mode, the null floor swallowing a null-half effect: it
+    happened in form, at +4.84 against 5.36. But the floor was set by the
+    ProbCut toggle in D.6.4's presence (4→6), not by D.6.4's own reshaping as
+    predicted. A miss in mechanism.
+
+**The canary question stays with the maintainer.** It is stated above,
+unchanged. Rule B would have released every arm read here.
