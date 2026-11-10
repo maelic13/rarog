@@ -759,6 +759,12 @@ impl Board {
         super::movegen::generate_captures_into(self, moves);
     }
 
+    /// The legal captures and non-capturing queen promotions, into a
+    /// caller-owned list: the moves of a captures-only search.
+    pub fn generate_legal_noisy_into(&mut self, moves: &mut MoveList) {
+        super::movegen::generate_noisy_into(self, moves);
+    }
+
     pub fn generate_legal_quiets(&self) -> MoveList {
         super::movegen::generate_quiets(self)
     }
@@ -2494,6 +2500,77 @@ mod tests {
     /// The partition, judged from what each legal move does on the board and
     /// not from its flags: a piece taken, a pawn changing file, or a pawn
     /// reaching the last rank is noisy, and everything else is quiet.
+    /// The captures-only search's list is the legal captures plus the legal
+    /// non-capturing queen promotions, each once, through checks and pins.
+    #[test]
+    fn the_noisy_list_is_the_captures_and_the_queen_pushes() {
+        fn expected(board: &Board) -> Vec<String> {
+            let mut moves: Vec<String> = board
+                .generate_legal_moves()
+                .into_iter()
+                .filter(|mv| mv.is_capture() || (mv.is_promo() && mv.promo_piece() == Piece::Queen))
+                .map(|mv| mv.to_string())
+                .collect();
+            moves.sort_unstable();
+            moves
+        }
+        fn noisy(board: &mut Board) -> Vec<String> {
+            let mut list = MoveList::new();
+            board.generate_legal_noisy_into(&mut list);
+            let mut moves: Vec<String> = list.iter().map(|mv| mv.to_string()).collect();
+            moves.sort_unstable();
+            moves
+        }
+        fn walk(board: &mut Board, depth: u32, pushes: &mut usize) {
+            let got = noisy(board);
+            let mut unique = got.clone();
+            unique.dedup();
+            assert_eq!(got, unique, "a move twice in {}", board.to_fen());
+            assert_eq!(got, expected(board), "noisy list in {}", board.to_fen());
+            *pushes += got.iter().filter(|mv| mv.ends_with('q')).count();
+            if depth == 0 {
+                return;
+            }
+            for mv in board.generate_legal_moves() {
+                board.make_move(mv);
+                walk(board, depth - 1, pushes);
+                board.unmake_move(mv);
+            }
+        }
+        let mut pushes = 0;
+        for fen in [
+            "8/P6k/8/8/8/8/8/K7 w - - 0 1",
+            "k7/8/8/8/8/8/p6K/8 b - - 0 1",
+            "8/2p2P1P/2n2P2/1k6/p7/6N1/P5K1/8 b - - 0 44",
+            "8/2p2P1P/2n2P2/1k6/p7/6N1/P5K1/8 w - - 0 44",
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        ] {
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            walk(&mut board, 2, &mut pushes);
+        }
+        assert!(pushes > 0, "no queen push reached");
+
+        let list = |fen: &str| noisy(&mut Board::from_fen(fen).expect("valid FEN"));
+        assert_eq!(list("8/P6k/8/8/8/8/8/K7 w - - 0 1"), ["a7a8q"]);
+        assert!(
+            list("n7/P6k/8/8/8/8/8/K7 w - - 0 1").is_empty(),
+            "a blocked pawn"
+        );
+        // In check the push must block: on the checking rank, not off its file.
+        assert!(list("K6r/2P5/8/8/8/8/8/7k w - - 0 1").contains(&"c7c8q".to_owned()));
+        assert!(
+            !list("K7/2P5/8/8/8/8/8/r6k w - - 0 1")
+                .iter()
+                .any(|mv| mv.ends_with('q'))
+        );
+        // Pinned on the diagonal, the pawn may take the pinner but not push.
+        let pinned = list("2b4k/1P6/K7/8/8/8/8/8 w - - 0 1");
+        assert!(pinned.contains(&"b7c8q".to_owned()) && !pinned.contains(&"b7b8q".to_owned()));
+        // The captures list itself is unchanged.
+        let mut board = Board::from_fen("8/P6k/8/8/8/8/8/K7 w - - 0 1").expect("valid FEN");
+        assert!(board.generate_legal_captures().is_empty());
+    }
+
     #[test]
     fn every_legal_move_is_quiet_or_noisy_by_what_it_does() {
         let extra = [

@@ -1264,7 +1264,7 @@ impl Searcher {
                 let move_cap = self.cfg.proof.probcut_move_cap;
                 let base_depth = (depth - 4 - improving_i).max(0);
                 let mut captures = MoveList::new();
-                board.generate_legal_captures_into(&mut captures);
+                board.generate_legal_noisy_into(&mut captures);
                 let mut scored = ScoredMoveList::new();
                 self.score_tactical_moves(
                     board,
@@ -2639,7 +2639,7 @@ impl Searcher {
         if in_check {
             board.generate_legal_movelist_into(&mut moves);
         } else {
-            board.generate_legal_captures_into(&mut moves);
+            board.generate_legal_noisy_into(&mut moves);
         }
 
         if in_check && moves.is_empty() {

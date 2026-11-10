@@ -967,7 +967,7 @@ mod tests {
 
             let threshold = signed(random(801), 400);
             let mut captures = MoveList::new();
-            board.generate_legal_captures_into(&mut captures);
+            board.generate_legal_noisy_into(&mut captures);
             let mut scored = ScoredMoveList::new();
             searcher.score_tactical_moves(&board, &threats, captures.as_slice(), tt, &mut scored);
             let mut selected: Vec<Move> = (0..scored.len())
@@ -978,9 +978,12 @@ mod tests {
                 tt_captures += 1;
             }
             selected.sort_unstable_by_key(|m| m.0);
-            let all_captures: Vec<Move> =
-                sorted.iter().copied().filter(|m| m.is_capture()).collect();
-            assert_eq!(selected, all_captures, "ProbCut's list: {fen}");
+            let all_noisy: Vec<Move> = sorted
+                .iter()
+                .copied()
+                .filter(|m| m.is_capture() || (m.is_promo() && m.promo_piece() == Piece::Queen))
+                .collect();
+            assert_eq!(selected, all_noisy, "ProbCut's list: {fen}");
             for mv in selected {
                 if board.see_ge(mv, threshold) {
                     probcut_kept += 1;
