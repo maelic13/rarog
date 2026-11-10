@@ -335,7 +335,7 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.3 | RESEARCH | R2 | Cluster screen read (RAR-S110): three bench positions carry the coupling, so a fresh-process per-position read comes first; null half out |
+| D.6.3 | RESEARCH | R2 | Fresh-process per-position read registered (RAR-S111), not yet read; cluster arm is ProbCut typed `false` with D.6.4, null half out (RAR-S110) |
 | D.6.4 | RESEARCH | R2 | In D.6.3's cluster (RAR-S110), read with it |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
@@ -590,6 +590,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      positions carry 56.5% of it, so the item is back in research. Next is
      a fresh-process per-position read, registered first. The canary rule's
      treatment of a later settle is put to the maintainer (RAR-S110).
+     Fresh-process read registered 2026-11-10 (RAR-S111): each bench
+     position in its own process, nine arms. The coupling counts as
+     general only if the positions show it by rank and the pooled index
+     keeps half of its size without its three strongest carriers.
     - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`.** (NODE-2):
      `best_move` is set on every new best score, so an `Upper` entry carries
      the refuted move and overwrites the position's earlier move; the donor
