@@ -95,6 +95,26 @@ Otherwise the item is `READY_FOR_IMPLEMENTATION`: the queen push added to the
 captures-only generator and its pre-scan, nothing else, gated by an SPRT
 registered here before any game.
 
+### Amendment before exposure (2026-11-10): suite B's node cap
+
+Suite B as first run never finished: after two hours in one process it had
+printed nothing (its output was buffered) and was stopped, so no suite B number
+was seen. Timing every 50th position put a search at 0.08 s on average; one
+position runs away. Position 627,
+`8/2p2P1P/2n2P2/1k6/p7/6N1/P5K1/8 b - - 0 44`, with three white pawns one step
+from promoting, reached only depth 10 in 60 s on the unpatched `72c4e60` engine
+(194M nodes, seldepth 127). Each of positions 630 to 1483, searched in a fresh
+process, finished depth 12 in 3.1 s at most, the largest at 12,969,944 nodes.
+
+Each suite B search is therefore `go depth 12 nodes 25000000`, about twice the
+largest normal search, with everything else as registered. A search stopped by
+the cap still dumps its counters, so the dump count stays asserted equal to the
+positions. The read lists every position that hits the cap; the closing rules
+are read on the capped sums, and also without those positions.
+
+That runaway is a finding of its own, not this item's: a search can lose most of
+its depth in a promotion-rich ending. Who owns it is decided with the result.
+
 ## PRE-REGISTERED PREDICTION (frozen before exposure)
 
 - **Suite A:** `q_gen_qpromo` 0.5% to 3% of `q_gen`, near the review's 1.53%. 0.7.
