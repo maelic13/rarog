@@ -335,8 +335,8 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.3 | RESEARCH | R2 | Screen before any implementation; screened with D.6.4 |
-| D.6.4 | RESEARCH | R2 | Screen before any implementation |
+| D.6.3 | RESEARCH | R2 | Screen registered with D.6.4 (RAR-S109), not yet read |
+| D.6.4 | RESEARCH | R2 | Screen registered with D.6.3 (RAR-S109), not yet read |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
