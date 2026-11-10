@@ -28,6 +28,7 @@
 66638ae04bbce4d1ffdecfcf19fd7d65ce88e5f7	Basilisk initial snapshot commit
 7551803d287e404cbc746b2e3ba743c463a8b80c	Basilisk follow-up snapshot commit
 75d38ad	GyatsoChess commit
+7cdd5e89	Stockfish master commit of 2026-11-06 (the promotion-generation reference of RAR-S108)
 8791a27e	Colosseum tournament ID (RAR-M57)
 8c4e18fb	SHA-256 prefix of a cluster-qualification baseline binary (2026-09-08)
 8fa63cc	Colosseum cli-v0.5.0 revision (the pinned runner since 2026-11-01)

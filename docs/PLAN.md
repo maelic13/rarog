@@ -335,7 +335,7 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.2 | RESEARCH | R2 | Screen second (quiet queen promotions in quiescence) |
+| D.6.2 | GAME_GATE | R2 | Screen read and the push qualified (RAR-S108); its SPRT is the maintainer's |
 | D.6.3 | RESEARCH | R2 | Screen before any implementation; screened with D.6.4 |
 | D.6.4 | RESEARCH | R2 | Screen before any implementation |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
@@ -543,6 +543,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      `analysis/triumviratus_review_2026-11-03.md`): Triumviratus's passed-pawn
      push to the seventh searched in quiescence read −0.77, +1.1, −1.8 and
      +0.23 in four runs, and its quiet hash move in quiescence −1.05 ± 3.92.
+     Screen read 2026-11-10 (RAR-S108): in endings 5.9% of quiescence capture
+     generations had a quiet queen promotion and 3.4% a safe one that could
+     raise alpha, legal in 54% of gate games, so no closing rule fired; the
+     push is `ee0b3e4` on `d6` (bench 13,038,236), its SPRT not yet played.
     - **D.6.3 Null-move and ProbCut children typed `cut_node = true` — `R2`.** (NODE-1): the
      donor passes `false` for the null child (`search.rs:606`) and both
      ProbCut searches (`664–684`); Rarog passes `true` at `node.rs:988`,

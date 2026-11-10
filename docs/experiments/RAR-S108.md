@@ -127,3 +127,135 @@ its depth in a promotion-rich ending. Who owns it is decided with the result.
 - **Most likely failure mode:** suite B reads high on the pawn-only endings,
   where promotion races are the whole position, and says little about the
   middlegame leaves that most of a game's searches visit.
+
+## Result: the screen (2026-11-10)
+
+Read by `analysis/artifacts/d62-qpromo-2026-11-10/read_screen.py` on
+`rarog-d62screen.exe` (SHA-256 `a6545b5a…`, the screen patch on `72c4e60`), log
+`read.log` beside it. Suite A reproduced 11,946,003 nodes, and every counter
+dumped 40 times; suite B's dumps equalled its 1,484 positions.
+
+| | suite A, `bench 13` | suite B, 1,484 endings at depth 12 |
+|---|---:|---:|
+| `q_gen` | 1,151,838 | 33,696,108 |
+| with a quiet queen promotion | 2.291% | **5.938%** |
+| ... and no capture | 0.883% | 3.389% |
+| ... a safe one | 1.043% | 3.833% |
+| ... a safe one that could raise alpha | 0.975% | **3.412%** |
+| safe share of those with one | 45.5% | 64.5% |
+| ProbCut generations with one | 5.221% of 176,258 | 16.616% of 4,454,355 |
+
+**Exposure.** A quiet queen promotion was legal at some played position in
+1,087 of RAR-S107's 2,000 games (54.4%), at 4,393 of 252,485 played positions
+(1.740%).
+
+**The cap.** The read script counted 13 positions as capped, by a last
+iteration under depth 12; 12 of them stopped at depth 2 in under 60 nodes, a
+mate found and the iteration ended, not the cap. Only position 627 reached it
+(depth 10, 20,753,170 nodes). Without all 13, the two closing figures read
+6.125% and 3.502%.
+
+**Neither closing rule fires:** 5.938% against rule 1's 0.5%, and 3.412%
+against rule 2's 0.1%. The item is `READY_FOR_IMPLEMENTATION` as registered.
+
+**Calibration (screen).**
+
+- Suite A, 0.5% to 3%: a hit at 2.29%, above the review's 1.53% at depth 10.
+- Suite B, 2% to 15%, and no closing rule firing: hits.
+- Safe share under half: a hit on suite A (45.5%), a miss on suite B (64.5%).
+  The prediction named no suite; in the endings a promoting pawn is less often
+  covered than in the bench's middlegames.
+- `q_gen_qpromo_raise` at least 0.1%: a hit, by a factor of 34.
+- ProbCut under 1%: a miss in magnitude, 5.2% on suite A. ProbCut is entered
+  at nodes already above beta, where a passed pawn far advanced is common; the
+  prediction carried quiescence's rate over to it.
+- Exposure: 10% to 35% of games was a miss in magnitude (54.4%); 0.2% to 2% of
+  positions was a hit (1.74%). A promotion becomes legal in more games than
+  predicted, briefly in each.
+- The named failure mode, suite B high on the pawn-only endings, is not
+  separable from this read; suite A's 2.3% says the population is not confined
+  to them.
+
+**The runaway.** Position 627 is not this item's defect: the candidate below
+also runs away on it (depth 11 in 60 s, 203M nodes, seldepth 127, against the
+baseline's depth 10). It is recorded here and handed to the maintainer to
+place; no leaf owns it yet.
+
+## The repair (2026-11-10)
+
+`ee0b3e4` on `d6`: a second entry to the captures-only generator,
+`generate_noisy_into`, emits the legal captures and then the legal queen pushes
+(a push in check only blocks the single checker; a pinned pawn pushes only
+along its pin), and its pre-scan admits a pawn on the seventh with a free square
+ahead. Quiescence outside check and ProbCut call it, and nothing else does.
+`generate_legal_captures` keeps its contract and the staged picker is
+unchanged, so the main search still finds the push in its quiet stage. The
+under-promotion pushes stay quiet (D.6.17).
+
+The invariant is a test, `the_noisy_list_is_the_captures_and_the_queen_pushes`:
+over two-ply walks from five positions (both colours promoting, the runaway
+position and Kiwipete), the list equals the legal captures plus the legal quiet
+queen promotions, each once; with fixed cases for a blocked pawn, a block of a
+check, a push off the checking line and a diagonal pin. With the push turned
+off it fails. ProbCut's list test in `movepick.rs` now expects the queen pushes
+too.
+
+Qualified on the final tree: `cargo fmt --check` clean, debug tests 522 and
+release tests 524 passed, `cargo clippy --all-features --all-targets -D
+warnings` clean. Bench **13,038,236 / EBF 2.540**, twice the same, against
+11,946,003 / EBF 2.547 (+9.1% nodes). A count, not a strength read.
+
+## The gate (frozen 2026-11-10, before any game)
+
+- **Arms:**
+  - candidate `tools/test_engines/rarog-d62cand-pext-pgo.exe`, SHA-256
+    `4b3500ba4fe09553022e582d7cc9b683dc2ef75e45e7b3222f0be114737153c1`,
+    built from a clean worktree at `ee0b3e4`, `id name Rarog
+    dev-20261110-ee0b3e44`, bench 13,038,236;
+  - baseline `tools/test_engines/rarog-d61cand-pext-pgo.exe`, SHA-256
+    `02a3290c379ef8aa84bd0f665f0d6ab2285e6bd6fc30d789760f89e7dd42e0e1`,
+    RAR-S107's candidate binary, built at `72c4e60`, bench 11,946,003.
+- **Gate:** Colosseum `sprt`, `sprt-default.toml` (`[0,3]` nElo, pentanomial,
+  `model=normalized`, α = β = 0.05), `3+0.03`, margin 20 ms, Hash 64, one
+  thread, the UHO book in random order, no adjudication, **cap 20,000 pairs**
+  (40,000 games; the cap of the C-phase gates; by RAR-M10 it resolves a true +4
+  nElo, about 47,000 games, only partly, and does not resolve +2), seed
+  **20261110**, `tools/results/rar-s108-gate`. Bounds, cap, book and
+  adjudication never change after a game is seen. An unresolved stop at the cap
+  is read as H0.
+- **Command,** dry-run on 2026-11-10 with exit 0 (host 1% busy with no engine,
+  harness or build process; the pinned runner colosseum-cli 0.5.0, `81EA6CBA…`
+  at `8fa63cc`; both fingerprints, flavour `pext-pgo` and the compiler equal;
+  the resolved configuration matching policy in every checked field;
+  `tools/results/colosseum_sprt_rar-s108-gate_20261110_100647.dry-run.json`):
+
+  ```
+  pwsh -NoProfile -File D:/code/rarog/analysis/artifacts/d62-qpromo-2026-11-10/run_s108.ps1 -Step sprt
+  ```
+
+  It runs `tools/colosseum.ps1 -Mode sprt -Bracket default` with the arms above,
+  `-MaxPairs 20000 -Seed 20261110 -ExpectBench 13038236,11946003`. At about
+  5,000 games an hour (RAR-S105) the cap is about 8 hours.
+- **Use (frozen):** **H1:** `ee0b3e4` stays on `d6`, the fingerprint record
+  moves to 13,038,236 / EBF 2.540, the changelog gets its entry and D.6.2
+  closes. **H0 or the cap:** the push is reverted on `d6` in its own commit,
+  D.6.2 closes `NO_CHANGE` with the interval recorded, and the push is not
+  retried until a trigger fires: a change to quiescence's promotion exemptions
+  (futility, the count rule, the SEE floor) or to ProbCut's SEE gap, the
+  mechanism H3 names. Holding the push to a SEE floor would be a new
+  registration, not a rescue inside this one.
+
+## PRE-REGISTERED PREDICTION, the gate (frozen before any game)
+
+1. The gate accepts H1: **0.35.** The screen shows the leaf defect is common
+   and usually live (3.4% of ending generations could raise alpha, legal in
+   54% of games), and both donors play the push; against that, TS-14's
+   quiescence pushes read near zero four times, the main search's last ply
+   already plays the promotion, and H3's unpruned pushes cost nodes (+9.1% on
+   bench).
+2. nElo at the stop: **+2**, 80% band **[−3, +7]** (a first-crossing estimate,
+   biased away from zero).
+3. Games to the stop: median **30,000**, 80% band 10,000 to the cap; the cap
+   reached with probability 0.3.
+4. Most likely failure mode: a true gain of +1 to +2 nElo that `[0,3]` cannot
+   bank inside the cap, read as H0; the bracket is not narrowed afterwards.
