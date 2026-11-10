@@ -259,3 +259,46 @@ warnings` clean. Bench **13,038,236 / EBF 2.540**, twice the same, against
    reached with probability 0.3.
 4. Most likely failure mode: a true gain of +1 to +2 nElo that `[0,3]` cannot
    bank inside the cap, read as H0; the bracket is not narrowed afterwards.
+
+## Result: the gate (2026-11-10)
+
+**H1 accepted at 11,108 games: nElo +12.2 ± 6.5, Elo +7.2 ± 3.8**, LLR 2.952 in
+[−2.944, 2.944], 5,554 pairs of the 20,000 cap. The candidate had 2,873 wins,
+2,642 losses and 5,593 draws; pentanomial 132, 1,268, 2,563, 1,419, 172 (the
+manifest's recount of `games.pgn` agrees). No time losses and no engine or
+infrastructure faults. Colosseum also kept 28 post-terminal games, which the
+sample excludes. The host was 0.3% busy at start, with no waiver. Both binaries'
+SHA-256s, commits and bench counts in the manifest match the frozen arms. Manifest:
+`tools/results/colosseum_sprt_rar-s108-gate_20261110_104030.manifest.txt`.
+
+In these games the candidate searched 158,844 nodes a move against 157,594, at
+mean depths 13.21 and 13.24 and 66.5 against 66.7 ms a move. That describes the
+games; it is not a speed read. Bench's +9.1% nodes did not show up as a deeper or
+slower search at this time control.
+
+**Calibration (gate).**
+
+- P(H1) 0.35: the less likely outcome came true. The forecast leant too much on
+  TS-14's four near-zero reads, whose push to the seventh is a different move
+  from a promotion, and on the main search's last ply already playing the
+  promotion. It leant too little on the screen's 3.4% of ending generations
+  that could raise alpha.
+- nElo at the stop, +2 with an 80% band of [−3, +7]: a miss in magnitude. The
+  sign was right. The first-crossing estimate of +12.2 is biased away from zero
+  by an early stop, but its lower edge of +5.7 is still above the band's
+  centre.
+- Games to the stop, median 30,000 with an 80% band from 10,000 to the cap: a
+  hit, near the low end. The cap was not reached.
+- The named failure mode, a true +1 to +2 that the cap cannot bank, did not
+  occur.
+
+The games accept the change; they do not say which path carries the gain. The
+gate cannot separate quiescence's stand-pat decision from ProbCut's list, and no
+counter was read for that.
+
+## Disposition (2026-11-10)
+
+**H1: D.6.2 closes.** `ee0b3e4` stays on `d6`. The fingerprint record moves to
+13,038,236 / EBF 2.540 at `ee0b3e4`, and the changelog has its entry. The
+under-promotion pushes stay quiet (D.6.17). The runaway at position 627 stays
+with D.6.7.

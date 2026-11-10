@@ -42,6 +42,10 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Fixed
 
+- **Queen promotions are seen at the end of a search.** The final,
+  captures-only part of the search overlooked a pawn promoting to a queen
+  without capturing. It now looks at that move too, which makes the engine
+  stronger.
 - **Castling is searched like any other quiet move.** The search
   handled castling partly by its rules for captures; it now treats it as an
   ordinary non-capturing move.
