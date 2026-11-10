@@ -335,8 +335,8 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.3 | RESEARCH | R2 | Screen read (RAR-S109): held by the canary rule; one cluster with D.6.4, which needs its own registration |
-| D.6.4 | RESEARCH | R2 | Screen read with D.6.3 (RAR-S109): held by the canary rule; one cluster with D.6.3 |
+| D.6.3 | RESEARCH | R2 | Cluster screen with D.6.4 registered (RAR-S110), not yet read |
+| D.6.4 | RESEARCH | R2 | Cluster screen with D.6.3 registered (RAR-S110), not yet read |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
