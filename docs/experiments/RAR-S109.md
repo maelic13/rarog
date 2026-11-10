@@ -171,3 +171,114 @@ and WAC counts are reads for that registration, not acceptance evidence.
 10. **Most likely failure mode:** the null children fail high at 40% to 60%,
     near the split threshold. Then the null half's verdict rests on a rate that
     the bench's 40 positions fix only loosely.
+
+## Result: the screen (2026-11-10)
+
+Read by `analysis/artifacts/d63-d64-2026-11-10/read_screen.py` on
+`rarog-s109screen.exe` (SHA-256 `dcc3a50b…`, built from the screen patch on
+`ee0b3e4`; applying the patch to `ee0b3e4` reproduces the screen's source tree,
+`a4fa1d9f…`). Log `read.log` and `read.json` beside it. Every counter dumped 40
+times in every arm.
+
+**Wire.** Arm 0 reproduced 13,038,236. Every other arm moved it:
+
+| arm | `bench 13` | change | WAC at 100k | canaries | lost against arm 0 |
+|---|---:|---:|---:|---:|---|
+| 0, as it is | 13,038,236 | — | 239 | 93 | — |
+| 1, null child `false` | 12,385,895 | −5.00% | 233 | 93 | none |
+| 2, ProbCut children `false` | 13,148,505 | +0.85% | 240 | 91 | WAC.115, WAC.182 |
+| 3, both | 14,045,048 | +7.72% | 241 | 92 | WAC.182 |
+| 4, `Upper` stores no move | 12,785,308 | −1.94% | 237 | 92 | WAC.069, WAC.182 |
+| 7, all three | 9,094,587 | −30.25% | 245 | 94 | WAC.069 |
+
+Arm 4 gained WAC.295. Arm 7 gained WAC.168 and WAC.295. Every lost canary is
+still solved at 100k. Each was lost because the depth-10 probe settles later:
+- WAC.069 settles at depth 6 against a limit of 3.
+- WAC.115 settles at depth 9 against a limit of 3.
+- WAC.182 settles at depth 9 against a limit of 8.
+
+**Child types,** arm 0:
+
+| child | searches | fail high |
+|---|---:|---:|
+| null move, typed `true` | 174,567 | **31.19%** |
+| ProbCut, typed `true` | 39,322 | **2.15%** |
+| reduced LMR, typed `true` (the reference) | 3,887,769 | 93.56% |
+| other zero-window, typed `true` | 2,424,942 | 80.01% |
+| other zero-window, typed `false` | 3,123,724 | 41.99% |
+
+- **Subtrees.** Inside the outermost null-move subtrees were 0.52% of the
+  8,416,796 interior nodes, and inside ProbCut's 1.44%.
+- **Rates.** Null moves cut at 68.74% of attempts, and ProbCut at 75.93%.
+- **Arm 1.** The null-move cut rate rose to 74.83%, and the null child's
+  fail-high rate fell to 25.10%.
+
+**The fail-low move,** arm 0:
+- **Stores.** Of 1,804,780 `Upper` stores, every one carries a move. 34.24% of
+  them store the node's TT move again, 10.85% replace a different one, and
+  54.91% fill an empty slot, so 65.76% change the stored move.
+- **Next visit.** A TT move from an `Upper` entry is present at 10.27% of
+  interior nodes. That move alone keeps IIR off at 338,465 of them, and blocks
+  razoring at 2,879.
+- **Arm 4.** `iir_applied` rises from 1,202,169 to 1,423,877, `razor_drop` falls
+  from 86,333 to 79,410, and LMR's share without a TT move goes from 25.60% to
+  65.54%. At cut nodes it goes from 11.17% to 14.42%.
+
+**Interaction.** Arm 7's node ratio to arm 0 is 0.6975. The product of arm 3's
+and arm 4's is 1.0563, so the two items together search 34% fewer nodes than
+their separate effects predict.
+
+### Readiness, by the frozen rules
+
+- **The read stands:** the reduced LMR children fail high at 93.56%, above the
+  70% that would void it.
+- **D.6.3, ProbCut half:** 2.15% fail high, under 30%, and 1.44% of nodes, over
+  1%. That passes. The canary rule then applies to arm 2, which loses WAC.115
+  and WAC.182. **The half stays in `RESEARCH`,** with those positions named.
+- **D.6.3, null half:**
+  - 31.19% fail high, under 50%, so the type is wrong for most null children.
+  - The subtree is 0.52% of nodes, under 1%, and the sparseness rule would
+    close the half `NO_CHANGE`.
+  - That rule's premise was that the subtree share measures what the type
+    governs. Arm 1 refutes it: typing the null child alone moves `bench 13` by
+    −5.00% and the null-move cut rate by six points. Most null children go
+    straight to quiescence, so the interior subtree is small, but the child's
+    result decides whether the parent searches its moves at all.
+  - A false premise returns the half to `RESEARCH` (AGENTS). The closure is
+    recorded as fired on a void measure, not as `NO_CHANGE`.
+- **D.6.4:** 65.76% of `Upper` stores change the move, over 1%, and the moved
+  TT move is at 10.27% of nodes, over 0.5%. That passes. The canary rule then
+  applies to arm 4, which loses WAC.069 and WAC.182. **It stays in `RESEARCH`,**
+  with those positions named.
+
+Neither item crosses `READY_FOR_IMPLEMENTATION`. Two findings matter for the
+next registration:
+- **One cluster.** The −34% interaction says the items are not separable in
+  this engine. Gated one after the other, each would be read on a tree the
+  other reshapes. They are one candidate cluster.
+- **The canary losses.** None of them is a position the engine stops solving.
+  Each is a later settle on the depth-10 probe. The rule, as PLAN states it,
+  does not tell that apart from a lost tactic. Whether it should is a question
+  for that registration, not a rescue inside this one.
+
+**Calibration (screen).**
+
+- 1, the reduced LMR children at 85% to 97%: a hit at 93.56%.
+- 2, `true`-typed zero-window searches at least 70%, `false`-typed 10% to 50%:
+  hits at 80.01% and 41.99%.
+- 3, ProbCut children 1% to 8%: a hit at 2.15%. Its subtrees at 2% to 10%: a
+  miss at 1.44%. `READY` (0.75): it passed both measures and was held by the
+  canary rule, which the prediction did not weigh.
+- 4, null children 25% to 60%: a hit at 31.19%. Null subtrees 10% to 35%: a
+  miss by a factor of 20 (0.52%). The prediction counted the null child's tree
+  as interior nodes, but at the reductions null moves take, most of it is
+  quiescence. A miss in the instrument, as the readiness section says.
+- 5, arms 1 and 2 moving `bench 13` by 0.5% to 8%: hits at −5.00% and +0.85%.
+- 6, the fail-low stores: hits on every leg (all stores carry a move, 34.24%
+  the same move, 65.76% changed, 10.27% of nodes reached).
+- 7, arm 4 fewer nodes: a hit at −1.94%, with IIR applied 18% more often.
+- 8, arm 7 within 1% of the product: a miss in interaction, −34%. Nothing in the
+  registration foresaw a coupling this large.
+- 9, a canary lost in each arm the rule applies to: both happened (0.5 each).
+- 10, the named failure mode, null children near the split threshold: it did not
+  occur. They failed high at 31%, well inside one side.

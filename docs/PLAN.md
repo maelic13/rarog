@@ -335,8 +335,8 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.3 | RESEARCH | R2 | Screen registered with D.6.4 (RAR-S109), not yet read |
-| D.6.4 | RESEARCH | R2 | Screen registered with D.6.3 (RAR-S109), not yet read |
+| D.6.3 | RESEARCH | R2 | Screen read (RAR-S109): held by the canary rule; one cluster with D.6.4, which needs its own registration |
+| D.6.4 | RESEARCH | R2 | Screen read with D.6.3 (RAR-S109): held by the canary rule; one cluster with D.6.3 |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
@@ -565,6 +565,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      call receives (NODE-14). Gate: case 3 `[-5,5]` as a repair (TT cutoffs and reductions
      are shared signals); `[0,3]` only if the screen predicts a gain and the
      registration says so. A neutral fingerprint is not expected.
+     Screen read 2026-11-10 with D.6.4 (RAR-S109): ProbCut children fail
+     high 2.2% and null children 31%, so both are mostly all nodes. The
+     null half's sparseness rule fired on interior subtree nodes, a measure
+     that typing the null child alone refutes (`bench 13` −5.0%). Each half's
+     arm loses canaries by a later settle at depth 10, every one still
+     solved at 100k, so the item stays in research. With D.6.4 the tree
+     shrinks 30%, 34% below the two separate effects: the next registration
+     treats D.6.3 and D.6.4 as one cluster and first explains that coupling.
     - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`.** (NODE-2):
      `best_move` is set on every new best score, so an `Upper` entry carries
      the refuted move and overwrites the position's earlier move; the donor
@@ -576,6 +584,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      `diag` build storing `NULL` for `Upper`: `iir_applied`, razor counts, the
      no-TT-move LMR share, `bench 13` nodes, WAC at 100k and the canary rule.
      Gate: case 3, or `[0,3]` with a predicted gain.
+     Screen read 2026-11-10 with D.6.3 (RAR-S109): 66% of fail-low stores
+     change the stored move, and a move from an `Upper` entry is at 10% of
+     interior nodes, keeping IIR off at 338k of them. Its arm loses WAC.069
+     and WAC.182 to a later settle at depth 10, so the item stays in
+     research, in one cluster with D.6.3.
     - **D.6.5 The exclusion search uses the table-refined estimate — `R2`.** (NODE-4):
      `eval_for_pruning` has no `excluded` guard; in a singular exclusion node
      the TT bound is Lower or Exact and the window sits below `tt_score`, so
