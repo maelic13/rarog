@@ -335,8 +335,8 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.3 | RESEARCH | R2 | Fresh-process per-position read registered (RAR-S111), not yet read; cluster arm is ProbCut typed `false` with D.6.4, null half out (RAR-S110) |
-| D.6.4 | RESEARCH | R2 | In D.6.3's cluster (RAR-S110), read with it |
+| D.6.3 | RESEARCH | R2 | Fresh-process read (RAR-S111): no coupling with D.6.4 without shared state, so the ProbCut half is read as its own repair next; null half out (RAR-S110) |
+| D.6.4 | RESEARCH | R2 | Fresh-process read (RAR-S111): separable from D.6.3, and alone it searches 44% fewer interior nodes; read as its own repair next |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
@@ -590,10 +590,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      positions carry 56.5% of it, so the item is back in research. Next is
      a fresh-process per-position read, registered first. The canary rule's
      treatment of a later settle is put to the maintainer (RAR-S110).
-     Fresh-process read registered 2026-11-10 (RAR-S111): each bench
-     position in its own process, nine arms. The coupling counts as
-     general only if the positions show it by rank and the pooled index
-     keeps half of its size without its three strongest carriers.
+     Fresh-process read 2026-11-10 (RAR-S111): each bench position in its
+     own process, nine arms. The coupling is not general: without shared
+     state the pooled index is 1.17 and the median 1.10, below 1 in 17 of
+     39 positions. The bench's coupling was position 11 in D.6.4's arm,
+     which the shared table held at 2.55M interior nodes against 0.41M
+     fresh. ProbCut typed `false` alone searches 0.958 of the source's
+     nodes. The cluster's reason to be one unit falls, and the next
+     registration reads this half and D.6.4 as separable repairs on
+     fresh-process counts, each with its canary outcome. RAR-S110's
+     reach floors were bench reads; the null half's closure stands.
     - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`.** (NODE-2):
      `best_move` is set on every new best score, so an `Upper` entry carries
      the refuted move and overwrites the position's earlier move; the donor
@@ -611,6 +617,13 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      and WAC.182 to a later settle at depth 10, so the item stays in
      research, in one cluster with D.6.3.
      It stays in that cluster after RAR-S110 and is read with D.6.3.
+     Fresh-process read 2026-11-10 (RAR-S111): alone it searches 44% fewer
+     interior nodes than the source over the 40 bench positions, 25%
+     fewer at the median, and 32 of 39 positions shrink. RAR-S109's
+     −1.94% was the bench's, held up by one position on shared state, and
+     is superseded as the size of this change. It is separable from
+     D.6.3 and is read as its own repair next; that registration says
+     which table state its reads use.
     - **D.6.5 The exclusion search uses the table-refined estimate — `R2`.** (NODE-4):
      `eval_for_pruning` has no `excluded` guard; in a singular exclusion node
      the TT bound is Lower or Exact and the window sits below `tt_score`, so

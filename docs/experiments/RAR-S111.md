@@ -271,3 +271,147 @@ nothing `READY_FOR_IMPLEMENTATION` by itself.
 15. **Most likely failure mode:** 40 positions are too few for a double ratio
     of node counts at depth 13. The pooled index stays below 1, z lands
     between 0 and 1.96, and the read is inconclusive.
+
+## Result: the read (2026-11-10)
+
+Read by `analysis/artifacts/d63-d64-fresh-2026-11-10/read_fresh.py` (SHA-256
+`5ecf7c24…`, unchanged since registration). Log `read.log` and counts
+`fresh.json` are beside it: 360 processes, every counter dumped once in each.
+
+**Binary.** The rebuild's hash differs from RAR-S110's (`8e3fdbb3…` against
+`6ee8aab9…`), so the read used RAR-S110's archived executable, as registered.
+The two files have the same size and differ at 24 bytes: two in the file
+header, three pairs near the end and one run of 16. That is consistent with
+the linker's time stamp and debug signature, which was not checked further.
+The rebuild reproduces `bench 13` for arm 0 (13,038,236) and arm 6 (9,892,346).
+Before the read the script verified the archived executable's hash and arm 0's
+13,038,236 with 40 dumps.
+
+**Wire: passed.** Position 1 reproduced the bench's first dump in all seven
+arms. Arm 10 moved against arm 2, arm 14 against arm 6, arms 2 and 4 against
+arm 0, and arm 6 against arm 4.
+
+| arm | pooled interior nodes | ratio to arm 0 | median ratio | positions below 1 | null cut | ProbCut cut / node |
+|---|---:|---:|---:|---:|---:|---:|
+| 0 | 10,019,291 | 1.0000 | — | — | 69.39% | 48.10% |
+| 2, ProbCut `false` | 9,595,927 | 0.9577 | 0.950 | 22 | 67.95% | 46.32% |
+| 4, D.6.4 | 5,604,476 | 0.5594 | 0.754 | 32 | 78.36% | 52.75% |
+| 6, the cluster arm | 6,291,700 | 0.6280 | 0.681 | 34 | 76.06% | 50.60% |
+| 7 | 6,072,637 | 0.6061 | 0.679 | 31 | 79.10% | 50.34% |
+| 8 | 8,715,936 | 0.8699 | — | — | 71.44% | 49.69% |
+| 10 | 10,316,386 | 1.0297 | — | — | 71.04% | 46.14% |
+| 12 | 5,533,506 | 0.5523 | — | — | 77.53% | 52.04% |
+| 14 | 5,839,879 | 0.5829 | — | — | 75.44% | 49.41% |
+
+Position 7 is a mate found in 25 nodes in every arm, so 39 positions are
+active.
+
+**The coupling, by the frozen rule: NOT GENERAL.**
+- κ_Σ is 1.1721. Without shared state the pooled index is above 1: arm 6
+  searches more than the product of arms 2 and 4 predicts, not less.
+- κ₋₃ is 1.3829, after removing positions 16, 25 and 39.
+- The median κ is 1.097 (quartiles 0.742 and 1.799). It is below 1 in 17 of the
+  39 active positions, 43.6%.
+- z is −1.549, on the side of κ above 1.
+
+The rule's three conditions for NOT GENERAL all hold: 39 active positions, z
+below 1.96, and κ_Σ of 1 or more. The mechanism reads C1′ and C3′ are therefore
+not read.
+
+**What the arms show instead.** D.6.4 alone carries the reduction. In fresh
+processes arm 4 searches 44% fewer interior nodes than arm 0 pooled and 25%
+fewer at the median, and 32 of 39 positions shrink. Adding the ProbCut typing
+gives arm 6 at 0.6280, 12% above arm 4.
+
+**The explanations,** reported and not deciding:
+- **The carriers keep their change.** From arm 0 to arm 7 the fresh ln ratios
+  are −1.569 at position 11 (bench −0.810), −1.069 at position 10 (−1.194) and
+  −1.354 at position 22 (−0.853).
+- **E1 is not favoured.** Only position 10 has its ratio in place by depth 11,
+  and the largest rank correlation of ln κ is +0.18 (with the ProbCut-governed
+  share), under 0.40.
+- **E2 is not favoured** by its rule: all three carriers keep half.
+- **E3 is favoured.** Positions 11 and 22 make more than half of their ratio
+  after depth 11: −0.673 at depth 11 against −1.546 at depth 13, and −0.560
+  against −1.353. Across the suite, 14 of the 32 positions that move by 25% or
+  more from arm 0 to arm 6 do the same.
+- **E4 is not favoured by its registered criterion:** the median r₄ (0.754) is
+  above the pooled r₄ (0.5594). The criterion was written against the wrong
+  pooled figure; see the calibration and the note below.
+- **RAR-S110's C4 statistic** on the fresh counts: the three largest
+  contributions carry 59.9% of the change from arm 0 to arm 7, 53.4% to arm 6
+  and 56.5% to arm 4. It "holds" for D.6.4 alone as well. It measures where
+  the large trees are, not where a coupling is.
+
+**After exposure, not registered** (`after_exposure.py` and its log, beside
+the read). The bench's per-position counts from RAR-S110, set beside the
+fresh ones:
+- On the bench, arm 4 searched position 11 in 2,552,352 interior nodes against
+  arm 0's 1,471,227. In fresh processes it is 414,987 against 2,190,488.
+- That one position is 2,137,365 of the 2,532,442 nodes by which arm 4's bench
+  total exceeds its fresh one.
+- Arm 4's median ratio on the bench was already 0.804, with 23 positions below
+  1, against a pooled 0.9667.
+
+So the bench's coupling was one position in one arm, on shared state: arm 4's
+total was held up at position 11, which made the pooled index 0.77 for arm 6
+and 0.66 for arm 7. That is E4's claim with E2's cause. No registered rule
+tested it in that form, so it is an observation.
+
+**Superseded as measures, not as records:** RAR-S109's −1.94% for arm 4 as the
+size of D.6.4's tree change, and RAR-S110's κ as a coupling. Both are bench
+reads and stand as written.
+
+**Verdict, by the frozen branch: `RESEARCH`.** The cluster's reason to be one
+unit falls. The next registration tests the two items as separable repairs, on
+fresh-process reads:
+- each item's own effect per position;
+- each one's canary outcome under the rule in force;
+- for E3, positions 11 and 22.
+
+Two things this read does not settle, for that registration:
+- **Which table state a zero-game read should use.** A fresh process is a
+  game's first move. In a game the table holds the earlier searches of related
+  positions, and the bench's holds unrelated ones. D.6.4's arm differs by a
+  factor of six at position 11 between two of these states.
+- **RAR-S110's reach floors were bench reads.** The null half's closure stands
+  as recorded and is not reopened here. Its floor was set by the toggle from
+  arm 4 to arm 6, and arm 4's bench counts are the ones this read shows to be
+  distorted.
+
+**Calibration.**
+
+1. The wire passes (0.9): a hit.
+2. Arm 0's pooled fresh count within 10% of the bench's (0.6): a miss at
+   +19.0%. Shared state saves arm 0 nodes on balance, which the prediction did
+   not expect.
+3. Pooled r₆ at 0.70 to 0.92 (0.6): a miss at 0.628. Pooled r₄ at 0.85 to 1.02
+   (0.6): a miss at 0.559, the largest of this read. Pooled r₂ at 0.95 to 1.06
+   (0.6): a hit at 0.958.
+4. Arm 10 at 0.88 to 1.05: a hit at 1.030. Arm 14 at 0.70 to 0.90: a miss at
+   0.583.
+5. κ_Σ below 1 (0.7): a miss in sign at 1.172.
+6. The median κ at 0.92 to 1.04 (0.5): a miss at 1.097. The share below 1 at
+   45% to 65% (0.5): a miss at 43.6%.
+7. z at least 1.96 (0.3): it is −1.549.
+8. The trimmed index keeping half (0.35): no. κ₋₃ of 1 or more (0.3): yes.
+9. NOT GENERAL (0.35): it happened. INCONCLUSIVE was given 0.40.
+10. At least two carriers keep half (0.45): all three do.
+11. The three largest contributions carry half of the fresh change to arm 7
+    (0.5): a hit at 59.9%.
+12. The median r₄ below the pooled r₄ (0.5): a miss, 0.754 against 0.559. A
+    miss in the instrument. The prediction and E4's criterion meant the bench's
+    pooled figure, where the median (0.804) is below it (0.967), and wrote
+    "pooled" without saying which.
+13. C1′ and C3′: not reached.
+14. Fewer than half of the moving positions make their change after depth 11
+    (0.6): a hit, 14 of 32.
+15. The named failure mode, too few positions to decide: it did not occur. The
+    pooled index decided, not the ranks.
+
+**Which assumption failed.** Predictions 3, 5 and 6 took arm 4's bench total
+as roughly the size of D.6.4's own effect and looked for a coupling on top of
+it. The miss is in mechanism and in instrument: the bench's arm 4 was not
+D.6.4's effect. E4 named the right arm from the seen totals, yet NOT GENERAL
+was given only 0.35 and a pooled index below 1 was given 0.7. A miss in
+confidence as well.
