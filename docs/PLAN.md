@@ -619,6 +619,13 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      after 19 bounds the depth by ply against root depth. D.1.6 measured the
      same growth here (RAR-R19: a third of reduced moves in the cascade
      iteration run deeper than nominal, outside the line budget).
+     A far shallower case (2026-11-10, RAR-S108): in a promotion race,
+     `8/2p2P1P/2n2P2/1k6/p7/6N1/P5K1/8 b - - 0 44`, seldepth reaches 127 by
+     depth 10 and depth 11 is not finished in 60 s (about 200M nodes, the TT
+     full), on `72c4e60` and with D.6.2's push alike; each of the other 1,483
+     first positions with ten men or fewer from RAR-S107's games finished depth
+     12 in 3.1 s at most. The screen asks first which mechanism drives the line
+     to the cap there: extensions, quiescence or the conversion band.
     - **D.6.8 A depth-0 entry is counted as two nodes — `R2`.** (DRIVER-11): `check_stop` at
      the `negamax` entry and again at the `quiescence` entry it hands to, so
      reported nodes, `go nodes`, the bench count and the LMR spread's phase

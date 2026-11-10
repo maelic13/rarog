@@ -178,8 +178,8 @@ against rule 2's 0.1%. The item is `READY_FOR_IMPLEMENTATION` as registered.
 
 **The runaway.** Position 627 is not this item's defect: the candidate below
 also runs away on it (depth 11 in 60 s, 203M nodes, seldepth 127, against the
-baseline's depth 10). It is recorded here and handed to the maintainer to
-place; no leaf owns it yet.
+baseline's depth 10). PLAN D.6.7, the ply cap, holds it as evidence for its
+screen (2026-11-10).
 
 ## The repair (2026-11-10)
 
