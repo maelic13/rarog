@@ -567,12 +567,19 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      registration says so. A neutral fingerprint is not expected.
      Screen read 2026-11-10 with D.6.4 (RAR-S109): ProbCut children fail
      high 2.2% and null children 31%, so both are mostly all nodes. The
-     null half's sparseness rule fired on interior subtree nodes, a measure
-     that typing the null child alone refutes (`bench 13` −5.0%). Each half's
-     arm loses canaries by a later settle at depth 10, every one still
-     solved at 100k, so the item stays in research. With D.6.4 the tree
-     shrinks 30%, 34% below the two separate effects: the next registration
-     treats D.6.3 and D.6.4 as one cluster and first explains that coupling.
+     null half's sparseness leg fired (0.52% of interior nodes), but on a
+     measure the screen's own arm refutes: typing the null child alone
+     moves `bench 13` −5.0% and the null-move cut rate from 68.7% to
+     74.8%, because the child's result decides whether its parent searches
+     at all. That half is neither ready nor closed; the same measure is
+     void for the ProbCut half's pass. Each half's arm loses canaries by a
+     later settle at depth 10, every one still solved at 100k, so the item
+     stays in research. With D.6.4 the tree shrinks 30%, 34% below the two
+     separate effects: the next registration treats D.6.3, null child
+     included, and D.6.4 as one cluster. It first explains that coupling
+     with arms 5 and 6, and measures reach by the null-move cut rate per
+     arm and the tree beneath parents whose null move did not cut, not by
+     the child's interior subtree.
     - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`.** (NODE-2):
      `best_move` is set on every new best score, so an `Upper` entry carries
      the refuted move and overwrites the position's earlier move; the donor

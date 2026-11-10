@@ -236,16 +236,38 @@ their separate effects predict.
   1%. That passes. The canary rule then applies to arm 2, which loses WAC.115
   and WAC.182. **The half stays in `RESEARCH`,** with those positions named.
 - **D.6.3, null half:**
-  - 31.19% fail high, under 50%, so the type is wrong for most null children.
-  - The subtree is 0.52% of nodes, under 1%, and the sparseness rule would
-    close the half `NO_CHANGE`.
-  - That rule's premise was that the subtree share measures what the type
-    governs. Arm 1 refutes it: typing the null child alone moves `bench 13` by
-    −5.00% and the null-move cut rate by six points. Most null children go
-    straight to quiescence, so the interior subtree is small, but the child's
-    result decides whether the parent searches its moves at all.
-  - A false premise returns the half to `RESEARCH` (AGENTS). The closure is
-    recorded as fired on a void measure, not as `NO_CHANGE`.
+  - 31.19% fail high, under 50%, so the type is wrong for most null children
+    and the closing leg "the typing matches the behaviour" did not fire.
+  - The subtree is 0.52% of nodes, under 1%, so the frozen sparseness leg
+    fired. By the rule as written the half closes `NO_CHANGE`.
+  - That leg rests on the registration's premise that the subtree share
+    measures what the type governs. The frozen screen's own arm 1 refutes it:
+    typing the null child alone moves `bench 13` by −5.00%, inside the 0.5% to
+    8% predicted before exposure, and the null-move cut rate from 68.74% to
+    74.83%. These are reads of reach, not of strength.
+  - The instrument explains the miss. The null subtrees held 43,378 interior
+    nodes across 174,567 null children, 0.25 a child, so at most a quarter of
+    them are interior nodes at all. The rest enter quiescence, where the type
+    is not read. The child's result still decides whether its parent searches
+    any move, and no counter in this screen measures that.
+  - A false material premise returns the half to `RESEARCH` (AGENTS). The
+    sparseness leg is recorded as fired on a void measure. **The half is
+    neither `READY` nor `NO_CHANGE`,** and this record accepts nothing.
+  - The measure is void for the ProbCut half as well: its 1.44% pass on the
+    same leg is no evidence of reach. That half's status does not change,
+    because the canary rule holds it.
+  - The cluster's registration replaces the measure before any read:
+    1. the null-move cut rate in each arm, with a floor set in advance on its
+       change, which is the sparseness test;
+    2. the null children that are interior nodes as a share of null attempts,
+       and their fail-high rate, since the type is read only there;
+    3. the interior nodes beneath parents whose null move did not cut, against
+       `nodes`: the tree the decision governs;
+    4. arms 5 and 6. The −34% coupling was read only in arm 7, and arms 1 and
+       2 together already search 12% more than their product (1.0772 against
+       0.9580), so which half couples with D.6.4 is not known;
+    5. a prediction of WAC's direction. Arm 1 cut more and solved 233 against
+       239, and the registration says beforehand how that is read.
 - **D.6.4:** 65.76% of `Upper` stores change the move, over 1%, and the moved
   TT move is at 10.27% of nodes, over 0.5%. That passes. The canary rule then
   applies to arm 4, which loses WAC.069 and WAC.182. **It stays in `RESEARCH`,**
