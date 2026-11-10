@@ -42,6 +42,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Fixed
 
+- **Castling is searched like any other quiet move.** The search
+  handled castling partly by its rules for captures; it now treats it as an
+  ordinary non-capturing move.
 - **No more full-time-limit thinks in won endings.** In some won endings
   the engine could spend its whole time limit on a single move. It now
   plays the move once the search has run well past its target.

@@ -259,3 +259,28 @@ idle host, runner pin, both fingerprints, build flavour, compiler and policy.
   11,946,003 / EBF 2.547, and the changelog gets its entry.
 - **The harm rule fires:** the repair leaves `d6` by the gate, the defect stays
   open in D.6.1, and a refit of the constants tuned around it is a new registration.
+
+## Result: `stc` (2026-11-10)
+
+**The harm rule did not fire: nElo −4.9 ± 15.2, against the rule's −13.** Elo
+−2.8 ± 8.7, candidate 494 wins, 510 losses and 996 draws, pentanomial 20, 251,
+476, 231, 22, with no time losses and no engine or infrastructure faults. Host
+0.2% busy at start, no waiver; both binaries' hashes in the manifest match the
+table above. Manifest:
+`tools/results/colosseum_match_rar-s107-stc_20261109_225709.manifest.txt`.
+
+This keeps the repair and claims no strength. By the registered power, "kept"
+means no harm beyond roughly −20 nElo.
+
+In these games the candidate searched 157,679 nodes a move against 159,276, at
+the same mean depth of 13.21 and 66.4 against 66.3 ms a move. That describes the
+games; it is not a speed read.
+
+**Calibration (games):** a hit. The prediction was 0 ± 15 nElo with P(no harm)
+0.95, and the read is −4.9, inside it. An interval of ±15 cannot tell a small
+loss from a small gain.
+
+## Disposition (2026-11-10)
+
+**The harm rule did not fire: D.6.1 closes.** The fingerprint record moves to
+11,946,003 / EBF 2.547 at `72c4e60`, and the changelog has its entry.
