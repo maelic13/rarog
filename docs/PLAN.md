@@ -342,7 +342,7 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.3 | READY_FOR_IMPLEMENTATION | R2 | ProbCut half ready as its own repair (RAR-S112): the two verification calls pass `false`, `bench 13` 13,148,505, then its gate, case 3; null half out (RAR-S110) |
+| D.6.3 | GAME_GATE | R2 | ProbCut half implemented (`d15050a`, `bench 13` 13,148,505, NODE-14's test) and registered as RAR-S114: SPRT `[-5,5]`, cap 6,000 pairs, against `63813d8`; the maintainer's run; null half out (RAR-S110) |
 | D.6.4 | READY_FOR_IMPLEMENTATION | R2 | Ready as its own repair (RAR-S113): an `Upper` store passes no move; implemented and gated, case 3, after D.6.3's gate is read |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
@@ -622,6 +622,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      NODE-14's unit test; then its gate, case 3, registered before any
      game. If the gate fails, the rework is the typing with the reward
      kept.
+     Implemented 2026-11-11 as `d15050a`: the two calls pass `false`,
+     nothing else changes, `bench 13` 13,148,505 / EBF 2.559, and
+     NODE-14's test `each_recursive_call_types_its_child_by_its_rule`
+     pins every recursive call's type (with the old typing it fails on
+     ProbCut's children). Three tests it moved were settled first, each
+     in its own commit: the transposing-rook anchor split (D.6.17), the
+     singular margins' liveness probes re-pinned, and the won-ending
+     clock test, red since `ee0b3e4`, held (D.6.20). **Gate registered
+     as RAR-S114,** before any game: case 3, SPRT `[-5,5]`, cap 6,000
+     pairs, against `63813d8`; every recent gate game reaches
+     ProbCut's domain. H1 or the cap without H0 keeps it; H0 reverts
+     it and registers the typing with the reward kept.
     - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`.** (NODE-2):
      `best_move` is set on every new best score, so an `Upper` entry carries
      the refuted move and overwrites the position's earlier move; the donor
