@@ -5,7 +5,8 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Date / owner:** registered 2026-11-11, before any game. The run is the
   maintainer's command.
 - **Kind:** a playing-strength gate for a repair, AGENTS' repair case 3.
-- Disposition: open — registered, no game played.
+- Disposition: rejected — H0 accepted 2026-11-11 at 2,452 games, nElo −14.7 ±
+  13.8; reverted (`5d60017`).
 - **Inherits:** [RAR-S113](RAR-S113.md), the readiness read: 64% of the
   source's `Upper` stores change the stored move fresh and 53% game-like, and
   a TT move from an `Upper` entry is at 10% and 13% of interior nodes. The
@@ -176,3 +177,87 @@ an `Upper` entry is at 13% of interior nodes game-like, and half the source's
    reductions, the cost landing in the no-TT-move LMR population the
    constants were not fitted on; the games then read near zero or H0 with the
    depth up, and the rework's refit is the next step.
+
+## Result: the gate (2026-11-11)
+
+**H0 accepted at 2,452 games: nElo −14.7 ± 13.8, Elo −8.5 ± 8.0**, LLR −2.969
+in [−2.944, 2.944], 1,226 pairs of the 6,000 cap, 25 minutes. The candidate
+had 574 wins, 634 losses and 1,244 draws; pentanomial 32, 321, 575, 271, 27
+(the manifest's recount of `games.pgn` agrees). No time losses and no engine
+or infrastructure faults. Colosseum also kept 34 post-terminal games, which
+the sample excludes. The host was 4.8% busy at start, with no waiver. Both
+binaries' SHA-256s, commits and bench counts in the manifest match the frozen
+arms. Manifest:
+`tools/results/colosseum_sprt_rar-s115-gate_20261111_130859.manifest.txt`.
+
+In these games, the manifest's per-side search figures:
+
+| | candidate | baseline |
+|---|---:|---:|
+| mean depth | 14.01 | 13.12 |
+| mean depth without mate scores | 13.95 | 13.14 |
+| median depth | 13 | 12 |
+| nodes a move | 162,331 | 157,539 |
+| time a move | 65.9 ms | 66.4 ms |
+| nodes a second | 2.46M | 2.37M |
+
+That describes the games; it is not a speed read. On 3.0% more nodes a move
+the candidate completed 0.89 more of nominal depth and lost: it searched
+deeper and played weaker.
+
+**Calibration (gate).**
+
+1. The outcome, H1 0.35, H0 0.25, the cap 0.40: the outcome given the least
+   weight came true. A miss in sign and in confidence. The case for a gain
+   rested on the donor's form and on fewer nodes buying depth at a fixed
+   clock. The depth came, more of it than forecast, and did not pay.
+2. nElo at the stop, +1 with an 80% band of [−9, +11]: −14.7, below the band.
+   A miss in sign and magnitude. The estimate is a first-crossing one, biased
+   away from zero, which the forecast said and the band did not allow for.
+3. Games to the stop, a bound with probability 0.60 and a median of 6,000: a
+   bound was reached, at 2,452 games, well under the median.
+4. The games' own figures:
+   - mean depth higher by +0.1 to +0.6 (0.7): a miss in magnitude, +0.89. The
+     forecast took RAR-S113's game-like tree, 0.870 of the source's, as the
+     games' state. Its fresh state is nearer what the games show: read
+     after exposure from RAR-S113's own searches, the candidate completes
+     +0.75 of depth inside 157,000 nodes fresh and +0.32 game-like
+     (`analysis/artifacts/d64-research-2026-11-11/depth_at_nodes.log`). A
+     miss in instrument: the game-like lines follow the engine's own
+     principal variation, which a game's opponent does not.
+   - nodes a move within ±5% (0.7): a hit, +3.0%.
+5. The named failure mode, the deeper search not paying for its reductions:
+   it occurred as far as the gate can see, an H0 with the depth up. The gate
+   does not show that the cost lands in the no-TT-move LMR population; that
+   part of the forecast is untested.
+
+The gate rejects the arm as a whole. It cannot separate the consumers the
+store change moves at once: the move searched first at the next visit, IIR,
+the razoring guard, the no-TT-move LMR term and the fail-low parent-reward
+factor.
+
+## Disposition (2026-11-11)
+
+**H0: the store change is rejected and reverted.** `5d60017` on `d6` makes
+the main search's store pass the node's best-scoring move for every bound
+again. The unit test stays, renamed
+`a_fail_low_store_carries_its_best_scoring_move` and stating the restored
+contract: a fail low replaces the entry's move with a better-scoring one and
+carries a move in a fresh table, and a fail high stores the move that cut.
+With the rejected store it fails. It is kept in that form, and not removed,
+so that the store's contract is pinned and a rework has to change it in the
+open. `9210e5e` and `7a3087a` stay and pass on the reverted tree.
+
+Qualified on the reverted tree (2026-11-11, each check once, exit status read
+directly; logs in `analysis/artifacts/d64-revert-2026-11-11/`): `bench 13`
+**13,038,236 / EBF 2.540** from a default-feature release build;
+`cargo fmt --check` 0; `cargo clippy --all-features --all-targets` 0 with no
+warning; debug tests 0 (523 passed, 12 ignored); release tests 0 (525 passed,
+11 ignored).
+
+The fingerprint record does not move, and there is no changelog entry. The
+defect stays open in D.6.4. The registered rework is the store change with
+IIR's depth and the no-TT-move LMR terms refitted, as a new registration with
+its own gate. It has no readiness card yet, so D.6.4 returns to research:
+which consumer of the stored move carries the loss, and whether a refit is
+the right rework.

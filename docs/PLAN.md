@@ -343,7 +343,7 @@ twice (HISTORY's number map holds what moved).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.6.3 | READY_FOR_IMPLEMENTATION | R2 | ProbCut typed `false` rejected by its gate (RAR-S114: H0 at 9,662 games, nElo −3.7 ± 6.9) and reverted; the defect stays open; next, as registered, the typing with the fail-low reward kept, its own registration and gate, case 3; null half out (RAR-S110) |
-| D.6.4 | GAME_GATE | R2 | Implemented (`45adef3`, `bench 13` 12,785,308, its unit test) and registered as RAR-S115: SPRT `[-5,5]`, cap 6,000 pairs, against `7a3087a`; the maintainer's run; ahead of D.6.3's rework (maintainer decision 2026-11-11) |
+| D.6.4 | RESEARCH | R2 | Storing no move at a fail low rejected by its gate (RAR-S115: H0 at 2,452 games, nElo −14.7 ± 13.8, mean depth up 0.89) and reverted (`5d60017`); the defect stays open; the registered rework, the store change with IIR's depth and the no-TT-move LMR terms refitted, has no readiness card: which consumer carries the loss is researched first |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
@@ -700,6 +700,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      recent gate game reaches the repair's domain. H1 or the cap
      without H0 keeps it; H0 reverts it and registers the store
      change with IIR's depth and the no-TT-move LMR terms refitted.
+     **Gate read 2026-11-11 (RAR-S115): H0** at 2,452 games, nElo
+     −14.7 ± 13.8, LLR −2.97, no fault. In the games the candidate
+     reached mean depth 14.01 against 13.12 on 162,331 against
+     157,539 nodes a move: it searched deeper and played weaker.
+     The store change is reverted (`5d60017`), and its unit test
+     now states the restored contract, that a fail low stores its
+     best-scoring move; `bench 13` is 13,038,236 again. The defect
+     stays open. The registered rework is the store change with
+     IIR's depth and the no-TT-move LMR terms refitted. It has no
+     readiness card, so the item is in research: which consumer of
+     the stored move carries the loss, and whether a refit is the
+     right rework.
     - **D.6.5 The exclusion search uses the table-refined estimate — `R2`.** (NODE-4):
      `eval_for_pruning` has no `excluded` guard; in a singular exclusion node
      the TT bound is Lower or Exact and the window sits below `tt_score`, so
