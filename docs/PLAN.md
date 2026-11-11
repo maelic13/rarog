@@ -343,7 +343,7 @@ twice (HISTORY's number map holds what moved).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.6.3 | READY_FOR_IMPLEMENTATION | R2 | ProbCut typed `false` rejected by its gate (RAR-S114: H0 at 9,662 games, nElo −3.7 ± 6.9) and reverted; the defect stays open; next, as registered, the typing with the fail-low reward kept, its own registration and gate, case 3; null half out (RAR-S110) |
-| D.6.4 | READY_FOR_IMPLEMENTATION | R2 | Ready as its own repair (RAR-S113): an `Upper` store passes no move; D.6.3's gate is read, so it is implemented on the source tree (`bench 13` 12,785,308) and gated, case 3 |
+| D.6.4 | GAME_GATE | R2 | Implemented (`45adef3`, `bench 13` 12,785,308, its unit test) and registered as RAR-S115: SPRT `[-5,5]`, cap 6,000 pairs, against `7a3087a`; the maintainer's run; ahead of D.6.3's rework (maintainer decision 2026-11-11) |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
@@ -684,7 +684,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      9,892,346 on top of D.6.3's typing; gate case 3. If the gate fails,
      the rework refits IIR's depth and the no-TT-move LMR terms.
      D.6.3's gate was read 2026-11-11 (RAR-S114, H0, reverted), so the
-     tree is the source's: `bench 13` must read 12,785,308.
+     tree is the source's: `bench 13` must read 12,785,308. It runs
+     before D.6.3's rework (maintainer decision 2026-11-11).
+     Implemented 2026-11-11 as `45adef3`: the main search's store
+     passes no move for an `Upper` bound, nothing else changes,
+     `bench 13` 12,785,308 / EBF 2.513, and
+     `a_fail_low_store_keeps_the_stored_move` pins it (with the old
+     store a fresh table's fail low carries the first move searched).
+     Two tests it moved were settled first, each in its own commit:
+     the singular margins' liveness probes re-pinned on `SEMI_SLAV`
+     (`9210e5e`), and the MultiPV helper test asserting its stated
+     invariant, the three best root moves exact, not a count
+     (`7a3087a`). **Gate registered as RAR-S115,** before any game:
+     case 3, SPRT `[-5,5]`, cap 6,000 pairs, against `7a3087a`; every
+     recent gate game reaches the repair's domain. H1 or the cap
+     without H0 keeps it; H0 reverts it and registers the store
+     change with IIR's depth and the no-TT-move LMR terms refitted.
     - **D.6.5 The exclusion search uses the table-refined estimate — `R2`.** (NODE-4):
      `eval_for_pruning` has no `excluded` guard; in a singular exclusion node
      the TT bound is Lower or Exact and the window sits below `tt_score`, so
