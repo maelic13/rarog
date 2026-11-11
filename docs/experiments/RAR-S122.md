@@ -169,3 +169,71 @@ pwsh -NoProfile -File D:/code/rarog/analysis/artifacts/d67-gate-2026-11-11/run_s
    re-search ply, which the search's ordering relies on near the leaves of
    long PV lines. It shows as a small loss at STC, with no gain to offset it
    where the cap would bind.
+
+## Result: the gate (2026-11-11)
+
+**The cap without a bound: 12,000 games, nElo −1.0 ± 6.2, Elo −0.6 ± 3.6**,
+LLR −0.984 in [−2.944, 2.944]. The candidate had 2,964 wins, 2,984 losses
+and 6,052 draws; pentanomial 160, 1,446, 2,782, 1,478, 134 (the manifest's
+recount of `games.pgn` agrees). No time losses and no engine or
+infrastructure faults. Both binaries' SHA-256s, commits and bench counts in
+the manifests match the frozen arms.
+
+The run was played in two legs of the same command, configuration and run
+directory. The first wrapper was stopped at 9,948 games (17:12 to 18:52 UTC,
+host 3.5% busy at start). The second resumed from the run directory's durable
+games and played the remaining 2,052 (host 1.8% busy at start, no waiver).
+Bounds, cap, book and adjudication did not change. Manifests:
+`tools/results/colosseum_sprt_rar-s122-gate_20261111_181159.manifest.txt` and
+`tools/results/colosseum_sprt_rar-s122-gate_20261111_221520.manifest.txt`.
+
+In these games, the manifest's per-side search figures:
+
+| | candidate | baseline |
+|---|---:|---:|
+| mean depth | 13.38 | 13.15 |
+| mean depth without mate scores | 13.32 | 13.16 |
+| median depth | 13 | 12 |
+| nodes a move | 156,356 | 155,816 |
+| time a move | 66.7 ms | 66.6 ms |
+| nodes a second | 2.35M | 2.34M |
+
+That describes the games; it is not a speed read. On the same nodes a move
+the candidate completed 0.23 more of nominal depth, and the games are level.
+
+**Calibration (gate).**
+
+1. The interval holds 0 and nElo lies between −4 and +4 (0.6): a hit,
+   −1.0. Its sign, positive with 0.5: the point estimate is negative, but
+   the gate does not resolve a sign, so neither forecast is tested.
+2. The stop, the cap with 0.4 against 0.3 each for H1 and H0: the outcome
+   given the most weight came true.
+3. The named failure mode, a small loss at STC from cutting the PV's room
+   and the re-search ply: not shown and not excluded. The interval runs from
+   −7.2 to +5.2.
+
+The gate reads the bound's effect on the tree at `3+0.03`, where no search
+reaches the cap. It says nothing about the cap repair itself, which acts at
+longer time controls.
+
+## Disposition (2026-11-11)
+
+**The cap without H0: the bound is kept,** by the frozen rule. `aee0b3b`
+stays on `d6`. The declared fingerprint moves to `bench 13`
+**11,477,040 / EBF 2.537**, and the changelog gets its entry. The result is
+recorded as no harm beyond about −5 nElo, never as a gain: the interval does
+not exclude −5 at 95%, and an H0 was not reached.
+
+The wrapper's closing line ("a cap stop is unresolved and must be parked or
+reverted") is its advice for a strength gate. A repair's registration decides
+its own cap stop, as RAR-S94, RAR-S114 and RAR-S115 froze it, and this one
+keeps the repair.
+
+D.6.7 closes. The residual is the cap at iterations 64 and beyond, where
+twice the iteration reaches it by itself: 2 of 3,670 replayed searches
+(0.05%) at twenty times the games' node counts, 235 cap nodes, each still
+returning a static eval. Its retry trigger, set now before any further read:
+a read at a rated time control in which more than 0.1% of searches reach
+the cap. The fix it would then take is the card's first form, raising the
+cap with the band constants, or the donor's in-check and draw handling at
+the cap.

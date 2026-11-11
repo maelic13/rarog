@@ -42,6 +42,10 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Fixed
 
+- **Long endgame lines no longer run to the search's depth limit.** In some
+  endings, such as pawn races, single lines could grow until the search hit
+  its limit, and the search stalled at a shallow depth. Each line is now held
+  to twice the depth being searched.
 - **Queen promotions are seen at the end of a search.** The final,
   captures-only part of the search overlooked a pawn promoting to a queen
   without capturing. It now looks at that move too, which makes the engine

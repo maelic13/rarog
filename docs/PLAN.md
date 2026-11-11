@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **13,038,236 / EBF 2.540** at engine source `ee0b3e4` (D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before it 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.99.1`) | RAR-S105, RAR-P36 |
+| Fingerprint | `bench 13` **11,477,040 / EBF 2.537** at engine source `aee0b3b` (D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.99.1`) | RAR-S105, RAR-P36 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -342,7 +342,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.7 | GAME_GATE | R2 | `aee0b3b` bounds every line at twice the iteration's depth; RAR-S122's SPRT `[-5,5]` is the maintainer's to run |
 | D.6.8 | RESEARCH | R2 | Screen before any implementation |
 | D.6.9 | RESEARCH | R2 | Screen before any implementation |
 | D.6.10 | RESEARCH | R2 | Screen before any implementation |
@@ -818,7 +817,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      C.12's "several percent" is superseded. Retry only if capture
      generation or scoring becomes materially dearer, or a later profile
      puts it at 8% or more of search cycles (H.4).
-    - **D.6.7 The ply cap — `R2`.** (NODE-8): `MAX_PLY = 128` is below the extension budget's
+    - **D.6.7 The ply cap — `R2`, DONE 2026-11-11.** (NODE-8): `MAX_PLY = 128` is below the extension budget's
      bound (about twice the iteration depth plus 16); from about iteration 56
      the cap, not the budget, ends lines and the node returns a static eval
      with no in-check or draw handling (the donor: 240, a draw in check). The
@@ -894,6 +893,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      6,000 pairs, against `5f21606`. A `3+0.03` gate reads the bound's
      effect on the tree, not the cap. H0 reverts it and the defect stays
      open here.
+     **Gate read 2026-11-11 (RAR-S122): the cap without a bound,** nElo
+     −1.0 ± 6.2 over 12,000 games, so the bound is kept and the fingerprint
+     moves to 11,477,040 / EBF 2.537. That is no harm beyond about −5, not a
+     gain. The residual is the cap from iteration 64, where twice the
+     iteration reaches it by itself: 0.05% of replayed searches at twenty
+     times the games' node counts. Retry, by raising the cap with the band
+     constants or by the donor's in-check and draw handling at the cap, if a
+     read at a rated time control finds more than 0.1% of searches reaching
+     it.
     - **D.6.8 A depth-0 entry is counted as two nodes — `R2`.** (DRIVER-11): `check_stop` at
      the `negamax` entry and again at the `quiescence` entry it hands to, so
      reported nodes, `go nodes`, the bench count and the LMR spread's phase
