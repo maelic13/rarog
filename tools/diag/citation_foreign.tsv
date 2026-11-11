@@ -39,6 +39,7 @@
 9c72539	Colosseum cli-v0.4.0 revision (pinned 2026-10-22 to 2026-11-01)
 9f94aa9	Colosseum cli revision of the qualified binary
 ae3a6170	Colosseum tournament ID (RAR-M63, stopped first start)
+aec5cb2	Reckless head of 2026-10-29 (the fail-low store and IIR reading of RAR-S116)
 af712d9	Colosseum rarog-cli-0.3.0 branch head, verified before the 0.3.0 release
 ca05dfa	Colosseum cli-v0.2.0 revision (pinned 2026-09-25 to 2026-10-14)
 ca05dfa2	Colosseum cli-v0.2.0 revision (pinned 2026-09-25 to 2026-10-14)
