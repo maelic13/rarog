@@ -342,7 +342,7 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.7 | RESEARCH | R2 | Screen before any implementation |
+| D.6.7 | READY_FOR_IMPLEMENTATION | R2 | Screened (RAR-S121): split the out-of-budget depth gain by source, then bound the lines; gate case 3 |
 | D.6.8 | RESEARCH | R2 | Screen before any implementation |
 | D.6.9 | RESEARCH | R2 | Screen before any implementation |
 | D.6.10 | RESEARCH | R2 | Screen before any implementation |
@@ -845,6 +845,32 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      first positions with ten men or fewer from RAR-S107's games finished depth
      12 in 3.1 s at most. The screen asks first which mechanism drives the line
      to the cap there: extensions, quiescence or the conversion band.
+     Screen read 2026-11-11 (RAR-S121: cap counters on RAR-S117's 60
+     replayed gate games at the recorded node counts times 1, 10/3 and 20,
+     and on the race position): **ready for implementation, the form
+     "bound the lines".** No search reaches the cap at `3+0.03`'s node
+     counts. At ten-thirds of them 0.109% of searches reach it; at twenty
+     times, 1.962%, in 22 of the 60 games. There, 22% of cap nodes are in
+     check and 15% are draws by rule, and each returns a static eval. At a
+     cap node the iteration is at depth 15 and the budget has spent 13 of
+     it, yet the line holds about 100 plies more: depth gained outside the
+     budget carries 88% of the plies beyond the iteration's depth (93% in
+     the race position). Quiescence carries none. Raising the cap would
+     move the symptom, not the cause. The implementation first splits that
+     gain by source, before choosing the bound:
+     - the late-move reduction's room above nominal, two plies and two more
+       on a PV line;
+     - the re-search ply;
+     - hindsight's ply.
+
+     TS-1's per-line count is the prior form. **Gate:** case 3, `[-5,5]`
+     with its cap, since bounding the lines changes reductions across the
+     tree. That corrects the case 1 RAR-S121 copied from this card, whose
+     clause was written for raising the cap. Case 1 stays open only to a
+     form confined to lines that reach the cap, with a static differential
+     as its correctness read. The registration states the exposure (zero
+     at STC, 1.96% of searches at `60+0.6`'s node counts) and chooses its
+     time control knowingly: a gate at `3+0.03` cannot see the cap.
     - **D.6.8 A depth-0 entry is counted as two nodes — `R2`.** (DRIVER-11): `check_stop` at
      the `negamax` entry and again at the `quiescence` entry it hands to, so
      reported nodes, `go nodes`, the bench count and the LMR spread's phase
