@@ -140,3 +140,99 @@ strength evidence.
 8. **Most likely failure mode:** none of the rules fails, and the read adds
    little: the game-like ratio is as scattered as the fresh one and says
    nothing about the sign of the change in games.
+
+## Result: the read (2026-11-11)
+
+Read by `read_items.py` (SHA-256 `16f10101…`, unchanged since registration) on
+RAR-S110's archived executable. Logs and counts are beside it:
+`line_arm0.json`, `line_arm2.json`, the probes' JSON files, `report_arm2.log`
+and `settle_arm2.log`. Every search dumped each counter once.
+
+**Wire: passed.** The first search of each of the 40 lines equals RAR-S111's
+fresh count in arms 0 and 2. WAC at 100k is 239 and 240.
+
+| arm 0, the source | fresh, 40 searches | game-like, 117 searches |
+|---|---:|---:|
+| ProbCut children searched | 44,337 | 99,709 |
+| of those, failing high | 2.19% | 2.91% |
+| their fail-low rewards, of noisy-history updates | 1.85% | 1.55% |
+| ProbCut cuts per node where it ran | 48.10% | 45.42% |
+
+| arm 2 against arm 0 | fresh | game-like |
+|---|---:|---:|
+| interior nodes, pooled | 0.9577 | 1.0067 |
+| interior nodes, median | 0.950 | 0.904 |
+| quartiles | 0.658 and 1.273 | 0.611 and 1.346 |
+| searches below 1 | 22 of 40 | 70 of 117 |
+| ProbCut cuts per node where it ran | 46.32% | 41.05% |
+| fail-low rewards at a ProbCut child | none | none |
+
+**Readiness, by the frozen rule: `READY_FOR_IMPLEMENTATION`.**
+1. **The defect:** the children fail high 2.19% fresh and 2.91% game-like,
+   under 30% in both states.
+2. **Reach:** their rewards are 1.85% and 1.55% of the noisy-history updates,
+   over 1% in both states.
+3. **No gross tactical harm:** arm 2 solves 240 of WAC at 100k against a floor
+   of 233, and leaves no canary unsolved there that arm 0 solves.
+
+**What the change does,** which the registration had half right:
+- **It removes the reward.** The fail-low parent reward is issued only at a cut
+  node or a PV node (`node.rs`, after the move loop). Typed `false`, a ProbCut
+  child issues none: the counter reads zero in arm 2. The change is therefore
+  two things that this arm cannot separate: the child's pruning, and the loss
+  of those rewards to the capture's history.
+- **The verification confirms less often.** ProbCut cuts 4.4 points less often
+  per node in game-like searches, and 1.8 points less often fresh. A child
+  searched as an all node is reduced less, so it refutes more captures.
+- **The tree does not move in one direction.** The pooled ratio is 0.96 fresh
+  and 1.01 game-like, with half the searches between 0.61 and 1.35.
+
+**Reported, with causes, not deciding:**
+- **WAC at 400k:** 266 against 264. Six positions are lost and eight gained. At
+  100k eight are lost and nine gained. A change this small flips 17 of 300
+  positions at 100k, and the count moves by one.
+- **A lost tactic at 400k:** WAC.168, which arm 0 solves at 400k and arm 2 does
+  not. Neither solves it at 100k. It is one of the six lost against eight
+  gained.
+- **The later settles,** WAC.115 and WAC.182, the old rule's two losses:
+  - WAC.115: arm 2 has the right move through depth 7, another at depth 8
+    (22,135 nodes) and the right one again from depth 9 (28,812 nodes).
+  - WAC.182: arm 0 finds the move at depth 8 after 43,569 nodes. Arm 2 finds
+    it at depth 9 after 41,856 nodes: one iteration later and in fewer nodes.
+- **Positions 11 and 22,** the engine's nodes at depths 11, 12 and 13, fresh:
+  - position 11: arm 0 550,097, 1,725,628 and 3,522,746; arm 2 947,461,
+    1,627,127 and 3,240,263;
+  - position 22: arm 0 99,218, 317,372 and 590,124; arm 2 202,110, 339,079
+    and 426,776.
+
+  Arm 0 triples between depths 11 and 12 in both. Arm 2 is larger at depth 11
+  and no larger by depth 13. Neither arm runs away from the other.
+
+**For the gate's registration.** This read is no strength evidence. What it
+gives the gate:
+- The implementation is the two calls and nothing else, and its `bench 13`
+  must read 13,148,505.
+- The reach is small and the tree effect has no sign, so the prior is near
+  zero. PLAN's case 3, `[-5,5]`, can exclude harm near −5; it cannot tell +1
+  from −1.
+- If the gate fails its harm rule, the first rework to register is the typing
+  with the reward kept, which separates the two things this arm joins.
+
+**Calibration.**
+
+1. The wire passes (0.9): a hit.
+2. Children failing high 1% to 5%: hits at 2.19% and 2.91%.
+3. The reward share at 1% to 4%: hits at 1.85% and 1.55%.
+4. The game-like ratio at 0.90 to 1.10 pooled: a hit at 1.007. At 0.90 to 1.05
+   at the median: a hit at 0.904, at its edge.
+5. WAC at 400k within 4: a hit, 266 against 264.
+6. No canary lost at 400k (0.85): a miss, WAC.168. The prediction treated the
+   canaries as safely inside a 400k budget. Five of them are unsolved at 100k
+   by the source itself, and those sit at the budget's edge.
+7. `READY_FOR_IMPLEMENTATION` (0.85): it is.
+8. The named failure mode occurred as written: every rule passed, and the
+   game-like ratio is as scattered as the fresh one.
+
+Not predicted: that the change removes the reward outright. The registration
+described the reward as one of the things the type decides and did not say
+that `false` means none. A miss in mechanism, found by the counter.

@@ -342,7 +342,7 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.3 | RESEARCH | R2 | Readiness read of the ProbCut half as its own repair registered (RAR-S112), not yet read; null half out (RAR-S110) |
+| D.6.3 | READY_FOR_IMPLEMENTATION | R2 | ProbCut half ready as its own repair (RAR-S112): the two verification calls pass `false`, `bench 13` 13,148,505, then its gate, case 3; null half out (RAR-S110) |
 | D.6.4 | RESEARCH | R2 | Readiness read as its own repair registered (RAR-S113), not yet read; gated after D.6.3 |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
@@ -607,6 +607,21 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      registration reads this half and D.6.4 as separable repairs on
      fresh-process counts, each with its canary outcome. RAR-S110's
      reach floors were bench reads; the null half's closure stands.
+     Readiness read 2026-11-11 (RAR-S112), as its own repair: ProbCut's
+     children fail high 2.2% in fresh searches and 2.9% in game-like
+     ones, and their fail-low rewards are 1.9% and 1.6% of the
+     noisy-history updates. Typing them `false` removes those rewards
+     and makes ProbCut cut 4.4 points less often per node game-like;
+     the tree has no one direction (0.96 fresh, 1.01 game-like). WAC is
+     240 against 239 at 100k and 266 against 264 at 400k, with no lost
+     tactic at 100k. The old rule's two losses are a one-iteration
+     flicker and a move found one iteration later in fewer nodes; a
+     later settle is a diagnostic (RAR-M85). **Ready for
+     implementation:** the two ProbCut verification calls pass `false`,
+     the null child stays `true`, `bench 13` must read 13,148,505, with
+     NODE-14's unit test; then its gate, case 3, registered before any
+     game. If the gate fails, the rework is the typing with the reward
+     kept.
     - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`.** (NODE-2):
      `best_move` is set on every new best score, so an `Upper` entry carries
      the refuted move and overwrites the position's earlier move; the donor
