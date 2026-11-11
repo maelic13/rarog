@@ -342,8 +342,8 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.3 | RESEARCH | R2 | Fresh-process read (RAR-S111): no coupling with D.6.4 without shared state, so the ProbCut half is read as its own repair next; null half out (RAR-S110) |
-| D.6.4 | RESEARCH | R2 | Fresh-process read (RAR-S111): separable from D.6.3, and alone it searches 44% fewer interior nodes; read as its own repair next |
+| D.6.3 | RESEARCH | R2 | Readiness read of the ProbCut half as its own repair registered (RAR-S112), not yet read; null half out (RAR-S110) |
+| D.6.4 | RESEARCH | R2 | Readiness read as its own repair registered (RAR-S113), not yet read; gated after D.6.3 |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
