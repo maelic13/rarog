@@ -3383,6 +3383,9 @@ mod tests {
                 .excluded
                 .map_or(Move::NULL, |mv| board.parse_move(mv).expect("legal move"));
             let (depth, ply) = (8, 1);
+            // A node at ply 1 with depth d is reached only in iteration d + 1 or
+            // later, and the search's per-line limits read that iteration.
+            searcher.td.root_depth = depth + 1;
             let score = if self.pv {
                 searcher.negamax::<Pv, _>(
                     &mut board,
@@ -3651,6 +3654,9 @@ mod tests {
     ) -> (i32, i32, Searcher) {
         let mut searcher = Searcher::default();
         setup(&mut searcher);
+        // A node at ply 1 with depth 8 is reached only in iteration 9 or
+        // later, and the search's per-line limits read that iteration.
+        searcher.td.root_depth = 9;
         let mut board = Board::from_fen(HANGING_QUEEN).expect("valid FEN");
         let estimate = searcher.corrected_eval(&board, 1);
         let beta = estimate - 100 + beta_offset;
@@ -3875,6 +3881,9 @@ mod tests {
                 "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
             )
             .expect("valid FEN");
+            // A node at ply 1 with depth 4 is reached only in iteration 5 or
+            // later, and the search's per-line limits read that iteration.
+            searcher.td.root_depth = 5;
             let estimate = searcher.corrected_eval(&board, 1);
             // Beta above the stored score keeps reverse futility, the null
             // move, ProbCut and the table cutoff out of the way.
