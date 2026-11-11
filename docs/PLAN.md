@@ -646,7 +646,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      registration and gate, case 3.
      Research after the gate 2026-11-11 (RAR-M86, with RAR-S114's
      games reread): **closed `NO_CHANGE`; the registered rework is
-     not gated.** The gate's H0 is weak evidence: the case-3 gate
+     not gated** (maintainer decision 2026-11-11, on this research's
+     recommendation; it replaces RAR-S114's line that the defect
+     stays open). The gate's H0 is weak evidence: the case-3 gate
      reverts 34% of neutral repairs, and an H0 as late as RAR-S114's
      is 2.6 times as likely at −5 as at zero and twice as likely at
      zero as at +2. It speaks against a gain of 3 or more and shows
