@@ -342,7 +342,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
 | D.6.8 | RESEARCH | R2 | Screen before any implementation |
 | D.6.9 | RESEARCH | R2 | Screen before any implementation |
@@ -800,13 +799,25 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      after a change to LDSE's depth or margin, razoring's margins, the
      singular margins or the alpha-gap term, or at the search re-fit
      (F.6), and only if the probe then reads 2% or more.
-    - **D.6.6 Captures generated and scored before the TT move — `R2`.** (NODE-5):
+    - **D.6.6 Captures generated and scored before the TT move — `R2`, NO_CHANGE 2026-11-11.** (NODE-5):
      `fill_noisy` runs before the loop; the donor generates after the hash
      move fails to cut, and the TT move cuts at about 35% of loop nodes
      (`analysis/c12_speed_review_2026-10-18.md`: the one lead worth several
      percent). The capture scores then read a history the TT subtree has
      moved, so ordering changes. `I2` with a frozen prediction (speed +x%,
      games neutral), the pooled-PGO NPS read, then case 2.
+     Screen read 2026-11-11 (RAR-S120, cycle counts at an identical tree
+     on RAR-S117's 60 replayed gate games, idle host): **closed
+     `NO_CHANGE`.** Generating and scoring captures costs 3.95% of search
+     cycles, and 22% of fills are at nodes that cut before any capture is
+     looked at. So generating after the TT move could save at most 0.82%
+     (0.93% on the bench), under the frozen 1%. By about 2 Elo per 1% NPS
+     that is under 2 Elo, below what a speed read and a case-2 read can
+     bank. The playing change would be negligible: the TT move's subtree
+     changes the top capture at 0.11% of the nodes where order matters.
+     C.12's "several percent" is superseded. Retry only if capture
+     generation or scoring becomes materially dearer, or a later profile
+     puts it at 8% or more of search cycles (H.4).
     - **D.6.7 The ply cap — `R2`.** (NODE-8): `MAX_PLY = 128` is below the extension budget's
      bound (about twice the iteration depth plus 16); from about iteration 56
      the cap, not the budget, ends lines and the node returns a static eval
