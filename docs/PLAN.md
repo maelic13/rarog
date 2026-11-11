@@ -343,7 +343,7 @@ twice (HISTORY's number map holds what moved).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.6.3 | READY_FOR_IMPLEMENTATION | R2 | ProbCut half ready as its own repair (RAR-S112): the two verification calls pass `false`, `bench 13` 13,148,505, then its gate, case 3; null half out (RAR-S110) |
-| D.6.4 | RESEARCH | R2 | Readiness read as its own repair registered (RAR-S113), not yet read; gated after D.6.3 |
+| D.6.4 | READY_FOR_IMPLEMENTATION | R2 | Ready as its own repair (RAR-S113): an `Upper` store passes no move; implemented and gated, case 3, after D.6.3's gate is read |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
@@ -646,6 +646,20 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      is superseded as the size of this change. It is separable from
      D.6.3 and is read as its own repair next; that registration says
      which table state its reads use.
+     Readiness read 2026-11-11 (RAR-S113), as its own repair, in fresh
+     searches and in game-like ones (the table and histories a game's
+     earlier moves leave): 64% and 53% of the source's `Upper` stores
+     change the stored move, and a TT move from an `Upper` entry is at
+     10% and 13% of interior nodes. The size depends on the table: the
+     change searches 0.559 of the source's nodes fresh and 0.870
+     game-like (0.905 at the median). LMR without a TT move goes from
+     20% to 57% of its computations and IIR from 12% to 15% of nodes,
+     populations their constants were not fitted on. WAC is 237 against
+     239 at 100k and 265 against 264 at 400k, with no lost tactic. **Ready
+     for implementation, after D.6.3's gate is read:** an `Upper` store
+     passes no move; `bench 13` must read 12,785,308 on the source or
+     9,892,346 on top of D.6.3's typing; gate case 3. If the gate fails,
+     the rework refits IIR's depth and the no-TT-move LMR terms.
     - **D.6.5 The exclusion search uses the table-refined estimate — `R2`.** (NODE-4):
      `eval_for_pruning` has no `excluded` guard; in a singular exclusion node
      the TT bound is Lower or Exact and the window sits below `tt_score`, so
