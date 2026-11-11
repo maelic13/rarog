@@ -162,6 +162,7 @@ lessons; do not build a score or rewrite the frozen entries.
 | [RAR-M61](experiments/RAR-M61.md) | Colosseum CLI against fastchess on the same fixed match — the parity read no stopping rule biases … | The instruments agree, and the spread among Colosseum's own runs is as wide as the gap between the instruments |
 | [RAR-M62](experiments/RAR-M62.md) | The Colosseum tune shape — 15 slots and 30 games per iteration, measured 2026-09-18, recorded 2026-09-21 from … | 15 x 30 runs about 1.65x the games per hour of 14 x 32 |
 | [RAR-M70](experiments/RAR-M70.md) | Runner checks after the Colosseum 0.3.0 re-pin: a 2,000-game cross-check against fastchess on RAR-E60's gate arms and a 30,000-game null pair; they judge the instrument before RAR-E61's gate 1 — REGISTERED 2026-10-14, before any game; PLAYED 2026-10-14 | **The runners agree:** Colosseum +6.9 ± 9.4 Elo, fastchess +6.8 ± 9.1 (2,000 games each); the null pair was not run (maintainer decision 2026-10-15) |
+| [RAR-M85](experiments/RAR-M85.md) | The canary rule reviewed against its own game record — DECIDED 2026-11-11, the maintainer's decision delegated to the review | A later settle is a diagnostic with a written cause and never holds a candidate from its gate; a lost tactic stops one only with WAC under its floor. Four earlier changes that lost canaries played +18.4, +7.8, −4.7 and −18.3 Elo, the last with the best zero-game picture |
 
 ## 3. Search and selectivity
 

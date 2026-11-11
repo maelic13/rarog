@@ -204,10 +204,17 @@ gating. The rules below decide order and acceptance in this roadmap.
      per theme as points, percentage and top-1 rate (as `sts_runner2.py`
      in RBp4wn (tissatussa, Go, CC0, `github.com/tissatussa/RBp4wn`, read 2026-09-17) does; the
      scoring is added to `fixed_budget_probe.py`, not a second runner).
-   - **Canaries:** a regression rule. No oracle-anchored canary the baseline
-     solves may be lost, where solving means stable at no more than the anchor
-     plus two plies and solved at 100k nodes. New passes are recorded, not
-     required.
+   - **Canaries:** a regression diagnostic, with the standing of every
+     zero-game floor above. The floor is that no oracle-anchored canary the
+     baseline passes is lost, where passing means stable at no more than
+     the anchor plus two plies and solved at 100k nodes. New passes are
+     recorded beside the losses. A later settle with the position still
+     solved at 100k is a stability shift: it gets a written cause from the
+     per-depth moves and never holds a candidate from its gate. A lost
+     tactic, a canary the baseline solves at 100k and the candidate does
+     not, stops a candidate before any game only together with WAC at 100k
+     under its floor (RAR-M85; maintainer decision 2026-11-11, delegated
+     to the agent's review on condition of a stated and valid reason).
    - **Curvature sweep before any SPSA:** a checklist item with its own
      evidence path, `analysis/<leaf>_sweep_<date>.md` with raw results under
      `tools/results/`. Five registered coordinates each run at 0.5x, 0.75x,
