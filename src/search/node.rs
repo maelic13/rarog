@@ -2480,14 +2480,7 @@ impl Searcher {
                     depth,
                     score: best_score,
                     bound,
-                    // At a fail low no move raised alpha, so the best
-                    // one is only the least bad of moves that all failed;
-                    // storing none keeps the move the entry holds.
-                    mv: if bound == Bound::Upper {
-                        Move::NULL
-                    } else {
-                        best_move
-                    },
+                    mv: best_move,
                     ply,
                     static_eval: raw_static_eval,
                     is_pv: tt_pv,
@@ -4111,11 +4104,15 @@ mod tests {
         assert!(!entry.is_pv_node());
     }
 
-    /// A fail-low node stores its upper bound without a move, so the entry
-    /// keeps the move it held; a fail high still stores its move.
+    /// A fail-low node stores the best-scoring of its moves, which replaces
+    /// the move the entry held and is searched first at the next visit; a
+    /// fail high stores the move that cut. Storing no move at a fail low,
+    /// so that the entry kept its move, played weaker in games.
     #[test]
-    fn a_fail_low_store_keeps_the_stored_move() {
-        let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    fn a_fail_low_store_carries_its_best_scoring_move() {
+        // After 1.f3 e5, 2.g4 walks into Qh4 mate: every other move scores
+        // above it.
+        let fen = "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq - 0 2";
         let fail_low = |searcher: &mut Searcher, board: &mut Board| {
             let score =
                 searcher.search_root_window(board, 5, 1_000, 1_001, &mut || SearchEvent::None);
@@ -4123,11 +4120,11 @@ mod tests {
             searcher.shared.tt.probe(board.hash()).expect("stored")
         };
 
-        // An earlier, shallower entry with a move: the fail low replaces
-        // its bound and depth and keeps its move.
+        // An earlier, shallower entry holding the move that is mated: the
+        // fail low replaces its bound, its depth and its move.
         let mut searcher = Searcher::default();
         let mut board = Board::from_fen(fen).expect("valid FEN");
-        let held = board.parse_move("f2f3").expect("legal move");
+        let held = board.parse_move("g2g4").expect("legal move");
         searcher.shared.tt.store(TtStore {
             key: board.hash(),
             depth: 1,
@@ -4141,14 +4138,19 @@ mod tests {
         let entry = fail_low(&mut searcher, &mut board);
         assert_eq!(entry.bound(), Some(Bound::Upper));
         assert_eq!(i32::from(entry.depth), 5, "the fail low replaced the entry");
-        assert_eq!(entry.best_move(), Some(held));
+        assert!(entry.best_move().is_some());
+        assert_ne!(
+            entry.best_move(),
+            Some(held),
+            "a better-scoring move replaced it"
+        );
 
-        // With no earlier entry the upper bound carries no move.
+        // With no earlier entry the upper bound still carries a move.
         let mut searcher = Searcher::default();
         let mut board = Board::from_fen(fen).expect("valid FEN");
         let entry = fail_low(&mut searcher, &mut board);
         assert_eq!(entry.bound(), Some(Bound::Upper));
-        assert_eq!(entry.best_move(), None);
+        assert!(entry.best_move().is_some());
 
         // A fail high stores the move that cut.
         let mut searcher = Searcher::default();
