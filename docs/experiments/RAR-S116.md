@@ -5,7 +5,8 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Date / owner:** registered 2026-11-11 before any read it names as
   unexposed. The read is the agent's (deterministic, no games).
 - **Kind:** research and diagnosis after a rejected repair. No game, no gate.
-- Disposition: open — registered, the deciding arms not run.
+- Disposition: inconclusive — void by its own wire 2026-11-11; no deciding count
+  was looked at; reread as [RAR-S117](RAR-S117.md).
 - **Baseline:** `d6` at `2ad9593`, engine behaviour of `ee0b3e4`, bench
   13,038,236 / EBF 2.540.
 - **Inherits:**
@@ -236,3 +237,29 @@ depth inside the games' node counts, the counters at fail-low entries, and a
    threshold, so the rule's word depends on noise; or the hold is too coarse
    a rule to carry the ordering question, since arm 112 itself is not the
    source.
+
+## Result: void by the wire (2026-11-11)
+
+`replay.py wire` on the 60 games
+(`analysis/artifacts/d64-consumers-2026-11-11/wire.log`):
+
+| moves without a mate score | replay | the games | under by |
+|---|---:|---:|---:|
+| arm 0 on the baseline's moves, 3,446 | 12.954 | 13.100 | 0.146 |
+| arm 4 on the candidate's moves, 3,445 | 13.808 | 13.933 | 0.125 |
+
+Arm 0 is outside its 0.10, so the read is **void** by its frozen rule. Arm 4
+is inside its 0.20. No count of the deciding arms was looked at.
+
+**Calibration.** Prediction 1, the wire passing at 0.85: a miss, in the
+instrument. The tolerance came from a six-game smoke that read 0.002, and it
+was set on a level although the registration itself said a replay's table is
+poorer than the game's. The replay is only read as a difference between
+arms, and it reproduces the games' difference: 0.854 against 0.833.
+Predictions 2 to 8 were not exposed and pass unchanged to
+[RAR-S117](RAR-S117.md), which restates the wire and changes nothing else.
+
+## Disposition (2026-11-11)
+
+**Void.** Nothing is decided here. The same read, with its wire on the
+difference, is RAR-S117.
