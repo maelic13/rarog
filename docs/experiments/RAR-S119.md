@@ -7,6 +7,9 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   agent's (deterministic, no games).
 - **Kind:** the zero-game direction read that RAR-S118's rule names. It
   decides D.6.5's readiness, or closes it.
+- Disposition: no-change — read 2026-11-11: the forms' decisions differ at 1.96% of sampled
+  attempts (rule 1, under 2%); where they differ the plain form is right 747 to 273 and 5.7%
+  cheaper, too rare to gate. D.6.5 closes `NO_CHANGE`.
 - **Baseline:** `d6` at `8a33096`, engine behaviour of `ee0b3e4`, bench
   13,038,236 / EBF 2.540.
 - **Inherits:** RAR-S118. Under the donor's plain estimate, LDSE fires at
@@ -182,3 +185,83 @@ Unexposed: every record of the replay with the probes on.
    agreement with it rewards the form it resembles. Keeping only the
    records where the two references agree limits this, and does not remove
    it.
+
+## Result: the read (2026-11-11)
+
+Read by `read_dir.py` (SHA-256 `c4b732fa…`, unchanged since the amendment) on
+`rarog-s119probe.exe` (`80c67734…`). Logs and records are beside it:
+`replay_off.json`, `replay_on.json`, `rec/game_*.rec`, `replay_on.log` and
+`report.log`. The probes-on run took 305 s.
+
+**Wire: passed.**
+
+| wire | rule | read |
+|---|---|---|
+| 0, the state | probes off equal RAR-S117's arm 0 | 0 of 3,670 differ |
+| 1, isolation | probes on equal probes off | 0 of 3,670 differ |
+| 2, identity | P0 decides as the real search, 90% or more | 99.53% |
+| 3, liveness | P0 and P1 nodes differ, 10% or more | 13.23% |
+| 4, power | 3,000 or more with an agreeing reference | 64,157 |
+| 5, the cap | under 5% of records void | 7 of 65,335 (0.01%) |
+
+| 65,328 records kept, 60 games | |
+|---|---:|
+| the reference agrees between the forms | 98.21% |
+| **F, the forms' decisions differ, of all records** | **1.96%** |
+| the same where the reference agrees | 1.77% |
+| error against the reference, refined / plain | 30.24% / 29.51% |
+| wrong only under refined / only under plain | 747 / 273 |
+| Δ, refined error minus plain error | +0.739 points, 95% [+0.630, +0.855] |
+| cost, plain-form probe nodes over refined | 0.9426 |
+| binary verdict alone: differs; Δ | 0.78%; +0.356 [+0.280, +0.437] |
+| exclusion depth 4 or less: n, differ, discordant | 60,437, 1.78%, 713 / 250 |
+| exclusion depth 5 to 7 | 3,388, 1.80%, 34 / 23 |
+| exclusion depth 8 or more | 332, 0.00%, 0 / 0 |
+| the reference probe's cost | 6.0 times the refined probe's |
+
+**Decision, by the frozen rule: `NO_CHANGE`** (rule 1). The two forms'
+decisions differ at 1.96% of sampled singular attempts, under 2%. Rules 2 to
+5 are not reached.
+
+**What the data say, beyond the rule.**
+- **The direction is real, and it is the donor's.** Where the decisions
+  differ, the plain estimate matches the deeper search 747 times against 273.
+  Its probes are also 5.7% cheaper. Had rule 1 not applied, rule 4 would have
+  made the item ready: Δ's lower bound is above 0 and the cost under 1.10.
+- **The size is what closes it.** 98% of decisions are identical. The net
+  gain is 0.74 points of decisions, at singular attempts only, and those are
+  4.4% of interior nodes. That matches RAR-S118's unchanged outcome shares and
+  depth. The rule exists because a gate cannot resolve an effect this small.
+  A `[0,3]` SPRT at a true value near zero runs to its cap, and RAR-M86's
+  table puts a revert near one in three.
+- **The margin is narrow,** 1.96 against 2.00. The rule was frozen before
+  exposure and is not reopened after it. What would change the decision is a
+  change that makes the forms differ more often, which is the retry trigger
+  below.
+- **The change acts only shallow.** There are no differences at exclusion
+  depth 8 or more, since LDSE stops at depth 7.
+
+**Retry trigger.** Any change to LDSE's depth or margin, to razoring's
+margins, to the singular margins or to the alpha-gap term, or the search
+re-fit (F.6). Then re-read F with this probe. Only F at 2% or more reopens the
+item, and then with this read's rules.
+
+## Calibration (appended after the read)
+
+1. The wires pass: hit. Identity at 90% or more: hit (99.5%).
+2. F 5% to 20%: missed in magnitude (1.96%). LDSE fires at a quarter of
+   exclusion nodes (RAR-S118), but its extra ply changes the decision in only
+   one case in about twelve. The prediction took firing for change: this is
+   RAR-S118's registered failure mode, confirmed per node.
+3. The reference agrees 90% or more: hit (98.2%).
+4. P0's error 15% to 35%: hit (30.2%).
+5. Δ within ±1 point: hit (+0.74). The sign was unpredicted; it favours the
+   plain form.
+6. Cost 1.00 to 1.15: missed in sign (0.943). The assumption that LDSE's
+   extension would dominate the cost failed. A likely cause, not measured
+   here: where the eval is below alpha, the plain estimate's larger
+   alpha-gap term reduces quiet moves more, and that saves more than the
+   extension spends.
+7. `NO_CHANGE` 0.55: hit.
+8. The reference-bias failure mode could not be read directly. With the
+   references agreeing at 98%, its room is small.

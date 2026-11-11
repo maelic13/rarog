@@ -342,7 +342,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.5 | RESEARCH | R2 | Screened (RAR-S118): active, no aggregate shift; a paired direction read before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
 | D.6.8 | RESEARCH | R2 | Screen before any implementation |
@@ -755,7 +754,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      ordering change with a predicted node saving at equal
      consumers. The store's contract is pinned by
      `a_fail_low_store_carries_its_best_scoring_move`.
-    - **D.6.5 The exclusion search uses the table-refined estimate — `R2`.** (NODE-4):
+    - **D.6.5 The exclusion search uses the table-refined estimate — `R2`, NO_CHANGE 2026-11-11.** (NODE-4):
      `eval_for_pruning` has no `excluded` guard; in a singular exclusion node
      the TT bound is Lower or Exact and the window sits below `tt_score`, so
      the refined estimate always exceeds `alpha + margin`, LDSE can never fire
@@ -790,6 +789,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      rewrite **closes `NO_CHANGE`**: an exclusion search leaves another
      eval at 0.001% of re-entries, and a null verification that does is
      followed by its parent's own search in 1 of 43,949.
+     Direction read 2026-11-11 (RAR-S119, a paired probe at 65,328
+     sampled singular attempts of the same replayed games): **closed
+     `NO_CHANGE`** by its frozen first rule. The two estimates' decisions
+     differ at 1.96% of attempts, under 2%. Where they differ, the plain
+     estimate matches a deeper exclusion search 747 times against 273,
+     and its exclusion searches cost 0.943 of the refined ones. The
+     direction is the donor's, but the net gain is 0.74 points of
+     decisions at 4.4% of nodes, which no gate can resolve. Retry only
+     after a change to LDSE's depth or margin, razoring's margins, the
+     singular margins or the alpha-gap term, or at the search re-fit
+     (F.6), and only if the probe then reads 2% or more.
     - **D.6.6 Captures generated and scored before the TT move — `R2`.** (NODE-5):
      `fill_noisy` runs before the loop; the donor generates after the hash
      move fails to cut, and the TT move cuts at about 35% of loop nodes
