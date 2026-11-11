@@ -12,6 +12,8 @@ use super::movepick::{MovePicker, ScoredMoveList, Stage, diversify_root_scores, 
 use super::pricing::{
     Decision, HiddenMove, NodeEntry, NodeKind, QCapture, QEntry, ReSearch, Rule, Verdict,
 };
+#[cfg(test)]
+use super::thread::ChildSite;
 use super::{MAX_PLY, MAX_QPLY, SearchEvent, Searcher, TB_WIN_SCORE};
 
 /// The evaluator's middlegame material, for the diag census of the margin
@@ -376,6 +378,8 @@ impl Searcher {
         {
             self.td.root_depth = depth;
         }
+        #[cfg(test)]
+        self.note_child(ChildSite::Root, false);
         self.negamax::<Root, _>(
             board,
             depth,
@@ -520,6 +524,13 @@ impl Searcher {
         self.shared.tt.store_eval(key, raw_eval, is_pv);
     }
 
+    /// Name the call site of the `negamax` call that follows and the
+    /// caller's own `cut_node`, for the test that pins each child's type.
+    #[cfg(test)]
+    fn note_child(&mut self, site: ChildSite, parent_cut_node: bool) {
+        self.td.cut_node_log.pending = Some((site, parent_cut_node));
+    }
+
     pub(super) fn negamax<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
@@ -534,6 +545,8 @@ impl Searcher {
         poll: &mut P,
     ) -> i32 {
         debug_assert_eq!(NODE::ROOT, ply == 0, "the root node type is exactly ply 0");
+        #[cfg(test)]
+        self.td.cut_node_log.receive(NODE::PV, cut_node);
         #[cfg(feature = "pricing")]
         let pricing_entry = NodeEntry {
             depth,
@@ -1087,6 +1100,8 @@ impl Searcher {
                 self.td.null_move_plies.push(ply);
                 board.make_null_move();
                 self.shared.tt.prefetch(board.hash());
+                #[cfg(test)]
+                self.note_child(ChildSite::NullMove, cut_node);
                 let score = -self.negamax::<NonPv, _>(
                     board,
                     depth - reduction,
@@ -1165,6 +1180,8 @@ impl Searcher {
                         let tt_pv_here = self.td.stack[ply].tt_pv;
                         let laterality_here = self.td.stack[ply].laterality;
                         self.td.nmp_min_ply = min_ply;
+                        #[cfg(test)]
+                        self.note_child(ChildSite::NullVerify, cut_node);
                         let verified = self.negamax::<NonPv, _>(
                             board,
                             reduced,
@@ -1344,6 +1361,11 @@ impl Searcher {
                             let adjusted = (probcut_beta
                                 + self.cfg.proof.probcut_adjust * (base_depth - probcut_depth))
                                 .min(INF_SCORE);
+                            // A verification search is expected to fail
+                            // low (its parent expects the capture to cut),
+                            // so its child is an all node.
+                            #[cfg(test)]
+                            self.note_child(ChildSite::ProbCutVerify, cut_node);
                             score = -self.negamax::<NonPv, _>(
                                 board,
                                 probcut_depth,
@@ -1352,7 +1374,7 @@ impl Searcher {
                                 ply + 1,
                                 false,
                                 Move::NULL,
-                                true,
+                                false,
                                 last_critical_ply,
                                 poll,
                             );
@@ -1362,6 +1384,10 @@ impl Searcher {
                                     crate::diag_count!(probcut_deeper_research);
                                 }
                                 probcut_depth = base_depth;
+                                // The same verification at the full
+                                // depth: an all node, as above.
+                                #[cfg(test)]
+                                self.note_child(ChildSite::ProbCutResearch, cut_node);
                                 score = -self.negamax::<NonPv, _>(
                                     board,
                                     base_depth,
@@ -1370,7 +1396,7 @@ impl Searcher {
                                     ply + 1,
                                     false,
                                     Move::NULL,
-                                    true,
+                                    false,
                                     last_critical_ply,
                                     poll,
                                 );
@@ -1482,6 +1508,8 @@ impl Searcher {
             {
                 self.td.singular_searches += 1;
             }
+            #[cfg(test)]
+            self.note_child(ChildSite::Singular, cut_node);
             let score = self.negamax::<NonPv, _>(
                 board,
                 singular_depth,
@@ -2023,6 +2051,8 @@ impl Searcher {
 
             if searched == 0 {
                 search_count += 1;
+                #[cfg(test)]
+                self.note_child(ChildSite::FirstMove, cut_node);
                 score = if child_is_pv {
                     -self.negamax::<Pv, _>(
                         board,
@@ -2131,6 +2161,8 @@ impl Searcher {
                     );
                     self.td.stack[ply].reduction = reduction;
                     search_count += 1;
+                    #[cfg(test)]
+                    self.note_child(ChildSite::LmrReduced, cut_node);
                     score = -self.negamax::<NonPv, _>(
                         board,
                         reduced_depth,
@@ -2187,6 +2219,8 @@ impl Searcher {
                                  new_depth {new_depth}"
                             );
                             search_count += 1;
+                            #[cfg(test)]
+                            self.note_child(ChildSite::LmrResearch, cut_node);
                             score = -self.negamax::<NonPv, _>(
                                 board,
                                 new_depth,
@@ -2203,6 +2237,8 @@ impl Searcher {
                     }
                 } else {
                     search_count += 1;
+                    #[cfg(test)]
+                    self.note_child(ChildSite::ZeroWindow, cut_node);
                     score = -self.negamax::<NonPv, _>(
                         board,
                         new_depth,
@@ -2220,6 +2256,8 @@ impl Searcher {
                 // beats alpha is searched again with the full window.
                 if NODE::PV && score > alpha {
                     search_count += 1;
+                    #[cfg(test)]
+                    self.note_child(ChildSite::PvResearch, cut_node);
                     score = -self.negamax::<Pv, _>(
                         board,
                         new_depth,
@@ -3431,6 +3469,71 @@ mod tests {
             .null_move_at_node(),
             "a node in check never takes it"
         );
+    }
+
+    /// Every recursive call types its child by its own rule: the null-move
+    /// child and a reduced late move are cut nodes; ProbCut's verification
+    /// searches, the null-move verification, the root and a PV re-search are
+    /// not; the exclusion search inherits its node's type; the first move and
+    /// the zero-window searches take the opposite of their parent's. Read
+    /// from the value each child received, over a search that reaches every
+    /// call site.
+    #[test]
+    fn each_recursive_call_types_its_child_by_its_rule() {
+        let mut searcher = Searcher::default();
+        // Verification from depth 4 so the null-move verification is reached.
+        searcher.cfg.proof.nmp_verify_depth = 4;
+        for fen in crate::bench::BENCH_FENS {
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            for depth in 1..=10 {
+                let score = searcher.search_root_window(
+                    &mut board,
+                    depth,
+                    -INF_SCORE,
+                    INF_SCORE,
+                    &mut || SearchEvent::None,
+                );
+                assert!(score.abs() <= INF_SCORE);
+            }
+        }
+        let log = &searcher.td.cut_node_log;
+        assert_eq!(log.untagged, 0, "a negamax call with no call site");
+        // The cut_node each site's child must receive, from the parent's
+        // cut_node and whether the child is a PV node.
+        type Rule = fn(bool, bool) -> bool;
+        let rules: [(ChildSite, Rule); 11] = [
+            (ChildSite::Root, |_, _| false),
+            (ChildSite::NullMove, |_, _| true),
+            (ChildSite::NullVerify, |_, _| false),
+            (ChildSite::ProbCutVerify, |_, _| false),
+            (ChildSite::ProbCutResearch, |_, _| false),
+            (ChildSite::Singular, |parent, _| parent),
+            (ChildSite::FirstMove, |parent, pv| !pv && !parent),
+            (ChildSite::LmrReduced, |_, _| true),
+            (ChildSite::LmrResearch, |parent, _| !parent),
+            (ChildSite::ZeroWindow, |parent, _| !parent),
+            (ChildSite::PvResearch, |_, _| false),
+        ];
+        assert_eq!(rules.len(), ChildSite::COUNT, "a site without a rule");
+        for (site, expected) in rules {
+            let mut calls = 0;
+            for parent in [false, true] {
+                for pv in [false, true] {
+                    for received in [false, true] {
+                        let n = log.calls(site, parent, pv, received);
+                        calls += n;
+                        if received != expected(parent, pv) {
+                            assert_eq!(
+                                n, 0,
+                                "{site:?}: parent cut_node {parent}, child PV {pv}, \
+                                 received {received}"
+                            );
+                        }
+                    }
+                }
+            }
+            assert!(calls > 0, "{site:?} was never reached");
+        }
     }
 
     /// The root never takes a null move.
