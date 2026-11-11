@@ -8,6 +8,9 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   stale-state defect. It can close either `NO_CHANGE`. It cannot make the
   estimate change ready: that needs a direction read registered after this
   one (*Readiness needs a direction*, the ledger's *Repeated lessons*).
+- Disposition: research — read 2026-11-11: LDSE would fire at 23.8% of exclusion nodes
+  under the plain estimate with no singular outcome moving; a direction read is next.
+  The re-entry rewrite closes `NO_CHANGE`.
 - **Baseline:** `d6` at `9df630a`, engine behaviour of `ee0b3e4`, bench
   13,038,236 / EBF 2.540.
 
@@ -178,3 +181,93 @@ game-like state decides. Fresh is reported.
     rarely changes the exclusion verdict. The count is then real activity
     with no evidence of benefit, which is why it cannot make the item
     ready.
+
+## Result: the read (2026-11-11)
+
+Read by `read_d65.py` (SHA-256 `70cb36a6…`, unchanged since registration) on
+`rarog-s118screen.exe` (`fc4a541a…`). Logs and counts are beside it:
+`collect.log`, `report.log`, `fresh_arm{0,1,2}.json`, `replay_arm{0,1,2}.json`
+and arm 1's WAC files. Every search dumped each counter once.
+
+**Wire: passed.**
+- Arm 0's 40 fresh searches equal RAR-S111's arm-0 counts.
+- All 3,670 replayed searches of arm 0 equal RAR-S117's arm 0 in move, depth
+  and nodes.
+
+| arm 0, the source | fresh, 40 searches | game-like, 3,670 replayed searches |
+|---|---:|---:|
+| exclusion nodes, of interior nodes | 4.69% | 4.40% |
+| in check | 9.68% | 11.03% |
+| `Lower` / `Exact` / other, out of check | 99.28 / 0.72 / 0% | 98.45 / 1.55 / 0% |
+| estimate refined, out of check | 48.06% | 41.74% |
+| LDSE under the refined estimate | 0 | 0 |
+| **LDSE under the plain estimate** | **31.72%** | **23.82%** |
+| razoring, plain / refined | 0.004% / 0 | 0.004% / 0 |
+| quiet LMR whose alpha-gap term differs | 62.4%, by 163/1024 ply | 52.6%, by 117/1024 ply |
+| **A**, decisions the plain estimate turns on | 31.72% | **23.82%** |
+| exclusion re-entries leaving another eval | 0.004% | 0.001% |
+| null verifications leaving another eval | 3.2% of 312 | 2.8% of 43,949 |
+| verifications the parent goes on from | 5 | 1 |
+| **B**, continued re-entries leaving another eval | 0.004% | **0.001%** |
+
+| against arm 0 | arm 1, the plain estimate | arm 2, the restore |
+|---|---:|---:|
+| fresh interior nodes | 0.8849 | 0.9929 |
+| replay depth, same move | −0.033, 65.4% | −0.031, 97.7% |
+| singular attempts extended, game-like | 39.45% (39.53%) | 39.51% |
+| multicut, game-like | 26.41% (26.45%) | 26.40% |
+| TT move demoted, game-like | 10.52% (10.45%) | 10.47% |
+| negative extension, game-like | 16.54% (16.67%) | 16.62% |
+| WAC at 100k / 400k | 233 / 263 (239 / 264) | not read |
+
+Arm 1 loses no canary at 100k; at 400k it loses WAC.170. Its later settles are
+WAC.115 and WAC.199. Gross tactical harm: no (233 is the floor, and no canary
+is lost at 100k).
+
+**Decision, by the frozen rule.**
+- **The estimate stays in `RESEARCH`.** A is 23.82% game-like, over 1%, with
+  no gross tactical harm. The premise holds: under the refined estimate LDSE
+  and razoring never fire at an exclusion node. Under the plain one, LDSE
+  fires at a quarter of them. By PLAN's rule a gate would be `[0,3]`, since
+  LDSE is over 2%. The next step is the direction read the rule names.
+- **The re-entry closes `NO_CHANGE`.** B is 0.001% game-like. An exclusion
+  search almost never leaves another eval. A null verification leaves one in
+  3% of cases, but its parent goes on in only 1 of 43,949, so no child reads
+  it. Restoring the fields moves the game-like depth by −0.031, which is
+  noise: the move is the same in 97.7% of searches, and the rest are the
+  chaotic divergence any change produces.
+
+**What the counts say, and do not.**
+- **Large activity, no aggregate shift.** A quarter of exclusion nodes
+  extend their first move under the plain estimate. Yet every singular
+  outcome's share moves by under 0.15 points game-like, and the replay's
+  depth moves by −0.03. The registered failure mode is the likeliest reading
+  so far: the extra ply rarely changes the exclusion verdict. Unchanged
+  shares do not exclude verdicts that flip in both directions at the same
+  rate. That is what a paired direction read measures.
+- **The fresh tree shrinks by 11.5%; the game-like depth does not move.**
+  This repeats D.6.4's lesson that the fresh size is no guide to a game's.
+
+## Calibration (appended after the read)
+
+1. The wire passed. Hit.
+2. `Lower` 60% to 90%: missed in magnitude (98.5% to 99.3%). A
+   null-window search cannot store `Exact`, so `Exact` entries come only
+   from the PV searches, a small share of the tree. Other bounds under
+   1%: hit (none).
+3. Refined 50% to 90%: missed, just under (48% fresh, 42% game-like). A
+   `Lower` entry's score is above the node's eval in fewer than half the
+   cases, so the refinement applies less often than assumed.
+4. The premise (under 0.1%): hit, exactly zero.
+5. LDSE plain 5% to 30%: game-like 23.8% hit; fresh 31.7% missed in
+   magnitude, just over. Gate class `[0,3]`: hit. Razoring under 1%: hit.
+6. The alpha-gap term differs 40% to 90%: hit.
+7. Singular extension share within 3 points: hit (under 0.1).
+8. Fresh nodes 0.95 to 1.03: missed in magnitude (0.885). Replay depth
+   within ±0.15: hit (−0.033). The miss is the instrument's state, not the
+   mechanism: a fresh table exaggerates the size of a change.
+9. B under 1%, re-entry `NO_CHANGE`: hit.
+10. WAC at 100k within 4: missed (−6, at the floor). No gross harm: hit.
+11. Stays in `RESEARCH`: hit.
+12. The most likely failure mode is consistent with every aggregate: high
+    activity, no outcome shift. It is not yet confirmed per node.

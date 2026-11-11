@@ -342,7 +342,7 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.5 | RESEARCH | R2 | Screen before any implementation |
+| D.6.5 | RESEARCH | R2 | Screened (RAR-S118): active, no aggregate shift; a paired direction read before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
 | D.6.8 | RESEARCH | R2 | Screen before any implementation |
@@ -771,6 +771,25 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      correction tables changed in between, the stack's eval differs from the
      node's own. A counter of re-entries where the two differ goes with this
      item's screen.
+     Screen read 2026-11-11 (RAR-S118, fresh and on RAR-S117's 60
+     replayed gate games): the premise holds. Under the refined estimate
+     LDSE and razoring never fire at an exclusion node; under the plain
+     one LDSE fires at 23.8% of them game-like (31.7% fresh), razoring at
+     0.004%. The alpha-gap term is not pinned at its clamp as stated
+     above: where the refinement applies it is fixed at
+     `-(margin + 1)`, about 0.75 of a unit per ply, far inside −65; it
+     differs between the two estimates in 53% of the quiet reductions.
+     The change moves no aggregate: every singular outcome's share moves
+     by under 0.15 points game-like and the replay's depth by −0.03
+     (fresh nodes 0.885); WAC is 233 against 239 at 100k, at its floor,
+     with no canary lost. **The item stays in research** for a paired
+     direction read: in an isolated probe at sampled singular attempts,
+     the exclusion verdict under each estimate against a deeper
+     exclusion search at the same node. That read decides readiness; a
+     gate would be `[0,3]`, since LDSE fires at over 2%. The re-entry
+     rewrite **closes `NO_CHANGE`**: an exclusion search leaves another
+     eval at 0.001% of re-entries, and a null verification that does is
+     followed by its parent's own search in 1 of 43,949.
     - **D.6.6 Captures generated and scored before the TT move — `R2`.** (NODE-5):
      `fill_noisy` runs before the loop; the donor generates after the hash
      move fails to cut, and the TT move cuts at about 35% of loop nodes
