@@ -302,3 +302,10 @@ counter was read for that.
 13,038,236 / EBF 2.540 at `ee0b3e4`, and the changelog has its entry. The
 under-promotion pushes stay quiet (D.6.17). The runaway at position 627 stays
 with D.6.7.
+
+**Correction (2026-11-11).** The release suite did not pass at `ee0b3e4`:
+`won_ending_does_not_sink_the_clock` fails there, 9.46 to 9.62 s in three
+runs alone on an idle host against its 8 s, where `72c4e60` plays the same
+position in 2.42 to 2.53 s. The "release tests 524 passed" above is
+contradicted. The test is ignored as D.6.20's acceptance test (`b6914f0`),
+and PLAN's D.6.20 holds the measurement. The gate's result stands.

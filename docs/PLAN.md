@@ -352,8 +352,8 @@ twice (HISTORY's number map holds what moved).
 | D.6.10 | RESEARCH | R2 | Screen before any implementation |
 | D.6.13 | RESEARCH | R2 | Screen before any implementation |
 | D.6.16 | RESEARCH | R2 | Screen before any implementation |
-| D.6.17 | RESEARCH | R2 | Screen before any implementation |
-| D.6.20 | RESEARCH | R2 | Screen before any implementation |
+| D.6.17 | RESEARCH | R2 | Card: the wrong-pick branch fired on D.6.3's candidate (a transposing rook kept by root order); Basilisk's root rule is the prior, the ignored transposing-rook anchor the acceptance test; lands before the 2.7.0 cut |
+| D.6.20 | RESEARCH | R2 | Screen before any implementation; a measured instance: the won-ending clock test is red since `ee0b3e4` (9.5 s against 8 s), ignored as its acceptance test |
 | D.6.21 | RESEARCH | R2 | Screen: does a one- or two-ply search already read the 88 above 0; minutes |
 | D.6.22 | RESEARCH | R2 | Screen: a per-site scale that keeps the draws near 0 and the wins above it; minutes |
 | D.6.23 | RESEARCH | R2 | Screen: raw against corrected at the non-verdict leaves near the verdicts in the 63 fixture searches; minutes |
@@ -775,6 +775,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       stalemated, each checked against Syzygy or Stockfish. All correct:
       `NO_CHANGE` with the positions kept as tests. A wrong pick: a card
       with Basilisk's rule and its gates as the prior.
+      **The wrong-pick branch fired 2026-11-11, on D.6.3's candidate**
+      (ProbCut's children typed `false`), in Basilisk's transposing rook
+      position (`2k2rr1/6P1/2P5/7p/1B2p3/4P3/5K2/8 w - - 0 46`): after
+      `gxf8` with either piece, `Rxf8+ Bxf8` reaches the same position,
+      a true tie. At 100,000 nodes the candidate plays `g7f8r` (528 at
+      depth 14), the rook it searched first, from depth 12 on; the
+      source at `79f761d` plays the queen by its tree's shape. Searched
+      apart at depth 14 the queen reads 896 and the rook 768, the
+      noise of two searches the anchor had read as a margin. Nothing in
+      Rarog's search breaks the tie. The item is now a card with
+      Basilisk's rule as its prior (a rook or bishop promotion is played
+      over the queen only by more than 200 of exact score, BAS-S33,
+      BAS-S34). Its acceptance test is
+      `queen_promotion_though_the_rook_was_searched_first`, ignored
+      until the rule lands (`d41bae3`);
+      `promotion_on_f8_wins_where_the_rook_transposes` stays active. It
+      lands before the 2.7.0 cut (maintainer decision 2026-11-11).
     - **D.6.20 The fail-high stop's hole — `R2`.** (H24): the stop at twice the target is
       checked only when a window returns (`search/mod.rs:977-978`), so a
       window that never fails high runs to the maximum (RAR-R26's rec3,
@@ -784,6 +801,20 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       rate by score band, the table carried). `R2` zero-game read;
       `NO_CHANGE` under 0.5% of searches. Long controls only; the hard
       maximum still bounds it.
+      **A measured instance, 2026-11-11,** at `30000+300`:
+      `won_ending_does_not_sink_the_clock`
+      (`7r/5R2/8/2k1PB2/8/4K3/8/8 w - - 0 86`, limit 8 s) is red since
+      `ee0b3e4`, the quiescence queen push. Read alone on an idle host,
+      three runs a commit: 2.42 to 2.53 s at `b202174` and `72c4e60`
+      (9,838,664 nodes, depth 18, exact); 9.46 to 9.82 s at `ee0b3e4`
+      and `79f761d`, the same engine source (37,767,960 nodes, the last
+      line a depth-16 lowerbound); 12.91 s with D.6.3's candidate (a
+      depth-19 lowerbound). The node counts repeat exactly, so it is a
+      failing test and not a flaky one. The control is not long, and
+      the per-window timing that would show whether this is the hole
+      above or another cause is not yet read: that is the leaf's first
+      read. The test is ignored as this leaf's acceptance test
+      (`b6914f0`) and held in GUIDE.
     - **D.6.21 Won KPK positions read at or below 0 — `R2`.** (D.5.19's read,
       2026-11-02; Basilisk's A3): 88 of 445,128 won KPK positions read at
       or below 0 for the winner, 78 of the wrong sign and 10 exactly 0,

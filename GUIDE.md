@@ -142,6 +142,8 @@ field, about 3,475 on CCRL's Blitz scale.
 
 | Open hold / obligation | Resume or resolve when | Must be resolved before |
 |---|---|---|
+| **D.6.17**'s root promotion rule (maintainer decision 2026-11-11): with D.6.3's typing the root keeps a transposing rook it searched first; the anchor `queen_promotion_though_the_rook_was_searched_first` is ignored as its acceptance test | D.6.17's card, Basilisk's rule as the prior, implemented and its acceptance test passing un-ignored | E.3.4, the 2.7.0 release cut |
+| **D.6.20**'s won-ending clock test (2026-11-11): red since `ee0b3e4`, 9.46 to 9.82 s against 8 s (2.42 to 2.53 s before), ignored as D.6.20's acceptance test | D.6.20's read names the cause and its repair makes the test pass un-ignored | E.3.4, the 2.7.0 release cut |
 | Originality disclosure (2026-10-23 review of 2.6.0): Stockfish's time-budget constants and Reckless's move-ordering and history constants were copied unchanged, the evaluation design is Stockfish 11's, Fathom is not named, and the README credits only "inspiration". The code and the evaluation weights are Rarog's own, and the move-similarity screen reads Rarog like an unrelated engine against both donors (56.4% Stockfish 11, 54.2% Reckless; related controls 67–69%) | **E.3.0**: rerun the scans on the release head, the maintainer settles the licence (Reckless is AGPL-3.0), then README, PROCESS's boundary and the binaries' notices | E.3.4, the 2.7.0 release cut |
 
 Follow the earliest unblocked leaf in PLAN's register order, which the board's Now shows; the register is in ascending order, which is the order of work (maintainer decision 2026-11-03). Held items stay unticked in place.
