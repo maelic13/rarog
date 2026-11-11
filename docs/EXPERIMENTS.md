@@ -113,6 +113,23 @@ Which mechanism or interaction was missed? Did the instrument fail? Was any
 rejected idea retried without its trigger? Record only repeated calibration
 lessons; do not build a score or rewrite the frozen entries.
 
+**Repeated lessons.**
+
+- **Readiness by activity is not readiness by direction** (2026-11-11;
+  RAR-S112 to RAR-S114, and RAR-S113 to RAR-S115). Both reads called a
+  change to the donor's form ready because its population existed, it
+  reached enough nodes and it lost no tactics. Neither held evidence that
+  the change improved anything in this engine, and both gates ended at H0.
+  A search fitted around its own contracts starts any contract change at a
+  disadvantage. A readiness rule needs one quantity the change is predicted
+  to improve with its consumers held equal, and a threshold on it. RAR-S117
+  did that afterwards and closed the item without a game.
+- **The case-3 gate does not run a near-zero repair to its cap**
+  (2026-11-11; RAR-S114, RAR-S115, RAR-M86). Both registrations forecast the
+  cap as the likeliest stop. At a true zero the gate ends at H0 in 34% of
+  runs, at H1 in 34% and at the cap in 32%. A forecast for this gate starts
+  from RAR-M86's table, and an H0 from it is read against the same table.
+
 ## 2. Measurement, harness and tuning
 
 | ID | Experiment | Disposition |
@@ -163,7 +180,7 @@ lessons; do not build a score or rewrite the frozen entries.
 | [RAR-M62](experiments/RAR-M62.md) | The Colosseum tune shape — 15 slots and 30 games per iteration, measured 2026-09-18, recorded 2026-09-21 from … | 15 x 30 runs about 1.65x the games per hour of 14 x 32 |
 | [RAR-M70](experiments/RAR-M70.md) | Runner checks after the Colosseum 0.3.0 re-pin: a 2,000-game cross-check against fastchess on RAR-E60's gate arms and a 30,000-game null pair; they judge the instrument before RAR-E61's gate 1 — REGISTERED 2026-10-14, before any game; PLAYED 2026-10-14 | **The runners agree:** Colosseum +6.9 ± 9.4 Elo, fastchess +6.8 ± 9.1 (2,000 games each); the null pair was not run (maintainer decision 2026-10-15) |
 | [RAR-M85](experiments/RAR-M85.md) | The canary rule reviewed against its own game record — DECIDED 2026-11-11, the maintainer's decision delegated to the review | A later settle is a diagnostic with a written cause and never holds a candidate from its gate; a lost tactic stops one only with WAC under its floor. Four earlier changes that lost canaries played +18.4, +7.8, −4.7 and −18.3 Elo, the last with the best zero-game picture |
-| [RAR-M86](experiments/RAR-M86.md) | What the case-3 repair gate, SPRT `[-5,5]` with a 6,000-pair cap, returns at small true effects — REGISTERED 2026-11-11, before the simulation ran | open — registered, not run |
+| [RAR-M86](experiments/RAR-M86.md) | What the case-3 repair gate, SPRT `[-5,5]` with a 6,000-pair cap, returns at small true effects — REGISTERED 2026-11-11, before the simulation ran | observation — read 2026-11-11: at a true zero the gate reverts 34% of repairs, passes 34% at H1 and caps 32%; +2 nElo is reverted in 17%, −2 kept in 44%, −5 reverted in 85%; RAR-S115's early H0 is nine times as likely at −10 as at zero, RAR-S114's 2.6 times as likely at −5 as at zero |
 
 ## 3. Search and selectivity
 
@@ -279,7 +296,7 @@ Rarog's own work; nothing here makes resembling Stockfish a goal.
 | [RAR-S114](experiments/RAR-S114.md) | D.6.3's gate: ProbCut's verification children typed as all nodes (`d15050a`, bench 13,148,505) against `63813d8` by SPRT `[-5,5]`, cap 6,000 pairs — REGISTERED 2026-11-11, before any game | rejected — H0 2026-11-11 at 9,662 games, nElo −3.7 ± 6.9; reverted (`91265f2`), fingerprint stays 13,038,236; rework: the typing with the fail-low reward kept |
 | [RAR-S115](experiments/RAR-S115.md) | D.6.4's gate: a fail-low node stores no move (`45adef3`, bench 12,785,308) against `7a3087a` by SPRT `[-5,5]`, cap 6,000 pairs — REGISTERED 2026-11-11, before any game | rejected — H0 2026-11-11 at 2,452 games, nElo −14.7 ± 13.8, with mean depth up 0.89 on 3% more nodes a move; reverted (`5d60017`), fingerprint stays 13,038,236; the defect stays open and its rework is in research |
 | [RAR-S116](experiments/RAR-S116.md) | D.6.4 after its gate: which consumer of the stored move carries the depth, and whether the kept move orders better, on replayed gate games — REGISTERED 2026-11-11, before any read of its unexposed counts | inconclusive — void by its own wire 2026-11-11 (the baseline's replayed depth 0.146 under the games' against a tolerance of 0.10); no deciding count looked at; reread as RAR-S117 |
-| [RAR-S117](experiments/RAR-S117.md) | RAR-S116's read with its wire restated on the depth difference between the arms, which the replay reproduces (0.854 against the games' 0.833) — REGISTERED 2026-11-11, before any deciding count was looked at | open — registered, the deciding counts not looked at |
+| [RAR-S117](experiments/RAR-S117.md) | RAR-S116's read with its wire restated on the depth difference between the arms, which the replay reproduces (0.854 against the games' 0.833) — REGISTERED 2026-11-11, before any deciding count was looked at | no-change — read 2026-11-11: the store change's smaller tree (0.811) and extra depth (+0.66) are IIR at revisited fail-low nodes (held, +0.07); the LMR term and the razoring guard carry nothing; with the consumers held the kept move needs 1.022 of the best-scoring move's nodes (0.990 to 1.043), and without that move the tree is 23% larger; D.6.4 closes `NO_CHANGE`, its refit is not the right rework; lead: IIR has no node-type condition (D.6.27) |
 | [RAR-S79](experiments/RAR-S79.md) | B.3 cluster 2, proof searches and extensions — REGISTERED 2026-09-23, before implementation; no game played | Paired run played 2026-09-24 |
 | [RAR-S80](experiments/RAR-S80.md) | B.3.2 categoricals, four 2,000-game runs — REGISTERED 2026-09-24, before any game | Runs 1–2 played 2026-09-24 |
 | [RAR-S81](experiments/RAR-S81.md) | B.3.3 SPSA on the `b3proof` arm, in blocks — REGISTERED 2026-09-25, before the configuration is generated and … | Stopped 2026-09-25 at iteration 940 of 2,000 |
@@ -631,6 +648,8 @@ and many early-stopped SPRTs.
 | RAR-R13 | A game record shows the head failing to win, or forfeiting, after a won position, the loss preceded by a deep stall (≥ 0.9 × maximum at depth 40 or more, after a mate shown, or on a root lower bound); or a CCRL-blitz-or-longer record shows such moves costing results; or D.1.2 changes the bound model (rerun `tm_games.py`). | D.1.2 |
 | RAR-R19 | A refit of the five aspiration coordinates around the depth-reduced re-search only if D.1.6.3's gate reads H0 with the probe passing, or at the next search tune (F.6); Stockfish's recovery into the next iterations (`failHighRecovery`) only if the gate passes and the probe shows the next iteration repaying the cascade. | D.1.6, else F.6 |
 | RAR-X10, RAR-X11, RAR-X12 | The network is released (F.9) and F.7, F.8 and G.3 stop accepting: H.1 re-ranks the deferred small gains on the network head. Earlier only where an open leaf must choose the form (D.6.7; D.6.12 and D.6.18 moved to G.2 and H.2 on 2026-11-05). | H.1–H.4 |
+| RAR-S112, RAR-S114 | ProbCut's verification child typed as an all node: at the search re-fit (F.6), with ProbCut's margin and the cut-node terms in the same fit, or on a change to ProbCut's margin, depth or verification. Not as the typing alone, and not as the typing with the fail-low reward kept. | F.6 |
+| RAR-S113, RAR-S115, RAR-S117 | A fail low storing no move: only once IIR no longer reduces a node for a fail-low entry without a move, and then as an ordering change with a frozen prediction of fewer nodes at equal consumers. A refit of IIR's depth or of the cut-node LMR term around the store is not a retry. | D.6.27, else F.6 |
 
 Anything not meeting its trigger stays closed. A retry is a new experiment with
 a new ID and manifest; it does not overwrite the historical row.

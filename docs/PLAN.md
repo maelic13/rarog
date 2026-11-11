@@ -342,8 +342,6 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.3 | READY_FOR_IMPLEMENTATION | R2 | ProbCut typed `false` rejected by its gate (RAR-S114: H0 at 9,662 games, nElo −3.7 ± 6.9) and reverted; the defect stays open; next, as registered, the typing with the fail-low reward kept, its own registration and gate, case 3; null half out (RAR-S110) |
-| D.6.4 | RESEARCH | R2 | Storing no move at a fail low rejected by its gate (RAR-S115: H0 at 2,452 games, nElo −14.7 ± 13.8, mean depth up 0.89) and reverted (`5d60017`); the defect stays open; the registered rework, the store change with IIR's depth and the no-TT-move LMR terms refitted, has no readiness card: which consumer carries the loss is researched first |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
@@ -360,6 +358,7 @@ twice (HISTORY's number map holds what moved).
 | D.6.24 | RESEARCH | R2 | Screen: a narrowed or discounted fortress on the same enumeration, draws kept at 0 and wins lifted; minutes |
 | D.6.25 | RESEARCH | R2 | Screen: does any search at the gate's budget pick the bishop promotion, or score the same-coloured pair above a draw at the root; minutes |
 | D.6.26 | RESEARCH | R2 | Screen: the pawnless one-minor-ahead classes against Syzygy over an enumeration, and their exposure in gate games; minutes |
+| D.6.27 | RESEARCH | R2 | Screen before any implementation: IIR applications by node type on RAR-S117's replay; minutes |
 | D.7 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -554,7 +553,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      raise alpha, legal in 54% of gate games, so no closing rule fired; the
      push is `ee0b3e4` on `d6` (bench 13,038,236), accepted by its SPRT
      `[0,3]` on 2026-11-10 at nElo +12.2 ± 6.5 over 11,108 games.
-    - **D.6.3 Null-move and ProbCut children typed `cut_node = true` — `R2`.** (NODE-1): the
+    - **D.6.3 Null-move and ProbCut children typed `cut_node = true` — `R2`, NO_CHANGE 2026-11-11.** (NODE-1): the
      donor passes `false` for the null child (`search.rs:606`) and both
      ProbCut searches (`664–684`); Rarog passes `true` at `node.rs:988`,
      `1203` and `1221`. The type feeds the child's TT-cutoff admission, the
@@ -645,7 +644,24 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      keeps the fail-low reward to the capture's noisy history, which
      separates the reward from the type's other consumers; its own
      registration and gate, case 3.
-    - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`.** (NODE-2):
+     Research after the gate 2026-11-11 (RAR-M86, with RAR-S114's
+     games reread): **closed `NO_CHANGE`; the registered rework is
+     not gated.** The gate's H0 is weak evidence: the case-3 gate
+     reverts 34% of neutral repairs, and an H0 as late as RAR-S114's
+     is 2.6 times as likely at −5 as at zero and twice as likely at
+     zero as at +2. It speaks against a gain of 3 or more and shows
+     no loss of 5. Nothing in its games differs between the arms:
+     nodes, depth, swings in a side's own score, which side sees a
+     result first, conversion. No mechanism points to a gain: the
+     typing makes ProbCut's verification stricter under a margin
+     fitted with the cheaper one, and the reward it drops is 1.6% of
+     noisy-history updates, which the rework would only restore. The
+     donor's label is not evidence (rule 1). Retry at the search
+     re-fit (F.6) with ProbCut's margin and the cut-node terms in the
+     same fit, or on a change to ProbCut's margin, depth or
+     verification. NODE-14's test keeps every recursive call's type
+     pinned, ProbCut's children `true`.
+    - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`, NO_CHANGE 2026-11-11.** (NODE-2):
      `best_move` is set on every new best score, so an `Upper` entry carries
      the refuted move and overwrites the position's earlier move; the donor
      sets it only when alpha rises and keeps the old move. Consumers at the
@@ -712,6 +728,31 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      readiness card, so the item is in research: which consumer of
      the stored move carries the loss, and whether a refit is the
      right rework.
+     Research after the gate 2026-11-11 (RAR-S117, a replay of 60 of
+     the gate's games under eight arms; RAR-S116 was void by its
+     wire): **closed `NO_CHANGE`.** The store change's smaller tree
+     is IIR and nothing else. It searched 0.81 of the source's nodes
+     to the same depth and gained 0.66 of depth at the games' node
+     counts; with IIR alone reading a fail-low entry as carrying a
+     move, the gain is 0.07. Holding the cut-node LMR term or the
+     razoring guard changes nothing. RAR-S113's 20% to 57% counted
+     every LMR computation; the term applies at cut nodes off the PV
+     line, where the share moved from 10% to 14%. So the gate
+     measured IIR taking a ply from revisited fail-low nodes: 0.66
+     of nominal depth for a loss of 14.7 ± 13.8 nElo. The repair's
+     own premise fails as well. With the three consumers held,
+     keeping the entry's older move needs 1.022 of the nodes the
+     best-scoring move does (0.990 to 1.043), and taking the
+     best-scoring move from the picker costs 23% more. The stored
+     move is useful ordering here, not a defect. The registered
+     refit is not the right rework: IIR's depth threshold cannot
+     pick out a node class, the LMR term has nothing to refit, and
+     neither would give the change a gain to gate. Retry only once
+     IIR no longer reduces a node for a fail-low entry without a
+     move (D.6.27, or the search re-fit, F.6), and then as an
+     ordering change with a predicted node saving at equal
+     consumers. The store's contract is pinned by
+     `a_fail_low_store_carries_its_best_scoring_move`.
     - **D.6.5 The exclusion search uses the table-refined estimate — `R2`.** (NODE-4):
      `eval_for_pruning` has no `excluded` guard; in a singular exclusion node
      the TT bound is Lower or Exact and the window sits below `tt_score`, so
@@ -955,6 +996,25 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the repair form is a scale, as Stockfish 11's. Acceptance test:
       `pawnless_scale_truth_table` in `tests/behaviour_anchors.rs`, committed
       `#[ignore]`d (needs `RAROG_SYZYGY_PATH`). `R2` card.
+    - **D.6.27 IIR has no node-type condition — `R2`.** (found 2026-11-11,
+      RAR-S117): IIR reduces any node of depth 4 or more that has no table
+      move. Stockfish 19 reduces only PV and cut nodes, at depth 6 or more,
+      and Reckless at its head of 2026-10-29 has no IIR. Local evidence:
+      D.6.4's store change left revisited fail-low nodes without a move,
+      IIR for want of a move rose from 9.9% to 13.5% of interior nodes, that
+      alone bought 0.66 of depth at the games' node counts, and the gate
+      lost 14.7 ± 13.8 nElo (RAR-S115). A ply taken from those nodes was
+      worth more than the ply the clock gave back. Whether the source's own
+      IIR at expected all nodes costs the same way is not measured. Screen,
+      zero games, on RAR-S117's replay: IIR applications by node type and
+      by whether the node then fails low; under 10% of them at expected all
+      nodes closes the item `NO_CHANGE`. Candidate: IIR at PV and cut nodes
+      only. Its tree grows and its nominal depth falls, so the card freezes
+      a prediction for both before any game. Interactions: IIR's depth
+      threshold, the too-shallow-entry half of its predicate, the cut-node
+      LMR term, and D.6.4's store, which is an ordering change alone once
+      IIR ignores those nodes. Gate: `[0,3]` if the card predicts a gain,
+      else case 3. `R2` card.
   Evidence for items already here (H18–H21, H25): item 4 (NODE-2), the
   donor form read +3.3 ± 9.1 in Basilisk (2,000 games) and each of its
   consumers alone (IIR, the no-TT-move LMR term) threw a promotion fixture
