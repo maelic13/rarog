@@ -1,0 +1,568 @@
+diff --git a/src/diag.rs b/src/diag.rs
+index 9787e95..ba9168e 100644
+--- a/src/diag.rs
++++ b/src/diag.rs
+@@ -301,6 +301,50 @@ pub mod counters {
+         iir_pv,
+         iir_no_tt_move,
+         iir_shallow_tt,
++        // RAR-S109's screen.
++        ch_null_n,
++        ch_null_fh,
++        ch_pc_n,
++        ch_pc_fh,
++        ch_lmr_n,
++        ch_lmr_fh,
++        ch_zw_cut_n,
++        ch_zw_cut_fh,
++        ch_zw_all_n,
++        ch_zw_all_fh,
++        ch_null_nodes,
++        ch_pc_nodes,
++        ups_n,
++        ups_move,
++        ups_same,
++        ups_replace,
++        ups_fill,
++        tt_upper_move,
++        iir_kept_by_upper,
++        razor_kept_by_upper,
++        // RAR-S116's screen: nodes entered on a main-search fail-low entry.
++        fl_n,
++        fl_move_n,
++        fl_cut_n,
++        fl_cut_first,
++        fl_cut_tt,
++        fl_cut_moves,
++        fl_upper_n,
++        lmr_n,
++        lmr_no_tt,
++        lmr_cut,
++        lmr_cut_no_tt,
++        // RAR-S110's screen.
++        ch_null_int_n,
++        ch_null_int_fh,
++        nf_n,
++        nf_nodes,
++        nf_nodes_outer,
++        pf_n,
++        pf_nodes,
++        pf_nodes_outer,
++        pc_child_reward,
++        hist_noisy_upd,
+         // Move-stage recall and pruning overlap. Counts cover sampled nodes only.
+         move_seen_tt,
+         move_seen_good_capture,
+diff --git a/src/search/history.rs b/src/search/history.rs
+index 5cf9c89..19d56d5 100644
+--- a/src/search/history.rs
++++ b/src/search/history.rs
+@@ -165,6 +165,7 @@ impl HistoryTables {
+         if self.frozen {
+             return;
+         }
++        crate::diag_count!(hist_noisy_upd);
+         apply_bonus(
+             &mut self.noisy[piece_to(color, piece, to)][captured.map_or(6, |p| p as usize)]
+                 [usize::from(threats.contains(to))],
+diff --git a/src/search/node.rs b/src/search/node.rs
+index bdef98d..00a4d21 100644
+--- a/src/search/node.rs
++++ b/src/search/node.rs
+@@ -7,6 +7,122 @@ use crate::infra;
+ use crate::tt::{Bound, TtEntry, TtProbe, TtStore};
+ 
+ use super::history::{BestMoveUpdate, SearchedMoves, cont_context};
++
++/// RAR-S109's arm mask: 1 types the null child `false`, 2 both ProbCut
++/// searches, 4 makes an `Upper` store pass no move. RAR-S116 adds 16, 32
++/// and 64, which make IIR, the cut-node LMR term and the razoring guard read
++/// a main-search fail-low entry as carrying a move whatever it holds, and
++/// 128, which takes such an entry's move from the picker and leaves the
++/// consumers theirs. Read once per process.
++fn s109_arm() -> u32 {
++    static ARM: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
++    *ARM.get_or_init(|| {
++        std::env::var("RAROG_S109_ARM")
++            .ok()
++            .and_then(|v| v.parse().ok())
++            .unwrap_or(0)
++    })
++}
++
++#[cfg(feature = "diag")]
++static S109_NULL_DEPTH: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
++#[cfg(feature = "diag")]
++static S109_PC_DEPTH: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
++
++#[cfg(feature = "diag")]
++fn s109_interior() -> u64 {
++    crate::diag::counters::nodes.load(std::sync::atomic::Ordering::Relaxed)
++}
++
++#[cfg(feature = "diag")]
++fn s109_zw(cut: bool, fail_high: bool) {
++    if cut {
++        crate::diag_count!(ch_zw_cut_n);
++        if fail_high {
++            crate::diag_count!(ch_zw_cut_fh);
++        }
++    } else {
++        crate::diag_count!(ch_zw_all_n);
++        if fail_high {
++            crate::diag_count!(ch_zw_all_fh);
++        }
++    }
++}
++
++/// Enter a counted child subtree; true when it is the outermost of its class.
++#[cfg(feature = "diag")]
++fn s109_enter(depth: &std::sync::atomic::AtomicU32) -> (bool, u64) {
++    let outer = depth.fetch_add(1, std::sync::atomic::Ordering::Relaxed) == 0;
++    (outer, s109_interior())
++}
++
++#[cfg(feature = "diag")]
++fn s109_leave(depth: &std::sync::atomic::AtomicU32, entry: (bool, u64), pc: bool) {
++    depth.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
++    if entry.0 {
++        let inside = s109_interior() - entry.1;
++        if pc {
++            crate::diag_add!(ch_pc_nodes, inside);
++        } else {
++            crate::diag_add!(ch_null_nodes, inside);
++        }
++    }
++}
++
++#[cfg(feature = "diag")]
++static S109_NF_DEPTH: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
++#[cfg(feature = "diag")]
++static S109_PF_DEPTH: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
++#[cfg(feature = "diag")]
++static S109_PC_CHILD_PLY: std::sync::atomic::AtomicUsize =
++    std::sync::atomic::AtomicUsize::new(usize::MAX);
++
++/// The interior nodes a parent's move loop searches after its null move or
++/// ProbCut did not cut, closed on every way out of the node.
++#[cfg(feature = "diag")]
++struct S109Governed {
++    null: bool,
++    outer: bool,
++    start: u64,
++}
++
++#[cfg(feature = "diag")]
++impl S109Governed {
++    fn open(null: bool) -> Self {
++        let depth = if null { &S109_NF_DEPTH } else { &S109_PF_DEPTH };
++        let outer = depth.fetch_add(1, std::sync::atomic::Ordering::Relaxed) == 0;
++        if null {
++            crate::diag_count!(nf_n);
++        } else {
++            crate::diag_count!(pf_n);
++        }
++        Self {
++            null,
++            outer,
++            start: s109_interior(),
++        }
++    }
++}
++
++#[cfg(feature = "diag")]
++impl Drop for S109Governed {
++    fn drop(&mut self) {
++        let inside = s109_interior() - self.start;
++        if self.null {
++            S109_NF_DEPTH.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
++            crate::diag_add!(nf_nodes, inside);
++            if self.outer {
++                crate::diag_add!(nf_nodes_outer, inside);
++            }
++        } else {
++            S109_PF_DEPTH.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
++            crate::diag_add!(pf_nodes, inside);
++            if self.outer {
++                crate::diag_add!(pf_nodes_outer, inside);
++            }
++        }
++    }
++}
+ use super::movepick::{MovePicker, ScoredMoveList, Stage, diversify_root_scores, pick_next};
+ #[cfg(feature = "pricing")]
+ use super::pricing::{
+@@ -445,7 +561,12 @@ impl Searcher {
+                 + p.lmr_tt_pv_score * i32::from(i.tt_score_above_alpha)
+                 + p.lmr_tt_pv_depth * i32::from(i.tt_deep);
+         } else if i.cut_node {
+-            r += p.lmr_cut_node + p.lmr_cut_node_no_tt_move * i32::from(i.tt_move_null);
++            let s109_no_tt = if (s109_arm() & 8) == 0 {
++                p.lmr_cut_node_no_tt_move
++            } else {
++                0
++            };
++            r += p.lmr_cut_node + s109_no_tt * i32::from(i.tt_move_null);
+         }
+         if i.gives_check {
+             r -= p.lmr_gives_check;
+@@ -719,10 +840,59 @@ impl Searcher {
+             };
+         }
+ 
++        #[cfg(feature = "diag")]
++        let s109_entry_move = tt_move;
++        #[cfg(feature = "diag")]
++        let mut s109_nmp_tried = false;
++        #[cfg(feature = "diag")]
++        let mut s109_pc_tried = false;
++        #[cfg(feature = "diag")]
++        if !NODE::ROOT
++            && excluded.is_null()
++            && ev.bound == Some(Bound::Upper)
++            && !tt_move.is_null()
++        {
++            crate::diag_count!(tt_upper_move);
++            if depth >= self.cfg.core.iir_min_depth
++                && !(!NODE::PV && ev.too_shallow_to_order(depth))
++            {
++                crate::diag_count!(iir_kept_by_upper);
++            }
++        }
++        // A main-search fail-low entry: an `Upper` bound of depth 1 or more,
++        // which in the source always carries the node's best-scoring move.
++        let s116_fail_low_entry =
++            excluded.is_null() && ev.bound == Some(Bound::Upper) && ev.depth >= 1;
++        let s116_iir_no_move =
++            tt_move.is_null() && !(s116_fail_low_entry && (s109_arm() & 16) != 0);
++        let s116_razor_open = if tt_move.is_null() {
++            !(s116_fail_low_entry && (s109_arm() & 64) != 0)
++        } else {
++            tt_move.is_noisy()
++        };
++        let s116_order_dropped = !NODE::ROOT
++            && s116_fail_low_entry
++            && (s109_arm() & 128) != 0
++            && !tt_move.is_null();
++        if s116_order_dropped {
++            tt_move = Move::NULL;
++        }
++        // The singular search can demote the TT move later in the node, so
++        // the LMR term reads the move where it is used; this only says
++        // whether a missing move is to be read as present.
++        let s116_lmr_hold =
++            s116_order_dropped || (s116_fail_low_entry && (s109_arm() & 32) != 0);
++        #[cfg(feature = "diag")]
++        if !NODE::ROOT && s116_fail_low_entry {
++            crate::diag_count!(fl_n);
++            if !tt_move.is_null() {
++                crate::diag_count!(fl_move_n);
++            }
++        }
+         // IIR: reduce depth when we lack a good TT entry to guide move ordering
+         if excluded.is_null()
+             && depth >= self.cfg.core.iir_min_depth
+-            && (tt_move.is_null() || (!NODE::PV && ev.too_shallow_to_order(depth)))
++            && (s116_iir_no_move || (!NODE::PV && ev.too_shallow_to_order(depth)))
+         {
+             #[cfg(feature = "diag")]
+             if diag_sample {
+@@ -730,7 +900,7 @@ impl Searcher {
+                 if NODE::PV {
+                     crate::diag_count!(iir_pv);
+                 }
+-                if tt_move.is_null() {
++                if s116_iir_no_move {
+                     crate::diag_count!(iir_no_tt_move);
+                 } else {
+                     crate::diag_count!(iir_shallow_tt);
+@@ -880,13 +1050,26 @@ impl Searcher {
+         // the node asks quiescence. Not on a PV line, not when alpha is
+         // already a decisive-looking score, not when a quiet TT move or a
+         // fail-high entry says there is more here.
++        #[cfg(feature = "diag")]
++        if !NODE::PV
++            && !in_check
++            && excluded.is_null()
++            && eval_for_pruning
++                < alpha - self.cfg.core.razor_base - self.cfg.core.razor_square * depth * depth
++            && alpha < RAZOR_ALPHA_LIMIT
++            && ev.bound == Some(Bound::Upper)
++            && !tt_move.is_null()
++            && !tt_move.is_noisy()
++        {
++            crate::diag_count!(razor_kept_by_upper);
++        }
+         if !NODE::PV
+             && !in_check
+             && !pricing_off!(self, ply, Razor)
+             && eval_for_pruning
+                 < alpha - self.cfg.core.razor_base - self.cfg.core.razor_square * depth * depth
+             && alpha < RAZOR_ALPHA_LIMIT
+-            && (tt_move.is_null() || tt_move.is_noisy())
++            && s116_razor_open
+             && ev.bound != Some(Bound::Lower)
+         {
+             crate::diag_count!(razor_drop);
+@@ -1069,6 +1252,7 @@ impl Searcher {
+                 #[cfg(feature = "diag")]
+                 if diag_sample {
+                     crate::diag_count!(nmp_attempt);
++                    s109_nmp_tried = true;
+                 }
+                 let reduction = self.nmp_reduction(depth, improving, eval_for_pruning - beta);
+                 let null_bound =
+@@ -1087,6 +1271,8 @@ impl Searcher {
+                 self.td.null_move_plies.push(ply);
+                 board.make_null_move();
+                 self.shared.tt.prefetch(board.hash());
++                #[cfg(feature = "diag")]
++                let s109_entry = s109_enter(&S109_NULL_DEPTH);
+                 let score = -self.negamax::<NonPv, _>(
+                     board,
+                     depth - reduction,
+@@ -1095,10 +1281,25 @@ impl Searcher {
+                     ply + 1,
+                     false,
+                     Move::NULL,
+-                    true,
++                    (s109_arm() & 1) == 0,
+                     ply + 1,
+                     poll,
+                 );
++                #[cfg(feature = "diag")]
++                {
++                    let s109_inside = s109_interior() - s109_entry.1;
++                    s109_leave(&S109_NULL_DEPTH, s109_entry, false);
++                    crate::diag_count!(ch_null_n);
++                    if score < null_bound {
++                        crate::diag_count!(ch_null_fh);
++                    }
++                    if s109_inside > 0 {
++                        crate::diag_count!(ch_null_int_n);
++                        if score < null_bound {
++                            crate::diag_count!(ch_null_int_fh);
++                        }
++                    }
++                }
+                 board.unmake_null_move();
+                 if self.td.stopped || self.td.quit {
+                     return 0;
+@@ -1255,6 +1456,7 @@ impl Searcher {
+                 #[cfg(feature = "diag")]
+                 if diag_sample {
+                     crate::diag_count!(probcut_nodes);
++                    s109_pc_tried = true;
+                 }
+                 // The gap is floored at zero, so at a node already above
+                 // `probcut_beta` a capture still may not lose material.
+@@ -1344,6 +1546,11 @@ impl Searcher {
+                             let adjusted = (probcut_beta
+                                 + self.cfg.proof.probcut_adjust * (base_depth - probcut_depth))
+                                 .min(INF_SCORE);
++                            #[cfg(feature = "diag")]
++                            let s109_entry = s109_enter(&S109_PC_DEPTH);
++                            #[cfg(feature = "diag")]
++                            let s109_prev_ply = S109_PC_CHILD_PLY
++                                .swap(ply + 1, std::sync::atomic::Ordering::Relaxed);
+                             score = -self.negamax::<NonPv, _>(
+                                 board,
+                                 probcut_depth,
+@@ -1352,16 +1559,31 @@ impl Searcher {
+                                 ply + 1,
+                                 false,
+                                 Move::NULL,
+-                                true,
++                                (s109_arm() & 2) == 0,
+                                 last_critical_ply,
+                                 poll,
+                             );
++                            #[cfg(feature = "diag")]
++                            {
++                                s109_leave(&S109_PC_DEPTH, s109_entry, true);
++                                S109_PC_CHILD_PLY
++                                    .store(s109_prev_ply, std::sync::atomic::Ordering::Relaxed);
++                                crate::diag_count!(ch_pc_n);
++                                if score < adjusted {
++                                    crate::diag_count!(ch_pc_fh);
++                                }
++                            }
+                             if score < adjusted && probcut_beta < adjusted {
+                                 #[cfg(feature = "diag")]
+                                 if diag_sample {
+                                     crate::diag_count!(probcut_deeper_research);
+                                 }
+                                 probcut_depth = base_depth;
++                                #[cfg(feature = "diag")]
++                                let s109_entry = s109_enter(&S109_PC_DEPTH);
++                                #[cfg(feature = "diag")]
++                                let s109_prev_ply = S109_PC_CHILD_PLY
++                                    .swap(ply + 1, std::sync::atomic::Ordering::Relaxed);
+                                 score = -self.negamax::<NonPv, _>(
+                                     board,
+                                     base_depth,
+@@ -1370,10 +1592,20 @@ impl Searcher {
+                                     ply + 1,
+                                     false,
+                                     Move::NULL,
+-                                    true,
++                                    (s109_arm() & 2) == 0,
+                                     last_critical_ply,
+                                     poll,
+                                 );
++                                #[cfg(feature = "diag")]
++                                {
++                                    s109_leave(&S109_PC_DEPTH, s109_entry, true);
++                                    S109_PC_CHILD_PLY
++                                        .store(s109_prev_ply, std::sync::atomic::Ordering::Relaxed);
++                                    crate::diag_count!(ch_pc_n);
++                                    if score < probcut_beta {
++                                        crate::diag_count!(ch_pc_fh);
++                                    }
++                                }
+                             } else {
+                                 move_beta = adjusted;
+                             }
+@@ -1638,6 +1870,10 @@ impl Searcher {
+         } else {
+             MovePicker::staged(tt_move, ply)
+         };
++        #[cfg(feature = "diag")]
++        let _s109_nf = s109_nmp_tried.then(|| S109Governed::open(true));
++        #[cfg(feature = "diag")]
++        let _s109_pf = s109_pc_tried.then(|| S109Governed::open(false));
+         move_picker.fill_noisy(self, board, &threats);
+         let mut best_move = Move::NULL;
+         let mut best_score = -INF_SCORE;
+@@ -2050,6 +2286,10 @@ impl Searcher {
+                         poll,
+                     )
+                 };
++                #[cfg(feature = "diag")]
++                if !child_is_pv && beta - alpha == 1 {
++                    s109_zw(!cut_node, score <= alpha);
++                }
+             } else {
+                 // Late-move reductions: every move after the first, from depth
+                 // 2; never at the root or in check.
+@@ -2084,7 +2324,7 @@ impl Searcher {
+                         laterality: self.td.stack[ply].laterality,
+                         tt_pv,
+                         cut_node,
+-                        tt_move_null: tt_move.is_null(),
++                        tt_move_null: tt_move.is_null() && !s116_lmr_hold,
+                         gives_check: mv_gives_check,
+                         child_cutoffs: self.td.stack[ply + 1].cutoff_count,
+                         parent_reduction: self.td.stack.back(ply, 1).reduction,
+@@ -2143,6 +2383,23 @@ impl Searcher {
+                         ply + 1,
+                         poll,
+                     );
++                    #[cfg(feature = "diag")]
++                    {
++                        crate::diag_count!(ch_lmr_n);
++                        if score <= alpha {
++                            crate::diag_count!(ch_lmr_fh);
++                        }
++                        crate::diag_count!(lmr_n);
++                        if tt_move.is_null() && !s116_lmr_hold {
++                            crate::diag_count!(lmr_no_tt);
++                        }
++                        if cut_node && !tt_pv {
++                            crate::diag_count!(lmr_cut);
++                            if tt_move.is_null() && !s116_lmr_hold {
++                                crate::diag_count!(lmr_cut_no_tt);
++                            }
++                        }
++                    }
+                     self.td.stack[ply].reduction = 0;
+                     #[cfg(feature = "pricing")]
+                     if score <= alpha
+@@ -2199,6 +2456,8 @@ impl Searcher {
+                                 last_critical_ply,
+                                 poll,
+                             );
++                            #[cfg(feature = "diag")]
++                            s109_zw(!cut_node, score <= alpha);
+                         }
+                     }
+                 } else {
+@@ -2215,6 +2474,8 @@ impl Searcher {
+                         ply + 1,
+                         poll,
+                     );
++                    #[cfg(feature = "diag")]
++                    s109_zw(!cut_node, score <= alpha);
+                 }
+                 // Principal variation search: at a PV node a later move that
+                 // beats alpha is searched again with the full window.
+@@ -2290,6 +2551,17 @@ impl Searcher {
+                         if searched == 1 {
+                             crate::diag_count!(cutoff_first_move);
+                         }
++                        #[cfg(feature = "diag")]
++                        if !NODE::ROOT && s116_fail_low_entry {
++                            crate::diag_count!(fl_cut_n);
++                            crate::diag_add!(fl_cut_moves, searched as u64);
++                            if searched == 1 {
++                                crate::diag_count!(fl_cut_first);
++                            }
++                            if mv == tt_move {
++                                crate::diag_count!(fl_cut_tt);
++                            }
++                        }
+                         // Cutoff rank over the same denominator: the buckets
+                         // sum to it and best_rank_1 equals cutoff_first_move.
+                         #[cfg(feature = "diag")]
+@@ -2432,16 +2704,40 @@ impl Searcher {
+                 },
+             );
+         } else if !NODE::ROOT && (cut_node || NODE::PV) {
++            #[cfg(feature = "diag")]
++            if ply == S109_PC_CHILD_PLY.load(std::sync::atomic::Ordering::Relaxed)
++                && S109_PC_DEPTH.load(std::sync::atomic::Ordering::Relaxed) > 0
++            {
++                crate::diag_count!(pc_child_reward);
++            }
+             self.reward_parent_after_fail_low(board, ply, depth, best_score, static_eval, in_check);
+         }
+         if excluded.is_null() {
+             if !(NODE::ROOT && self.td.multipv_line > 0) {
++                #[cfg(feature = "diag")]
++                if bound == Bound::Upper {
++                    crate::diag_count!(ups_n);
++                    if !best_move.is_null() {
++                        crate::diag_count!(ups_move);
++                        if best_move == s109_entry_move {
++                            crate::diag_count!(ups_same);
++                        } else if s109_entry_move.is_null() {
++                            crate::diag_count!(ups_fill);
++                        } else {
++                            crate::diag_count!(ups_replace);
++                        }
++                    }
++                }
+                 self.tt_store(TtStore {
+                     key: hash,
+                     depth,
+                     score: best_score,
+                     bound,
+-                    mv: best_move,
++                    mv: if bound == Bound::Upper && (s109_arm() & 4) != 0 {
++                        Move::NULL
++                    } else {
++                        best_move
++                    },
+                     ply,
+                     static_eval: raw_static_eval,
+                     is_pv: tt_pv,
+@@ -2454,6 +2750,9 @@ impl Searcher {
+                         crate::diag_count!(main_store_exact);
+                     }
+                     Bound::Upper => {
++                        if !NODE::ROOT && s116_fail_low_entry {
++                            crate::diag_count!(fl_upper_n);
++                        }
+                         crate::diag_count!(main_store_upper);
+                     }
+                     Bound::Lower => {}
