@@ -5,7 +5,8 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Date / owner:** registered 2026-11-11, before any game. The run is the
   maintainer's command.
 - **Kind:** a playing-strength gate for a repair, AGENTS' repair case 3.
-- Disposition: open — registered, no game played.
+- Disposition: rejected — H0 accepted 2026-11-11 at 9,662 games, nElo −3.7 ±
+  6.9; reverted (`91265f2`).
 - **Inherits:** [RAR-S112](RAR-S112.md), the readiness read: ProbCut's
   verification children fail high 2.19% fresh and 2.91% game-like and are
   typed `cut_node = true`; typed `false` they issue no fail-low parent reward
@@ -171,3 +172,55 @@ ProbCut cuts at 45.4% of the nodes where it runs.
 5. **Most likely failure mode:** a true effect of −2 to +2 nElo that the
    cap cannot resolve. It is read as "kept, no harm beyond about −5" and not
    as a gain, and the bracket is not narrowed afterwards.
+
+## Result: the gate (2026-11-11)
+
+**H0 accepted at 9,662 games: nElo −3.7 ± 6.9, Elo −2.2 ± 4.1**, LLR −2.974 in
+[−2.944, 2.944], 4,831 pairs of the 6,000 cap. The candidate had 2,371 wins,
+2,432 losses and 4,859 draws; pentanomial 132, 1,207, 2,193, 1,188, 111 (the
+manifest's recount of `games.pgn` agrees). No time losses and no engine or
+infrastructure faults. Colosseum also kept 32 post-terminal games, which the
+sample excludes. The host was 0.3% busy at start, with no waiver. Both
+binaries' SHA-256s, commits and bench counts in the manifest match the frozen
+arms. Manifest:
+`tools/results/colosseum_sprt_rar-s114-gate_20261111_104154.manifest.txt`.
+
+In these games the candidate searched 157,625 nodes a move against 157,816, at
+mean depths 13.23 and 13.20 and 66.4 ms a move each. That describes the games;
+it is not a speed read. The two arms searched trees of the same size, so what
+the typing cost lies in what the search decides, not in how much it searches.
+
+**Calibration (gate).**
+
+- P(H0) 0.20: the less likely outcome came true, a miss in confidence. The
+  forecast read RAR-S112's tree, which moves both ways, as no sign, and
+  weighed the donor's typing against the reward the capture history was
+  fitted around as if they balanced. The games side with the second, but the
+  gate cannot tell the reward from the type's other consumers.
+- nElo at the stop, −1 with an 80% band of [−7, +5]: inside the band, with
+  the sign the forecast leant to. The first-crossing estimate of −3.7 is
+  biased away from zero by the early stop.
+- Games to the stop, the cap with 0.70, otherwise a median of 7,000: the stop
+  came at 9,662, before the cap.
+- The games' own figures, nodes a move within ±4% and mean depth within
+  ±0.15, 0.7: a hit, −0.12% and +0.03.
+- The named failure mode, a true −2 to +2 that the cap cannot resolve, did not
+  occur.
+
+The gate rejects the arm as a whole. It cannot separate the dropped fail-low
+reward from the type's other consumers (the child's TT-cutoff admission, the
+cut-node LMR terms, LDSE, the negative singular extension, every descendant's
+type); the registered rework separates them.
+
+## Disposition (2026-11-11)
+
+**H0: the typing is rejected and reverted.** `91265f2` on `d6` restores
+`cut_node = true` at both ProbCut calls and keeps NODE-14's test, with
+ProbCut's children pinned `true`; `bench 13` reads 13,038,236 / EBF 2.540
+again, and the fingerprint record does not move. No changelog entry. The
+defect stays open in D.6.3. The registered rework is the typing with the
+fail-low reward kept: the two calls pass `false` and the ProbCut child still
+rewards the capture's noisy history when it fails low. It is a new
+registration with its own gate, not a rescue inside this one. D.6.4
+(RAR-S113) is implemented on the source tree, where its `bench 13` is
+12,785,308.

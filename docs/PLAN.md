@@ -342,8 +342,8 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.3 | GAME_GATE | R2 | ProbCut half implemented (`d15050a`, `bench 13` 13,148,505, NODE-14's test) and registered as RAR-S114: SPRT `[-5,5]`, cap 6,000 pairs, against `63813d8`; the maintainer's run; null half out (RAR-S110) |
-| D.6.4 | READY_FOR_IMPLEMENTATION | R2 | Ready as its own repair (RAR-S113): an `Upper` store passes no move; implemented and gated, case 3, after D.6.3's gate is read |
+| D.6.3 | READY_FOR_IMPLEMENTATION | R2 | ProbCut typed `false` rejected by its gate (RAR-S114: H0 at 9,662 games, nElo −3.7 ± 6.9) and reverted; the defect stays open; next, as registered, the typing with the fail-low reward kept, its own registration and gate, case 3; null half out (RAR-S110) |
+| D.6.4 | READY_FOR_IMPLEMENTATION | R2 | Ready as its own repair (RAR-S113): an `Upper` store passes no move; D.6.3's gate is read, so it is implemented on the source tree (`bench 13` 12,785,308) and gated, case 3 |
 | D.6.5 | RESEARCH | R2 | Screen before any implementation |
 | D.6.6 | RESEARCH | R2 | Screen before any implementation |
 | D.6.7 | RESEARCH | R2 | Screen before any implementation |
@@ -634,6 +634,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      pairs, against `63813d8`; every recent gate game reaches
      ProbCut's domain. H1 or the cap without H0 keeps it; H0 reverts
      it and registers the typing with the reward kept.
+     **Gate read 2026-11-11 (RAR-S114): H0** at 9,662 games, nElo
+     −3.7 ± 6.9, LLR −2.97, no fault. In the games the arms searched
+     trees of the same size (157,625 against 157,816 nodes a move,
+     depth 13.23 against 13.20), so the cost lies in what the search
+     decides. The typing is reverted (`91265f2`), keeping NODE-14's test
+     with ProbCut's children pinned `true`; `bench 13` is 13,038,236
+     again. The defect stays open. **Ready for implementation, as
+     registered:** the two calls pass `false` and the ProbCut child
+     keeps the fail-low reward to the capture's noisy history, which
+     separates the reward from the type's other consumers; its own
+     registration and gate, case 3.
     - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`.** (NODE-2):
      `best_move` is set on every new best score, so an `Upper` entry carries
      the refuted move and overwrites the position's earlier move; the donor
@@ -672,6 +683,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      passes no move; `bench 13` must read 12,785,308 on the source or
      9,892,346 on top of D.6.3's typing; gate case 3. If the gate fails,
      the rework refits IIR's depth and the no-TT-move LMR terms.
+     D.6.3's gate was read 2026-11-11 (RAR-S114, H0, reverted), so the
+     tree is the source's: `bench 13` must read 12,785,308.
     - **D.6.5 The exclusion search uses the table-refined estimate — `R2`.** (NODE-4):
      `eval_for_pruning` has no `excluded` guard; in a singular exclusion node
      the TT bound is Lower or Exact and the window sits below `tt_score`, so
