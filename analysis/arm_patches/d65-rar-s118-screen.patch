@@ -1,0 +1,220 @@
+diff --git a/src/diag.rs b/src/diag.rs
+index 9787e95..9f3a120 100644
+--- a/src/diag.rs
++++ b/src/diag.rs
+@@ -301,6 +301,31 @@ pub mod counters {
+         iir_pv,
+         iir_no_tt_move,
+         iir_shallow_tt,
++        // RAR-S118's screen: exclusion nodes and same-ply re-entries.
++        ex_n,
++        ex_in_check,
++        ex_lower,
++        ex_exact,
++        ex_other_bound,
++        ex_refined,
++        ex_reach_ext,
++        ex_ldse_eligible,
++        ex_ldse_plain,
++        ex_ldse_refined,
++        ex_razor_plain,
++        ex_razor_refined,
++        ex_lmr_quiet,
++        ex_lmr_gap_diff,
++        ex_lmr_gap_absdiff,
++        ex_reentry,
++        ex_reentry_eval_diff,
++        ex_reentry_eval_absdiff,
++        ex_reentry_ttmove_diff,
++        nv_reentry,
++        nv_reentry_eval_diff,
++        nv_reentry_eval_absdiff,
++        nv_reentry_continue,
++        nv_reentry_continue_eval_diff,
+         // Move-stage recall and pruning overlap. Counts cover sampled nodes only.
+         move_seen_tt,
+         move_seen_good_capture,
+diff --git a/src/search/node.rs b/src/search/node.rs
+index 72832ff..f1410d9 100644
+--- a/src/search/node.rs
++++ b/src/search/node.rs
+@@ -7,6 +7,21 @@ use crate::infra;
+ use crate::tt::{Bound, TtEntry, TtProbe, TtStore};
+ 
+ use super::history::{BestMoveUpdate, SearchedMoves, cont_context};
++
++/// RAR-S118's arm mask: 1 gives an exclusion node the plain corrected eval
++/// as its estimate; 2 restores the stack's eval and TT move after the
++/// exclusion search and the null-move verification re-enter the ply; 4, a
++/// liveness probe, leaves the stack an eval 50 too high there.
++/// Read once per process.
++fn s118_arm() -> u32 {
++    static ARM: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
++    *ARM.get_or_init(|| {
++        std::env::var("RAROG_S118_ARM")
++            .ok()
++            .and_then(|v| v.parse().ok())
++            .unwrap_or(0)
++    })
++}
+ use super::movepick::{MovePicker, ScoredMoveList, Stage, diversify_root_scores, pick_next};
+ #[cfg(feature = "pricing")]
+ use super::pricing::{
+@@ -826,6 +841,29 @@ impl Searcher {
+             ev.refine_eval(static_eval, 0)
+         };
+         #[cfg(feature = "diag")]
++        let s118_refined = eval_for_pruning;
++        #[cfg(feature = "diag")]
++        if !excluded.is_null() {
++            crate::diag_count!(ex_n);
++            if in_check {
++                crate::diag_count!(ex_in_check);
++            } else {
++                match ev.bound {
++                    Some(Bound::Lower) => crate::diag_count!(ex_lower),
++                    Some(Bound::Exact) => crate::diag_count!(ex_exact),
++                    _ => crate::diag_count!(ex_other_bound),
++                }
++                if eval_for_pruning != static_eval {
++                    crate::diag_count!(ex_refined);
++                }
++            }
++        }
++        let eval_for_pruning = if !excluded.is_null() && s118_arm() & 1 != 0 {
++            static_eval
++        } else {
++            eval_for_pruning
++        };
++        #[cfg(feature = "diag")]
+         if !in_check && eval_for_pruning != static_eval && ev.depth == 0 {
+             crate::diag_count!(est_refined_from_q);
+             crate::diag_add!(
+@@ -889,6 +927,21 @@ impl Searcher {
+             }
+         }
+ 
++        #[cfg(feature = "diag")]
++        if !excluded.is_null() && !in_check {
++            let razors = |est: i32| {
++                est < alpha - self.cfg.core.razor_base - self.cfg.core.razor_square * depth * depth
++                    && alpha < RAZOR_ALPHA_LIMIT
++                    && (tt_move.is_null() || tt_move.is_noisy())
++                    && ev.bound != Some(Bound::Lower)
++            };
++            if razors(static_eval) {
++                crate::diag_count!(ex_razor_plain);
++            }
++            if razors(s118_refined) {
++                crate::diag_count!(ex_razor_refined);
++            }
++        }
+         // Razoring: far enough below alpha that only a tactic can help, so
+         // the node asks quiescence. Not on a PV line, not when alpha is
+         // already a decisive-looking score, not when a quiet TT move or a
+@@ -1197,6 +1250,33 @@ impl Searcher {
+                         self.td.nmp_min_ply = 0;
+                         self.td.stack[ply].tt_pv = tt_pv_here;
+                         self.td.stack[ply].laterality = laterality_here;
++                        #[cfg(feature = "diag")]
++                        {
++                            crate::diag_count!(nv_reentry);
++                            let left = self.td.stack[ply].static_eval;
++                            if left != static_eval {
++                                crate::diag_count!(nv_reentry_eval_diff);
++                                if left != VALUE_NONE && static_eval != VALUE_NONE {
++                                    crate::diag_add!(
++                                        nv_reentry_eval_absdiff,
++                                        u64::from(left.abs_diff(static_eval))
++                                    );
++                                }
++                            }
++                            if verified < beta {
++                                crate::diag_count!(nv_reentry_continue);
++                                if left != static_eval {
++                                    crate::diag_count!(nv_reentry_continue_eval_diff);
++                                }
++                            }
++                        }
++                        if s118_arm() & 2 != 0 {
++                            self.td.stack[ply].static_eval = static_eval;
++                            self.td.stack[ply].tt_move = tt_move;
++                        }
++                        if s118_arm() & 4 != 0 && static_eval != VALUE_NONE {
++                            self.td.stack[ply].static_eval = static_eval + 50;
++                        }
+                         if self.td.stopped || self.td.quit {
+                             return 0;
+                         }
+@@ -1490,6 +1570,19 @@ impl Searcher {
+         // reduces it three plies, keeping a one-ply child. With no singular
+         // candidate, a shallow cut node well below alpha extends its first
+         // move by one instead.
++        #[cfg(feature = "diag")]
++        if !excluded.is_null() && !in_check {
++            crate::diag_count!(ex_reach_ext);
++            if depth <= 7 && cut_node {
++                crate::diag_count!(ex_ldse_eligible);
++            }
++            if self.ldse_applies(depth, in_check, cut_node, static_eval, alpha) {
++                crate::diag_count!(ex_ldse_plain);
++            }
++            if self.ldse_applies(depth, in_check, cut_node, s118_refined, alpha) {
++                crate::diag_count!(ex_ldse_refined);
++            }
++        }
+         let mut node_extension = 0;
+         let mut singular_score: Option<i32> = None;
+         if !NODE::ROOT && excluded.is_null() && potential_singularity && !tt_move.is_null() {
+@@ -1525,6 +1618,30 @@ impl Searcher {
+             );
+             // The exclusion search ran at this ply and overwrote it.
+             self.td.stack[ply].tt_pv = tt_pv;
++            #[cfg(feature = "diag")]
++            {
++                crate::diag_count!(ex_reentry);
++                let left = self.td.stack[ply].static_eval;
++                if left != static_eval {
++                    crate::diag_count!(ex_reentry_eval_diff);
++                    if left != VALUE_NONE && static_eval != VALUE_NONE {
++                        crate::diag_add!(
++                            ex_reentry_eval_absdiff,
++                            u64::from(left.abs_diff(static_eval))
++                        );
++                    }
++                }
++                if self.td.stack[ply].tt_move != tt_move {
++                    crate::diag_count!(ex_reentry_ttmove_diff);
++                }
++            }
++            if s118_arm() & 2 != 0 {
++                self.td.stack[ply].static_eval = static_eval;
++                self.td.stack[ply].tt_move = tt_move;
++            }
++            if s118_arm() & 4 != 0 && static_eval != VALUE_NONE {
++                self.td.stack[ply].static_eval = static_eval + 50;
++            }
+             if self.td.stopped || self.td.quit {
+                 return 0;
+             }
+@@ -2086,6 +2203,20 @@ impl Searcher {
+                 // 2; never at the root or in check.
+                 if !NODE::ROOT && !in_check && depth >= 2 {
+                     let tt_valid = ev.bound.is_some();
++                    #[cfg(feature = "diag")]
++                    if !excluded.is_null() && is_quiet {
++                        let p = &self.cfg.core;
++                        let term = |est: i32| {
++                            p.lmr_alpha_gap * (alpha - est).clamp(p.lmr_alpha_gap_lo, p.lmr_alpha_gap_hi)
++                                / 128
++                        };
++                        crate::diag_count!(ex_lmr_quiet);
++                        let d = term(static_eval) - term(s118_refined);
++                        if d != 0 {
++                            crate::diag_count!(ex_lmr_gap_diff);
++                            crate::diag_add!(ex_lmr_gap_absdiff, u64::from(d.unsigned_abs()));
++                        }
++                    }
+                     let reduction = self.late_move_reduction(&LateMoveInputs {
+                         depth,
+                         improvement,
