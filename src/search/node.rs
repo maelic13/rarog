@@ -1361,9 +1361,10 @@ impl Searcher {
                             let adjusted = (probcut_beta
                                 + self.cfg.proof.probcut_adjust * (base_depth - probcut_depth))
                                 .min(INF_SCORE);
-                            // A verification search is expected to fail
-                            // low (its parent expects the capture to cut),
-                            // so its child is an all node.
+                            // The child is typed a cut node, so its fail low
+                            // still rewards the capture's noisy history;
+                            // typed an all node, which also drops that
+                            // reward, it measured weaker in games.
                             #[cfg(test)]
                             self.note_child(ChildSite::ProbCutVerify, cut_node);
                             score = -self.negamax::<NonPv, _>(
@@ -1374,7 +1375,7 @@ impl Searcher {
                                 ply + 1,
                                 false,
                                 Move::NULL,
-                                false,
+                                true,
                                 last_critical_ply,
                                 poll,
                             );
@@ -1385,7 +1386,7 @@ impl Searcher {
                                 }
                                 probcut_depth = base_depth;
                                 // The same verification at the full
-                                // depth: an all node, as above.
+                                // depth, typed as above.
                                 #[cfg(test)]
                                 self.note_child(ChildSite::ProbCutResearch, cut_node);
                                 score = -self.negamax::<NonPv, _>(
@@ -1396,7 +1397,7 @@ impl Searcher {
                                     ply + 1,
                                     false,
                                     Move::NULL,
-                                    false,
+                                    true,
                                     last_critical_ply,
                                     poll,
                                 );
@@ -3472,9 +3473,9 @@ mod tests {
     }
 
     /// Every recursive call types its child by its own rule: the null-move
-    /// child and a reduced late move are cut nodes; ProbCut's verification
-    /// searches, the null-move verification, the root and a PV re-search are
-    /// not; the exclusion search inherits its node's type; the first move and
+    /// child, ProbCut's verification searches and a reduced late move are
+    /// cut nodes; the null-move verification, the root and a PV re-search
+    /// are not; the exclusion search inherits its node's type; the first move and
     /// the zero-window searches take the opposite of their parent's. Read
     /// from the value each child received, over a search that reaches every
     /// call site.
@@ -3505,8 +3506,8 @@ mod tests {
             (ChildSite::Root, |_, _| false),
             (ChildSite::NullMove, |_, _| true),
             (ChildSite::NullVerify, |_, _| false),
-            (ChildSite::ProbCutVerify, |_, _| false),
-            (ChildSite::ProbCutResearch, |_, _| false),
+            (ChildSite::ProbCutVerify, |_, _| true),
+            (ChildSite::ProbCutResearch, |_, _| true),
             (ChildSite::Singular, |parent, _| parent),
             (ChildSite::FirstMove, |parent, pv| !pv && !parent),
             (ChildSite::LmrReduced, |_, _| true),
