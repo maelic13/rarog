@@ -342,7 +342,7 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.7 | READY_FOR_IMPLEMENTATION | R2 | Screened (RAR-S121): split the out-of-budget depth gain by source, then bound the lines; gate case 3 |
+| D.6.7 | GAME_GATE | R2 | `aee0b3b` bounds every line at twice the iteration's depth; RAR-S122's SPRT `[-5,5]` is the maintainer's to run |
 | D.6.8 | RESEARCH | R2 | Screen before any implementation |
 | D.6.9 | RESEARCH | R2 | Screen before any implementation |
 | D.6.10 | RESEARCH | R2 | Screen before any implementation |
@@ -871,6 +871,29 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      as its correctness read. The registration states the exposure (zero
      at STC, 1.96% of searches at `60+0.6`'s node counts) and chooses its
      time control knowingly: a gate at `3+0.03` cannot see the cap.
+     Implemented 2026-11-11 as `aee0b3b`: a node's depth is held to
+     `2 × iteration − ply`, before quiescence and again after hindsight,
+     which keeps the contract the extension budget's comment states.
+     The bound holds every out-of-budget gain to the room the extensions
+     left, so the source split was not needed to choose it. `bench 13`
+     11,477,040 / EBF 2.537. `no_line_searches_past_twice_the_iteration_depth`
+     pins it, and fails with the clamp disabled. Three test preconditions
+     were fixed first, each in its own commit and read on both trees:
+     - the node probes' iteration depth (`bd37b17`);
+     - two singular liveness pins (`61a7cb4`);
+     - the helper's ranking without an unconfirmed fail-high (`5f21606`).
+
+     On the candidate, the race position's selective depth at depth 10
+     falls from 127 to 30. At the games' node counts the bound cuts 0.49%
+     of interior nodes, in 94% of searches and in all 60 games. At twenty
+     times them the cap is reached in 2 searches instead of 72, both deep
+     endgame iterations (63 and 84) where twice the iteration reaches it by
+     itself; that residual is outside this repair. WAC is 238 against 239
+     at 100k and 260 against 264 at 400k, with no canary lost. **Gate
+     registered as RAR-S122,** before any game: case 3, SPRT `[-5,5]`, cap
+     6,000 pairs, against `5f21606`. A `3+0.03` gate reads the bound's
+     effect on the tree, not the cap. H0 reverts it and the defect stays
+     open here.
     - **D.6.8 A depth-0 entry is counted as two nodes — `R2`.** (DRIVER-11): `check_stop` at
      the `negamax` entry and again at the `quiescence` entry it hands to, so
      reported nodes, `go nodes`, the bench count and the LMR spread's phase
