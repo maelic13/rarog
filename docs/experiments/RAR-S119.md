@@ -51,11 +51,12 @@ resamples, seed 119. The **cost** is P1's nodes over P0's.
   nor the poll cadence sees it. Each probe starts on an empty scratch table,
   so no probe reads another's results. The probes run before the real
   exclusion search, and so leave it the state it would have had.
-- **Patch and binary.** `analysis/arm_patches/d65-rar-s119-probe.patch`
-  (SHA-256 `e1c5725c…`) on `8a33096`. Its source tree is `b0b09eaf…`. It is
-  built with `--features pricing` only, as
+- **Patch and binary** (as amended, below).
+  `analysis/arm_patches/d65-rar-s119-probe.patch` (SHA-256 `4e1e37fb…`) on
+  `8a33096`. Its source tree is `ee59b762…`. It is built with
+  `--features pricing` only, as
   `analysis/artifacts/d65-direction-2026-11-11/rarog-s119probe.exe`
-  (`c23d2acb…`). `RAROG_S119_SHIFT` sets the sample (1 in `2^shift`
+  (`80c67734…`). `RAROG_S119_SHIFT` sets the sample (1 in `2^shift`
   singular attempts, drawn from the position's key and depth). Unset, it is
   off. `RAROG_S119_OUT` names the record file. The plain estimate is set
   only inside a probe, and there for every exclusion node the probe reaches.
@@ -69,7 +70,7 @@ resamples, seed 119. The **cost** is P1's nodes over P0's.
   past 20 minutes. The form was stopped there, with no probe record
   written, and replaced by the node-count isolation above.
 - **Script.** `analysis/artifacts/d65-direction-2026-11-11/read_dir.py`
-  (SHA-256 `7a43d18d…`, frozen with this registration): `replay off`,
+  (SHA-256 `c4b732fa…` as amended; `7a43d18d…` at registration): `replay off`,
   `replay on`, `report`.
 
 ## Wire
@@ -85,6 +86,36 @@ resamples, seed 119. The **cost** is P1's nodes over P0's.
 3. **Liveness:** P0's and P1's node counts differ in at least 10% of
    records.
 4. **Power:** at least 3,000 records with an agreeing reference.
+
+## Amendment, before any deciding record was read (2026-11-11)
+
+**The first probes-on run was stopped.** It had run 9.4 minutes and
+written 65,142 records in all 60 games. Three engines then went 4 to 8
+minutes without a record: games 22, 34 and 47. Game 34 ends in the deep
+endgame that stalled the withdrawn form. The depth-1 reference probe has no
+node limit, and at a node of depth 30 or more it can run for many minutes.
+The records were moved unread to
+`analysis/artifacts/d65-direction-withdrawn/rec_uncapped/`. Nothing in them
+was looked at beyond file times, line counts and the depth fields of each
+file's last line.
+
+**The change.** Each probe stops at 2,000,000 nodes. A record with any
+probe stopped is void and left out. The cap stops only the probe: the
+measured search's `stopped` is restored, as its node count already was.
+`RAROG_S119_CAP` overrides the cap, for the plant test only.
+
+**Proved before the rerun:**
+- **Plant:** at a cap of 50, 1,243 of the bench's 6,133 records are void,
+  and `bench 13` still reads 13,038,236.
+- **The real cap:** at 2,000,000, none of the bench's records is void, and
+  `bench 13` reads 13,038,236.
+- **Wire 0 on the capped binary:** the probes-off replay still equals
+  RAR-S117's arm 0 in all 3,670 searches.
+
+**Added wire 5:** under 5% of written records are void by the cap.
+Otherwise the read is void, since leaving out the deepest nodes would bias
+it. Nothing else changes: the quantity, the sample, the rules and the
+predictions are as registered.
 
 ## Exposure, stated
 

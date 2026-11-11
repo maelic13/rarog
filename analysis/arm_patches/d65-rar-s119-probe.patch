@@ -1,8 +1,8 @@
 diff --git a/src/search/mod.rs b/src/search/mod.rs
-index 795c0d2..583b93b 100644
+index 795c0d2..3e11fa2 100644
 --- a/src/search/mod.rs
 +++ b/src/search/mod.rs
-@@ -1825,6 +1825,14 @@ impl Searcher {
+@@ -1825,6 +1825,20 @@ impl Searcher {
      }
  
      fn check_stop<P: FnMut() -> SearchEvent + ?Sized>(&mut self, poll: &mut P) -> bool {
@@ -12,13 +12,19 @@ index 795c0d2..583b93b 100644
 +        #[cfg(feature = "pricing")]
 +        if self.td.pricing.probing {
 +            self.td.nodes += 1;
++            if let Some(start) = pricing::S119_START.with(std::cell::Cell::get)
++                && self.td.nodes - start > pricing::s119_cap()
++            {
++                pricing::S119_CAPPED.with(|cell| cell.set(true));
++                self.td.stopped = true;
++            }
 +            return self.td.stopped;
 +        }
          let total_nodes = self.record_node();
          if let Some(shared_state) = self.shared.pool()
              && (self.cfg.limits.nodes > 0 || self.td.nodes & SHARED_NODE_BATCH_MASK == 0)
 diff --git a/src/search/node.rs b/src/search/node.rs
-index 72832ff..8609346 100644
+index 72832ff..b8e5b67 100644
 --- a/src/search/node.rs
 +++ b/src/search/node.rs
 @@ -28,6 +28,12 @@ fn eval_unit_value(piece: Piece) -> i32 {
@@ -133,17 +139,17 @@ index 72832ff..8609346 100644
 +                    class(p1.0),
 +                    class(r0.0),
 +                    class(r1.0),
-+                    u8::from(s119_any_stop(self)),
++                    u8::from(p0.2 || p1.2 || r0.2 || r1.2 || s119_any_stop(self)),
 +                ));
 +            }
              trace_decision!(
                  self,
                  ply,
 diff --git a/src/search/pricing.rs b/src/search/pricing.rs
-index 187036f..2262cad 100644
+index 187036f..a618a59 100644
 --- a/src/search/pricing.rs
 +++ b/src/search/pricing.rs
-@@ -763,6 +763,86 @@ impl Searcher {
+@@ -763,6 +763,109 @@ impl Searcher {
      }
  }
  
@@ -151,6 +157,22 @@ index 187036f..2262cad 100644
 +    /// RAR-S119: while set, every exclusion node takes the plain corrected
 +    /// eval as its estimate. Set only inside a RAR-S119 probe.
 +    pub(super) static S119_PLAIN: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
++    /// The node count a running RAR-S119 probe started at; none outside one.
++    pub(super) static S119_START: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
++    /// The running RAR-S119 probe reached its node cap and was stopped.
++    pub(super) static S119_CAPPED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
++}
++
++/// A RAR-S119 probe stops at this many nodes, its record then void: 2,000,000,
++/// or `RAROG_S119_CAP` for the plant test.
++pub(super) fn s119_cap() -> u64 {
++    static CAP: OnceLock<u64> = OnceLock::new();
++    *CAP.get_or_init(|| {
++        std::env::var("RAROG_S119_CAP")
++            .ok()
++            .and_then(|raw| raw.trim().parse().ok())
++            .unwrap_or(2_000_000)
++    })
 +}
 +
 +/// RAR-S119's sample shift from `RAROG_S119_SHIFT`; unset is off.
@@ -205,10 +227,13 @@ index 187036f..2262cad 100644
 +        cut_node: bool,
 +        plain: bool,
 +        poll: &mut P,
-+    ) -> (i32, u64) {
++    ) -> (i32, u64, bool) {
 +        self.td.pricing.scratch = None;
++        let was_stopped = self.td.stopped;
 +        let saved = self.probe_begin();
 +        S119_PLAIN.with(|cell| cell.set(plain));
++        S119_CAPPED.with(|cell| cell.set(false));
++        S119_START.with(|cell| cell.set(Some(self.td.nodes)));
 +        let score = self.negamax::<NonPv, _>(
 +            board,
 +            depth,
@@ -222,8 +247,12 @@ index 187036f..2262cad 100644
 +            poll,
 +        );
 +        S119_PLAIN.with(|cell| cell.set(false));
++        S119_START.with(|cell| cell.set(None));
++        let capped = S119_CAPPED.with(std::cell::Cell::get);
 +        let nodes = self.probe_end(&saved);
-+        (score, nodes)
++        // A cap stops only the probe; the measured search goes on as it was.
++        self.td.stopped = was_stopped;
++        (score, nodes, capped)
 +    }
 +}
 +
