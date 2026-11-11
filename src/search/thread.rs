@@ -147,6 +147,13 @@ pub(super) struct ThreadData {
     pub(super) budget_overrun: i32,
     #[cfg(test)]
     pub(super) budget_truncations: u64,
+    /// The most any node's depth would have carried its line past twice
+    /// its iteration's depth (zero or less when the bound holds), and the
+    /// nodes whose depth the bound cut.
+    #[cfg(test)]
+    pub(super) line_overrun: i32,
+    #[cfg(test)]
+    pub(super) line_clamps: u64,
     /// The `cut_node` each recursive `negamax` call received, by call site.
     #[cfg(test)]
     pub(super) cut_node_log: CutNodeLog,
@@ -213,6 +220,10 @@ impl Default for ThreadData {
             budget_overrun: i32::MIN,
             #[cfg(test)]
             budget_truncations: 0,
+            #[cfg(test)]
+            line_overrun: i32::MIN,
+            #[cfg(test)]
+            line_clamps: 0,
             #[cfg(test)]
             cut_node_log: CutNodeLog::default(),
             #[cfg(test)]

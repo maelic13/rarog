@@ -309,6 +309,34 @@ impl Searcher {
         granted
     }
 
+    /// Hold a node's depth to its line's room: a line searches at most twice
+    /// its iteration's depth before quiescence. The extension budget holds
+    /// positive extensions to the iteration's depth; this holds everything
+    /// else that deepens a line (a reduction's room above nominal depth, a
+    /// re-search's extra ply, hindsight's ply) to the room those left.
+    /// Without it such gains carried lines a hundred plies past the
+    /// budget, to the ply cap.
+    #[inline(always)]
+    fn bound_line_depth(&mut self, depth: &mut i32, ply: usize) {
+        let limit = 2 * self.td.root_depth.max(1);
+        let room = limit - infra::to_i32(ply);
+        if *depth > room {
+            crate::diag_count!(line_room_clamp);
+            #[cfg(test)]
+            {
+                self.td.line_clamps += 1;
+            }
+            *depth = room;
+        }
+        #[cfg(test)]
+        {
+            self.td.line_overrun = self
+                .td
+                .line_overrun
+                .max(infra::to_i32(ply) + *depth - limit);
+        }
+    }
+
     /// Whether a node without a singular candidate extends its first move:
     /// an expected cut node at depth 7 or less, out of check, whose estimate
     /// sits `CoreLdseMargin` or more below alpha.
@@ -586,6 +614,9 @@ impl Searcher {
             return alpha;
         }
 
+        if !NODE::ROOT {
+            self.bound_line_depth(&mut depth, ply);
+        }
         if depth <= 0 {
             #[cfg(feature = "pricing")]
             {
@@ -887,6 +918,11 @@ impl Searcher {
                     depth -= 1;
                 }
             }
+        }
+
+        // Hindsight may have added a ply; the line's bound still holds.
+        if !NODE::ROOT {
+            self.bound_line_depth(&mut depth, ply);
         }
 
         // Razoring: far enough below alpha that only a tactic can help, so
@@ -3995,6 +4031,39 @@ mod tests {
             truncations += searcher.td.budget_truncations;
         }
         assert!(truncations > 0, "the budget never bound");
+    }
+
+    /// No line searches past twice its iteration's depth, so a line cannot
+    /// reach the ply cap before iteration 63: from a promotion race whose
+    /// lines once reached the cap by depth 10, every node keeps its line
+    /// within the bound, the bound cuts some nodes, and the selective depth
+    /// stays below the cap.
+    #[test]
+    fn no_line_searches_past_twice_the_iteration_depth() {
+        let mut searcher = Searcher::default();
+        let mut board =
+            Board::from_fen("8/2p2P1P/2n2P2/1k6/p7/6N1/P5K1/8 b - - 0 44").expect("valid FEN");
+        for iteration in 1..=10 {
+            let score = searcher.search_root_window(
+                &mut board,
+                iteration,
+                -INF_SCORE,
+                INF_SCORE,
+                &mut || SearchEvent::None,
+            );
+            assert!(score.abs() < INF_SCORE);
+            assert!(
+                searcher.td.line_overrun <= 0,
+                "a line overran its bound by {} at depth {iteration}",
+                searcher.td.line_overrun
+            );
+            assert!(
+                searcher.td.seldepth < MAX_PLY - 1,
+                "selective depth {} reached the cap at depth {iteration}",
+                searcher.td.seldepth
+            );
+        }
+        assert!(searcher.td.line_clamps > 0, "the bound never cut a node");
     }
 
     /// A middlegame search runs singular searches and extends or reduces
