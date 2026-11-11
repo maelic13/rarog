@@ -2127,9 +2127,9 @@ mod tests {
         // already at or above beta.
         const DEEP: [(&str, &str, u32); 5] = [
             ("CoreNmpRClamp", KIWIPETE, 10),
-            ("CoreSingDoubleNotTtPv", SEMI_SLAV, 11),
+            ("CoreSingDoubleNotTtPv", PAWN_ENDING, 9),
             ("CoreSingTripleNotTtPv", SEMI_SLAV, 12),
-            ("CoreLmrSingularCap", TWO_PIECES, 9),
+            ("CoreLmrSingularCap", TWO_PIECES, 10),
             ("CoreFpEvalAboveBeta", PAWN_ENDING, 13),
         ];
         // Proved live by a test of its own: a root fail-high stops the search
