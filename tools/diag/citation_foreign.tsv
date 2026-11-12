@@ -35,6 +35,7 @@
 91b56c2	Reckless commit of the binary RAR-M20 measured
 9587eeeb	Stockfish commit (the C.0 donor instrument)
 9587eeeb5ed29f834d4f956b92e0e732877c47a7	Stockfish commit (the C.0 donor instrument, full)
+def601cc	Stockfish commit (2026-11-10, RAR-O08's Stockfish dev hybrid)
 9a8dd81	Stockfish commit (position-state reading)
 9c72539	Colosseum cli-v0.4.0 revision (pinned 2026-10-22 to 2026-11-01)
 9f94aa9	Colosseum cli revision of the qualified binary
