@@ -1,0 +1,320 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index ba2ef70..3c836af 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -27,7 +27,7 @@ dependencies = [
+  "quote",
+  "regex",
+  "rustc-hash",
+- "shlex",
++ "shlex 1.3.0",
+  "syn",
+ ]
+ 
+@@ -45,11 +45,12 @@ checksum = "72f5acc6cb2ba439de613abc23857ec3d78374d8ed5ac84e9d11336e87da8649"
+ 
+ [[package]]
+ name = "cc"
+-version = "1.2.22"
++version = "1.11.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "32db95edf998450acc7881c932f94cd9b05c87b4b2599e8bab064753da4acfd1"
++checksum = "4ff2a8126fff0f8c839080d619675a585e61720bb12d2baceae45769fd66f155"
+ dependencies = [
+- "shlex",
++ "find-msvc-tools",
++ "shlex 2.0.1",
+ ]
+ 
+ [[package]]
+@@ -84,6 +85,12 @@ version = "1.15.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
+ 
++[[package]]
++name = "find-msvc-tools"
++version = "0.1.15"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "1c66915cc5391097de7a2b0b972e8505aa33c0df401fd3a6811dbdb32881ba48"
++
+ [[package]]
+ name = "futures-core"
+ version = "0.3.32"
+@@ -218,6 +225,13 @@ dependencies = [
+  "proc-macro2",
+ ]
+ 
++[[package]]
++name = "rarog"
++version = "2.7.0-dev"
++dependencies = [
++ "cc",
++]
++
+ [[package]]
+ name = "reckless"
+ version = "0.10.0-dev"
+@@ -226,6 +240,7 @@ dependencies = [
+  "cc",
+  "js-sys",
+  "libc",
++ "rarog",
+  "wasm-bindgen",
+  "web-time",
+ ]
+@@ -277,6 +292,12 @@ version = "1.3.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
+ 
++[[package]]
++name = "shlex"
++version = "2.0.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
++
+ [[package]]
+ name = "slab"
+ version = "0.4.12"
+diff --git a/Cargo.toml b/Cargo.toml
+index 3ad2972..4d7b57d 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -29,8 +29,11 @@ bindgen = "0.71.1"
+ 
+ [dependencies]
+ libc = "0.2.175"
++rarog = { path = "D:/code/rarog-oracle" }
+ 
+ [target.'cfg(target_arch = "wasm32")'.dependencies]
+ web-time = "1"
+ wasm-bindgen = "0.2"
+ js-sys = "0.3"
++
++[workspace]
+diff --git a/src/hce.rs b/src/hce.rs
+new file mode 100644
+index 0000000..d6a4267
+--- /dev/null
++++ b/src/hce.rs
+@@ -0,0 +1,75 @@
++//! Rarog's hand-crafted evaluation in place of the network, for Rarog's
++//! oracle reads: the search is Reckless's, unchanged; only the raw
++//! evaluation it consumes is Rarog's, scaled into the network's units.
++
++use std::hint::black_box;
++
++use rarog::board::{Bitboard as RarogBitboard, Board as RarogBoard, CastlingRights, Color as RarogColor};
++use rarog::eval::Evaluator;
++
++use crate::{
++    board::Board,
++    types::{Color, PieceType, Score},
++};
++
++/// Mean |raw network| over mean |Rarog HCE| on the scale corpus, in 1/1024
++/// (the `hcescale` command measures it).
++pub const SCALE_1024: i64 = 2536;
++
++const PIECE_TYPES: [PieceType; 6] =
++    [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen, PieceType::King];
++
++pub struct Hce {
++    evaluator: Evaluator,
++    /// Board builds per call, from `RAROG_HCE_BRIDGE_REPEAT` (default 1): the
++    /// bench's time per node at two counts prices the conversion.
++    repeat: u32,
++}
++
++impl Default for Hce {
++    fn default() -> Self {
++        let repeat = std::env::var("RAROG_HCE_BRIDGE_REPEAT")
++            .ok()
++            .and_then(|value| value.parse().ok())
++            .filter(|&repeat| repeat >= 1)
++            .unwrap_or(1);
++        Self { evaluator: Evaluator::default(), repeat }
++    }
++}
++
++fn placement(board: &Board) -> [RarogBitboard; 12] {
++    let mut pieces = [RarogBitboard(0); 12];
++    for (color_index, color) in [Color::White, Color::Black].into_iter().enumerate() {
++        for (piece_index, piece) in PIECE_TYPES.into_iter().enumerate() {
++            pieces[color_index * 6 + piece_index] = RarogBitboard((board.pieces(piece) & board.colors(color)).0);
++        }
++    }
++    pieces
++}
++
++fn rarog_board(pieces: [RarogBitboard; 12], board: &Board) -> RarogBoard {
++    let side = if board.side_to_move() == Color::White { RarogColor::White } else { RarogColor::Black };
++    let clock = board.fiftymove_clock();
++    // Chess960 rights the placement cannot hold are dropped, as the DLL does.
++    RarogBoard::from_placement(pieces, side, CastlingRights(board.castling().raw()), clock)
++        .or_else(|_| RarogBoard::from_placement(pieces, side, CastlingRights(0), clock))
++        .expect("Reckless hands over a legal position")
++}
++
++impl Hce {
++    /// Rarog's evaluation in centipawns, from the side to move.
++    pub fn raw(&mut self, board: &Board) -> i32 {
++        let pieces = placement(board);
++        for _ in 1..self.repeat {
++            black_box(rarog_board(black_box(pieces), board));
++        }
++        self.evaluator.evaluate(&rarog_board(pieces, board))
++    }
++
++    /// What the search reads where it read the network.
++    pub fn evaluate(&mut self, board: &Board) -> i32 {
++        let scaled = i64::from(self.raw(board)) * SCALE_1024 / 1024;
++        let bound = i64::from(Score::TB_WIN_IN_MAX - 1);
++        scaled.clamp(-bound, bound) as i32
++    }
++}
+diff --git a/src/lib.rs b/src/lib.rs
+index 09bb90c..e0acfee 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -6,6 +6,7 @@
+ 
+ mod board;
+ mod evaluation;
++mod hce;
+ mod history;
+ mod lookup;
+ mod misc;
+diff --git a/src/search.rs b/src/search.rs
+index f769a47..0deec1d 100644
+--- a/src/search.rs
++++ b/src/search.rs
+@@ -345,7 +345,7 @@ fn search<NODE: NodeType>(
+         }
+ 
+         if ply as usize >= MAX_PLY - 1 {
+-            return if in_check { draw(td) } else { td.nnue.evaluate(&td.board) };
++            return if in_check { draw(td) } else { td.hce.evaluate(&td.board) };
+         }
+ 
+         // Mate Distance Pruning (MDP)
+@@ -457,10 +457,10 @@ fn search<NODE: NodeType>(
+         raw_eval = Score::NONE;
+         eval = td.stack[ply].eval;
+     } else if let Some(entry) = &entry {
+-        raw_eval = if is_valid(entry.raw_eval) { entry.raw_eval } else { td.nnue.evaluate(&td.board) };
++        raw_eval = if is_valid(entry.raw_eval) { entry.raw_eval } else { td.hce.evaluate(&td.board) };
+         eval = correct_eval(td, raw_eval, correction_value);
+     } else {
+-        raw_eval = td.nnue.evaluate(&td.board);
++        raw_eval = td.hce.evaluate(&td.board);
+         eval = correct_eval(td, raw_eval, correction_value);
+ 
+         td.shared.tt.write(hash, TtDepth::SOME, raw_eval, Score::NONE, Bound::None, Move::NULL, ply, tt_pv, false);
+@@ -1237,7 +1237,7 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply:
+     }
+ 
+     if ply as usize >= MAX_PLY - 1 {
+-        return if in_check { draw(td) } else { td.nnue.evaluate(&td.board) };
++        return if in_check { draw(td) } else { td.hce.evaluate(&td.board) };
+     }
+ 
+     let hash = td.board.hash();
+@@ -1279,7 +1279,7 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply:
+     } else {
+         raw_eval = match &entry {
+             Some(entry) if is_valid(entry.raw_eval) => entry.raw_eval,
+-            _ => td.nnue.evaluate(&td.board),
++            _ => td.hce.evaluate(&td.board),
+         };
+         eval = correct_eval(td, raw_eval, correction_value);
+         best_score = eval;
+@@ -1474,14 +1474,12 @@ fn make_move(td: &mut ThreadData, ply: isize, mv: Move, move_count: i32) {
+ 
+     td.shared.nodes.increment(td.id);
+ 
+-    td.nnue.push(mv, &td.board);
+-    td.board.make_move(mv, &mut td.nnue);
++    td.board.make_move(mv, &mut crate::board::NullBoardObserver);
+ 
+     td.shared.tt.prefetch(td.board.hash());
+ }
+ 
+ fn undo_move(td: &mut ThreadData, mv: Move) {
+-    td.nnue.pop();
+     td.board.undo_move(mv);
+ }
+ 
+diff --git a/src/thread.rs b/src/thread.rs
+index e85923c..9873bfe 100644
+--- a/src/thread.rs
++++ b/src/thread.rs
+@@ -218,6 +218,7 @@ pub struct ThreadData {
+     pub time_manager: TimeManager,
+     pub stack: Box<Stack>,
+     pub nnue: Network,
++    pub hce: crate::hce::Hce,
+     pub root_moves: Vec<RootMove>,
+     pub pv_table: PrincipalVariationTable,
+     pub noisy_history: NoisyHistory,
+@@ -255,6 +256,7 @@ impl ThreadData {
+             time_manager: TimeManager::new(Limits::Infinite, 0, 0),
+             stack: Stack::new(),
+             nnue: Network::new(parameters),
++            hce: crate::hce::Hce::default(),
+             root_moves: Vec::new(),
+             pv_table: PrincipalVariationTable::default(),
+             noisy_history: NoisyHistory::default(),
+diff --git a/src/uci.rs b/src/uci.rs
+index a340d3d..5143476 100644
+--- a/src/uci.rs
++++ b/src/uci.rs
+@@ -83,6 +83,7 @@ pub fn message_loop(mut buffer: VecDeque<String>) {
+             // Non-UCI commands
+             ["compiler"] => compiler(),
+             ["eval"] => eval(threads.main_thread(), &board),
++            ["hcescale", path] => hce_scale(threads.main_thread(), path),
+             ["d"] => println!("{board}"),
+             ["bench", args @ ..] => match mode {
+                 Mode::Uci => tools::bench::<true>(args),
+@@ -149,7 +150,7 @@ fn spawn_listener(shared: Arc<SharedContext>) -> std::sync::mpsc::Receiver<Strin
+ }
+ 
+ fn uci() {
+-    println!("id name Reckless {}", env!("ENGINE_VERSION"));
++    println!("id name Reckless-RarogHCE {}", env!("ENGINE_VERSION"));
+     println!("id author Arseniy Surkov, Shahin M. Shahin, and Styx");
+     println!("option name Hash type spin default {DEFAULT_TT_SIZE} min 1 max 262144");
+     println!("option name Threads type spin default 1 min 1 max {}", ThreadPool::available_threads());
+@@ -341,6 +342,32 @@ fn set_option(threads: &mut ThreadPool, settings: &mut Settings, shared: &Arc<Sh
+     }
+ }
+ 
++/// Mean |raw network| and mean |Rarog HCE| over a file of FENs (one per
++/// line, anything after `;` ignored), both from the side to move.
++fn hce_scale(td: &mut ThreadData, path: &str) {
++    let text = std::fs::read_to_string(path).expect("a readable FEN file");
++    let (mut count, mut network, mut hce) = (0u64, 0f64, 0f64);
++    for line in text.lines() {
++        let fen = line.split(';').next().unwrap_or("").trim();
++        if fen.is_empty() {
++            continue;
++        }
++        let board = Board::from_fen(fen).expect("a valid FEN");
++        td.nnue.full_refresh(&board);
++        network += f64::from(td.nnue.evaluate(&board).abs());
++        hce += f64::from(td.hce.raw(&board).abs());
++        count += 1;
++    }
++    let ratio = network / hce;
++    println!(
++        "hcescale positions {count} mean_network {:.2} mean_hce {:.2} hce_over_network {:.4} scale_1024 {:.0}",
++        network / count as f64,
++        hce / count as f64,
++        hce / network,
++        ratio * 1024.0
++    );
++}
++
+ fn eval(td: &mut ThreadData, board: &Board) {
+     td.nnue.full_refresh(board);
+     td.nnue.evaluate(board);

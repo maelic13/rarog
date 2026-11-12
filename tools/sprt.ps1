@@ -236,6 +236,11 @@ param(
     [string[]]$OptionsA = @(),
     [string[]]$OptionsB = @(),
     [string]$TC = "3+0.03",
+    # Per-engine clocks for a time-odds match (each defaults to -TC): an
+    # oracle that pays for an evaluation bridge plays at the odds its
+    # measured bridge share gives back. A clock match only; never a calibration.
+    [string]$TCA = "",
+    [string]$TCB = "",
     [double]$MoveTime = 0,
     [int]$Nodes = 0,
     [int]$TimeMargin = 20,
@@ -382,6 +387,21 @@ if ($Nodes -gt 0) {
     $tcArg   = "tc=$TC"
     $tcLabel = "tc=$TC (clock)"
 }
+$clockOdds = [bool]($TCA -or $TCB)
+if ($clockOdds) {
+    if ($Nodes -gt 0 -or $MoveTime -gt 0) { throw "-TCA and -TCB set clocks; a -Nodes or -MoveTime match has none." }
+    if ($Mode -eq "calibrate") { throw "A calibration is a null pair: it takes no time odds." }
+    $tcA = if ($TCA) { $TCA } else { $TC }
+    $tcB = if ($TCB) { $TCB } else { $TC }
+    foreach ($clock in @($tcA, $tcB)) {
+        if ($clock -notmatch '^\d+(\.\d+)?\+\d+(\.\d+)?$') { throw "Clock '$clock' is not <seconds>+<increment seconds>." }
+    }
+    $tcArg   = $null
+    $tcLabel = "time odds: $NameA tc=$tcA, $NameB tc=$tcB (clock)"
+}
+$tcArgsA = @(if ($clockOdds) { "tc=$tcA" })
+$tcArgsB = @(if ($clockOdds) { "tc=$tcB" })
+$tcArgsEach = @(if (-not $clockOdds) { $tcArg })
 
 # Locate fastchess.
 $fastchess = $FastchessPath
@@ -559,9 +579,9 @@ $dropNoise = {
 # NOTE: flag names follow the fastchess man page (man.md). If your installed
 # fastchess build rejects a flag, run `fastchess --help` and adjust here.
 & $fastchess `
-    -engine "cmd=$EngineA" "name=$NameA" "option.Hash=$Hash" "option.Threads=$ThreadsA" @optArgsA `
-    -engine "cmd=$EngineB" "name=$NameB" "option.Hash=$Hash" "option.Threads=$ThreadsB" @optArgsB `
-    -each $tcArg "timemargin=$TimeMargin" `
+    -engine "cmd=$EngineA" "name=$NameA" "option.Hash=$Hash" "option.Threads=$ThreadsA" @optArgsA @tcArgsA `
+    -engine "cmd=$EngineB" "name=$NameB" "option.Hash=$Hash" "option.Threads=$ThreadsB" @optArgsB @tcArgsB `
+    -each @tcArgsEach "timemargin=$TimeMargin" `
     -openings "file=$Book" "format=$bookFormat" order=random `
     -rounds $rounds -games 2 -repeat `
     -concurrency $Concurrency `
