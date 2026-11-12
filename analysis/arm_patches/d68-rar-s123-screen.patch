@@ -1,0 +1,24 @@
+diff --git a/src/diag.rs b/src/diag.rs
+index f2a6143..d89afc0 100644
+--- a/src/diag.rs
++++ b/src/diag.rs
+@@ -60,6 +60,7 @@ pub mod counters {
+         hindsight_up,
+         // Nodes whose depth the line bound cut to twice the iteration's depth.
+         line_room_clamp,
++        q_handoff,
+         hindsight_down,
+         razor_drop,
+         nmp_cut,
+diff --git a/src/search/node.rs b/src/search/node.rs
+index 638c1a9..cb41efd 100644
+--- a/src/search/node.rs
++++ b/src/search/node.rs
+@@ -618,6 +618,7 @@ impl Searcher {
+             self.bound_line_depth(&mut depth, ply);
+         }
+         if depth <= 0 {
++            crate::diag_count!(q_handoff);
+             #[cfg(feature = "pricing")]
+             {
+                 self.td.pricing.q_pv = NODE::PV;

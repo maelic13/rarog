@@ -342,7 +342,7 @@ twice (HISTORY's number map holds what moved).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.8 | RESEARCH | R2 | Screen before any implementation |
+| D.6.8 | READY_FOR_IMPLEMENTATION | R2 | Screened (RAR-S123): count each position once, 16.1% of the count today; decide re-searches first; gate case 2 |
 | D.6.9 | RESEARCH | R2 | Screen before any implementation |
 | D.6.10 | RESEARCH | R2 | Screen before any implementation |
 | D.6.13 | RESEARCH | R2 | Screen before any implementation |
@@ -910,6 +910,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      Fix: test `depth <= 0` first and give the LMR spread its own counter if
      its phase is to be kept. A new fingerprint by construction: register it
      alone, case 2 at most, never folded into a strength change.
+     Screen read 2026-11-12 (RAR-S123, `bench 13` at stride 1): **ready
+     for implementation.** 16.1% of `td.nodes` counts a position the search
+     already counted:
+     - the hand-off to quiescence, 12.3%;
+     - the singular exclusion search, 2.9%;
+     - razoring's quiescence search, 0.9%;
+     - null-move verification, nearly none.
+
+     So reported `nps` reads about 19% high, and `go nodes N` searches
+     about 0.84 N positions. The fix counts each position once and every
+     consumer reads that count: the LMR spread, the effort share, the poll
+     cadence and the node limit. No old clock is kept. **Gate:** case 2,
+     a 2,000-game read with the −13 harm rule, registered alone. One
+     contract question is open before the gate's registration. LMR's
+     full-depth re-search and ProbCut's verification re-enter a child
+     without a new move, at least 1.2% more. The donor's one count per
+     move made covers them; the screen's four paths do not.
     - **D.6.9 The endgame scale's target — `R2`.** (EVAL-5): `evaluate` adds tempo to `mg`,
      tapers, then `scale_endgame` multiplies the whole; both donor commits
      scale the endgame half only (`v = mg·p + eg·(128−p)·sf/64`), so the forms

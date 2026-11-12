@@ -98,3 +98,67 @@ The screen asks how large the double count is, by path.
    1, or one of the three re-entry counters does not sit on every path into
    its search. The wire's inequality or a direct look at each call site then
    fails, and the read stops until the counter is fixed.
+
+## Result (read 2026-11-12)
+
+**E is 16.09% of `td.nodes`: ready for implementation.** The instrumented
+build is `analysis/artifacts/d68-screen-2026-11-12/rarog-d68-screen.exe`,
+SHA-256 `7fca89edd9e5d478f4871bc9e9f33b2d1512df1310d39e76158a221267f1c225`,
+built from `d68-rar-s123-screen.patch` with `--features diag`. The script is
+`shares.py`, logs `counters.log` and `shares.log`, in the same directory.
+
+**Wire.**
+- The instrumented `bench 13` reads 11,477,040.
+- `nodes + qnodes + q_handoff` is 11,451,769, which leaves 25,271 of
+  `td.nodes`. Draws by rule account for 25,141 of them (24,172 in `negamax`
+  and 969 in `quiescence`). The other 130 are mate-distance cuts, the ply
+  cap and stops.
+- Each of the three re-entry counters sits on its search's only call path,
+  checked at the call sites.
+
+| path | count | share of `td.nodes` |
+|---|---:|---:|
+| H, the hand-off to quiescence | 1,411,785 | 12.301% |
+| R, razoring's quiescence search | 100,100 | 0.872% |
+| V, the null-move verification search | 61 | 0.001% |
+| X, the singular exclusion search | 335,007 | 2.919% |
+| **E** | **1,846,953** | **16.093%** |
+
+So the reported `nodes` and `nps` read about 19% high (1 / (1 − 0.161)),
+and `go nodes N` searches about 0.84 N positions.
+
+**Seen after the read, not deciding.** Two more paths enter a child the
+search already entered, without a new move. They are an LMR re-search at
+full depth (`lmr_research`, 106,045) and ProbCut's verification after its
+quiescence pass (`probcut_verify` 34,091, plus 38 deeper re-searches).
+Together they are 140,174, or 1.221% of `td.nodes`. The PV's full-window
+re-search has no counter, so the figure is a lower bound. The frozen fix
+does not name these paths: the donor's rule of one count per move made
+would cover them, and the registration's four paths would not. Whether the
+contract counts a re-searched child once is a decision for the
+implementation's card, made before any gate game.
+
+**Calibration.**
+
+1. E, 25% with an 80% band of [12%, 40%]: 16.1%, inside the band and below
+   the point. A miss in magnitude. Quiescence's nodes are 22.6% of the
+   count here, fewer than the forecast assumed; interior nodes are 64.9%.
+2. H at least 85% of E (0.7): a miss, 76.4%. The exclusion search is 2.92%
+   against a forecast under 0.5%, a miss in magnitude: singular searches
+   run at 4.5% of interior nodes. R near 1%, a hit at 0.87%. V under 0.05%,
+   a hit at 0.001%.
+3. `NO_CHANGE` with 0.03: it did not apply.
+4. The named failure mode did not occur. The counts close to 130 nodes,
+   which the early returns explain.
+
+## Disposition (2026-11-12)
+
+**Ready for implementation** by the frozen rule. The fix counts each
+position once:
+- the hand-off tests `depth <= 0` before counting;
+- razoring, verification and exclusion re-enter without counting;
+- every consumer reads the corrected count.
+
+The gate is case 2, a pre-registered 2,000-game read with the −13 nElo harm
+rule, registered alone. The re-search paths above are the one open contract
+question.
