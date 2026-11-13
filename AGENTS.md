@@ -361,8 +361,9 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   not evidence the mechanism works (RAR-S61, RAR-S64).
 - SPSA is conditional (PLAN rule 4): first show activation, interaction and
   curvature with a zero-game sweep; a flat or monotone surface is evidence
-  against the tune. A tune runs in registered blocks with a movement stop
-  rule (PLAN rule 7c), never on a horizon chosen to fit the answer.
+  against the tune. A tune is one registered run read at checkpoints by
+  its gradient test and stopped when quiet (PLAN rule 7c), never on a
+  horizon chosen to fit the answer.
 
 ## Documents
 

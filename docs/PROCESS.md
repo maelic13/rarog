@@ -707,35 +707,39 @@ Before any SPSA:
    coordinate returning to its seed may be inactive; an omitted high-activity
    coordinate can invalidate the proposed full tune. The full tune starts from
    accepted engine defaults.
-7. Register the tune as blocks (PLAN rule 7c): 2,000 iterations × 30 games
-   each, a later block seeded from the previous block's rounded centres
-   with a fresh schedule and the same steps, a movement stop rule (at
-   least three coordinates moved a full step in the block, or stop) and a
-   ceiling of three blocks. Block size, rule and ceiling never change
-   after the first game; a block is never cut short to read it. The
-   movement count saves unattended compute only; a watched tune may run
-   every registered block regardless (PLAN rule 7c, amended 2026-09-26).
+7. Register the tune as one run (PLAN rule 7c): the surface, the fixed
+   values, the binary hash and fingerprint, the slots, the ceiling in
+   iterations and games, the perturbation (two steps, graded by room), the
+   gain (`r_end` 0.00155), the checkpoints and the estimator, before
+   launch. The test, the checkpoints and the ceiling never change after
+   the first game.
 8. Run `./tools/audit_spsa_coverage.ps1` and register surface, fixed values,
    iterations, games per iteration, slots, the budget in games, gain and
    estimator before launch. On Colosseum the shape is **15 slots and 30 games
-   per iteration**, so the budget is `iterations x 30` games (RAR-M62);
-   `tools/spsa_config_to_colosseum.py <group> --iterations <N>` converts the
-   registered surface for that horizon and `--check` refuses a file that has
-   drifted from it. Check every seed against the run's own perturbation,
-   not the b43 step: a seed within `c0` of a range end plays one arm
+   per iteration**, so the ceiling's budget is `iterations x 30` games
+   (RAR-M62); `tools/spsa_config_to_colosseum.py <group> --rule7c --ceiling
+   <N>` converts the registered surface for that ceiling, prints the
+   coordinates without two steps of room, and `--check` refuses a file that
+   has drifted from it. The conversion grades each perturbation by its room,
+   which is the rule for the hazard below: a seed within `c0` of a range end plays one arm
    clamped at the rail (the engine clamps the option) until the
    perturbation decays below the gap, which biases that estimate's
    magnitude (RAR-S104: `CoreRfpCorrection`, seed 80 on `0..=2048`,
    perturbation 256, clipped on all 4,000 iterations); keep such a
    coordinate's step inside its range.
-9. Theta is the last completed block's rounded final centres, without
-   post-hoc checkpoint selection; bake it into a fresh clean PGO binary
-   and run a paired SPRT, then LTC/4T where appropriate. Before the
-   bake, `python tools/spsa_theta_audit.py <run dir> <config>` (with
-   `--movement-config` naming the b43 steps when the run's were scaled)
-   lists the coordinates that moved a full step, finished at or near a
-   range end, or turned against their finish by a full step. The tune's
-   analysis gives each a line on what it shows: a term tuned toward
+9. Theta is the rounded centres at the checkpoint where the tune stopped
+   (`theta-<K>.txt` in the run directory), without selection among
+   checkpoints. The fit is gated once, theta against the seeds on the tune
+   binary. Where the tune's own read of its gain is +10 Elo or more, the
+   gate is a fixed 6,000 games and passes when its 95% interval excludes 0
+   (Basilisk's BAS-S56 rule; it passes a true +10 with 96%); otherwise it
+   is the `[0,3]` SPRT. The read chooses the instrument before any gate
+   game. Bake theta into a fresh clean PGO binary whose `bench 13`
+   reproduces the tune binary's count with theta set. Before the bake,
+   `python tools/spsa_theta_audit.py <run dir> <config> --at <K>` lists
+   the coordinates that moved a full step (the b43 step), finished at or
+   near a range end, or turned against their finish by a full step. The
+   tune's analysis gives each a line on what it shows: a term tuned toward
    off, two terms moving to cancel, a margin compensating for a
    mis-scaled input, a rail hiding a wanted value. The analysis never
    changes theta; a finding becomes a registration of its own
@@ -946,13 +950,11 @@ cargo xtask verify-isa
 ./tools/colosseum.ps1 -Mode match -EngineA <a.exe> -EngineB <b.exe> `
   -Games 2000 -Seed <n> -Dir tools/results/<name>
 
-# A tune: 15 slots, 30 games per iteration, budget in games (RAR-M62)
+# A tune (PLAN rule 7c): one run to its ceiling, 15 slots, 30 games an
+# iteration, read at 2,000 and every 1,000 after; the same command resumes it
+python tools/spsa_config_to_colosseum.py <group> --rule7c --ceiling 6000
 ./tools/colosseum.ps1 -Mode spsa -Engine <tune.exe> -ConfigGroup <group> `
-  -Iterations <N> -TotalGames <N*30> -Seed <n> -Dir tools/results/<experiment>
-# The next block of the same tune (PLAN rule 7c): seeded from the finished block
-./tools/colosseum.ps1 -Mode spsa -Engine <tune.exe> -ConfigGroup <group> `
-  -Iterations <N> -TotalGames <N*30> -Seed <n+1> -SeedFrom tools/results/<block n> `
-  -Dir tools/results/<block n+1>
+  -Ceiling 6000 -Seed <n> -Dir tools/results/<experiment>
 
 # Null pair, only after a scheduler or topology change (RAR-M03), never for a re-pin
 ./tools/colosseum.ps1 -Mode calibrate -EngineA <same.exe> -EngineB <same.exe> `

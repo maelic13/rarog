@@ -130,45 +130,55 @@ gating. The rules below decide order and acceptance in this roadmap.
    what horizon, and what the gate would otherwise measure. Maintainer
    decision 2026-09-20. The whole-surface refit stays at B.6.
 
-7c. **A tune runs in blocks with a movement stop rule, not on one horizon.**
-   RAR-S75 ran 5,000 iterations and its last 1,100 were worth +4.43 ± 2.90;
-   restarting the same 82 coordinates from its endpoint with a fresh gain
-   schedule (RAR-S78, another 5,000) gained +13.1 ± 5.4, carried by
-   coordinates the first run had barely moved. The limit was the decaying
-   gain, not the games: a coordinate whose gradient appears only after
-   others have moved receives it when the schedule is spent, and the right
-   horizon cannot be predicted because it depends on how far the seeds are
-   from the optimum. So a registered tune is a sequence of blocks, each
-   2,000 iterations × 30 games on Colosseum (60,000 games, about 12.5 h),
-   each started from the previous block's rounded centres with a fresh
-   schedule, the same surface and the same steps. After each block, count
-   the coordinates that moved at least one step from the block's seeds: at
-   least three, and the next block runs; fewer, and the tune stops with the
-   last block's rounded centres as theta; never more than three blocks
-   without a new registration. Block size, count and ceiling are registered
-   before the first game and never change after it. Nothing is baked
-   between blocks; a later block starts through `colosseum.ps1 -SeedFrom`
-   from the previous block's run directory, on the same config group and
-   tune file, and the wrapper refuses an unfinished source, another binary
-   or another surface. Maintainer decision 2026-09-25. **Amended 2026-09-26:**
-   the count is a device for saving unattended compute, never a reason to
-   end a tune the maintainer is watching: RAR-S82's block 1 ended with one
-   coordinate two steps out and still travelling and eleven at half a step,
-   and the count said stop. A chained launch may run every registered block
-   unconditionally; theta stays the last completed block, and a block cut
-   short never counts. A tune is judged by its gate, not by its movement.
-   **Amended 2026-10-20 (maintainer decision, C.10.4):** the chain of
-   2,000-iteration blocks is the shape for seeds far from their optimum.
-   Where a pilot and an earlier block read the surface as near its optimum
-   with small gradients, a tune may instead be registered as one longer run
-   with a larger perturbation and a smaller gain ratio (RAR-S104: 4,000
-   iterations, perturbations twice the b43 step, `r-end` 0.0016 in a
-   committed `schedule_<group>.json`), because the signal-to-noise of each
-   gradient estimate grows with the perturbation and a restarted schedule
-   only re-inflates the random walk near an optimum; the registration
-   derives the resolution it buys. The b43 step stays the unit of "a full
-   step" in every reading (`tools/spsa_theta_audit.py --movement-config`), and a run
-   cut short is still not theta.
+7c. **A tune is one run, read at checkpoints, and stopped when its
+   gradients are gone.** Adopted 2026-11-13 (maintainer decision) from
+   Basilisk's B.5.6 and B.5.8, replacing the blocks this rule held from
+   2026-09-25 (RAR-S75, RAR-S78, RAR-S82–S83) and its 2026-10-20 shape
+   (RAR-S104); the record is `analysis/spsa_method_adoption_2026-11-13.md`.
+   - *Shape.* 30 games an iteration on 15 slots, with a registered ceiling:
+     6,000 iterations (180,000 games) unless the registration argues
+     another. The perturbation is two steps (the config's `step`, the b43
+     step) where the seed has two steps of room inside its range,
+     otherwise the largest from one to two steps the room allows; a
+     coordinate with under one step of room keeps one step and is named at
+     registration. `r_end` is 0.00155. `tools/spsa_config_to_colosseum.py
+     <group> --rule7c --ceiling N` writes the files.
+   - *Checkpoints.* Iteration 2,000, then every 1,000.
+     `tools/colosseum.ps1 -Mode spsa -Ceiling N` plays to each with the
+     runner's `--stop-after-iteration`, and `tools/spsa_read.py` reads the
+     last 1,000 iterations there.
+   - *The test.* For each coordinate, `z = Σ δ·D / √(Σ D²)`: δ is its
+     perturbation's sign at an iteration, regenerated from the run's seed,
+     and D the plus side's wins less its losses. With no gradient z has
+     mean 0 and variance 1 exactly, because the tuner drew the signs. The
+     window is **live** if any |z| passes the familywise 5% line for the
+     surface's coordinate count, or if `Σ z² − n` is at least `2·√(2n)`;
+     otherwise it is **quiet**.
+   - *The rule.* Quiet: the tune stops, and theta is that checkpoint's
+     rounded centres. Live: the next 1,000 iterations run. The maintainer
+     may stop at any checkpoint (a file named `STOP` in the run directory),
+     and theta is then that checkpoint's centres. A run stopped between
+     checkpoints is not theta; it resumes. A run with engine, time or
+     infrastructure faults stops for the maintainer, who may accept them
+     once analysed.
+   - *Rails.* A centre within one perturbation of a bound, its z pointing
+     outward past the familywise line, stops the tune for a new
+     registration of the range. A weaker outward push (z of 2 or more) is
+     reported and stops nothing.
+   - *The record.* Each read appends every coordinate's z, the tune's own
+     read of its gain, the stop's floor in Elo and a frozen forecast for
+     the next 2,000 iterations. The forecast decides nothing until three
+     scored forecasts have each fallen within twice the combined SD of the
+     forecast and of the gain read it is scored against.
+
+   Quiet means no gradient above the stated floor, not convergence. A tune
+   is judged by its gate, not by its read, and a stop is never read from
+   net travel or a count of movers. The 2,000-iteration minimum is there
+   because a gradient can appear late (Basilisk's B.4.6 read quiet over its
+   first 1,000 iterations and live over its second). In the blocks' shape a
+   quiet read at 82 coordinates could not exclude about 11 Elo, which is
+   what RAR-S78's restart found; the doubled perturbation exists to lower
+   that floor.
 
 8. **State the measurement layer.** Theory truth, move quality, conversion,
    fixed-node tree shape, NPS and game strength are different units with no
@@ -360,7 +370,7 @@ cut before D.7 on a registered no-regression read against 2.6.0 (E.3).
 | D.7.3 | RESEARCH | I2 | Opens with D.7.2's decision |
 | D.7.4 | RESEARCH | I2 | Opens with D.7.2's decision; parity before any game |
 | D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games |
-| D.7.6 | RESEARCH | V | The fit in registered blocks; kept only if fitted over unfitted passes `[0,3]` |
+| D.7.6 | RESEARCH | V | The fit as one rule 7c run read at checkpoints; kept only if fitted over unfitted passes the gate PROCESS's SPSA procedure chooses |
 | D.7.7 | RESEARCH | V | The kernel against the head on the loss-permitting bracket; `10+0.1` and 4T reads |
 | D.7.8 | RESEARCH | R2 | Each known problem asked "still an issue?" on the new kernel |
 | D.7.9 | RESEARCH | V | Adoption by maintainer decision on D.7.7 and D.7.8; meters; the old kernel deleted |
@@ -1339,9 +1349,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       parity passed puts the difference outside the kernel: one diagnosis,
       then stop.
     - **D.7.6 The fit — `V`.**
-      Curvature sweep, then SPSA in registered blocks (rule 7c), at most
-      three. The fitted constants are kept only if fitted over unfitted
-      passes SPRT `[0,3]`.
+      Curvature sweep, then one SPSA run under rule 7c, read at
+      checkpoints and stopped when its gradients are gone. The fitted
+      constants are kept only if fitted over unfitted passes the gate
+      PROCESS's SPSA procedure chooses from the tune's own gain read before
+      any gate game: a fixed 6,000 games where the read is +10 Elo or more,
+      otherwise SPRT `[0,3]`.
     - **D.7.7 The gate: the kernel against the head — `V`.**
       The loss-permitting bracket `[-1.75, 0.25]`, with a `10+0.1` read and
       a 4T read registered beside it.
