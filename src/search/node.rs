@@ -584,7 +584,7 @@ impl Searcher {
             cut_node,
             last_critical_ply,
         };
-        if self.check_stop(poll) {
+        if self.td.stopped {
             return 0;
         }
         if ply >= MAX_PLY - 1 {
@@ -1136,6 +1136,7 @@ impl Searcher {
                 self.td.null_move_plies.push(ply);
                 board.make_null_move();
                 self.shared.tt.prefetch(board.hash());
+                self.count_node(poll);
                 #[cfg(test)]
                 self.note_child(ChildSite::NullMove, cut_node);
                 let score = -self.negamax::<NonPv, _>(
@@ -1363,6 +1364,7 @@ impl Searcher {
                     self.td.stack[ply].extension_spent = extension_spent;
                     board.make_move(mv);
                     self.shared.tt.prefetch(board.hash());
+                    self.count_node(poll);
                     #[cfg(feature = "pricing")]
                     {
                         self.td.pricing.q_pv = false;
@@ -2079,6 +2081,7 @@ impl Searcher {
             let mv_gives_check = move_gives_check(board, &mut node_ci, mv, &mut gives_check);
             board.make_move_with_check(mv, mv_gives_check);
             self.shared.tt.prefetch(board.hash());
+            self.count_node(poll);
             let mut new_depth = depth - 1 + extension;
             debug_assert!(
                 (-3..=3).contains(&extension) && (extension == 0 || new_depth >= 1),
@@ -2549,7 +2552,7 @@ impl Searcher {
         qply: usize,
         poll: &mut P,
     ) -> i32 {
-        if self.check_stop(poll) {
+        if self.td.stopped {
             return 0;
         }
         #[cfg(feature = "pricing")]
@@ -2931,6 +2934,7 @@ impl Searcher {
                 None => board.make_move(mv),
             }
             self.shared.tt.prefetch(board.hash());
+            self.count_node(poll);
             let score = -self.quiescence(board, -beta, -alpha, ply + 1, qply + 1, poll);
             board.unmake_move(mv);
             self.clear_move(ply);
