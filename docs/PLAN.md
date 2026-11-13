@@ -374,7 +374,8 @@ D.6.28, and inputs to D.7.0).
 | D.7.2 | READY_FOR_IMPLEMENTATION | V | RAR-O09 registered 2026-11-13: preparation, then four maintainer-run matches, on fastchess unless Colosseum CLI is improved first (maintainer, 2026-11-13); the rebuild opens at +10 or more at equal work, otherwise the maintainer decides after consultation |
 | D.7.1.1 | READY_FOR_IMPLEMENTATION | I1 | Does not hold D.7.2, which runs on fastchess (maintainer, 2026-11-13), so its row follows it; the Colosseum wrapper's move time, per-side node budget and foreign arm, with guard tests and smokes, when a foreign arm is next wanted on Colosseum |
 | D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); opens with D.7.2's decision |
-| D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units, the seed table, eight commits); opens with D.7.2's decision; parity before any game |
+| D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); opens with D.7.2's decision; parity before any game |
+| D.7.4.1 | RESEARCH | I2 | After D.7.4's parity: the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted; the maintainer is asked about the exchange table first |
 | D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games |
 | D.7.6 | RESEARCH | V | The fit as one rule 7c run read at checkpoints; kept only if fitted over unfitted passes the gate PROCESS's SPSA procedure chooses |
 | D.7.7 | RESEARCH | V | The kernel against the head on the loss-permitting bracket; `10+0.1` and 4T reads |
@@ -1415,6 +1416,30 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   disclose and the weight of the licence question. PROCESS's boundary
   governs the implementation: architecture and mechanisms cross, constants
   cross as fitted seeds, the code is Rarog's own.
+  **Decisions asked of the maintainer, and when** (2026-11-13). An agent
+  stops and asks at each; none is taken by default.
+  1. *Before RAR-O09's first game:* the runner (fastchess expected), and
+     any preparation value outside the registration's stop bounds.
+  2. *After RAR-O09 is read:* whether D.7.3 to D.7.9 open. At +10 or more
+     at equal work the rule opens them; below it the agent reports with
+     the recommendation the registration froze, and the maintainer may
+     open the rebuild against it.
+  3. *In D.7.4:* any donor rule that cannot be written without breaking
+     an invariant, and any form the inventory marks kept or dropped that
+     the implementer would treat otherwise.
+  4. *When D.7.4.1 starts:* the exchange table, the donor's piece values
+     kept or the SEE thresholds converted to Rarog's.
+  5. *After D.7.5:* a clearly negative unfitted run, before any diagnosis
+     beyond the one PLAN allows.
+  6. *Before D.7.6:* the tune's registration (surface, horizon,
+     checkpoints), which the maintainer starts.
+  7. *After D.7.7 and D.7.8:* adoption, and with it what D.11 must
+     disclose before the release.
+
+  Settled 2026-11-13: the parity check is a test of what was built, not a
+  goal, and identical behaviour is not sought (the donor's forms, Rarog's
+  own code); both parity layers are kept; the donor's trace stays in
+  ignored storage; no unit translation stays in the engine.
     - **D.7.0 Investigation: the inventory of departures, the seeds and the registration of the reads — `R3`, DONE 2026-11-13.**
       Every place Rarog's kernel departs from Reckless `0756957`, with file
       and line on both sides, its unit, the record that chose it and
@@ -1454,10 +1479,13 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       queen push in quiescence (D.6.2) is the donor's form. The record
       behind the twofold draw rule is RAR-S18's four-part bundle, not the
       root-aware rule alone, so the new kernel takes the donor's rule.
-      Units: the new kernel works in the donor's units, the evaluation
+      Units: the new kernel is built in the donor's units, the evaluation
       multiplied by 2536/1024 at the wrapper and scores divided back
       where they leave the kernel; Phase B converted the constants at
-      ×0.457 and its seeds needed +138.6 of fitting. Parity: decision
+      ×0.457 and its seeds needed +138.6 of fitting. By maintainer
+      decision the same day that multiplication is a scaffold only:
+      D.7.4.1 folds the constants into Rarog's units and deletes it
+      before any game. Parity: decision
       records from a tracing twin of the hybrid, reproduced exactly, and
       tree statistics on 500 positions against a measured noise floor;
       identical trees are not attainable, because the two engines hash
@@ -1557,12 +1585,31 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       dropped and asked again in D.7.8), section 5 (the donor's units and
       the seed table) and section 8 (scope, the order of eight commits
       and the invariants).
+        - **D.7.4.1 The constants folded into Rarog's units and the scaffold deleted — `I2`.**
+          Added 2026-11-13 (maintainer decision: no unit translation
+          stays in the engine, and the conversion is done properly this
+          time). D.7.4 builds the kernel in the donor's units so parity
+          can be read. This step converts each constant by its
+          dimension (a margin times 1024/2536, a per-unit coefficient
+          divided by it, ratios and counts unchanged), keeps sixteenths
+          where a whole unit would move a value by more than 1%, and
+          checks the result against the scaffold in one test build at
+          zero games: every decision record reproduced except within one
+          unit of its threshold, under 2% of any kind; positions visited
+          within the noise floor plus 0.01; a constant converted by the
+          wrong dimension must fail. Then the multiplication at the
+          wrapper, the division at the boundary and the donor-unit
+          constants are deleted, and the folded kernel's bench is its
+          fingerprint. Rule:
+          `analysis/search_shape_inventory_2026-11-13.md` section 5,
+          *The fold*.
     - **D.7.5 The unfitted paired run — `V`.**
       2,000 games against the head (rule 8's screen). Clearly negative with
       parity passed puts the difference outside the kernel: one diagnosis,
       then stop.
     - **D.7.6 The fit — `V`.**
-      Curvature sweep, then one SPSA run under rule 7c, read at
+      In Rarog's units, on the folded kernel (D.7.4.1), whose seeds are
+      right to rounding. Curvature sweep, then one SPSA run under rule 7c, read at
       checkpoints and stopped when its gradients are gone. The fitted
       constants are kept only if fitted over unfitted passes the gate
       PROCESS's SPSA procedure chooses from the tune's own gain read before

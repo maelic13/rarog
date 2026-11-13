@@ -31,11 +31,14 @@ depth).
    hit at a PV quiescence node unless the score is decisive; "no cutoff at
    PV nodes" (Basilisk check, section 1) is Stockfish's form. The queen push
    in quiescence (D.6.2) is the donor's form, not one of Rarog's own.
-4. **Units: the new kernel works in the donor's units** (section 5). Rarog's
-   evaluation is multiplied by 2536/1024 at the wrapper, the donor's
-   constants cross unchanged, and scores are divided back where they leave
-   the kernel. Converting sixty margins the other way is what Phase B did at
-   ×0.457, and its seeds needed +138.6 Elo of fitting.
+4. **Units: the donor's units are a scaffold, not the kernel's final form**
+   (section 5; amended the same day by the maintainer's decision). The
+   kernel is first built with Rarog's evaluation multiplied by 2536/1024
+   and the donor's constants unchanged, so parity can be read. Then the
+   constants are folded into Rarog's units once, by their dimensions,
+   checked against the scaffold in the same binary, and the multiplication
+   is deleted. The fit and everything after it are in Rarog's units. Phase
+   B converted blind at ×0.457, and its seeds needed +138.6 Elo of fitting.
 5. **Parity is two layers** (section 7): decision records from a tracing twin
    of the hybrid, which each rule function must reproduce exactly, and tree
    statistics on 500 positions against a measured noise floor. Identical
@@ -301,9 +304,16 @@ is the donor's form.
 
 ## 5. Seeds and units
 
-**Decision: the kernel works in the donor's units.** The wrapper multiplies
-Rarog's raw evaluation by 2536/1024, as the hybrid does, and every constant
-below crosses unchanged.
+**Decision: the kernel is built in the donor's units and then folded into
+Rarog's.** While it is built and compared with the hybrid, the wrapper
+multiplies Rarog's raw evaluation by 2536/1024, as the hybrid does, and
+every constant below crosses unchanged.
+
+**Amended 2026-11-13 (maintainer decision):** no translation stays in the
+engine. The multiplication is a scaffold for D.7.4. D.7.4.1 folds the
+constants into Rarog's units and deletes it, before the unfitted run and
+the fit; the rule is at the end of this section. The reasons below are why
+the kernel starts in the donor's units, not why it would stay there.
 
 Why, against converting the constants by 1024/2536:
 
@@ -318,8 +328,9 @@ Why, against converting the constants by 1024/2536:
    search-facing ratio, where the raw ratio it measured was 0.406 (RAR-M50)
    and the hybrid plays at 0.404. Its unfitted seeds stood 138.6 Elo below
    their fit (RAR-S73, B.2.4b).
-4. *One coordinate fits the scale.* With the constants fixed, the scale
-   itself (2536) is a single SPSA coordinate that moves every margin at once.
+4. *The conversion can then be checked.* With a kernel in the donor's
+   units beside it in one binary, a converted constant is right or wrong
+   at zero games. Phase B had nothing to check its conversion against.
 
 What it costs, all at one boundary:
 
@@ -340,8 +351,9 @@ What it costs, all at one boundary:
 - **The table is cleared when the switch changes**, since stored scores
   change unit.
 - PROCESS's boundary says a constant is "converted through the measured
-  scale ratio". Applying the ratio to the evaluation is that conversion; the
-  sentence gets one clarifying clause when D.7.4 lands.
+  scale ratio". The fold is that conversion, so the sentence stands.
+- These costs last only while the scaffold does. After the fold, scores,
+  table entries and printed values are Rarog's again.
 
 ### The seed table
 
@@ -378,8 +390,50 @@ correction's size, `h` history, `mc` move count. Units as in section 3.
 | Picker | good noisy at SEE ≥ `−score/47 + 116`; victim `14232·value/1024`; queen promotion 4558; in check `200000 − 20000·piece`; quiet weights 1763, 1024, continuation 1614, 1066, 1086, 1051; escape 8854, 8170, 14051, 20357; check square 10723; threatened −8875; offense 3446; king wall −4494 | hu, su | `movepick.rs` | 63, 87; 18976; the rest equal |
 | SEE values | 109, 403, 435, 679, 1242 | su | `piece.rs:138-148` | 100, 320, 330, 500, 900 |
 
-The fit's surface (D.7.6) is these groups plus the scale. Categoricals (the
+The fit's surface (D.7.6) is these groups after the fold. Categoricals (the
 population rules, the picker's forms) are switches, never coordinates.
+
+### The fold into Rarog's units (D.7.4.1)
+
+One mechanical step after parity, checked against the scaffold.
+
+- **By dimension, not by a single factor.** With `k` = 1024/2536:
+  - a value in evaluation units (a margin, a clamp on an evaluation
+    difference, the aspiration delta, optimism's 113 and 201) is
+    multiplied by `k`;
+  - a coefficient that turns evaluation units into something else
+    (reduction per unit of improvement, history bonus per unit of
+    evaluation swing, the correction's update slope, depth per unit
+    cleared in ProbCut) is divided by `k`;
+  - a ratio of two evaluation quantities, a count, a ply, a history value
+    and a reduction in 1024ths are unchanged;
+  - a quadratic term (`avg²/26394`) is converted by `k` once for each unit
+    it carries.
+- **Resolution.** A converted value below 64 of the donor's units keeps
+  sixteenths of a Rarog unit, as `singular_margin` does today. Nothing is
+  rounded to a whole unit where that moves it by more than 1%.
+- **Exchange values.** The donor's five piece values (109, 403, 435, 679,
+  1,242) are a table the SEE thresholds and the victim term were fitted
+  with, not a translation. My proposal is to keep them as the search's
+  exchange table; the other way is to convert the SEE-unit thresholds to
+  100/320/330/500/900 at ×0.75. The maintainer is asked when D.7.4.1
+  starts.
+- **Checks, at zero games, scaffold against folded in one test build:**
+  1. Every decision record of layer A is reproduced by the folded rules,
+     except where the deciding quantity lies within one Rarog unit of its
+     threshold. The exceptions are counted and stay under 2% of any kind.
+  2. Positions visited to depths 8, 11 and 14 on layer B's 500 positions:
+     the mean log ratio within three standard errors of the noise floor
+     plus 0.01.
+  3. A plant: one constant converted by the wrong dimension must fail
+     check 1 for its kind.
+- **Then the scaffold is deleted:** the multiplication at the wrapper, the
+  division at the boundary and the donor-unit copies of the constants. The
+  folded kernel's bench is its fingerprint from there.
+- **What the fit then does.** Its seeds are right to rounding, so SPSA
+  starts at the measured configuration and needs no large movement. The
+  curvature sweep (PLAN rule 4) still comes first, and a coordinate that
+  runs to its bound is widened and registered again, not left there.
 
 ## 6. RAR-O09
 
@@ -500,6 +554,9 @@ root driver, the protocol, tablebases.
 8. Probes for D.4's instruments. Layer B, then the allocation guard, the
    search-path perft, debug and release tests, fmt, clippy.
 
+D.7.4.1 follows: the fold of section 5 and the scaffold's deletion, before
+any game.
+
 **Invariants** (PLAN's, with their tests): table bounds and the mate and
 tablebase bands; the draw, repetition and rule-50 identities; no allocation
 per node; no large value passed by copy (check the assembly for `memcpy`);
@@ -582,3 +639,4 @@ The maintainer's:
 | D.7.2 | Claude Sonnet — High | builds, the counting twin, smokes and reading four matches by frozen rules |
 | D.7.3 | Claude Opus — High | a tracing patch in the donor and a calibrated statistic |
 | D.7.4 | Claude Opus — High | kernel implementation against a reference, per-node cost rules |
+| D.7.4.1 | Claude Opus — High | a dimensional conversion of about a hundred constants with its own checks |

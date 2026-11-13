@@ -69,6 +69,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [ ] **D.7.2** RAR-O09: the donor's search against the head at equal work, at equal move time and on the clock at two controls — **READY_FOR_IMPLEMENTATION / V**
     - [ ] **D.7.3** Parity instrument: Rarog and the hybrid on one position set — **RESEARCH / I2**
     - [ ] **D.7.4** The kernel in the donor's form, behind one switch — **RESEARCH / I2**
+        - [ ] **D.7.4.1** The constants folded into Rarog's units and the scaffold deleted — **RESEARCH / I2**
     - [ ] **D.7.5** The unfitted paired run — **RESEARCH / V**
     - [ ] **D.7.6** The fit — **RESEARCH / V**
     - [ ] **D.7.7** The gate: the kernel against the head — **RESEARCH / V**
