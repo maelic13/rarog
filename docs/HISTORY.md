@@ -72,7 +72,7 @@ leaf continues here, this is the mapping; everything else is history.
   release before D.7.** It carries D.1's clock, D.3's protocol repairs,
   D.5's behaviour-neutral repairs, D.6.15's draw verdicts, D.6.1, D.6.2,
   D.6.7 and D.6.8, the build names and the universal x64 download (PRs #12 to #18;
-  #18 is `638b56d`); `rustc 1.100.0`; fingerprint 9,077,016 / EBF
+  #18 is `638b56d`, the release #19, `3c57a89`, tagged `v2.7.0`); `rustc 1.100.0`; fingerprint 9,077,016 / EBF
   2.481. The registered read against 2.6.0 (RAR-M87) found a loss, G −7.6
   Elo [−14.4, −0.7] against a five-engine field, and +10.1 ± 8.7 head to
   head; the maintainer decided after the result to ship it for its fixes,
