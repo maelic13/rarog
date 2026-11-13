@@ -1,0 +1,88 @@
+diff --git a/src/diag.rs b/src/diag.rs
+index 9787e95..62f2b7f 100644
+--- a/src/diag.rs
++++ b/src/diag.rs
+@@ -301,6 +301,18 @@ pub mod counters {
+         iir_pv,
+         iir_no_tt_move,
+         iir_shallow_tt,
++        // RAR-S121's screen: nodes that reach the ply cap, and how their line got there.
++        cap_n,
++        cap_q,
++        cap_q_deep,
++        cap_check,
++        cap_draw,
++        cap_sum_root,
++        cap_sum_ext,
++        cap_sum_q,
++        cap_sum_unb,
++        cap_sum_depth,
++        cap_unb_negative,
+         // Move-stage recall and pruning overlap. Counts cover sampled nodes only.
+         move_seen_tt,
+         move_seen_good_capture,
+diff --git a/src/search/node.rs b/src/search/node.rs
+index 72832ff..5108cb3 100644
+--- a/src/search/node.rs
++++ b/src/search/node.rs
+@@ -324,6 +324,42 @@ impl Searcher {
+         depth <= 7 && !in_check && cut_node && estimate <= alpha - self.cfg.proof.ldse_margin
+     }
+ 
++    /// RAR-S121: a node at the ply cap. Its line's plies plus the depth it
++    /// still had split into the iteration's depth, the budgeted positive
++    /// extensions, the quiescence plies, and the rest: depth the line
++    /// gained outside the budget, net of its reductions.
++    #[cfg(feature = "diag")]
++    fn s121_cap(&self, board: &Board, ply: usize, qply: usize, depth: i32) {
++        crate::diag_count!(cap_n);
++        if qply > 0 {
++            crate::diag_count!(cap_q);
++        }
++        if qply >= MAX_QPLY {
++            crate::diag_count!(cap_q_deep);
++        }
++        if board.is_in_check() {
++            crate::diag_count!(cap_check);
++        }
++        if board.can_declare_draw_in_search() {
++            crate::diag_count!(cap_draw);
++        }
++        let frontier = ply - qply;
++        let ext = self.td.stack[frontier - 1].extension_spent.max(0);
++        let root = self.td.root_depth.max(0);
++        let left = depth.max(0);
++        let q = infra::to_i32(qply);
++        let unb = infra::to_i32(ply) + left - root - ext - q;
++        let as_u64 = |v: i32| u64::try_from(v.max(0)).unwrap_or(0);
++        crate::diag_add!(cap_sum_root, as_u64(root));
++        crate::diag_add!(cap_sum_ext, as_u64(ext));
++        crate::diag_add!(cap_sum_q, as_u64(q));
++        crate::diag_add!(cap_sum_unb, as_u64(unb));
++        crate::diag_add!(cap_sum_depth, as_u64(left));
++        if unb < 0 {
++            crate::diag_count!(cap_unb_negative);
++        }
++    }
++
+     /// The late-move reduction's singular term, in 1024ths of a ply: how far
+     /// the TT move's score at this node stood above its exclusion search,
+     /// past an offset, scaled and capped. Zero unless both scores exist.
+@@ -560,6 +596,8 @@ impl Searcher {
+             return 0;
+         }
+         if ply >= MAX_PLY - 1 {
++            #[cfg(feature = "diag")]
++            self.s121_cap(board, ply, 0, depth);
+             return self.corrected_eval(board, ply);
+         }
+         // Every way in (a move, a null move, ProbCut, an exclusion search)
+@@ -2519,6 +2557,8 @@ impl Searcher {
+         #[cfg(feature = "pricing")]
+         let pricing_q_entry = QEntry { alpha, beta, qply };
+         if ply >= MAX_PLY - 1 {
++            #[cfg(feature = "diag")]
++            self.s121_cap(board, ply, qply, 0);
+             return self.corrected_eval(board, MAX_PLY - 1);
+         }
+         debug_assert!(

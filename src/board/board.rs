@@ -250,6 +250,63 @@ impl Board {
         Self::from_fen(STARTING_FEN).expect("starting FEN is valid")
     }
 
+    /// A position from its piece placement, as another engine's search hands
+    /// it over: twelve bitboards in `[WP..WK, BP..BK]` order, the side to
+    /// move, the castling rights and the rule-50 clock, with no en-passant
+    /// square and move number 1. It applies [`Board::from_fen`]'s checks
+    /// without writing or parsing text, and reserves no move history, so a
+    /// board built here is for evaluation: making moves on it grows the
+    /// history on the heap.
+    pub fn from_placement(
+        pieces: [Bitboard; 12],
+        side_to_move: Color,
+        castling: CastlingRights,
+        halfmove_clock: u8,
+    ) -> Result<Self, String> {
+        let mut board = Self {
+            pieces: [Bitboard::EMPTY; 12],
+            occupancy: [Bitboard::EMPTY; 2],
+            all_occ: Bitboard::EMPTY,
+            mailbox: [NO_PIECE; 64],
+            side_to_move,
+            castling: CastlingRights::NONE,
+            ep_sq: 255,
+            halfmove_clock,
+            fullmove: 1,
+            hash: 0,
+            pawn_hash: 0,
+            minor_hash: 0,
+            non_pawn_hash: [0; 2],
+            checkers: Bitboard::EMPTY,
+            history: Vec::new(),
+        };
+        let back_ranks = Bitboard(0xFF00_0000_0000_00FF);
+        for color in [Color::White, Color::Black] {
+            for piece in Piece::ALL {
+                let set = pieces[color as usize * 6 + piece as usize];
+                if (set & board.all_occ).any() {
+                    return Err("two pieces on one square".to_string());
+                }
+                if piece == Piece::Pawn && (set & back_ranks).any() {
+                    return Err("pawns are not legal on the first or eighth rank".to_string());
+                }
+                for sq in set {
+                    board.add_piece(color, piece, sq);
+                    board.hash ^= ZOBRIST.piece(color, piece, sq);
+                }
+            }
+        }
+        if side_to_move == Color::Black {
+            board.hash ^= ZOBRIST.side();
+        }
+        validate_castling_rights(&board, castling)?;
+        board.castling = castling;
+        board.hash ^= ZOBRIST.castling(castling);
+        board.validate_position()?;
+        board.checkers = board.calculate_checkers();
+        Ok(board)
+    }
+
     pub fn from_fen(fen: &str) -> Result<Self, String> {
         let mut board = Self {
             pieces: [Bitboard::EMPTY; 12],
@@ -554,11 +611,6 @@ impl Board {
         self.occupant_type(mv.from_sq())
     }
 
-    #[inline(always)]
-    pub(crate) fn is_quiet_move(&self, mv: Move) -> bool {
-        mv.flags() <= DOUBLE_PUSH
-    }
-
     pub fn parse_move(&self, input: &str) -> Option<Move> {
         self.legal_uci_move(UciMove::parse(input)?)
     }
@@ -762,6 +814,12 @@ impl Board {
     /// [`Board::generate_legal_captures`] into a caller-owned list.
     pub fn generate_legal_captures_into(&mut self, moves: &mut MoveList) {
         super::movegen::generate_captures_into(self, moves);
+    }
+
+    /// The legal captures and non-capturing queen promotions, into a
+    /// caller-owned list: the moves of a captures-only search.
+    pub fn generate_legal_noisy_into(&mut self, moves: &mut MoveList) {
+        super::movegen::generate_noisy_into(self, moves);
     }
 
     pub fn generate_legal_quiets(&self) -> MoveList {
@@ -2496,6 +2554,113 @@ impl fmt::Display for Board {
 
 #[cfg(test)]
 mod tests {
+    /// The partition, judged from what each legal move does on the board and
+    /// not from its flags: a piece taken, a pawn changing file, or a pawn
+    /// reaching the last rank is noisy, and everything else is quiet.
+    /// The captures-only search's list is the legal captures plus the legal
+    /// non-capturing queen promotions, each once, through checks and pins.
+    #[test]
+    fn the_noisy_list_is_the_captures_and_the_queen_pushes() {
+        fn expected(board: &Board) -> Vec<String> {
+            let mut moves: Vec<String> = board
+                .generate_legal_moves()
+                .into_iter()
+                .filter(|mv| mv.is_capture() || (mv.is_promo() && mv.promo_piece() == Piece::Queen))
+                .map(|mv| mv.to_string())
+                .collect();
+            moves.sort_unstable();
+            moves
+        }
+        fn noisy(board: &mut Board) -> Vec<String> {
+            let mut list = MoveList::new();
+            board.generate_legal_noisy_into(&mut list);
+            let mut moves: Vec<String> = list.iter().map(|mv| mv.to_string()).collect();
+            moves.sort_unstable();
+            moves
+        }
+        fn walk(board: &mut Board, depth: u32, pushes: &mut usize) {
+            let got = noisy(board);
+            let mut unique = got.clone();
+            unique.dedup();
+            assert_eq!(got, unique, "a move twice in {}", board.to_fen());
+            assert_eq!(got, expected(board), "noisy list in {}", board.to_fen());
+            *pushes += got.iter().filter(|mv| mv.ends_with('q')).count();
+            if depth == 0 {
+                return;
+            }
+            for mv in board.generate_legal_moves() {
+                board.make_move(mv);
+                walk(board, depth - 1, pushes);
+                board.unmake_move(mv);
+            }
+        }
+        let mut pushes = 0;
+        for fen in [
+            "8/P6k/8/8/8/8/8/K7 w - - 0 1",
+            "k7/8/8/8/8/8/p6K/8 b - - 0 1",
+            "8/2p2P1P/2n2P2/1k6/p7/6N1/P5K1/8 b - - 0 44",
+            "8/2p2P1P/2n2P2/1k6/p7/6N1/P5K1/8 w - - 0 44",
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        ] {
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            walk(&mut board, 2, &mut pushes);
+        }
+        assert!(pushes > 0, "no queen push reached");
+
+        let list = |fen: &str| noisy(&mut Board::from_fen(fen).expect("valid FEN"));
+        assert_eq!(list("8/P6k/8/8/8/8/8/K7 w - - 0 1"), ["a7a8q"]);
+        assert!(
+            list("n7/P6k/8/8/8/8/8/K7 w - - 0 1").is_empty(),
+            "a blocked pawn"
+        );
+        // In check the push must block: on the checking rank, not off its file.
+        assert!(list("K6r/2P5/8/8/8/8/8/7k w - - 0 1").contains(&"c7c8q".to_owned()));
+        assert!(
+            !list("K7/2P5/8/8/8/8/8/r6k w - - 0 1")
+                .iter()
+                .any(|mv| mv.ends_with('q'))
+        );
+        // Pinned on the diagonal, the pawn may take the pinner but not push.
+        let pinned = list("2b4k/1P6/K7/8/8/8/8/8 w - - 0 1");
+        assert!(pinned.contains(&"b7c8q".to_owned()) && !pinned.contains(&"b7b8q".to_owned()));
+        // The captures list itself is unchanged.
+        let mut board = Board::from_fen("8/P6k/8/8/8/8/8/K7 w - - 0 1").expect("valid FEN");
+        assert!(board.generate_legal_captures().is_empty());
+    }
+
+    #[test]
+    fn every_legal_move_is_quiet_or_noisy_by_what_it_does() {
+        let extra = [
+            "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+            "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",
+            "1n6/P6k/8/8/8/8/8/K7 w - - 0 1",
+            "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",
+        ];
+        let (mut castles, mut en_passants, mut promotions, mut under_promotions) = (0, 0, 0, 0);
+        for fen in crate::bench::BENCH_FENS.iter().chain(extra.iter()) {
+            let board = Board::from_fen(fen).expect("valid FEN");
+            for mv in board.generate_legal_moves() {
+                let (from, to) = (mv.from_sq().index(), mv.to_sq().index());
+                let pawn = board.moving_piece(mv) == Piece::Pawn;
+                let noisy = board.piece_at(mv.to_sq()).is_some()
+                    || (pawn && from % 8 != to % 8)
+                    || (pawn && (to / 8 == 0 || to / 8 == 7));
+                assert_eq!(mv.is_noisy(), noisy, "{mv} noisy in {fen}");
+                assert_eq!(mv.is_quiet(), !noisy, "{mv} quiet in {fen}");
+                castles += usize::from(mv.is_castling());
+                en_passants += usize::from(mv.is_en_passant());
+                if mv.is_promo() {
+                    promotions += 1;
+                    under_promotions += usize::from(mv.promo_piece() != Piece::Queen);
+                }
+            }
+        }
+        assert!(castles > 0, "no castling reached");
+        assert!(en_passants > 0, "no en passant reached");
+        assert!(promotions > 0, "no promotion reached");
+        assert!(under_promotions > 0, "no under-promotion reached");
+    }
+
     use super::*;
 
     /// `threats()` agrees with the attacker query on every square of positions
@@ -2804,5 +2969,95 @@ mod tests {
         }
         assert!(seen.exact > 50_000, "only {} exact cases", seen.exact);
         assert!(seen.castling_changed > 0 && seen.ep_set > 0);
+    }
+
+    /// A board built from its placement is the board its FEN builds without
+    /// the en-passant square: every derived key, the checkers and the
+    /// consistency check agree, over a tree of positions with castling,
+    /// promotions, checks and rule-50 clocks. Inconsistent placements are
+    /// refused.
+    #[test]
+    fn a_placement_builds_the_board_its_fen_builds() {
+        fn placement(board: &Board) -> [Bitboard; 12] {
+            let mut pieces = [Bitboard::EMPTY; 12];
+            for color in [Color::White, Color::Black] {
+                for piece in Piece::ALL {
+                    pieces[color as usize * 6 + piece as usize] = board.pieces(color, piece);
+                }
+            }
+            pieces
+        }
+        fn check(board: &Board, checked: &mut usize) {
+            let fen = board.to_fen();
+            let mut fields: Vec<&str> = fen.split_whitespace().collect();
+            fields[3] = "-";
+            fields[5] = "1";
+            let expected = Board::from_fen(&fields.join(" ")).expect("a FEN without its ep square");
+            let built = Board::from_placement(
+                placement(board),
+                board.side_to_move(),
+                board.castling(),
+                board.halfmove_clock(),
+            )
+            .expect("a legal placement");
+            assert_eq!(built.to_fen(), expected.to_fen());
+            assert_eq!(built.hash(), expected.hash(), "hash in {fen}");
+            assert_eq!(built.pawn_key(), expected.pawn_key(), "pawn key in {fen}");
+            assert_eq!(
+                built.minor_key(),
+                expected.minor_key(),
+                "minor key in {fen}"
+            );
+            for color in [Color::White, Color::Black] {
+                assert_eq!(built.non_pawn_key(color), expected.non_pawn_key(color));
+            }
+            assert_eq!(built.checkers(), expected.checkers(), "checkers in {fen}");
+            built.check_consistency().expect("a consistent board");
+            *checked += 1;
+        }
+        fn walk(board: &mut Board, depth: u32, checked: &mut usize) {
+            check(board, checked);
+            if depth == 0 {
+                return;
+            }
+            for mv in board.generate_legal_moves() {
+                board.make_move(mv);
+                walk(board, depth - 1, checked);
+                board.unmake_move(mv);
+            }
+        }
+        let mut checked = 0;
+        for fen in [
+            STARTING_FEN,
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+            "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+            "8/5pk1/6p1/3P3p/4P3/5K2/8/8 b - - 73 54",
+        ] {
+            let mut board = Board::from_fen(fen).expect("valid test FEN");
+            walk(&mut board, 2, &mut checked);
+        }
+        assert!(checked > 2_000, "only {checked} positions");
+
+        let start = Board::starting_position();
+        let mut overlap = placement(&start);
+        overlap[1] |= Bitboard(1 << 12);
+        assert!(Board::from_placement(overlap, Color::White, CastlingRights::NONE, 0).is_err());
+        let mut back_rank_pawn = [Bitboard::EMPTY; 12];
+        back_rank_pawn[5] = Bitboard(1 << 4);
+        back_rank_pawn[11] = Bitboard(1 << 60);
+        back_rank_pawn[0] = Bitboard(1 << 56);
+        assert!(
+            Board::from_placement(back_rank_pawn, Color::White, CastlingRights::NONE, 0).is_err()
+        );
+        let mut no_king = placement(&start);
+        no_king[5] = Bitboard::EMPTY;
+        assert!(Board::from_placement(no_king, Color::White, CastlingRights::NONE, 0).is_err());
+        let mut rookless = placement(&start);
+        rookless[3] = Bitboard(rookless[3].0 & !(1 << 7));
+        assert!(
+            Board::from_placement(rookless, Color::White, CastlingRights(0xF), 0).is_err(),
+            "castling rights without the rook"
+        );
     }
 }

@@ -6,7 +6,6 @@ use crate::board::{Bitboard, Board, Color, Move, Piece, Square};
 use crate::infra;
 
 use super::Searcher;
-use super::movepick::is_noisy;
 
 /// `(colour, piece type, square)` slots: the second index of every
 /// piece-to table.
@@ -304,7 +303,7 @@ impl Searcher {
         let best = u.best;
         let best_piece = board.moving_piece(best);
 
-        if is_noisy(best) {
+        if best.is_noisy() {
             self.td.hist.update_noisy(
                 threats,
                 stm,
@@ -355,12 +354,12 @@ impl Searcher {
 
         if u.ply > 0 {
             let parent = *self.td.stack.back(u.ply, 1);
-            if !parent.mv.is_null() && !is_noisy(parent.mv) && parent.move_count < 2 {
+            if !parent.mv.is_null() && !parent.mv.is_noisy() && parent.move_count < 2 {
                 let malus = (93 * depth - 52).min(935);
                 self.update_continuations(u.ply - 1, !stm, parent.piece, parent.mv.to_sq(), -malus);
             }
         }
-        if u.search_count > 1 && u.fail_high && !is_noisy(best) {
+        if u.search_count > 1 && u.fail_high && !best.is_noisy() {
             let bonus = (233 * depth - 86).min(1_550);
             self.update_continuations(u.ply, stm, best_piece, best.to_sq(), bonus);
         }
@@ -386,7 +385,7 @@ impl Searcher {
         }
         let mover = !board.side_to_move();
         let p = &self.cfg.core;
-        if is_noisy(parent.mv) {
+        if parent.mv.is_noisy() {
             let piece = if parent.mv.is_promo() {
                 parent.mv.promo_piece()
             } else {

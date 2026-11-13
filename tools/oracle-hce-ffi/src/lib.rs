@@ -1,21 +1,39 @@
-//! Native adapter exposing Rarog's HCE to the pre-NNUE Stockfish search.
+//! Native adapter exposing Rarog's HCE to a foreign engine's search.
 //!
-//! Same ABI as the `oracle/hybrid` tag's adapter; the position is rebuilt
-//! through `Board::from_fen` (Rarog's public constructor) instead of the
-//! tag's private snapshot constructor, which current Rarog does not have.
+//! Same ABI as the `oracle/hybrid` tag's adapter. The position arrives as
+//! bitboards and is rebuilt by `Board::from_placement`, which neither writes
+//! nor parses text: an oracle pays for the evaluation it calls, not for a
+//! FEN round trip on every node.
 
 use std::cell::RefCell;
+use std::hint::black_box;
+use std::sync::OnceLock;
 
-use rarog::board::{Board, CastlingRights, Color};
+use rarog::board::{Bitboard, Board, CastlingRights, Color};
 use rarog::eval::Evaluator;
 
 const ABI_VERSION: u32 = 1;
-const PIECE_LETTERS: [u8; 12] = *b"PNBRQKpnbrqk";
 
 thread_local! {
-    /// Stockfish owns one searcher per OS thread. Matching that ownership here
-    /// keeps Rarog's mutable pawn/eval caches private without locks.
+    /// A foreign search owns one searcher per OS thread. Matching that
+    /// ownership here keeps Rarog's mutable pawn/king caches private without
+    /// locks.
     static EVALUATOR: RefCell<Evaluator> = RefCell::new(Evaluator::default());
+}
+
+/// How many times each call builds the board, read once from
+/// `RAROG_HCE_BRIDGE_REPEAT` (default 1). An oracle's time per node at two
+/// repeat counts on the same fixed-depth tree prices the bridge in that
+/// search: the extra builds change no score, only the time.
+fn bridge_repeat() -> u32 {
+    static REPEAT: OnceLock<u32> = OnceLock::new();
+    *REPEAT.get_or_init(|| {
+        std::env::var("RAROG_HCE_BRIDGE_REPEAT")
+            .ok()
+            .and_then(|value| value.parse().ok())
+            .filter(|&repeat| repeat >= 1)
+            .unwrap_or(1)
+    })
 }
 
 /// ABI handshake checked when the hybrid loads the DLL.
@@ -24,72 +42,24 @@ pub extern "C" fn rarog_hce_abi_version() -> u32 {
     ABI_VERSION
 }
 
-/// The FEN of a snapshot: twelve bitboards in `[WP..WK, BP..BK]` order (bit 0
-/// is a1), the side to move, Rarog's castling mask and the rule-50 clock.
-/// En passant is absent, as in the tag's adapter: no HCE term reads it.
-fn snapshot_fen(pieces: &[u64; 12], side: Color, castling: u8, halfmove: u8) -> Option<String> {
+/// The board of a snapshot: twelve bitboards in `[WP..WK, BP..BK]` order
+/// (bit 0 is a1), the side to move, Rarog's castling mask and the rule-50
+/// clock. En passant is absent, as in the tag's adapter: no HCE term reads
+/// it. Castling rights the placement cannot hold (Chess960 rights, which
+/// Stockfish's bench ends with) are dropped rather than refused; in standard
+/// chess they always hold.
+fn snapshot_board(pieces: [u64; 12], side: Color, castling: u8, halfmove: u8) -> Option<Board> {
     if castling & !0xF != 0 {
         return None;
     }
-    let mut board = [0u8; 64];
-    for (index, &bits) in pieces.iter().enumerate() {
-        let mut bits = bits;
-        while bits != 0 {
-            let square = bits.trailing_zeros() as usize;
-            bits &= bits - 1;
-            if board[square] != 0 {
-                return None;
-            }
-            board[square] = PIECE_LETTERS[index];
-        }
-    }
-    if pieces[5].count_ones() != 1 || pieces[11].count_ones() != 1 {
-        return None;
-    }
-    let mut fen = String::with_capacity(90);
-    for rank in (0..8).rev() {
-        let mut empty = 0;
-        for file in 0..8 {
-            match board[rank * 8 + file] {
-                0 => empty += 1,
-                letter => {
-                    if empty > 0 {
-                        fen.push(char::from(b'0' + empty));
-                        empty = 0;
-                    }
-                    fen.push(char::from(letter));
-                }
-            }
-        }
-        if empty > 0 {
-            fen.push(char::from(b'0' + empty));
-        }
-        if rank > 0 {
-            fen.push('/');
-        }
-    }
-    fen.push_str(if side == Color::White { " w " } else { " b " });
-    let rights = CastlingRights(castling);
-    let mut any = false;
-    for (flag, letter) in [
-        (CastlingRights::WHITE_KINGSIDE, 'K'),
-        (CastlingRights::WHITE_QUEENSIDE, 'Q'),
-        (CastlingRights::BLACK_KINGSIDE, 'k'),
-        (CastlingRights::BLACK_QUEENSIDE, 'q'),
-    ] {
-        if rights.has(flag) {
-            fen.push(letter);
-            any = true;
-        }
-    }
-    if !any {
-        fen.push('-');
-    }
-    fen.push_str(&format!(" - {halfmove} 1"));
-    Some(fen)
+    let placement = pieces.map(Bitboard);
+    Board::from_placement(placement, side, CastlingRights(castling), halfmove)
+        .or_else(|_| Board::from_placement(placement, side, CastlingRights(0), halfmove))
+        .ok()
 }
 
-/// Evaluate a legal Stockfish position with Rarog's HCE.
+/// Evaluate a legal position with Rarog's HCE, in centipawns from the side
+/// to move.
 ///
 /// # Safety
 ///
@@ -115,20 +85,16 @@ pub unsafe extern "C" fn rarog_hce_evaluate(
     let input = unsafe { std::slice::from_raw_parts(pieces, 12) };
     let mut snapshot = [0u64; 12];
     snapshot.copy_from_slice(input);
-    let Some(fen) = snapshot_fen(&snapshot, side, castling, halfmove_clock) else {
+    for _ in 1..bridge_repeat() {
+        black_box(snapshot_board(
+            black_box(snapshot),
+            side,
+            castling,
+            halfmove_clock,
+        ));
+    }
+    let Some(board) = snapshot_board(snapshot, side, castling, halfmove_clock) else {
         return i32::MIN;
-    };
-    // Chess960 castling rights (Stockfish's bench ends with such a position)
-    // are not expressible in Rarog's FEN; that position is evaluated without
-    // them. In standard chess the rights always parse.
-    let board = match Board::from_fen(&fen) {
-        Ok(board) => board,
-        Err(_) => match snapshot_fen(&snapshot, side, 0, halfmove_clock)
-            .and_then(|fen| Board::from_fen(&fen).ok())
-        {
-            Some(board) => board,
-            None => return i32::MIN,
-        },
     };
     EVALUATOR.with_borrow_mut(|evaluator| evaluator.evaluate(&board))
 }
@@ -245,6 +211,79 @@ mod tests {
         assert_eq!(
             unsafe { rarog_hce_evaluate(snapshot(&board).as_ptr(), 2, 15, 0) },
             i32::MIN
+        );
+    }
+
+    /// The bridge's own price per call: the exported function against
+    /// `Evaluator::evaluate` on prebuilt boards, over the same positions in
+    /// the same order. Ignored by default; run on an idle host with
+    /// `cargo test --release -- --ignored --nocapture bridge_cost`.
+    #[test]
+    #[ignore]
+    fn bridge_cost() {
+        use std::time::Instant;
+
+        let mut state = 0x2545_F491_4F6C_DD1D_u64;
+        let mut boards = Vec::new();
+        while boards.len() < 50_000 {
+            let mut board = Board::from_fen(rarog::board::STARTING_FEN).expect("start");
+            for _ in 0..120 {
+                let moves = board.generate_legal_movelist();
+                if moves.is_empty() {
+                    break;
+                }
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                let index = usize::try_from(state % moves.len() as u64).expect("index");
+                board.make_move(moves.as_slice()[index]);
+                boards.push(Board::from_fen(&board.to_fen()).expect("replay"));
+            }
+        }
+        let inputs: Vec<([u64; 12], u8, u8, u8)> = boards
+            .iter()
+            .map(|board| {
+                (
+                    snapshot(board),
+                    board.side_to_move() as u8,
+                    board.castling().0,
+                    board.halfmove_clock(),
+                )
+            })
+            .collect();
+        let rounds = 20;
+        let mut direct_ns = Vec::new();
+        let mut bridged_ns = Vec::new();
+        for _ in 0..7 {
+            let mut evaluator = Evaluator::default();
+            let start = Instant::now();
+            let mut sum = 0i64;
+            for _ in 0..rounds {
+                for board in &boards {
+                    sum += i64::from(evaluator.evaluate(black_box(board)));
+                }
+            }
+            direct_ns.push(start.elapsed().as_nanos() as f64 / (rounds * boards.len()) as f64);
+            let start = Instant::now();
+            let mut bridged = 0i64;
+            for _ in 0..rounds {
+                for (pieces, side, castling, clock) in &inputs {
+                    bridged += i64::from(unsafe {
+                        rarog_hce_evaluate(black_box(pieces.as_ptr()), *side, *castling, *clock)
+                    });
+                }
+            }
+            bridged_ns.push(start.elapsed().as_nanos() as f64 / (rounds * boards.len()) as f64);
+            assert_eq!(sum, bridged, "the bridge changed a score");
+        }
+        direct_ns.sort_by(f64::total_cmp);
+        bridged_ns.sort_by(f64::total_cmp);
+        let (direct, bridged) = (direct_ns[3], bridged_ns[3]);
+        println!(
+            "positions {} rounds {rounds} | evaluate {direct:.1} ns | bridged {bridged:.1} ns | bridge {:.1} ns a call ({:.1}% of a bridged call)",
+            boards.len(),
+            bridged - direct,
+            100.0 * (bridged - direct) / bridged
         );
     }
 }

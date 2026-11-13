@@ -2127,9 +2127,9 @@ mod tests {
         // already at or above beta.
         const DEEP: [(&str, &str, u32); 5] = [
             ("CoreNmpRClamp", KIWIPETE, 10),
-            ("CoreSingDoubleNotTtPv", KNIGHT_UP, 10),
-            ("CoreSingTripleNotTtPv", KIWIPETE, 10),
-            ("CoreLmrSingularCap", KNIGHT_UP, 12),
+            ("CoreSingDoubleNotTtPv", PAWN_ENDING, 9),
+            ("CoreSingTripleNotTtPv", SEMI_SLAV, 12),
+            ("CoreLmrSingularCap", TWO_PIECES, 10),
             ("CoreFpEvalAboveBeta", PAWN_ENDING, 13),
         ];
         // Proved live by a test of its own: a root fail-high stops the search
@@ -3197,6 +3197,45 @@ mod tests {
         assert_eq!(result.depth, 1);
         assert_eq!(lines.len(), 1);
         assert_eq!(lines[0].first, result.bestmove.to_string());
+    }
+
+    /// A castling move that fails belongs to the quiet tables: no search
+    /// writes the noisy slot of a king moving to its castled square without a
+    /// capture, and the quiet table does hold the castle.
+    #[test]
+    fn a_search_writes_castling_to_the_quiet_tables_only() {
+        use crate::board::{Bitboard, Color, Move, Piece, Square};
+
+        let engine = EngineOptions::default();
+        let mut searcher = Searcher::default();
+        let limits = SearchLimits {
+            depth: Some(9),
+            ..SearchLimits::default()
+        };
+        let board =
+            Board::from_fen("r3k2r/pppq1ppp/2n1bn2/3pp3/3PP3/2N1BN2/PPPQ1PPP/R3K2R w KQkq - 0 1")
+                .expect("valid fen");
+        let legal = board.generate_legal_moves();
+        searcher.reset_search_state(&limits, &engine, board.side_to_move(), 0, true);
+        searcher.search_root(board, &legal, false, &mut || SearchEvent::None);
+
+        let castles = [
+            (Color::White, Square::E1, Square::G1),
+            (Color::White, Square::E1, Square::C1),
+            (Color::Black, Square::E8, Square::G8),
+            (Color::Black, Square::E8, Square::C8),
+        ];
+        let mut written = 0;
+        for (color, from, to) in castles {
+            let hist = &searcher.td.hist;
+            assert_eq!(
+                hist.noisy(Bitboard::EMPTY, color, Piece::King, to, None),
+                0,
+                "the noisy slot for a castle to {to}"
+            );
+            written += usize::from(hist.quiet(Bitboard::EMPTY, color, Move::new(from, to, 0)) != 0);
+        }
+        assert!(written > 0, "the search never reached a castling move");
     }
 
     /// Each search leaves its root score for the next one's falling eval; a

@@ -1,0 +1,90 @@
+diff --git a/src/diag.rs b/src/diag.rs
+index 9787e95..7018fd3 100644
+--- a/src/diag.rs
++++ b/src/diag.rs
+@@ -40,6 +40,14 @@ pub mod counters {
+     }
+ 
+     declare!(
++        // D.6.2's screen.
++        q_gen,
++        q_gen_qpromo,
++        q_gen_qpromo_empty,
++        q_gen_qpromo_safe,
++        q_gen_qpromo_raise,
++        pc_gen,
++        pc_gen_qpromo,
+         // Denominators. `qnodes` is EXACT, unlike `sampled_qnodes`: the
+         // oracle differential needs a qsearch denominator collected the same
+         // way the oracle collects it, and a 1/1024 sample cannot be joined
+diff --git a/src/search/node.rs b/src/search/node.rs
+index 95672e9..c07d811 100644
+--- a/src/search/node.rs
++++ b/src/search/node.rs
+@@ -14,6 +14,26 @@ use super::pricing::{
+ };
+ use super::{MAX_PLY, MAX_QPLY, SearchEvent, Searcher, TB_WIN_SCORE};
+ 
++/// D.6.2's screen: the legal quiet queen promotions here, and for each whether
++/// the opponent attacks its square once the pawn has left.
++#[cfg(feature = "diag")]
++fn diag_quiet_queen_promotions(board: &mut Board) -> (usize, Vec<bool>) {
++    let promos: Vec<Move> = board
++        .generate_legal_quiets()
++        .iter()
++        .copied()
++        .filter(|mv| mv.is_promo() && mv.promo_piece() == Piece::Queen)
++        .collect();
++    let mut safe = Vec::with_capacity(promos.len());
++    for mv in &promos {
++        let them = !board.side_to_move();
++        board.make_move(*mv);
++        safe.push(!board.is_attacked(mv.to_sq(), them));
++        board.unmake_move(*mv);
++    }
++    (promos.len(), safe)
++}
++
+ /// The evaluator's middlegame material, for the diag census of the margin
+ /// consumers that compare the search's own piece scale with evaluation
+ /// units (a 900-unit queen against an 1131-unit one).
+@@ -1265,6 +1285,13 @@ impl Searcher {
+                 let base_depth = (depth - 4 - improving_i).max(0);
+                 let mut captures = MoveList::new();
+                 board.generate_legal_captures_into(&mut captures);
++                #[cfg(feature = "diag")]
++                {
++                    crate::diag_count!(pc_gen);
++                    if diag_quiet_queen_promotions(board).0 > 0 {
++                        crate::diag_count!(pc_gen_qpromo);
++                    }
++                }
+                 let mut scored = ScoredMoveList::new();
+                 self.score_tactical_moves(
+                     board,
+@@ -2640,6 +2667,25 @@ impl Searcher {
+             board.generate_legal_movelist_into(&mut moves);
+         } else {
+             board.generate_legal_captures_into(&mut moves);
++            #[cfg(feature = "diag")]
++            {
++                crate::diag_count!(q_gen);
++                let (count, safe) = diag_quiet_queen_promotions(board);
++                if count > 0 {
++                    crate::diag_count!(q_gen_qpromo);
++                    if moves.is_empty() {
++                        crate::diag_count!(q_gen_qpromo_empty);
++                    }
++                    if safe.iter().any(|&s| s) {
++                        crate::diag_count!(q_gen_qpromo_safe);
++                        if stand_pat_for_pruning + piece_value(Piece::Queen) - piece_value(Piece::Pawn)
++                            > alpha
++                        {
++                            crate::diag_count!(q_gen_qpromo_raise);
++                        }
++                    }
++                }
++            }
+         }
+ 
+         if in_check && moves.is_empty() {

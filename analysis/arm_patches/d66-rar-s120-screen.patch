@@ -1,0 +1,235 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index b0e8178..5b64bab 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -45,6 +45,8 @@ diag = []
+ # would count the probes. With sampling on the main search's nodes are
+ # unchanged; that equality is the instrument's isolation proof.
+ pricing = []
++# RAR-S120's screen instrument: capture-generation cycles and reorder counts.
++s120 = []
+ 
+ # Exposes the Texel trace machinery (EvalTrace, reconstruct, flat-param helpers)
+ # used by the offline tuner in tools/texel-tuner. Never enabled in
+diff --git a/src/search/mod.rs b/src/search/mod.rs
+index 795c0d2..8ab4cd2 100644
+--- a/src/search/mod.rs
++++ b/src/search/mod.rs
+@@ -41,6 +41,8 @@ pub mod params;
+ mod path_perft;
+ #[cfg(feature = "pricing")]
+ mod pricing;
++#[cfg(feature = "s120")]
++mod s120;
+ mod shared;
+ mod stack;
+ mod thread;
+@@ -791,6 +793,8 @@ impl Searcher {
+         self.cfg.start = limits.issued.unwrap_or_else(Instant::now);
+         self.td.nodes = 0;
+         self.td.tb_hits = 0;
++        #[cfg(feature = "s120")]
++        s120::search_begin();
+         self.td.seldepth = 0;
+         self.td.stopped = false;
+         self.td.quit = false;
+@@ -1261,6 +1265,8 @@ impl Searcher {
+         // dump lives in `search_parallel`, after the helpers are joined.
+         if self.shared.threads == 1 {
+             crate::diag::dump();
++            #[cfg(feature = "s120")]
++            s120::dump();
+             #[cfg(feature = "pricing")]
+             self.pricing_dump();
+         }
+@@ -1633,6 +1639,8 @@ impl Searcher {
+         }
+         if self.shared.threads == 1 {
+             crate::diag::dump();
++            #[cfg(feature = "s120")]
++            s120::dump();
+             #[cfg(feature = "pricing")]
+             self.pricing_dump();
+         }
+diff --git a/src/search/movepick.rs b/src/search/movepick.rs
+index 85d6d6e..be4194e 100644
+--- a/src/search/movepick.rs
++++ b/src/search/movepick.rs
+@@ -276,6 +276,18 @@ impl MovePicker {
+         }
+     }
+ 
++    /// RAR-S120: no capture has been looked at since generation, so a node
++    /// that cuts now never needed them.
++    #[cfg(feature = "s120")]
++    pub(super) fn noisy_untouched(&self) -> bool {
++        match self {
++            Self::Full { .. } => false,
++            Self::Staged { noisy_index, stage, .. } => {
++                *noisy_index == 0 && matches!(stage, Stage::TtMove | Stage::GoodNoisy)
++            }
++        }
++    }
++
+     /// The moves a skip or a break at this point removes: in the quiet stage
+     /// the quiets not yet emitted that do not survive a skip, in the bad noisy
+     /// stage the bad noisy moves not yet emitted. For the pricing records;
+@@ -372,6 +384,33 @@ impl MovePicker {
+                         }
+                     }
+                     Stage::GoodNoisy => {
++                        // RAR-S120: at the first look after a TT move was
++                        // handed over, the captures scored as they would be now.
++                        #[cfg(feature = "s120")]
++                        if *noisy_index == 0
++                            && *noisy_len > 0
++                            && !tt_move.is_null()
++                            && super::s120::order_on()
++                        {
++                            let list = &moves.as_mut_slice()[..*noisy_len];
++                            let top = |scores: &mut dyn Iterator<Item = i32>| {
++                                let mut best = (0usize, i32::MIN);
++                                for (i, s) in scores.enumerate() {
++                                    if s > best.1 {
++                                        best = (i, s);
++                                    }
++                                }
++                                best.0
++                            };
++                            let fresh: Vec<i32> = list
++                                .iter()
++                                .map(|m| searcher.noisy_score(board, threats, m.mv))
++                                .collect();
++                            let any = list.iter().zip(&fresh).any(|(m, s)| m.score != *s);
++                            let eager_top = top(&mut list.iter().map(|m| m.score));
++                            let fresh_top = top(&mut fresh.iter().copied());
++                            super::s120::add_order(list.len() > 1, eager_top != fresh_top, any);
++                        }
+                         while *noisy_index < *noisy_len {
+                             let picked =
+                                 pick_next(&mut moves.as_mut_slice()[..*noisy_len], *noisy_index);
+diff --git a/src/search/node.rs b/src/search/node.rs
+index 72832ff..f5ec40c 100644
+--- a/src/search/node.rs
++++ b/src/search/node.rs
+@@ -1667,7 +1667,17 @@ impl Searcher {
+         } else {
+             MovePicker::staged(tt_move, ply)
+         };
++        #[cfg(feature = "s120")]
++        let s120_t0 = super::s120::tsc();
+         move_picker.fill_noisy(self, board, &threats);
++        #[cfg(feature = "s120")]
++        let s120_fill = {
++            let cycles = super::s120::tsc().wrapping_sub(s120_t0);
++            if !NODE::ROOT {
++                super::s120::add_fill(cycles);
++            }
++            cycles
++        };
+         let mut best_move = Move::NULL;
+         let mut best_score = -INF_SCORE;
+         let mut searched = 0usize;
+@@ -2387,6 +2397,10 @@ impl Searcher {
+                     }
+                     #[cfg(feature = "pricing")]
+                     self.pricing_close(ply, false);
++                    #[cfg(feature = "s120")]
++                    if !NODE::ROOT && move_picker.noisy_untouched() {
++                        super::s120::add_unused(s120_fill);
++                    }
+                     return score;
+                 }
+             }
+diff --git a/src/search/s120.rs b/src/search/s120.rs
+new file mode 100644
+index 0000000..ceadd1f
+--- /dev/null
++++ b/src/search/s120.rs
+@@ -0,0 +1,86 @@
++//! RAR-S120's instrument: the cycles spent generating and scoring a node's
++//! captures before its TT move, the part spent at nodes that cut before using
++//! them, and how often scores taken after the TT move's search would reorder
++//! them. Main thread, one thread; dumped once per search.
++
++use std::cell::Cell;
++use std::sync::OnceLock;
++use std::thread::LocalKey;
++
++thread_local! {
++    static START: Cell<u64> = const { Cell::new(0) };
++    static FILL: Cell<u64> = const { Cell::new(0) };
++    static FILL_N: Cell<u64> = const { Cell::new(0) };
++    static UNUSED: Cell<u64> = const { Cell::new(0) };
++    static UNUSED_N: Cell<u64> = const { Cell::new(0) };
++    static ORDER_N: Cell<u64> = const { Cell::new(0) };
++    static ORDER_MULTI: Cell<u64> = const { Cell::new(0) };
++    static ORDER_TOP: Cell<u64> = const { Cell::new(0) };
++    static ORDER_ANY: Cell<u64> = const { Cell::new(0) };
++}
++
++#[inline(always)]
++pub(super) fn tsc() -> u64 {
++    #[allow(unused_unsafe, reason = "`_rdtsc` is unsafe on older toolchains")]
++    // SAFETY: reading the time-stamp counter has no preconditions on x86-64.
++    unsafe {
++        core::arch::x86_64::_rdtsc()
++    }
++}
++
++fn bump(cell: &'static LocalKey<Cell<u64>>, by: u64) {
++    cell.with(|c| c.set(c.get() + by));
++}
++
++pub(super) fn search_begin() {
++    for cell in [&FILL, &FILL_N, &UNUSED, &UNUSED_N, &ORDER_N, &ORDER_MULTI, &ORDER_TOP, &ORDER_ANY] {
++        cell.with(|c| c.set(0));
++    }
++    START.with(|c| c.set(tsc()));
++}
++
++pub(super) fn add_fill(cycles: u64) {
++    bump(&FILL, cycles);
++    bump(&FILL_N, 1);
++}
++
++pub(super) fn add_unused(cycles: u64) {
++    bump(&UNUSED, cycles);
++    bump(&UNUSED_N, 1);
++}
++
++/// Whether the reorder count runs, from `RAROG_S120_ORDER=1`; it adds work.
++pub(super) fn order_on() -> bool {
++    static ON: OnceLock<bool> = OnceLock::new();
++    *ON.get_or_init(|| std::env::var("RAROG_S120_ORDER").is_ok_and(|v| v.trim() == "1"))
++}
++
++pub(super) fn add_order(multi: bool, top_differs: bool, any_differs: bool) {
++    bump(&ORDER_N, 1);
++    bump(&ORDER_MULTI, u64::from(multi));
++    bump(&ORDER_TOP, u64::from(top_differs));
++    bump(&ORDER_ANY, u64::from(any_differs));
++}
++
++pub(super) fn dump() {
++    let total = tsc().wrapping_sub(START.with(Cell::get));
++    let mut pair = u64::MAX;
++    for _ in 0..256 {
++        let a = tsc();
++        let b = tsc();
++        pair = pair.min(b.wrapping_sub(a));
++    }
++    let g = |cell: &'static LocalKey<Cell<u64>>| cell.with(Cell::get);
++    println!(
++        "info string s120 search {total} fill {} fill_n {} unused {} unused_n {} pair {pair} \
++         order_n {} order_multi {} order_top {} order_any {}",
++        g(&FILL),
++        g(&FILL_N),
++        g(&UNUSED),
++        g(&UNUSED_N),
++        g(&ORDER_N),
++        g(&ORDER_MULTI),
++        g(&ORDER_TOP),
++        g(&ORDER_ANY),
++    );
++}

@@ -171,7 +171,8 @@ class as A and C). Lazy capture generation after the TT move would save the
 capture generation at every node the TT move cuts (about 1.3M of 3.67M loop
 nodes) but is not exact: the noisy scores read a history the TT move's subtree
 changes. It is the one lead worth several percent and belongs to a gated search
-change, not to C.12.
+change, not to C.12. (Superseded 2026-11-11 by RAR-S120: the lead is worth at
+most 0.82% of search cycles game-like.)
 
 ## Lessons
 

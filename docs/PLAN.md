@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **15,625,852 / EBF 2.563** at engine source `1450340` (D.5.5: `Hash` at any size moved every slot, RAR-S106; before it 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.99.1`) | RAR-S105, RAR-P36 |
+| Fingerprint | `bench 13` **11,477,040 / EBF 2.537** at engine source `aee0b3b` (D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.99.1`) | RAR-S105, RAR-P36 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -71,6 +71,7 @@ classical stage.
 | B search | 251 equal-time (247.97, RAR-O03) | 120–200 | selectivity explains 272; a Reckless-shaped stack fitted locally. **Measured at B.9: 272 ± 14 recovered**, G(0) −247.97 → +24.24 ± 8.01 (RAR-O04): above the band, the head beats the oracle |
 | C evaluation | 182 same-search at equal nodes, 266 at equal time (RAR-O05; RAR-O02's 329 was the 2.3.2 evaluation); 129 at equal nodes after C.3 (RAR-O06); **99 at C.11 (RAR-O07)** | 100–160 | six families, whole-surface refits, endgame conversion. **C.0 (2026-10-05):** C.0's screen supports two family clusters (king safety, winnability and scale), not six, and its prior for the family clusters together is 30–90 (`analysis/eval_programme_2026-10-05.md`). **C.3.6 (2026-10-09):** C.2's refit and C.3's king unit closed 52 ± 26 of the 182 in the same search (RAR-O06); one reading does not split them, and the refit is not a family cluster. The band is corrected at C.11 by RAR-O07's measurement (registered 2026-10-11), never by an estimate. **Measured at C.11 (RAR-O07, 2026-10-21): 82.5 ± 25.2 recovered at equal nodes**, +181.7 → +99.2 ± 16.6: below the planned 100–160 and in the upper half of C.0's 30–90 prior for the family clusters; Rarog's own strength gain over Phase C is read by C.11's pool gauntlet and E.1, not by this meter |
 | D clock, SMP, robustness | unmeasured | 15–40 | Reckless-shaped node-fraction TM; 4T quality |
+| D.7 search shape | 22.5 ± 7.9 at equal clock against Phase B's donor as it is (RAR-O08, match 5); the shares of tree shape, clock use and kernel speed are unread | 0–70 | conditional on D.7.2's reads or the maintainer's decision: the kernel in the donor's whole form, seeded from the hybrid's configuration and fitted. Equal strength is accepted (maintainer decision 2026-11-13), so the band starts at 0 |
 | Speed inside B and C | — | 10–30 | per-node cost of the new search and evaluation modules. **B.9:** the B head is 26.2% slower than 2.4.0 in pooled bench NPS (RAR-P35), after B.7 won back about 20% inside B (+35.5 Elo, RAR-S98); B's gates already include that cost and that recovery, so this row recorded nothing of B's separately and now applies to C. **C.12** owns the recovery (added 2026-10-13) |
 
 **Corrected at B.9:** the search programme alone recovered more than its
@@ -204,10 +205,17 @@ gating. The rules below decide order and acceptance in this roadmap.
      per theme as points, percentage and top-1 rate (as `sts_runner2.py`
      in RBp4wn (tissatussa, Go, CC0, `github.com/tissatussa/RBp4wn`, read 2026-09-17) does; the
      scoring is added to `fixed_budget_probe.py`, not a second runner).
-   - **Canaries:** a regression rule. No oracle-anchored canary the baseline
-     solves may be lost, where solving means stable at no more than the anchor
-     plus two plies and solved at 100k nodes. New passes are recorded, not
-     required.
+   - **Canaries:** a regression diagnostic, with the standing of every
+     zero-game floor above. The floor is that no oracle-anchored canary the
+     baseline passes is lost, where passing means stable at no more than
+     the anchor plus two plies and solved at 100k nodes. New passes are
+     recorded beside the losses. A later settle with the position still
+     solved at 100k is a stability shift: it gets a written cause from the
+     per-depth moves and never holds a candidate from its gate. A lost
+     tactic, a canary the baseline solves at 100k and the candidate does
+     not, stops a candidate before any game only together with WAC at 100k
+     under its floor (RAR-M85; maintainer decision 2026-11-11, delegated
+     to the agent's review on condition of a stated and valid reason).
    - **Curvature sweep before any SPSA:** a checklist item with its own
      evidence path, `analysis/<leaf>_sweep_<date>.md` with raw results under
      `tools/results/`. Five registered coordinates each run at 0.5x, 0.75x,
@@ -224,7 +232,10 @@ gating. The rules below decide order and acceptance in this roadmap.
    A miss is recorded as sign, magnitude, mechanism, interaction, confidence
    or instrument. `NO_CHANGE`, refuted and too-sparse are successful outcomes.
 10. **Deficit meters are re-measured at every programme checkpoint**: the
-    equal-time gap against the frozen Stockfish-search oracle (B), the
+    equal-time gap against the frozen Stockfish-search oracle (B) and, from
+    RAR-O08 on, against Reckless's search on Rarog's evaluation, the
+    stronger reference (the head +59.8 ± 8.1 over the first and −22.5 ± 7.9
+    against the second, 2026-11-13), the
     same-search gap against Stockfish's classical HCE (C), the conversion
     instrument (A.5), pooled-PGO NPS, and the pool score against the four
     target engines.
@@ -332,30 +343,42 @@ maintainer decision 2026-11-04; both are done. On 2026-11-05 (maintainer
 request) the roadmap was checked so that the numbering is the order of work
 from here to the end: no step waits for a later one, and no work is listed
 twice (HISTORY's number map holds what moved).
+On 2026-11-13 (maintainer decision, after RAR-O08) the order of work left
+the numbering in two places, and the rows below are in the order of work.
+D.6.8 stays first, because D.7.2's equal-node match needs one count per
+position. D.7, the search-shape step, then runs ahead of every other open
+D.6 leaf; those leaves keep their numbers, which tests and records cite,
+and each is asked first whether it is still an issue on the kernel D.7
+leaves behind. 2.7.0, an unscheduled release with no step of its own, is
+cut before D.7 on a registered no-regression read against 2.6.0 (E.3).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.1 | RESEARCH | R2 | Screen first among the cards (castling's classification) |
-| D.6.2 | RESEARCH | R2 | Screen second (quiet queen promotions in quiescence) |
-| D.6.3 | RESEARCH | R2 | Screen before any implementation; screened with D.6.4 |
-| D.6.4 | RESEARCH | R2 | Screen before any implementation |
-| D.6.5 | RESEARCH | R2 | Screen before any implementation |
-| D.6.6 | RESEARCH | R2 | Screen before any implementation |
-| D.6.7 | RESEARCH | R2 | Screen before any implementation |
-| D.6.8 | RESEARCH | R2 | Screen before any implementation |
+| D.6.8 | READY_FOR_IMPLEMENTATION | R2 | Screened (RAR-S123): count each position once, 16.1% of the count today; decide re-searches first; gate case 2 |
+| D.7.0 | RESEARCH | R3 | The inventory of every departure from Reckless `0756957`, the seed table from the hybrid's configuration, the parity design, RAR-O09's registration |
+| D.7.1 | READY_FOR_IMPLEMENTATION | I1 | `sprt.ps1` takes a node budget and a move time per engine, each with a wire smoke |
+| D.7.2 | RESEARCH | V | RAR-O09's three reads after D.6.8; the rebuild opens at +10 or more at equal nodes, otherwise the maintainer decides after consultation |
+| D.7.3 | RESEARCH | I2 | Opens with D.7.2's decision |
+| D.7.4 | RESEARCH | I2 | Opens with D.7.2's decision; parity before any game |
+| D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games |
+| D.7.6 | RESEARCH | V | The fit in registered blocks; kept only if fitted over unfitted passes `[0,3]` |
+| D.7.7 | RESEARCH | V | The kernel against the head on the loss-permitting bracket; `10+0.1` and 4T reads |
+| D.7.8 | RESEARCH | R2 | Each known problem asked "still an issue?" on the new kernel |
+| D.7.9 | RESEARCH | V | Adoption by maintainer decision on D.7.7 and D.7.8; meters; the old kernel deleted |
 | D.6.9 | RESEARCH | R2 | Screen before any implementation |
 | D.6.10 | RESEARCH | R2 | Screen before any implementation |
-| D.6.13 | RESEARCH | R2 | Screen before any implementation |
-| D.6.16 | RESEARCH | R2 | Screen before any implementation |
-| D.6.17 | RESEARCH | R2 | Screen before any implementation |
-| D.6.20 | RESEARCH | R2 | Screen before any implementation |
+| D.6.13 | RESEARCH | R2 | After D.7: the donor's aspiration form is part of a rebuilt kernel; re-evaluate first, close if moot |
+| D.6.16 | RESEARCH | R2 | After D.7: quiescence is rebuilt in the donor's form; re-evaluate the gain pruning on it first |
+| D.6.17 | RESEARCH | R2 | Card: the wrong-pick branch fired on D.6.3's candidate (a transposing rook kept by root order); Basilisk's root rule is the prior, the ignored transposing-rook anchor the acceptance test; after D.7, asked first by D.7.8 (its hold on 2.7.0 lifted 2026-11-13) |
+| D.6.20 | RESEARCH | R2 | Screen before any implementation; a measured instance: the won-ending clock test is red since `ee0b3e4` (9.5 s against 8 s), ignored as its acceptance test; after D.7, asked first by D.7.8 (its hold on 2.7.0 lifted 2026-11-13) |
 | D.6.21 | RESEARCH | R2 | Screen: does a one- or two-ply search already read the 88 above 0; minutes |
 | D.6.22 | RESEARCH | R2 | Screen: a per-site scale that keeps the draws near 0 and the wins above it; minutes |
 | D.6.23 | RESEARCH | R2 | Screen: raw against corrected at the non-verdict leaves near the verdicts in the 63 fixture searches; minutes |
 | D.6.24 | RESEARCH | R2 | Screen: a narrowed or discounted fortress on the same enumeration, draws kept at 0 and wins lifted; minutes |
 | D.6.25 | RESEARCH | R2 | Screen: does any search at the gate's budget pick the bishop promotion, or score the same-coloured pair above a draw at the root; minutes |
 | D.6.26 | RESEARCH | R2 | Screen: the pawnless one-minor-ahead classes against Syzygy over an enumeration, and their exposure in gate games; minutes |
-| D.7 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
+| D.6.27 | RESEARCH | R2 | After D.7: the donor has no IIR; re-evaluate first, close if moot |
+| D.6.28 | RESEARCH | R2 | Screen: the unspent clock share by move number on gate games; then one knob |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -375,6 +398,8 @@ twice (HISTORY's number map holds what moved).
 | D.8.19 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.20 | READY_FOR_IMPLEMENTATION | I1 | Its census has no dependency |
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
+| D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
+| D.11 | RESEARCH | R2 | The originality disclosure, moved from E.3.0; its hold is lifted for 2.7.0 (maintainer decision 2026-11-13) and stands for the release after it |
 
 ## Phase D — Clock, threads, robustness
 
@@ -393,6 +418,10 @@ records from before 2026-11-01, where D.4 is the tablebase leaf. On
 2026-11-05 five strength candidates left D.6 (D.6.11 to E.4, D.6.12 to G.2,
 D.6.14, D.6.18 and D.6.19 to H.2) and D.8.17 merged into D.5.16; their
 numbers are retired, not reused.
+On 2026-11-13 (maintainer decision) the search-shape step took D.7, large
+pages on Linux moved from D.7 to D.10 and the originality disclosure
+moved from E.3.0 to D.11; D.7 runs before the open D.6 leaves, which keep
+their numbers.
 
 A finished step keeps its heading over a short summary; its full
 text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
@@ -460,628 +489,34 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   lead (`analysis/identical_tree_counters_card_2026-11-05.md`). Full record,
   D.4.1 to D.4.6: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
 - **D.5 Behaviour-neutral repairs from the engine review: the table handle and the helper lifecycle, the fixed-depth vote, `Hash` at any size, dead code, test and CI gaps — `I1`, DONE 2026-11-08.**
-  Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` (its §5 lists
-  every item with its reviewer ID; the reports are in
-  `analysis/artifacts/engine-review-2026-11-01/`). Every item reproduces
-  the development fingerprint (GUIDE's checkpoint) on both slider backends,
-  except D.5.5, which moves it by design; passes the debug and release
-  suites, `cargo fmt --check` and `cargo clippy --all-features
-  --all-targets` at zero warnings, and lands as its own commit; an item that
-  touches hot code (6, 9, 10) adds the allocation guard and one pooled-NPS
-  read by PROCESS's method. No strength gate: AGENTS' repair case 1 with the
-  named activation or correctness read. In order of value:
-    - **D.5.1 The table handle — `I1`, DONE 2026-11-06.** (TT-1, TT-3, DRIVER-10,
-     DRIVER-20; the 2026-10-06 audit in D.2.) `7f81c4e`: the `Clone` derives
-     on `TranspositionTable`, `TtStorage` and `LocalTable` are gone; a
-     `SharedTt(Arc<SharedTable>)`, which `make_shared` returns, is all a
-     `WorkerJob` carries of the table, and an idle helper no longer pins the
-     previous table through a `Hash` change. The helper releases the handle
-     before sending its result, not after as first written: the main thread
-     then holds the table alone once it has every result, which a test can
-     assert without a race (`a_helper_holds_the_table_only_for_its_job`;
-     keeping the handle fails it with 4 handles against 1). Read: `Threads
-     4`, `Hash 1024`, one search, `Hash 2048`: private bytes 2,211 MiB
-     against 3,229 on `4d906a9`, and that binary fell to 2,205 only after its
-     next search. A Threads-2 `go depth 10` completes on both. Fingerprint
-     14,749,043 / EBF 2.564 on both slider backends; debug and release
-     suites, fmt and clippy clean. The transient of old plus new during
-     `resize` stays, for D.5.2.
-    - **D.5.2 A `Hash` change at `Threads > 1` fills the table twice — `I1`, DONE 2026-11-06.** (TT-2.)
-     `8859e67`: `configure` builds the shared form directly through
-     `resize_shared`, and the shared allocation can now refuse a size, so a
-     failed resize keeps the old table at any thread count; two tests pin
-     that, in the table and through `configure`. The price stays the
-     maintainer's trade: old and new are held together while the new one
-     fills. No test sees the single fill, since form and size come out the
-     same either way; the read does. `Threads 4`, `Hash 1024` to `4096`,
-     `setoption` to `readyok`, five alternating fresh processes, on an idle
-     host: median 208 ms against 615 on `7f81c4e` (a first read, 224 against
-     648, ran beside another session's load and is superseded). Private bytes
-     unchanged from D.5.1 (2,211
-     MiB). Fingerprint 14,749,043 / EBF 2.564 on both slider backends; debug
-     and release suites, fmt and clippy clean. `make_shared` itself still
-     cannot report a refusal, on a `Threads` change: TT-15, G.1's.
-    - **D.5.3 The fixed-depth vote — `I1`, DONE 2026-11-06.** (DRIVER-12.) Helpers drop the
-     depth limit and the weighted vote ran for every single-line search, so
-     `go depth N` at `Threads > 1` could report a helper's result, deeper or
-     shallower than N: at Threads 4 and `go depth 4` the main thread reached 4
-     while helpers stopped at 2 to 5. `32bb806` and `7f05301`: `pool_answer`
-     holds the whole decision and takes Stockfish 19's rule (the development
-     tree of 2026-10-28 has the same): a depth limit is the main thread's, even
-     stopped inside its first iteration, and anything else votes. `go mate N`
-     has its own `mate_plies` field, because a mate search is no depth limit
-     there; `32bb806` had taken it off the vote by reading the shared field,
-     and had kept a vote for that first iteration, both corrected by maintainer
-     decision 2026-11-06. `pool_answer`'s tests fail on either side's mutation;
-     the whole-path test at Threads 4, 30 searches, caught a removed branch
-     only 1 time in 3, since helpers race. Read on an idle host, 30 fresh `go
-     depth 10` per row, last `info depth`: all 10 at Threads 2 and at Threads
-     4, with the addenda below in; `8859e67`, read beside another session's
-     load and not read again, gave 8 to 9 in 5 of 30 and 8 to 11 in 3 of 30.
-     `go depth 30` with `stop` answered 30 of 30, and MultiPV 2 reached its
-     depth. Fingerprint 14,749,043 / EBF 2.564 on both slider backends; debug
-     and release suites, fmt and clippy clean. MultiPV, `go mate` and the vote
-     then still differed from the donors: the addenda below, taken before D.5.4
-     by maintainer decision 2026-11-06.
-        - **D.5.3.1 Helpers and the answer under MultiPV — `R2`, DONE 2026-11-06.**
-         Rarog's helpers searched one line and the main thread answered,
-         B.2.0.2's contract, which this replaces. Both donors' helpers search
-         every line. Reckless answers with thread 0; Stockfish votes since its
-         "multiPV: protect mated-ins and allow thread selection" (PR 6728) and
-         prints the winner's lines. Maintainer decision: helpers search every
-         line and the main thread answers, as in Reckless, so the lines stay one
-         thread's list (`af2bb1f`). A helper's mate watch no longer ends it
-         alone. Nothing tests that `search_parallel` hands helpers the line
-         count; `a_helper_searches_every_line` calls `search_worker` directly.
-         Read, idle host, `go depth 16`, MultiPV 3, Threads 4, nine alternating
-         runs: 809 ms against 879 at the start position (0.92), 1,222 against
-         1,033 in a middlegame (1.18). Frozen prediction: medians within 10%,
-         and not done only if 10% or more slower on both. The rule did not fire.
-         Calibration: the prediction missed on the middlegame, in magnitude, and
-         single runs spread by about 40%, so nine runs do not resolve the sign;
-         time to depth also says nothing of the lines' quality.
-        - **D.5.3.2 `go mate` without a ply limit — `R2`, DONE 2026-11-06.** Rarog
-         stopped the main thread at `2N - 1` plies. Both donors have no ply limit
-         and run until a mate within N is proved or they are stopped. Reckless
-         lets only thread 0 end the search; Stockfish lets any thread, from
-         "Improve multi-threaded go-mate searches" (PR 6668). Maintainer
-         decision: no limit, and any thread (`bbc10d2`). A position without a
-         mate runs until `stop` or the maximum depth. Only a completed
-         iteration's score counts, and Rarog takes no other into its result, so
-         Stockfish's guard against aborted scores has no counterpart here. The
-         forced-move shortcut stands aside. A defect found by the read and fixed
-         here: a helper's answer printed its line only for a different move, so
-         a helper's proof could end the search with the main thread's last line
-         showing no mate, 10 of 36 searches over twelve positions; 0 of 36 now,
-         and both donors print whenever a helper answers. Read, idle host, WAC's
-         300 positions at 200 ms, mates within N, against `a458e17`: `go mate 3`
-         36 to 23 at one thread and 37 to 24 at four; `go mate 5` 60 to 46 and
-         61 to 51, none lost in any row; three more rounds of `go mate 5` at
-         four threads, 62, 62, 62 against 48, 51, 49. `stop` ended a search in
-         1 ms at both counts. No effect on games.
-        - **D.5.3.3 The vote's weight and its decisive order — `R2`, DONE 2026-11-06.**
-         Rarog and Reckless weigh `(score - min + c) * depth`, with `c` 14 and
-         10; Stockfish 19 weighs score alone (`c` 14) after "Simplify thread
-         selection" (PR 6935), which passed as a non-regression at STC and LTC
-         over 437,904 and 484,778 SMP games, so its evidence is neutrality, not
-         a gain. Maintainer decision: the weight stays, Reckless's form, with no
-         gate; retry only if the vote shows up as a defect. Both donors take the
-         shortest mate among decisive results, Stockfish since a 2019 bug fix,
-         and `parallel_result_key` ranked them by vote first; now the shortest
-         decides (`a458e17`). Pinned by a forced test for wins and losses, not
-         measured in games. It moves at `Threads > 1` only.
-    - **D.5.4 Helper start-up — `I1`, DONE 2026-11-06.** (DRIVER-14, TT-8.) Each helper
-     built and discarded a 64 MiB table and touched about 32 MB of tables, and
-     `isready` waited for none of it. `be12cb5`: `Searcher::helper` starts on the
-     1 MiB table a helper keeps between jobs, and a helper acknowledges its
-     start-up and each `NewGame`, so `readyok` means ready. New helpers start
-     together and are waited for together; `ucinewgame` tells them first and
-     they clear alongside the main thread. A helper that died has dropped its
-     sender, so the wait cannot hang. Read, `Threads 8`, three fresh processes,
-     private bytes at `readyok`: 388 MiB each time, peak the same, against 362,
-     535 and 606 with peaks to 641 on `af2bb1f`, whose helpers were still
-     allocating. The cost is that `readyok` now waits for that start-up; it was
-     not timed, the host being busy, and no search is on the clock for it.
-     Stand-in slow helpers pin both waits; dropping either wait fails, dropping
-     a real helper's acknowledgement hangs the suite. Fingerprint 14,749,043 /
-     EBF 2.564 on both slider backends; debug and release suites, fmt and
-     clippy clean.
-    - **D.5.5 `Hash` at any size — `I1`, DONE 2026-11-06.** (TT-7.) `Hash` was floored to a power of two
-     with no word (1000 → 512 MiB, 2000 → 1024, 3000 → 2048, 32000 → 16384).
-     Reckless and Stockfish 19 size exactly, so the notice planned here gave
-     way to the repair by maintainer decision 2026-11-06, moving it up from
-     G.2, whose condition could never fire: a notice prints on users' machines.
-     `1450340`: both table forms take the whole size, a cluster is the high half
-     of key times count, and the tag moves to the key's low 16 bits so the two
-     stay independent. `Hash 1000` holds 1,042 MiB against 554 at one thread.
-     The fingerprint moves at every size, to 15,625,852 / EBF 2.563: 18 positions
-     up and 17 down, median ratio 1.000; six valid bit choices bench 11.9M to
-     15.6M, and an index overlapping the tag reads 53.0M at EBF 2.80, so this is
-     the search's chaos and not a weak tag. Test keys that relied on the old
-     mapping were fixed first, in their own commit (`9b8538d`), and pass on both
-     tables. Debug and release suites, fmt and clippy clean; mutants of the tag
-     and of the floor fail. Gate: RAR-S106, AGENTS' repair case 2, a no-regression
-     speed read and a 2,000-game fixed read with a harm rule at −13 nElo. Both
-     passed: speed +1.07% (different trees, so it only rules out a large cost)
-     and nElo +2.1 ± 15.2, so the repair stays, with no strength claimed.
-    - **D.5.6 The dead quiescence type parameter — `I1`, DONE 2026-11-08.** (NODE-6): `quiescence<NODE>` never
-     reads `NODE` (the PV bit comes from the stored form since B.4), so `Pv`
-     and `NonPv` are two identical 355-line copies of the hottest recursion;
-     drop the parameter. Fingerprint exact; the pooled-NPS read and one
-     `quiescence` body in the release binary. The premise held for rated
-     builds only: D.4's pricing build labelled its quiescence records with
-     `NODE`. `d36eee9` drops the parameter and keeps that label in a field
-     set at each hand-off from `negamax`, which a quiescence never calls.
-     One `quiescence` body in the release assembly against two. Fingerprint
-     15,625,852 / EBF 2.563 on both slider backends. The pricing build's
-     records are byte-identical to the head's over all 338,364 lines, and a
-     label forced false changes 1,290 of them, all in quiescence rules.
-     Debug and release suites, the allocation guard among them, fmt and
-     clippy clean. Pooled NPS, four pext builds an arm, no regression by step
-     2: +0.03%, 95% interval −0.22% to +0.28% over six cycles (step 1 −0.27%,
-     between). The prediction, frozen in the commit, was +0.2% ± 0.5%. The
-     read lies inside that range, but no gain is visible: one copy of the
-     recursion did not make it faster here.
-    - **D.5.7 The root `searchmoves` filter — `I1`, DONE 2026-11-08.** allocates a `Vec` per root call
-     (NODE-13): filter in place. The search's root list is always set, so
-     every root visit allocated, not only under `searchmoves`. `125bf5c`
-     narrows the list in place with `MoveList::retain`, in its order and with
-     no new `unsafe`. Bench position 0 at one thread now adds one allocation
-     over eight iterations, against 77; the allocation guard's comment says so.
-     MultiPV 3 and `searchmoves` searches on six positions are identical to the
-     head's over all 323 output lines (the bench never narrows the list).
-     Fingerprint 15,625,852 / EBF 2.563 on both slider backends. Debug and
-     release suites, fmt and clippy clean; a `retain` that writes out of order
-     fails its test. Pooled NPS, four pext builds an arm, no regression by step
-     2: −0.25%, 95% interval −0.86% to +0.35% over six cycles. The first
-     step 1 was disturbed and discarded unread; its repeat read −0.31%,
-     between. The prediction, frozen in the commit, was +0.1% ± 0.4%: inside
-     the range, so a root allocation per visit had no visible cost.
-    - **D.5.8 Dead Syzygy code — `I1`, DONE 2026-11-08.** (PROTO-13): `syzygy::probe_root`, `RootProbe`, their
-     constants and the dead `tb_init` branch (it returns `true` at both
-     exits); one `unsafe` site fewer. `61bd513` deletes `probe_root`,
-     `RootProbe` and the test line that called it; no constant was the
-     probe's alone, since the root ranking decodes the same fields. Fathom's
-     `tb_init` returns `true` at both exits (`tbprobe.c:883`, `:1043`), an
-     empty path among them after it sets `TB_LARGEST` to 0, so
-     `initialize`'s failure arms were dead and its separate empty-path call
-     a duplicate: one call, then `TB_LARGEST`, is the whole result. Three
-     `unsafe` sites fewer, 24 to 21. Fingerprint 15,625,852 / EBF 2.563 on
-     both slider backends; debug and release suites, fmt and clippy clean.
-     A UCI session that sets the fixture, a missing folder, `<empty>`, an
-     empty value, the fixture again and a two-folder path, searching KQK and
-     KRK after each, is identical to the head's over all 196 lines: tables
-     load, unload to no probes, and reload.
-    - **D.5.9 The slider-table `unsafe` and the timer — `I1`, DONE 2026-11-08.** (RUST-2): the four identical
-     `get_unchecked` sites in `attacks.rs` become one `#[inline(always)]`
-     helper (codegen `pext; add; mov` unchanged, checked in the assembly), and
-     `timeBeginPeriod` is declared `pub safe fn` in the `unsafe extern` block
-     (compile-checked on 1.99.1), removing the block in `main.rs`. After
-     item 8 the count is 21 and this leaf takes it to 17; the floor is the
-     maintainer's decision and this leaf proposes it. `7d046b6`: one
-     `slider_attacks` holds the unchecked load, with the slot computed by
-     `SliderEntry::slot`; `main` calls `timeBeginPeriod` without a block.
-     `unsafe` sites 21 to 17; proposed floor 17. The release binaries'
-     instructions are identical to the head's on both backends, operands
-     included once addresses are masked (146,411 magic and 144,122 pext
-     instructions, 112 `pext`). Fingerprint 15,625,852 / EBF 2.563 on both
-     backends; debug and release suites, the allocation guard among them,
-     fmt and clippy clean. Pooled NPS, four pext builds an arm, no
-     regression by step 1: +0.04%, 95% interval −0.13% to +0.22%. The
-     prediction, frozen in the commit, was 0.0% ± 0.4%. The unsafe floor is
-     17 (maintainer decision 2026-11-08), replacing 24.
-    - **D.5.10 Stack-built tables — `I1`, DONE 2026-11-08.** (RUST-8): `HistoryTables::default` builds 64 KB
-      and 21 KB tables in its frame and copies them to the heap, and
-      `rank_root_moves` builds the 102 KB `TbRootMovesRaw` twice per tablebase
-      root rank; build them zeroed on the heap, and the assembly scan shows
-      the copies gone. Both held in the head's assembly: frames of 98,344 and
-      204,424 bytes, and two table-sized `memcpy` calls. `Box::write` into
-      `Box::new_uninit` did not help; `dd1c66a` boxes an empty static (the
-      history tables) or an associated constant (Fathom's buffer) instead,
-      which compiles to `__rust_alloc_zeroed`, with no new `unsafe`. The
-      frames are 40 and 1,896 bytes and no table-sized `memcpy` is left;
-      `clear` assigns the same statics and still compiles to the six
-      in-place `memset` calls. Fingerprint 15,625,852 / EBF 2.563 on both
-      backends; debug and release suites, the allocation guard among them,
-      fmt and clippy clean. A MultiPV 3 session on five KPK roots, which
-      the fixture ranks by WDL alone (no DTZ file), is identical to the
-      head's over all 128 lines, and a mutant whose WDL root probe always
-      fails changes it. Pooled NPS, four pext builds an arm (the base pool
-      is D.5.9's candidate, the same engine source), no regression by step
-      2: −0.11%, 95% interval −0.34% to +0.11% over six cycles (step 1
-      −0.22%, between). The prediction, frozen in the commit, was 0.0% ±
-      0.4%. 1,891 of 144,122 instruction lines differ in the pext binary,
-      282 of their 325 hunks in one region, where construction is inlined.
-    - **D.5.11 The Fathom FFI layout guard — `I1`, DONE 2026-11-08.** (RUST-5): `const` size asserts for
-      `TbRootMoveRaw` (528 B) and `TbRootMovesRaw` (101,908 B, align 4) and a
-      test that parses `TB_MAX_MOVES` and `TB_MAX_PLY` out of
-      `vendor/fathom/src/tbprobe.h`; a drift there would be silent memory
-      corruption. `a21f647`: the asserts pin size and alignment of both, the
-      values the C compiler gives (clang on Fathom's header: 528 and 101,908,
-      align 4); the test checks all 18 constants Rarog mirrors from the
-      header, the two limits, the WDL values and the result masks and
-      shifts. A header `TB_MAX_MOVES` of `(192+2)` fails the test, and a
-      `pv_size` narrowed to `u16` fails the build. Fingerprint 15,625,852 /
-      EBF 2.563 on both backends; debug and release suites, fmt and clippy
-      clean.
-    - **D.5.12 The PEXT tier in CI — `I1`, DONE 2026-11-08.** (RUST-7, BOARD-5): `--cfg rarog_pext` without
-      `+bmi2` compiles clean today, so add a `compile_error!` under
-      `all(rarog_pext, target_arch = "x86_64", not(target_feature = "bmi2"))`,
-      and a CI step with `RUSTFLAGS="--cfg rarog_pext -C
-      target-feature=+bmi2"` for clippy and `cargo test --test
-      slider_backends` (clean on this host). `a1c32e3` adds the
-      `compile_error!` beside `pext_index`, whose safety note now rests on
-      it; `cargo check` under `--cfg rarog_pext` alone fails with it.
-      `ba28374` adds the step to CI's lint job, in its own target
-      directory. Both of its commands pass on this host; GitHub's runner
-      has not run it yet. Fingerprint 15,625,852 / EBF 2.563 on both
-      backends; debug and release suites, fmt and clippy clean.
-    - **D.5.13 The `texel` and `tune` evaluation tests in CI — `I1`, DONE 2026-11-08.** (EVAL-1): the
-      integer-exact trace reconstruction gate runs only under `--features
-      texel` and CI never runs it (37 pass today); one CI step per feature and
-      a line in AGENTS' verification list for evaluation or trace changes.
-      Every feature-only test is a library test: `texel` runs 266 against
-      the default 259 (eight of its own, the gate among them, and one default
-      test it leaves out), `tune` 265 (six of its own). `3fc9be3` adds
-      `cargo test -p rarog --release --features <f> --lib` for each to CI's
-      feature job; both pass here, and a reconstruction planted one unit off
-      fails the `texel` step on two tests, the gate among them. GitHub's
-      runner has not run them yet. AGENTS' verification list names both
-      commands for evaluation, trace or parameter changes.
-    - **D.5.14 The KPK bitbase at compile time — `I1`, DONE 2026-11-08.** (RUST-4): the one table built at run
-      time, 524,288 bytes, exactly the large-page threshold, so it takes a 2
-      MB locked page; a bit-packed `[u64; 1024]` (65 KB) built by `const`
-      evaluation or `build.rs`, checked equal to `generate()` over every
-      index, after which `initialize_tables` goes. One bit for each of the
-      524,288 positions is 65,536 bytes, `[u64; 8192]`, not 1,024 words.
-      `const` evaluation made a library check take 112 s against 1.4 s, so
-      `3334794` runs the generator (`kpk_generate.rs`) in `build.rs`, which
-      adds about 0.5 s to a check after an edit, and the engine includes the
-      bits as a `[u8; 65536]` in its read-only data. `initialize_tables` and
-      its two calls are gone. The tests keep the run-time generator as it
-      was and check the built table against it at all 524,288 indices; a
-      pawn-attack mask swapped in the generator fails at index 968. The
-      Syzygy KPK verdict test still passes. Start-up to `uciok` 29.1 ms to
-      9.6 ms (medians of 12). Fingerprint 15,625,852 / EBF 2.563 on both
-      backends; debug and release suites, fmt and clippy clean.
-    - **D.5.15 `Move::from_uci` into `make_move` — `I1`, DONE 2026-11-08.** (BOARD-4): a non-canonical move
-      from the text constructor corrupts the board in release (a capture
-      leaves the captured bit; `e1g1` castles without the rook); every caller
-      canonicalises today. A `UciMove` newtype that only `legal_move` and
-      `parse_move` turn into a `Move` makes the state unrepresentable.
-      `0e546cd`: UCI text parses into a `UciMove`, whose move only
-      `Board::legal_uci_move` (and `parse_move` through it) turns into a
-      `Move`; `searchmoves` holds `UciMove`s, and `Move::from_uci` survives
-      for unit tests only. `legal_move` keeps taking a `Move`: it is the
-      per-node check of a stored TT or PV move, and its code is unchanged.
-      The release binary's instructions are identical to the head's.
-      Every legal move of four positions, all fourteen flags among them,
-      round-trips through the text form. Fingerprint 15,625,852 / EBF 2.563
-      on both backends; debug and release suites, fmt and clippy clean.
-    - **D.5.16 Names and comments that mislead — `I1`, DONE 2026-11-08.** (EVAL-9, TT-13, DRIVER-13,
-      BOARD-10; H12): seven ledger IDs and roadmap step numbers such as
-      `mop_up.rs:129` and `144-149` remain in `src`, which AGENTS forbids
-      (a census by script first); `LIGHT_SQUARES` holds the dark squares and its comment says
-      otherwise (every use is relative, so no bug); `replacement`'s doc claims
-      a bound clause the code lacks and `LocalCluster::holds` ignores
-      occupancy where the shared one requires it; the aspiration doc says a
-      fail-low halves toward the old window where the code halves toward the
-      new alpha, and three `params.rs` notes describe pre-fit defaults;
-      `piece_type_at_unchecked` is checked; roadmap numbers in `board.rs` and
-      `zobrist.rs`. With them, the simplification programme's comment pass
-      (D.8.17 until 2026-11-05, merged here because both rewrite the same
-      comments; EVAL-7, TT-13, BOARD-10): the false seeded-zero notes on
-      fitted terms, the lazy-gate rationale (the king map alone can subtract
-      637 cp against a 475 cp margin; the gate's support is RAR-E19/E20),
-      the stale king-cap bound, the Apple cache-line paragraph and the 193
-      retired-number references. Comment-only commits. `332bf53` swaps the
-      two colour masks' names with the KBNK corner pairs and the locals that
-      read them, so `DARK_SQUARES` holds a1 (a test pins a1, e1 dark and h1,
-      d1 light), and renames `piece_type_at_unchecked` to `occupant_type`;
-      no value or operation changes. `5923951` is the comment pass: the
-      census (the review's patterns, by line) found 198 hits on 122 lines,
-      and what it finds now, 22 hits on 18 lines, are measurements such as
-      `−7.21 ± 6.03 Elo`; no `RAR-` ID is left in `src`. The fitted terms'
-      "seeded 0" notes, the aspiration and SEE notes' pre-fit defaults, the
-      lazy gate's rationale (now: the king map can move the score 637 cp, and
-      the gate stands on its games, about −105 Elo without it), the king cap's
-      bound (now a formula with today's 637 and 18 cp), the `replacement` doc
-      (no bound clause; four plies, six for a PV store), the aspiration
-      fail-low (beta to the midpoint of the new alpha and the old beta),
-      `LocalCluster::holds` and the Apple paragraph say what the code does.
-      Two test names carrying step numbers are renamed with their
-      references. `zobrist.rs` held none. Both commits leave the release
-      binary's instructions identical to the head's; fingerprint 15,625,852 /
-      EBF 2.563 on both backends; debug and release suites, the `texel` and
-      `tune` library tests, fmt and clippy clean.
-    - **D.5.17 Tests the review found missing — `I1`, DONE 2026-11-08.** (TT-12, NODE-14, DRIVER-21, BOARD-7,
-      EVAL-2, PROTO-20): a deterministic torn-pair test and `false_hits <= 3`
-      with a seeded set for the shared table (today's threshold cannot see an
-      8-bit tag, and the eval-only test's `hashfull` assertion is a
-      tautology), a four-thread hammer on one `SharedCluster`; the standard
-      perft depths no test reaches yet, position 3 at d6 (11,030,083) and
-      position 4 at d5 (15,833,292), in release (D.4.3 reads the start
-      position and position 3 at d5); a `gives_check_with` differential (0
-      mismatches over 500,523 moves in the review's scratch run);
-      `tests/endgames.epd` and the recogniser FENs through `mirror_fen`
-      (every one has White as the stronger side today). The review's other
-      three gaps (NODE-14: the child `cut_node`, quiet against noisy, the
-      estimate at an excluded node) would pin defects, so each lands with
-      its fix, in D.6.3, D.6.1 and D.6.5; the cross-null repetition test is
-      D.5.18's.
-      Also (2026-11-03, `analysis/triumviratus_review_2026-11-03.md` §4 items
-      4, 10 and 12): a same-value `Hash` re-send keeps the table's contents
-      (measured at 0.033 ms, no reallocation, but no test pins it); input
-      lines with repeated spaces and a trailing `\r`, and a 64 KB `position
-      startpos moves …` line (read correct, untested); every child entry path
-      (ordinary move, null move, ProbCut, exclusion, quiescence) starts a
-      clean frame, as `push_move` and `clear_move` bracket them today. The
-      search-path perft is D.4.3. `5740355` adds them all; every one passes,
-      so none became an item elsewhere. The false-hit test fills a 1 MiB
-      table instead, since at today's 5,000 entries in 16 MiB an 8-bit tag
-      expects 1.5 hits and `<= 3` could not see it: 0 of 20,000 never-stored
-      keys verify, an 8-bit tag lets 480 through, and the bound is 12. The
-      deterministic torn pair is rejected and its equal-fold converse
-      accepted. The hammer on one slot returns no foreign payload; a tag
-      without the fold returns about 30 a run in debug and about 1 in
-      release, whose loop rarely tears, so the debug suite carries it.
-      `gives_check_with` agrees with playing the move on 305,311 moves (6,433
-      checks) of a depth-3 walk from eight positions; dropping its
-      discovered-check clause fails it. All 128 suite lines and the 40
-      recogniser FENs evaluate equally mirrored, and a recogniser blind to
-      Black-only pawns fails both. The clean frame is a debug assertion at
-      `negamax` and `quiescence` entry; removing any of the three
-      `clear_move` calls fails 13 to 28 debug tests. Fingerprint 15,625,852 /
-      EBF 2.563 on both backends and the release binary's instructions
-      unchanged; debug and release suites, fmt and clippy clean.
-    - **D.5.18 A record corrected — `I1`, DONE 2026-11-08.** (BOARD-3): `analysis/draw_policy_2026-09-08.md`
-      Policy 2 says a repetition scan crossing a null move can only be a false
-      negative; two null moves by the same side while the opponent shuffles a
-      piece out and back produce a false twofold through the public API
-      (reproduced; 46 of 7.6 M nodes at depth 12 on the bench positions).
-      Correct the sentence, pin the behaviour with a test, keep the retry
-      trigger; a `plies_from_null` bound is a registered unit of its own, not
-      bundled here.
-      Also (2026-11-03, `analysis/triumviratus_review_2026-11-03.md` §4 items
-      5 and 7): pin the single-null form too, one null move with the opponent
-      losing a tempo by a three-move triangle (read from source, not
-      reproduced); and correct `analysis/see_contract_2026-09-06.md` row 32,
-      which says no production SEE call reaches a quiet promotion: quiet
-      promotions are noisy and reach `see_ge_quiet_aware` (`node.rs:1687`),
-      whose shortcut passes them. `ac71ee9` pins both forms through the public
-      API: from `4k3/8/8/8/8/8/PPP5/4K3 w`, two passes with `e8d8 d8e8`
-      between them, and one pass with `e8d8 e1d1 d8d7 d1e1 d7e8`, so the
-      single-null form is now reproduced; each reaches the start position,
-      the search scores the twofold a draw, the arbiter's draw does not
-      fire, and nothing reads drawn before the last step. Policy 2 now says a
-      crossing can be a false positive, with the review's rate (46 of 16,593
-      twofold hits at depth 12), and keeps its retry trigger; the SEE record's
-      quiet-promotion row says the main search's SEE pruning reaches them and
-      the shortcut passes them. Both corrections are dated in place. Debug
-      and release suites, fmt and clippy clean; fingerprint unchanged.
-  Added 2026-11-02 from the Basilisk cross-check (`analysis/basilisk_crosscheck_2026-11-02.md`,
-  read against Basilisk's work since its 2026-10-06 review):
-    - **D.5.19 The KPK evaluation and every hard draw verdict against Syzygy — `I1`, DONE 2026-11-08.** (A3,
-      widened by H7: Basilisk's port of the reference rook-ending rules
-      called 18 of 3,000 random won KRPKR positions dead draws, BAS-E54;
-      Rarog's `krpkr_scale` returns `Some(0)` at five sites,
-      `eval/endgame/mod.rs:481-505`, guarded by three hand-picked won
-      FENs, and the KQKP fortress, the wrong-corner KBP and the drawn KPK
-      are hard zeros too. Read: every such zero over random or exhaustive
-      KRPKR, KQKP, KRPKB and KBPK positions agrees with a WDL draw; a
-      wrong zero is a D.6 repair card that discounts instead of zeroing.)
-      The KPK part: a won KPK falls through
-      to the generic evaluation (`eval/endgame/mod.rs:150-157`) and nothing
-      tests its sign; `kpk.rs` holds four unit tests. Basilisk found 2,022
-      of 662,704 positions where a Syzygy win reached its scalers at or
-      below 0 for the pawn side (a second-rank pawn, the lone king
-      adjacent). Read: every legal KPK position, both colours, both sides
-      to move, the static evaluation's sign against the WDL verdict, and
-      no win at or below 0; a bundled `KPvK` fixture makes it a test. No
-      failure: the test lands here, case 1. Failures: a repair card in
-      D.6 with Basilisk's evidence (cost in games about zero, a leaf
-      error the search overrides from the root) as its prior.
-      **Read 2026-11-02** (`analysis/draw_verdicts_2026-11-02.md`, §2–3).
-      KPK: 662,704 legal positions; every drawn one reads exactly 0 and the
-      bitbase agrees with Syzygy on all of them, so the verdicts land as a
-      test (`tests/kpk_syzygy.rs`, case 1; `KPvK.rtbw` added to the
-      fixture). 88 won positions read at or below 0 for the winner, from
-      the generic evaluation (a pawn on its 2nd to 4th rank beside the lone
-      king; Basilisk found 2,022): D.6.21, its acceptance test
-      committed `#[ignore]`d. `krpkr_scale`: over 2,000,000 quiet random
-      KRPKR positions its five zeros fired 65,865 times, 1,137 (1.7%) on
-      wins for the pawn side, 1,128 of them at sites 1 and 5: D.6.22.
-      The KQKP fortress, `krpkb_scale` and the wrong-corner KBPK zeros stay
-      unread (4- and 5-man tables, minutes each).
-      **Read 2026-11-08** (same analysis, §7), exhaustively over every
-      legal position meeting each recogniser's precondition. The wrong-corner
-      draw is exact: its 290,880 one-pawn and 646,296 two-pawn zeros are all
-      Syzygy draws. `krpkb_scale` has no hard zero. The KQKP fortress is not:
-      of its 172,256 zeros 32,360 are wins for the queen side, 18,628 of the
-      69,760 quiet ones (26.7%), most with the queen's king three or four
-      squares from the queening square: D.6.24. The partial scales stay
-      unread.
-    - **D.5.20 CI hygiene — `I1`, DONE 2026-11-08.** (A5): no job in `ci.yml` or `release.yml` has
-      `timeout-minutes`, so a wedged child process burns the runner's
-      six hours; check which mnemonics `xtask`'s ISA verifier forbids at
-      the baseline tier (Basilisk's portable set missed SSE4.1, AVX1 and
-      BMI1's `andn` and `tzcnt`); check whether the macOS toolchain
-      major is pinned (an image update otherwise changes codegen and NPS
-      with no failing check). Tooling commits. Also (H1–H6): one
-      aggregating job per workflow that always runs and fails unless every
-      job it gathers succeeded, made the required check (GitHub reports a
-      job skipped after a failed dependency as passing; `release.yml`'s
-      `collect` has no `if: always()` and `ci.yml` has no aggregator); a
-      documents job running `check_guide.py`, `check_citations.py` and the
-      `tools/diag` tests, none of which CI runs today (Basilisk's found a
-      guard test failing unnoticed), with a check that each ledger index
-      row's disposition matches its entry's; a PGO use step that warns on
-      functions with no profile (`-Cllvm-args=-pgo-warn-missing-function`)
-      and fails when a kernel symbol is warned, so `e057d84`'s trained
-      copies cannot silently go cold again; the Linux assets' glibc floor
-      recorded and the runner labels pinned instead of `-latest` (a static
-      build is G.2's, with an NPS read); Miri on the unit tests that reach
-      the `unsafe` sites outside the FFI (TT cluster, slider tables), as a
-      nightly job. A development build's `id name` carrying its commit and a
-      dirty mark moved to E.3.2 on 2026-11-04.
-      **Landed 2026-11-08.** `d10643c`: every job in both workflows has
-      `timeout-minutes`; the runner labels name the images `-latest` named
-      that day (`ubuntu-24.04`, `windows-2025`, `macos-26` with Xcode 26.6
-      and Clang 21), so the macOS toolchain major is pinned with them; a
-      documents job on `windows-2025` runs `check_guide.py`,
-      `check_citations.py` with the pull request refs fetched and the
-      `tools/diag` tests; each workflow gains an aggregator, `CI passed` and
-      `Release candidate passed`, that always runs and fails unless every
-      job it gathers succeeded. Making them the required checks is a
-      repository setting, the maintainer's. The tools' suite was not
-      passing: `test_feature_matrix` failed because the matrix lacked
-      `pricing`, so CI had compiled no `pricing` combination; `d391702` adds
-      it and all 16 subsets compile. The ISA verifier already forbids SSE4.1,
-      AVX (the `v` prefix) and BMI1's `andn` at the baseline tier and permits
-      `tzcnt` on purpose (`TZCNT_IS_BASELINE_SAFE`: LLVM emits it as `rep
-      bsf`, correct on a pre-BMI1 CPU), so it needs no change. The Linux
-      assets are statically linked and the release job refuses a dynamic one,
-      so they have no glibc floor. The PGO item's premise was false:
-      `-pgo-warn-missing-function` fires only for a function with no profile
-      record, and a copy the training never reaches keeps a record with every
-      count zero (`send_full_info_line` in today's profile), so it would not
-      have seen `e057d84`'s cold copies. `7b81dc0` reads the merged profile
-      instead and fails the build unless every `negamax` and `quiescence`
-      copy ran: the pext PGO build reads 2 and 1 trained, and a function the
-      bench never calls, listed as kernel, fails it. None of the workflow
-      changes has run on GitHub yet; each command the new steps run passes
-      here. The two items held that day were settled by the maintainer the
-      same day. No nightly job: Miri exists only on nightly, so the `unsafe`
-      sites' preconditions are checked on stable instead (`e3afb97`). The
-      plan's premise was partly false: the TT's two `unsafe` blocks are
-      prefetch hints, with nothing to check. The slider lookup asserts in
-      debug that its slot lies in its square's run, which the debug suite's
-      every-subset slider test drives on both backends (an off-by-one shift
-      fails it), and both move lists get a test that the push after the last
-      slot panics. The PEXT intrinsic is refused without BMI2 (D.5.12) and
-      the page allocator's calls are the operating system's. Those panicking
-      tests showed the crash-report tests counting other tests' panics
-      through the process-wide hook; they now count their own probe's
-      (`e458d27`). The ledger check takes the form for new entries only
-      (`a0effcb`): an entry's `- Disposition: <word>` line and its index row
-      start with the same word from a fixed list (PROCESS, *Experiment
-      registration*); the 377 entries written before 2026-11-08 are exempt
-      in `tools/diag/disposition_exempt.txt`, which only shrinks. An entry
-      taken off the list fails on both sides, and the documents job runs the
-      check. Release instructions are identical to the head's on both
-      backends.
-    - **D.5.21 Basilisk's behaviour tests run against Rarog — `I1`, DONE 2026-11-08.** (§D of the
-      cross-check; about 20, among them shortest mate rather than the
-      first mate, an injected illegal TT move never searched, every
-      shipped FEN strictly legal, bare-king material monotone with the
-      promotion order, a rook promotion only where the queen stalemates,
-      a won ending that does not run the clock to the maximum, `Hash`
-      setup finished before `readyok`, the ponder races, two positions
-      from game incidents). One scratch run against the current binary
-      first; a test that passes lands here as a regression anchor, one
-      that fails becomes an item in the leaf that owns its mechanism.
-      With them (H8–H11): the picker contract beyond D.4.3, whose
-      search-path perft already proves every legal move once and the TT
-      move's handling on the standard positions: randomised histories over
-      a few thousand random-walk positions, skip-quiets leaving exactly the
-      noisy moves, ProbCut's list exactly the SEE-passing captures; a liveness test per search parameter (each value moves
-      the tree on a named position; the SPSA coverage audit is static);
-      floors that also fail when stale (WAC's `FLOOR = 122` was set at
-      133/300 on 2026-07-19 and has no upper bound); fixtures that assert
-      the score at a stated budget, not only the move (Basilisk's promotion
-      fixture passed on a 4-cp tie held by root order).
-      **Ported 2026-11-08** (`9c30385`; the scratch run was two files of
-      Basilisk's tests through the public API and the UCI process). Thirty-four
-      pass and land as anchors (`tests/behaviour_anchors.rs`,
-      `tests/engine_anchors.rs`, and an in-module deep exact illegal TT move
-      at the root through a depth-6 search), debug and release, the timing
-      ones (a won ending, Hash before `readyok`, the ponder races) on six
-      runs each. Two fail, committed `#[ignore]`d as acceptance tests:
-      `bare_king_promotion_order` (from KBP-K the promotions read queen
-      1433, rook 990, knight 1097, bishop 1537; the bishop gives two
-      same-coloured bishops, a draw, and the search still promotes to a
-      queen at every depth 1–12): D.6.25; `pawnless_scale_truth_table`
-      (KR-KB 277, KRB-KR 253, KRN-KR 173 on Syzygy draws): D.6.26. Not ported
-      as differences of design, not gaps: Basilisk damps a bare-king score by
-      the clock and Rarog's evaluation reads no clock; Rarog shows a root
-      tablebase win the rule-50 counter spoils at clock 99 as `cp 0`, since
-      every move reaches clock 100, where Basilisk shows 1–49; Rarog has no
-      TT penalty to test. The illegal TT move is caught three times at the
-      root (`legal_move`, the root list, the picker): with the first two
-      removed the debug suite fails and release does not.
-      **H8–H11 landed 2026-11-08.** H8 (`fd965bc`): over 3,000 random-walk
-      positions with randomised quiet, noisy and pawn histories, a random TT
-      move and a random skip point, the staged picker emits every legal move
-      once, a skip drops only quiets that neither check directly nor promote
-      (26,429 dropped, 836 survivors checked after a skip), and ProbCut's
-      list holds every legal capture once, the TT capture first; a skip that
-      emits every quiet, a dropped en passant and a ProbCut list without its
-      losing captures each fail it. H9 (`a4e25fc`): each of the 147 search
-      parameters, set to either end of its declared range, moves a depth-8
-      tree on one of five named positions, or for a clock parameter the time
-      limits or the soft stop on named clocks; five act only deeper and name
-      their own position and depth (null-move surplus clamp and two singular
-      terms at 10, the singular reduction cap at 12, the futility term above
-      beta in the pawn ending at 13), and `TmFailHighTarget` has its own
-      test. No parameter is dead. A hard-coded singular offset and stability
-      slope each fail it by name. Release only (about 300 searches). H10
-      (`fc1ebb3`): WAC solved 178/300 at depth 6 against a floor of 122; it
-      now holds a band, 164 to 192, and a count above it asks for
-      recalibration; the coverage floors over versioned fixtures (the canary
-      sweep 431, tb-win 38, tb-draw 34, kbnk-mate 4, endgames.epd 91 rows,
-      the SEE walks 1,802 captures) are exact. H11 (`59e3cb5`): each
-      promotion fixture searches the alternative alone to the depth its own
-      budget reached: the rook mates where the queen stalemates (0), the
-      queen scores no lower than the transposing rook (481 and 435 at depth
-      13, where depth 12 reads the rook 520 and the queen 458, so the margin
-      is depth's), the queen beats the rook searched first (753 and 575 at
-      depth 14), and Saavedra's queen is drawn. Basilisk's 4-cp tie is not
-      present here.
-      Qualified on the final state: debug 519 and release 521 tests pass,
-      `fmt` and `clippy --all-features --all-targets` clean, the `texel` and
-      `tune` library suites pass (280, 279), the long tier passes, and the
-      fingerprint is 15,625,852 / EBF 2.563 on both backends.
-    - **D.5.22 Measurement and gating methods from Basilisk — `I1`, DONE 2026-11-02.**
-      Adopted: a repair's registration states its measured exposure; a
-      written analysis of the fitted constants before a bake
-      (`tools/spsa_theta_audit.py`); the curvature sweep's noise floor;
-      `nps_read.py` warning on arms that search different trees; a
-      second-step NPS accept below +1% recorded as possibly layout; a
-      correct repair that fails its harm rule reverted with its defect
-      left open and a rework registered. Declined, each with its retry
-      trigger: the pinned bench, several pools in one read, an ordered
-      night-queue launcher. Record: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
-  Added 2026-11-03 from the Triumviratus review
-  (`analysis/triumviratus_review_2026-11-03.md`, §4 item 12):
-    - **D.5.23 The correction bonus overflows `i32` at extreme depth and residual — `I1`, DONE 2026-11-08.**
-      `train_correction` computes `corr_update_slope * depth * diff / 128` in
-      `i32` (`src/search/correction.rs:228`). The search trains on mate and
-      tablebase residuals on purpose, and `diff` is bounded only by a mate
-      score against an evaluation at the opposite clamp, about 63,700. At that
-      residual the product overflows from depth 135 at the default slope 250,
-      and from depth 66 at the tune range's ceiling 512. Release wraps it, and
-      the clamp then applies a full-size update of the wrong sign. At the
-      defaults no search reaches it in practice; a `tune` arm near the
-      ceiling might. Fix: the product
-      in `i64` before the clamp, a unit test at an overflowing depth and
-      residual, exact fingerprint. Triumviratus lost to the same class of
-      defect in its correction decay in tablebase endgames. `24560a5` forms
-      the product in `i64`; the new test trains at depth 200 and a residual
-      of ±63,700. Under the old arithmetic it fails: release moved the table
-      by −1,692 for a residual of +63,700, and debug panics on the multiply.
-      Fingerprint 15,625,852 / EBF 2.563 on both backends; debug and release
-      suites, fmt and clippy clean.
-    - **D.5.24 A `Hash` larger than the machine's physical memory is refused on every platform — `I1`, DONE 2026-11-04.**
-      Found on PR #13's macOS CI. `db4e9ae` and `488608c`: `Hash`'s
-      maximum is the machine's physical memory; a larger value is refused
-      as it is parsed, with a notice and the setting kept; an allocator
-      refusal below it keeps the table; every `Hash` sent is checked and
-      answered and no other option reports on it; a search runs on the
-      table in use. The unsafe floor was 24 (maintainer decision
-      2026-11-04) until D.5.9 took it to 17. Record: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
-  Not in this leaf: anything that moves the fingerprint (D.6), the
-  simplification programme (D.8), the shell defects (D.3), the tablebase path
-  (D.9).
+  Landed in `b202174` (PR #16, "Repair the engine review's findings
+  without changing play"). Every repair reproduces the fingerprint on both
+  slider backends except D.5.5, which moved it by design (RAR-S106).
+  D.5.1 to D.5.5: helpers hold a table handle they release after each job
+  and `readyok` waits for their start-up; a `Hash` change at more than one
+  thread fills the table once; a depth limit and `go mate` are answered by
+  the main thread's rule; `Hash` is the size set. D.5.6 to D.5.18:
+  quiescence has one body and the root narrows its move list in place;
+  dead Syzygy code is gone; the `unsafe` sites fall from 24 to 17, the
+  floor since (maintainer decision 2026-11-08); the history tables and
+  Fathom's root buffer are zeroed on the heap; Fathom's FFI layout is
+  checked; the PEXT tier is refused without BMI2 and tested in CI, as are
+  the texel and tune tests; the KPK bitbase is built at compile time; UCI
+  text is a `UciMove` only the board turns into a `Move`; misleading names
+  and comments are fixed, the review's missing tests written and a draw
+  record corrected. D.5.19 read every hard draw verdict against Syzygy.
+  D.5.20: every CI job has a timeout, the runners are pinned, each
+  workflow has one aggregating check, a PGO build whose kernel went
+  untrained fails, the `unsafe` preconditions are checked on stable in
+  place of a nightly Miri job, and a new ledger entry and its index row
+  state the same disposition. D.5.21: Basilisk's behaviour tests run
+  against Rarog, with the picker's contract under random histories, every
+  search parameter shown to move what it tunes, exact test floors and the
+  promotion fixtures' scores. D.5.22 adopted Basilisk's measurement
+  methods (three declined with retry triggers), D.5.23 clamps the
+  correction bonus, D.5.24 refuses a `Hash` above physical memory. What
+  the tests found wrong in play is D.6.24 to D.6.26. Full record, D.5.1 to
+  D.5.24: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
 - **D.6 Strength candidates from the engine review: kernel and evaluation deviations from the donor, each behind a zero-game screen and a registered gate — `R2` cards, then `I1`/`I2`/`V`.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` (§3.1, §3.2,
   §3.5). Each item is an unrecorded deviation from the donor's shape with a
@@ -1097,7 +532,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   2026-11-05: the piece-term definitions to E.4's refit, `Hash` at any size
   to G.2, and the low-priority notes, Stockfish 19's mechanisms and the
   root and in-check reductions to H.2 under Phase H's rule.
-    - **D.6.1 Castling is neither quiet nor noisy — `R2`.** (NODE-3, BOARD-1):
+  **Order, 2026-11-13 (maintainer decision):** D.6.8 runs first, then D.7.
+  The other open items wait for D.7 and none is dropped. After D.7.8 each
+  is asked first whether it is still an issue on the kernel D.7 leaves
+  behind: an item the rebuild made moot closes with that reason, one whose
+  defect remains keeps its card, and a form that lost its gate on the
+  combined kernel (D.6.3, D.6.4, the fail-soft cluster of RAR-R19 to R21,
+  one-retry aspiration) is re-opened or added where D.7.8 finds its
+  problem still there.
+    - **D.6.1 Castling is neither quiet nor noisy — `R2`, DONE 2026-11-10.** (NODE-3, BOARD-1):
      `is_quiet_move` is `flags <= DOUBLE_PUSH` while castling has flags 2 and
      3, and `is_noisy` is capture or promotion, so in the move loop castling
      skips late-move, futility and history pruning, takes the noisy SEE
@@ -1111,8 +554,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      lands with the fix), and the four castling noisy slots after `bench 13`
      at stride 1 (expected strongly negative). Fix: define quiet once (`!is_capture() && !is_promo()`). Gate:
      case 2, a 2,000-game harm read, as a classification repair expected near
-     zero.
-    - **D.6.2 Quiescence cannot see a non-capturing queen promotion — `R2`.** (BOARD-2): pawn
+     zero. Screen read 2026-11-09 (RAR-S107): the slots at or near their floor,
+     1 in 381 moves in the loop, between 49% and 71% of them decided differently,
+     castling legal in 95% of gate games, so no closing rule fired; the repair is
+     `72c4e60` on `d6`, kept by its harm read on 2026-11-10 at nElo −4.9 ± 15.2.
+    - **D.6.2 Quiescence cannot see a non-capturing queen promotion — `R2`, DONE 2026-11-10.** (BOARD-2): pawn
      captures target enemy occupancy only, every non-capture promotion is
      generated with the quiets, and quiescence outside check generates
      captures only, so a safe promotion to a queen is invisible to the
@@ -1135,7 +581,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      `analysis/triumviratus_review_2026-11-03.md`): Triumviratus's passed-pawn
      push to the seventh searched in quiescence read −0.77, +1.1, −1.8 and
      +0.23 in four runs, and its quiet hash move in quiescence −1.05 ± 3.92.
-    - **D.6.3 Null-move and ProbCut children typed `cut_node = true` — `R2`.** (NODE-1): the
+     Screen read 2026-11-10 (RAR-S108): in endings 5.9% of quiescence capture
+     generations had a quiet queen promotion and 3.4% a safe one that could
+     raise alpha, legal in 54% of gate games, so no closing rule fired; the
+     push is `ee0b3e4` on `d6` (bench 13,038,236), accepted by its SPRT
+     `[0,3]` on 2026-11-10 at nElo +12.2 ± 6.5 over 11,108 games.
+    - **D.6.3 Null-move and ProbCut children typed `cut_node = true` — `R2`, NO_CHANGE 2026-11-11.** (NODE-1): the
      donor passes `false` for the null child (`search.rs:606`) and both
      ProbCut searches (`664–684`); Rarog passes `true` at `node.rs:988`,
      `1203` and `1221`. The type feeds the child's TT-cutoff admission, the
@@ -1153,7 +604,99 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      call receives (NODE-14). Gate: case 3 `[-5,5]` as a repair (TT cutoffs and reductions
      are shared signals); `[0,3]` only if the screen predicts a gain and the
      registration says so. A neutral fingerprint is not expected.
-    - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`.** (NODE-2):
+     Screen read 2026-11-10 with D.6.4 (RAR-S109): ProbCut children fail
+     high 2.2% and null children 31%, so both are mostly all nodes. The
+     null half's sparseness leg fired (0.52% of interior nodes), but on a
+     measure the screen's own arm refutes: typing the null child alone
+     moves `bench 13` −5.0% and the null-move cut rate from 68.7% to
+     74.8%, because the child's result decides whether its parent searches
+     at all. That half is neither ready nor closed; the same measure is
+     void for the ProbCut half's pass. Each half's arm loses canaries by a
+     later settle at depth 10, every one still solved at 100k, so the item
+     stays in research. With D.6.4 the tree shrinks 30%, 34% below the two
+     separate effects: the next registration treats D.6.3, null child
+     included, and D.6.4 as one cluster. It first explains that coupling
+     with arms 5 and 6, and measures reach by the null-move cut rate per
+     arm and the tree beneath parents whose null move did not cut, not by
+     the child's interior subtree.
+     Cluster screen read 2026-11-10 (RAR-S110): the null half fails its
+     reach floor (+4.84 points against 5.36) and leaves the cluster,
+     retried on a change to the null move's margin or reduction or the
+     cut-node consumers. The ProbCut half stays by its children's history
+     rewards (2.1% of noisy updates), so the cluster arm is ProbCut typed
+     `false` with D.6.4. The no-TT-move LMR term, the null decisions and
+     the TT cutoffs all carry part of the coupling, but three bench
+     positions carry 56.5% of it, so the item is back in research. Next is
+     a fresh-process per-position read, registered first. The canary rule's
+     treatment of a later settle is put to the maintainer (RAR-S110).
+     Fresh-process read 2026-11-10 (RAR-S111): each bench position in its
+     own process, nine arms. The coupling is not general: without shared
+     state the pooled index is 1.17 and the median 1.10, below 1 in 17 of
+     39 positions. The bench's coupling was position 11 in D.6.4's arm,
+     which the shared table held at 2.55M interior nodes against 0.41M
+     fresh. ProbCut typed `false` alone searches 0.958 of the source's
+     nodes. The cluster's reason to be one unit falls, and the next
+     registration reads this half and D.6.4 as separable repairs on
+     fresh-process counts, each with its canary outcome. RAR-S110's
+     reach floors were bench reads; the null half's closure stands.
+     Readiness read 2026-11-11 (RAR-S112), as its own repair: ProbCut's
+     children fail high 2.2% in fresh searches and 2.9% in game-like
+     ones, and their fail-low rewards are 1.9% and 1.6% of the
+     noisy-history updates. Typing them `false` removes those rewards
+     and makes ProbCut cut 4.4 points less often per node game-like;
+     the tree has no one direction (0.96 fresh, 1.01 game-like). WAC is
+     240 against 239 at 100k and 266 against 264 at 400k, with no lost
+     tactic at 100k. The old rule's two losses are a one-iteration
+     flicker and a move found one iteration later in fewer nodes; a
+     later settle is a diagnostic (RAR-M85). **Ready for
+     implementation:** the two ProbCut verification calls pass `false`,
+     the null child stays `true`, `bench 13` must read 13,148,505, with
+     NODE-14's unit test; then its gate, case 3, registered before any
+     game. If the gate fails, the rework is the typing with the reward
+     kept.
+     Implemented 2026-11-11 as `d15050a`: the two calls pass `false`,
+     nothing else changes, `bench 13` 13,148,505 / EBF 2.559, and
+     NODE-14's test `each_recursive_call_types_its_child_by_its_rule`
+     pins every recursive call's type (with the old typing it fails on
+     ProbCut's children). Three tests it moved were settled first, each
+     in its own commit: the transposing-rook anchor split (D.6.17), the
+     singular margins' liveness probes re-pinned, and the won-ending
+     clock test, red since `ee0b3e4`, held (D.6.20). **Gate registered
+     as RAR-S114,** before any game: case 3, SPRT `[-5,5]`, cap 6,000
+     pairs, against `63813d8`; every recent gate game reaches
+     ProbCut's domain. H1 or the cap without H0 keeps it; H0 reverts
+     it and registers the typing with the reward kept.
+     **Gate read 2026-11-11 (RAR-S114): H0** at 9,662 games, nElo
+     −3.7 ± 6.9, LLR −2.97, no fault. In the games the arms searched
+     trees of the same size (157,625 against 157,816 nodes a move,
+     depth 13.23 against 13.20), so the cost lies in what the search
+     decides. The typing is reverted (`91265f2`), keeping NODE-14's test
+     with ProbCut's children pinned `true`; `bench 13` is 13,038,236
+     again. The defect stays open. **Ready for implementation, as
+     registered:** the two calls pass `false` and the ProbCut child
+     keeps the fail-low reward to the capture's noisy history, which
+     separates the reward from the type's other consumers; its own
+     registration and gate, case 3.
+     Research after the gate 2026-11-11 (RAR-M86, with RAR-S114's
+     games reread): **closed `NO_CHANGE`; the registered rework is
+     not gated** (maintainer decision 2026-11-11, on this research's
+     recommendation; it replaces RAR-S114's line that the defect
+     stays open). The gate's H0 is weak evidence: the case-3 gate
+     reverts 34% of neutral repairs, and an H0 as late as RAR-S114's
+     is 2.6 times as likely at −5 as at zero and twice as likely at
+     zero as at +2. It speaks against a gain of 3 or more and shows
+     no loss of 5. Nothing in its games differs between the arms:
+     nodes, depth, swings in a side's own score, which side sees a
+     result first, conversion. No mechanism points to a gain: the
+     typing makes ProbCut's verification stricter under a margin
+     fitted with the cheaper one, and the reward it drops is 1.6% of
+     noisy-history updates, which the rework would only restore. The
+     donor's label is not evidence (rule 1). Retry at the search
+     re-fit (F.6) with ProbCut's margin and the cut-node terms in the
+     same fit, or on a change to ProbCut's margin, depth or
+     verification. NODE-14's test keeps every recursive call's type
+     pinned, ProbCut's children `true`.
+    - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`, NO_CHANGE 2026-11-11.** (NODE-2):
      `best_move` is set on every new best score, so an `Upper` entry carries
      the refuted move and overwrites the position's earlier move; the donor
      sets it only when alpha rises and keeps the old move. Consumers at the
@@ -1164,7 +707,88 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      `diag` build storing `NULL` for `Upper`: `iir_applied`, razor counts, the
      no-TT-move LMR share, `bench 13` nodes, WAC at 100k and the canary rule.
      Gate: case 3, or `[0,3]` with a predicted gain.
-    - **D.6.5 The exclusion search uses the table-refined estimate — `R2`.** (NODE-4):
+     Screen read 2026-11-10 with D.6.3 (RAR-S109): 66% of fail-low stores
+     change the stored move, and a move from an `Upper` entry is at 10% of
+     interior nodes, keeping IIR off at 338k of them. Its arm loses WAC.069
+     and WAC.182 to a later settle at depth 10, so the item stays in
+     research, in one cluster with D.6.3.
+     It stays in that cluster after RAR-S110 and is read with D.6.3.
+     Fresh-process read 2026-11-10 (RAR-S111): alone it searches 44% fewer
+     interior nodes than the source over the 40 bench positions, 25%
+     fewer at the median, and 32 of 39 positions shrink. RAR-S109's
+     −1.94% was the bench's, held up by one position on shared state, and
+     is superseded as the size of this change. It is separable from
+     D.6.3 and is read as its own repair next; that registration says
+     which table state its reads use.
+     Readiness read 2026-11-11 (RAR-S113), as its own repair, in fresh
+     searches and in game-like ones (the table and histories a game's
+     earlier moves leave): 64% and 53% of the source's `Upper` stores
+     change the stored move, and a TT move from an `Upper` entry is at
+     10% and 13% of interior nodes. The size depends on the table: the
+     change searches 0.559 of the source's nodes fresh and 0.870
+     game-like (0.905 at the median). LMR without a TT move goes from
+     20% to 57% of its computations and IIR from 12% to 15% of nodes,
+     populations their constants were not fitted on. WAC is 237 against
+     239 at 100k and 265 against 264 at 400k, with no lost tactic. **Ready
+     for implementation, after D.6.3's gate is read:** an `Upper` store
+     passes no move; `bench 13` must read 12,785,308 on the source or
+     9,892,346 on top of D.6.3's typing; gate case 3. If the gate fails,
+     the rework refits IIR's depth and the no-TT-move LMR terms.
+     D.6.3's gate was read 2026-11-11 (RAR-S114, H0, reverted), so the
+     tree is the source's: `bench 13` must read 12,785,308. It runs
+     before D.6.3's rework (maintainer decision 2026-11-11).
+     Implemented 2026-11-11 as `45adef3`: the main search's store
+     passes no move for an `Upper` bound, nothing else changes,
+     `bench 13` 12,785,308 / EBF 2.513, and
+     `a_fail_low_store_keeps_the_stored_move` pins it (with the old
+     store a fresh table's fail low carries the first move searched).
+     Two tests it moved were settled first, each in its own commit:
+     the singular margins' liveness probes re-pinned on `SEMI_SLAV`
+     (`9210e5e`), and the MultiPV helper test asserting its stated
+     invariant, the three best root moves exact, not a count
+     (`7a3087a`). **Gate registered as RAR-S115,** before any game:
+     case 3, SPRT `[-5,5]`, cap 6,000 pairs, against `7a3087a`; every
+     recent gate game reaches the repair's domain. H1 or the cap
+     without H0 keeps it; H0 reverts it and registers the store
+     change with IIR's depth and the no-TT-move LMR terms refitted.
+     **Gate read 2026-11-11 (RAR-S115): H0** at 2,452 games, nElo
+     −14.7 ± 13.8, LLR −2.97, no fault. In the games the candidate
+     reached mean depth 14.01 against 13.12 on 162,331 against
+     157,539 nodes a move: it searched deeper and played weaker.
+     The store change is reverted (`5d60017`), and its unit test
+     now states the restored contract, that a fail low stores its
+     best-scoring move; `bench 13` is 13,038,236 again. The defect
+     stays open. The registered rework is the store change with
+     IIR's depth and the no-TT-move LMR terms refitted. It has no
+     readiness card, so the item is in research: which consumer of
+     the stored move carries the loss, and whether a refit is the
+     right rework.
+     Research after the gate 2026-11-11 (RAR-S117, a replay of 60 of
+     the gate's games under eight arms; RAR-S116 was void by its
+     wire): **closed `NO_CHANGE`.** The store change's smaller tree
+     is IIR and nothing else. It searched 0.81 of the source's nodes
+     to the same depth and gained 0.66 of depth at the games' node
+     counts; with IIR alone reading a fail-low entry as carrying a
+     move, the gain is 0.07. Holding the cut-node LMR term or the
+     razoring guard changes nothing. RAR-S113's 20% to 57% counted
+     every LMR computation; the term applies at cut nodes off the PV
+     line, where the share moved from 10% to 14%. So the gate
+     measured IIR taking a ply from revisited fail-low nodes: 0.66
+     of nominal depth for a loss of 14.7 ± 13.8 nElo. The repair's
+     own premise fails as well. With the three consumers held,
+     keeping the entry's older move needs 1.022 of the nodes the
+     best-scoring move does (0.990 to 1.043), and taking the
+     best-scoring move from the picker costs 23% more. The stored
+     move is useful ordering here, not a defect. The registered
+     refit is not the right rework: IIR's depth threshold cannot
+     pick out a node class, the LMR term has nothing to refit, and
+     neither would give the change a gain to gate. Retry only once
+     IIR no longer reduces a node for a fail-low entry without a
+     move (D.6.27, or the search re-fit, F.6), and then as an
+     ordering change with a predicted node saving at equal
+     consumers. The store's contract is pinned by
+     `a_fail_low_store_carries_its_best_scoring_move`.
+    - **D.6.5 The exclusion search uses the table-refined estimate — `R2`, NO_CHANGE 2026-11-11.** (NODE-4):
      `eval_for_pruning` has no `excluded` guard; in a singular exclusion node
      the TT bound is Lower or Exact and the window sits below `tt_score`, so
      the refined estimate always exceeds `alpha + margin`, LDSE can never fire
@@ -1180,14 +804,56 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      correction tables changed in between, the stack's eval differs from the
      node's own. A counter of re-entries where the two differ goes with this
      item's screen.
-    - **D.6.6 Captures generated and scored before the TT move — `R2`.** (NODE-5):
+     Screen read 2026-11-11 (RAR-S118, fresh and on RAR-S117's 60
+     replayed gate games): the premise holds. Under the refined estimate
+     LDSE and razoring never fire at an exclusion node; under the plain
+     one LDSE fires at 23.8% of them game-like (31.7% fresh), razoring at
+     0.004%. The alpha-gap term is not pinned at its clamp as stated
+     above: where the refinement applies it is fixed at
+     `-(margin + 1)`, about 0.75 of a unit per ply, far inside −65; it
+     differs between the two estimates in 53% of the quiet reductions.
+     The change moves no aggregate: every singular outcome's share moves
+     by under 0.15 points game-like and the replay's depth by −0.03
+     (fresh nodes 0.885); WAC is 233 against 239 at 100k, at its floor,
+     with no canary lost. **The item stays in research** for a paired
+     direction read: in an isolated probe at sampled singular attempts,
+     the exclusion verdict under each estimate against a deeper
+     exclusion search at the same node. That read decides readiness; a
+     gate would be `[0,3]`, since LDSE fires at over 2%. The re-entry
+     rewrite **closes `NO_CHANGE`**: an exclusion search leaves another
+     eval at 0.001% of re-entries, and a null verification that does is
+     followed by its parent's own search in 1 of 43,949.
+     Direction read 2026-11-11 (RAR-S119, a paired probe at 65,328
+     sampled singular attempts of the same replayed games): **closed
+     `NO_CHANGE`** by its frozen first rule. The two estimates' decisions
+     differ at 1.96% of attempts, under 2%. Where they differ, the plain
+     estimate matches a deeper exclusion search 747 times against 273,
+     and its exclusion searches cost 0.943 of the refined ones. The
+     direction is the donor's, but the net gain is 0.74 points of
+     decisions at 4.4% of nodes, which no gate can resolve. Retry only
+     after a change to LDSE's depth or margin, razoring's margins, the
+     singular margins or the alpha-gap term, or at the search re-fit
+     (F.6), and only if the probe then reads 2% or more.
+    - **D.6.6 Captures generated and scored before the TT move — `R2`, NO_CHANGE 2026-11-11.** (NODE-5):
      `fill_noisy` runs before the loop; the donor generates after the hash
      move fails to cut, and the TT move cuts at about 35% of loop nodes
      (`analysis/c12_speed_review_2026-10-18.md`: the one lead worth several
      percent). The capture scores then read a history the TT subtree has
      moved, so ordering changes. `I2` with a frozen prediction (speed +x%,
      games neutral), the pooled-PGO NPS read, then case 2.
-    - **D.6.7 The ply cap — `R2`.** (NODE-8): `MAX_PLY = 128` is below the extension budget's
+     Screen read 2026-11-11 (RAR-S120, cycle counts at an identical tree
+     on RAR-S117's 60 replayed gate games, idle host): **closed
+     `NO_CHANGE`.** Generating and scoring captures costs 3.95% of search
+     cycles, and 22% of fills are at nodes that cut before any capture is
+     looked at. So generating after the TT move could save at most 0.82%
+     (0.93% on the bench), under the frozen 1%. By about 2 Elo per 1% NPS
+     that is under 2 Elo, below what a speed read and a case-2 read can
+     bank. The playing change would be negligible: the TT move's subtree
+     changes the top capture at 0.11% of the nodes where order matters.
+     C.12's "several percent" is superseded. Retry only if capture
+     generation or scoring becomes materially dearer, or a later profile
+     puts it at 8% or more of search cycles (H.4).
+    - **D.6.7 The ply cap — `R2`, DONE 2026-11-11.** (NODE-8): `MAX_PLY = 128` is below the extension budget's
      bound (about twice the iteration depth plus 16); from about iteration 56
      the cap, not the budget, ends lines and the node returns a static eval
      with no in-check or draw handling (the donor: 240, a draw in check). The
@@ -1207,6 +873,71 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      after 19 bounds the depth by ply against root depth. D.1.6 measured the
      same growth here (RAR-R19: a third of reduced moves in the cascade
      iteration run deeper than nominal, outside the line budget).
+     A far shallower case (2026-11-10, RAR-S108): in a promotion race,
+     `8/2p2P1P/2n2P2/1k6/p7/6N1/P5K1/8 b - - 0 44`, seldepth reaches 127 by
+     depth 10 and depth 11 is not finished in 60 s (about 200M nodes, the TT
+     full), on `72c4e60` and with D.6.2's push alike; each of the other 1,483
+     first positions with ten men or fewer from RAR-S107's games finished depth
+     12 in 3.1 s at most. The screen asks first which mechanism drives the line
+     to the cap there: extensions, quiescence or the conversion band.
+     Screen read 2026-11-11 (RAR-S121: cap counters on RAR-S117's 60
+     replayed gate games at the recorded node counts times 1, 10/3 and 20,
+     and on the race position): **ready for implementation, the form
+     "bound the lines".** No search reaches the cap at `3+0.03`'s node
+     counts. At ten-thirds of them 0.109% of searches reach it; at twenty
+     times, 1.962%, in 22 of the 60 games. There, 22% of cap nodes are in
+     check and 15% are draws by rule, and each returns a static eval. At a
+     cap node the iteration is at depth 15 and the budget has spent 13 of
+     it, yet the line holds about 100 plies more: depth gained outside the
+     budget carries 88% of the plies beyond the iteration's depth (93% in
+     the race position). Quiescence carries none. Raising the cap would
+     move the symptom, not the cause. The implementation first splits that
+     gain by source, before choosing the bound:
+     - the late-move reduction's room above nominal, two plies and two more
+       on a PV line;
+     - the re-search ply;
+     - hindsight's ply.
+
+     TS-1's per-line count is the prior form. **Gate:** case 3, `[-5,5]`
+     with its cap, since bounding the lines changes reductions across the
+     tree. That corrects the case 1 RAR-S121 copied from this card, whose
+     clause was written for raising the cap. Case 1 stays open only to a
+     form confined to lines that reach the cap, with a static differential
+     as its correctness read. The registration states the exposure (zero
+     at STC, 1.96% of searches at `60+0.6`'s node counts) and chooses its
+     time control knowingly: a gate at `3+0.03` cannot see the cap.
+     Implemented 2026-11-11 as `aee0b3b`: a node's depth is held to
+     `2 × iteration − ply`, before quiescence and again after hindsight,
+     which keeps the contract the extension budget's comment states.
+     The bound holds every out-of-budget gain to the room the extensions
+     left, so the source split was not needed to choose it. `bench 13`
+     11,477,040 / EBF 2.537. `no_line_searches_past_twice_the_iteration_depth`
+     pins it, and fails with the clamp disabled. Three test preconditions
+     were fixed first, each in its own commit and read on both trees:
+     - the node probes' iteration depth (`bd37b17`);
+     - two singular liveness pins (`61a7cb4`);
+     - the helper's ranking without an unconfirmed fail-high (`5f21606`).
+
+     On the candidate, the race position's selective depth at depth 10
+     falls from 127 to 30. At the games' node counts the bound cuts 0.49%
+     of interior nodes, in 94% of searches and in all 60 games. At twenty
+     times them the cap is reached in 2 searches instead of 72, both deep
+     endgame iterations (63 and 84) where twice the iteration reaches it by
+     itself; that residual is outside this repair. WAC is 238 against 239
+     at 100k and 260 against 264 at 400k, with no canary lost. **Gate
+     registered as RAR-S122,** before any game: case 3, SPRT `[-5,5]`, cap
+     6,000 pairs, against `5f21606`. A `3+0.03` gate reads the bound's
+     effect on the tree, not the cap. H0 reverts it and the defect stays
+     open here.
+     **Gate read 2026-11-11 (RAR-S122): the cap without a bound,** nElo
+     −1.0 ± 6.2 over 12,000 games, so the bound is kept and the fingerprint
+     moves to 11,477,040 / EBF 2.537. That is no harm beyond about −5, not a
+     gain. The residual is the cap from iteration 64, where twice the
+     iteration reaches it by itself: 0.05% of replayed searches at twenty
+     times the games' node counts. Retry, by raising the cap with the band
+     constants or by the donor's in-check and draw handling at the cap, if a
+     read at a rated time control finds more than 0.1% of searches reaching
+     it.
     - **D.6.8 A depth-0 entry is counted as two nodes — `R2`.** (DRIVER-11): `check_stop` at
      the `negamax` entry and again at the `quiescence` entry it hands to, so
      reported nodes, `go nodes`, the bench count and the LMR spread's phase
@@ -1215,6 +946,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      Fix: test `depth <= 0` first and give the LMR spread its own counter if
      its phase is to be kept. A new fingerprint by construction: register it
      alone, case 2 at most, never folded into a strength change.
+     Screen read 2026-11-12 (RAR-S123, `bench 13` at stride 1): **ready
+     for implementation.** 16.1% of `td.nodes` counts a position the search
+     already counted:
+     - the hand-off to quiescence, 12.3%;
+     - the singular exclusion search, 2.9%;
+     - razoring's quiescence search, 0.9%;
+     - null-move verification, nearly none.
+
+     So reported `nps` reads about 19% high, and `go nodes N` searches
+     about 0.84 N positions. The fix counts each position once and every
+     consumer reads that count: the LMR spread, the effort share, the poll
+     cadence and the node limit. No old clock is kept. **Gate:** case 2,
+     a 2,000-game read with the −13 harm rule, registered alone. One
+     contract question is open before the gate's registration. LMR's
+     full-depth re-search and ProbCut's verification re-enter a child
+     without a new move, at least 1.2% more. The donor's one count per
+     move made covers them; the screen's four paths do not.
     - **D.6.9 The endgame scale's target — `R2`.** (EVAL-5): `evaluate` adds tempo to `mg`,
      tapers, then `scale_endgame` multiplies the whole; both donor commits
      scale the endgame half only (`v = mg·p + eg·(128−p)·sf/64`), so the forms
@@ -1272,6 +1020,26 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       stalemated, each checked against Syzygy or Stockfish. All correct:
       `NO_CHANGE` with the positions kept as tests. A wrong pick: a card
       with Basilisk's rule and its gates as the prior.
+      **The wrong-pick branch fired 2026-11-11, on D.6.3's candidate**
+      (ProbCut's children typed `false`), in Basilisk's transposing rook
+      position (`2k2rr1/6P1/2P5/7p/1B2p3/4P3/5K2/8 w - - 0 46`): after
+      `gxf8` with either piece, `Rxf8+ Bxf8` reaches the same position,
+      a true tie. At 100,000 nodes the candidate plays `g7f8r` (528 at
+      depth 14), the rook it searched first, from depth 12 on; the
+      source at `79f761d` plays the queen by its tree's shape. Searched
+      apart at depth 14 the queen reads 896 and the rook 768, the
+      noise of two searches the anchor had read as a margin. Nothing in
+      Rarog's search breaks the tie. The item is now a card with
+      Basilisk's rule as its prior (a rook or bishop promotion is played
+      over the queen only by more than 200 of exact score, BAS-S33,
+      BAS-S34). Its acceptance test is
+      `queen_promotion_though_the_rook_was_searched_first`, ignored
+      until the rule lands (`d41bae3`);
+      `promotion_on_f8_wins_where_the_rook_transposes` stays active. It
+      was to land before the 2.7.0 cut (maintainer decision 2026-11-11);
+      that hold was lifted 2026-11-13 (maintainer decision): the rook is a
+      true tie that changes no result, and D.7 replaces the root order
+      that breaks it, so D.7.8 asks first.
     - **D.6.20 The fail-high stop's hole — `R2`.** (H24): the stop at twice the target is
       checked only when a window returns (`search/mod.rs:977-978`), so a
       window that never fails high runs to the maximum (RAR-R26's rec3,
@@ -1281,6 +1049,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       rate by score band, the table carried). `R2` zero-game read;
       `NO_CHANGE` under 0.5% of searches. Long controls only; the hard
       maximum still bounds it.
+      **A measured instance, 2026-11-11,** at `30000+300`:
+      `won_ending_does_not_sink_the_clock`
+      (`7r/5R2/8/2k1PB2/8/4K3/8/8 w - - 0 86`, limit 8 s) is red since
+      `ee0b3e4`, the quiescence queen push. Read alone on an idle host,
+      three runs a commit: 2.42 to 2.53 s at `b202174` and `72c4e60`
+      (9,838,664 nodes, depth 18, exact); 9.46 to 9.82 s at `ee0b3e4`
+      and `79f761d`, the same engine source (37,767,960 nodes, the last
+      line a depth-16 lowerbound); 12.91 s with D.6.3's candidate (a
+      depth-19 lowerbound). The node counts repeat exactly, so it is a
+      failing test and not a flaky one. The control is not long, and
+      the per-window timing that would show whether this is the hole
+      above or another cause is not yet read: that is the leaf's first
+      read. The test is ignored as this leaf's acceptance test
+      (`b6914f0`). Its hold on the 2.7.0 cut was lifted 2026-11-13
+      (maintainer decision): the hole is older than 2.6.0, the hard
+      maximum bounds it, and the stop sits in the loop D.7 replaces, so
+      D.7.8 asks first.
     - **D.6.21 Won KPK positions read at or below 0 — `R2`.** (D.5.19's read,
       2026-11-02; Basilisk's A3): 88 of 445,128 won KPK positions read at
       or below 0 for the winner, 78 of the wrong sign and 10 exactly 0,
@@ -1369,6 +1154,41 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the repair form is a scale, as Stockfish 11's. Acceptance test:
       `pawnless_scale_truth_table` in `tests/behaviour_anchors.rs`, committed
       `#[ignore]`d (needs `RAROG_SYZYGY_PATH`). `R2` card.
+    - **D.6.27 IIR has no node-type condition — `R2`.** (found 2026-11-11,
+      RAR-S117): IIR reduces any node of depth 4 or more that has no table
+      move. Stockfish 19 reduces only PV and cut nodes, at depth 6 or more,
+      and Reckless at its head of 2026-10-29 has no IIR. Local evidence:
+      D.6.4's store change left revisited fail-low nodes without a move,
+      IIR for want of a move rose from 9.9% to 13.5% of interior nodes, that
+      alone bought 0.66 of depth at the games' node counts, and the gate
+      lost 14.7 ± 13.8 nElo (RAR-S115). A ply taken from those nodes was
+      worth more than the ply the clock gave back. Whether the source's own
+      IIR at expected all nodes costs the same way is not measured. Screen,
+      zero games, on RAR-S117's replay: IIR applications by node type and
+      by whether the node then fails low; under 10% of them at expected all
+      nodes closes the item `NO_CHANGE`. Candidate: IIR at PV and cut nodes
+      only. Its tree grows and its nominal depth falls, so the card freezes
+      a prediction for both before any game. Interactions: IIR's depth
+      threshold, the too-shallow-entry half of its predicate, the cut-node
+      LMR term, and D.6.4's store, which is an ordering change alone once
+      IIR ignores those nodes. Gate: `[0,3]` if the card predicts a gain,
+      else case 3. `R2` card.
+    - **D.6.28 Clock use: a tenth of the budget is left unspent — `R2`.** (found
+      2026-11-13 in RAR-O08's games): against a budget of the base plus the
+      increment times its own moves, Rarog's head spent 87.1 to 88.9% of
+      its clock where Reckless's time manager spent 94.9 to 95.1% and
+      Stockfish classical's 93.5 to 94.1%; in the first twenty moves Rarog
+      spent 0.76 to 0.77 of the base and Reckless 0.84 to 0.87. Rarog's
+      budget constants are Stockfish's, and Stockfish dev reads 88.7 to
+      89.7%. The layer is clock use, not Elo: D.1 made the engine keep more
+      reserve when its clock runs low, and whether the total left unspent
+      costs strength was not read. Independent of the kernel, so it
+      survives D.7 either way, and D.7.2's equal-move-time read sizes it.
+      Screen, zero games: the unspent share by move number and by game
+      length on Colosseum's gate games, and where the reserve sits (the
+      low-clock rule, the hard bound, the forfeit margin). Candidate: one
+      knob, `tm_opt_scale`, registered as an SPRT `[0,3]` with a `10+0.1`
+      harm read and the forfeit count as its invariant. `R2` card.
   Evidence for items already here (H18–H21, H25): item 4 (NODE-2), the
   donor form read +3.3 ± 9.1 in Basilisk (2,000 games) and each of its
   consumers alone (IIR, the no-TT-move LMR term) threw a promotion fixture
@@ -1389,42 +1209,127 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   read as explosion.
   Evidence layer: counters and node counts choose and never accept; only the
   registered gate does (AGENTS, *Gating*).
-- **D.7 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
-  Added 2026-11-02 from the comparison with Reckless in D.2. `PageAllocator`
-  (`src/large_pages.rs`) backs every allocation of at least `THRESHOLD`
-  (512 KB) with 2 MB pages on Windows only: the transposition table and each
-  search thread's correction, continuation and pawn tables. On Linux and
-  macOS those allocations go to the system allocator. Linux backs anonymous
-  memory with transparent huge pages unasked only when the kernel's mode is
-  `always`; in the common `madvise` mode the tables stay on 4 KB pages, and
-  the module's own case applies in full (about 100 MB read at random against
-  a second-level TLB that maps 8 MB of 4 KB pages). Reckless maps its table
-  and its big histories with `mmap` and `madvise(MADV_HUGEPAGE)` on Linux.
-  - **Contract.** On Linux the page allocations are 2 MB aligned and advised
-    with `madvise(MADV_HUGEPAGE)`, behind the same `LargePages` option;
-    nothing is locked and no privilege is needed. `large_pages()` reports
-    what the kernel allows (the mode in
-    `/sys/kernel/mm/transparent_hugepage/enabled`, `never` reading as off).
-    The tables, their contents and the search are unchanged: `bench 13`
-    exact on every platform, and the CI's Linux job builds and tests it.
-  - **Measurement.** The one-thread NPS read by PROCESS's method on a Linux
-    host, with the option on and off in one binary and the kernel's mode
-    recorded (WSL2 on the match host is the host available; its mode is part
-    of the record), and a four-thread cell. A behaviour-neutral speed change
-    closes on that read.
-  - **Order.** On its own. RAR-M79 (2026-11-02) read large pages off 2.7%
-    higher in R than on, inside noise, in a session where the four-thread
-    speed loss was absent; whether they take part in the slow host state
-    is unread (`analysis/d2_audit_2026-11-02.md`). Transparent huge pages
-    lock nothing, so the Linux read stands whatever that answer is, and
-    the scope stays every allocation the Windows path takes.
-  - **macOS: not pursued.** Rarog ships macOS for Apple silicon only
-    (maintainer decision 2026-11-02: no Intel macOS build, universal or
-    separate). Apple silicon has no userspace superpage request (it fails
-    on an M1, by a report on Apple's developer forums and OpenJDK's and
-    MySQL's macOS notes; not an Apple document), and its base page is
-    already 16 KB. The 2 MB superpages macOS offers exist on Intel Macs
-    alone. On macOS `large_pages()` stays as it is.
+- **D.7 Search shape: the kernel against its donor on Rarog's evaluation, rebuilt whole in Reckless's form if the reads or the maintainer say so — `R3` investigation, `I1`/`I2`/`V`/`R2` sub-steps.**
+  Added 2026-11-13 from RAR-O08 and
+  `analysis/search_shape_decision_2026-11-13.md` (maintainer decision the
+  same day). Reckless's search, unchanged, on Rarog's evaluation is
+  22.5 ± 7.9 Elo ahead of Rarog's head at equal clock, and it is Phase B's
+  own donor: its search source at `0756957` differs from B.0's snapshot
+  in two lines, neither behaviour. Stockfish dev's search is 88.7 ± 7.7
+  behind Reckless's and level with Stockfish classical's, so the donor
+  stays Reckless and no separate HCE shape is indicated: a kernel in the
+  donor's form is not redone for the network, and its constants are F.6's
+  seeds. The 22.5 bundles tree shape, clock use and the kernel's speed per
+  node; nothing yet says which.
+
+  **Aim.** Two questions. Is Rarog's kernel, which departs from its donor
+  in at least twelve forms and was fitted around them, weaker than the
+  donor's whole form on this evaluation? And do the problems the combined
+  kernel has not solved (D.7.8's list) disappear in the donor's whole
+  form, not in parts of it? The second is a reason for the step in its own
+  right (maintainer, 2026-11-13).
+
+  **Decision rule.** The data decides: D.7.2's reads open the rebuild at
+  +10 Elo or more for the donor at equal nodes, the 95% interval excluding
+  zero. Below that the agent reports the reads with a recommendation, and
+  the maintainer decides after that consultation and may open the rebuild
+  against the rule; the decision and its reason are recorded here.
+
+  **Acceptance.** Equal strength is accepted (maintainer decision
+  2026-11-13): the rebuilt kernel is gated against the head on the
+  loss-permitting bracket, never adopted ungated, and D.7.8's review is
+  the other half of the judgment. Adoption is the maintainer's decision on
+  both.
+
+  **Method.** One cluster (rule 3): the node body, quiescence, the root
+  window and the evaluation wrapper move together behind one switch, the
+  old kernel beside it until adoption. The seeds are the hybrid's own
+  configuration, the one point of known strength. Parity with the hybrid
+  is checked at zero games before any game is played. Donor forms are not
+  tried one at a time on the old kernel: D.6.3, D.6.4, the fail-soft
+  cluster (RAR-R20, RAR-R21) and one-retry aspiration (RAR-S89) lost
+  there. Rarog's own gate-accepted forms that the donor lacks are listed
+  by D.7.0 with a keep-or-drop proposal each and re-read in D.7.8.
+
+  **Carried over unchanged.** The frozen evaluation, board and move
+  generation, the table, time management, Lazy SMP, the root driver, the
+  protocol, tablebases, D.1 to D.5's repairs and D.4's instruments.
+
+  **Invariants.** Table bounds and the mate and tablebase bands; the draw,
+  repetition and rule-50 identities; no allocation per node; the
+  search-path perft; one count per position (D.6.8); the acceptance tests
+  of D.6.17 and D.6.20.
+
+  **Stop rules.** D.7.2 below its bar and no maintainer decision to
+  proceed: D.7.3 to D.7.9 close `NO_CHANGE`. Parity not reached: no games.
+  The gate at H0: the old kernel stays; this is one cluster, so one
+  rejection stops the step.
+
+  **Independence.** A kernel nearer the donor's raises what D.11 must
+  disclose and the weight of the licence question. PROCESS's boundary
+  governs the implementation: architecture and mechanisms cross, constants
+  cross as fitted seeds, the code is Rarog's own.
+    - **D.7.0 Investigation: the inventory of departures, the seeds and the registration of the reads — `R3`.**
+      Every place Rarog's kernel departs from Reckless `0756957`, with file
+      and line on both sides, its unit, the record that chose it and
+      whether a gate accepted it. The verified start is section 5 of the
+      analysis: quiescence's fail-low return and its shape, the null move's
+      population, LMR at the root and in check, the re-search depth, the
+      reductions on unreduced searches, IIR, multi-cut, the extension
+      budget and line bound, aspiration, optimism, upcoming repetition.
+      The seed table from the hybrid's configuration: the evaluation scaled
+      by 2536/1024 into the donor's units, or the constants converted the
+      other way; the investigation chooses and says why. The parity
+      instrument's design. RAR-O09's registration with its predictions.
+      Ends `READY_FOR_IMPLEMENTATION` or `NO_CHANGE`.
+    - **D.7.1 The fixed-match script takes a node budget and a move time per engine — `I1`.**
+      `tools/sprt.ps1`: a node budget and a move time for each engine,
+      beside `-TCA` and `-TCB`. Each is proved live by a smoke in which an
+      absurd value moves the PGN and the score, and the combinations that
+      make no sense are refused.
+    - **D.7.2 RAR-O09: the donor's search against the head at equal nodes, at equal move time and at a long control — `V`.**
+      Reckless's hybrid against the head, both rebuilt on the head after
+      D.6.8: 3,000 games at equal nodes a move (tree shape alone), 3,000 at
+      equal time a move with the bridge's odds (shape and kernel speed),
+      2,000 at `10+0.1` with clocks (whether the surplus holds at a long
+      control). The differences to RAR-O08's match (5) are the shares of
+      clock use and speed. Maintainer-run, about three hours.
+    - **D.7.3 Parity instrument: Rarog and the hybrid on one position set — `I2`.**
+      Nodes to each depth and the rate at which each mechanism fires, on
+      the same positions and the same evaluation; a planted difference
+      must show.
+    - **D.7.4 The kernel in the donor's form, behind one switch — `I2`.**
+      Own code in Rarog's structure, written in D.8's target shape (probes,
+      not interleaved instrumentation). Parity by D.7.3 before any game;
+      debug and release tests, fmt, clippy, the allocation guard and the
+      search-path perft; the old kernel's fingerprint exact with the switch
+      off.
+    - **D.7.5 The unfitted paired run — `V`.**
+      2,000 games against the head (rule 8's screen). Clearly negative with
+      parity passed puts the difference outside the kernel: one diagnosis,
+      then stop.
+    - **D.7.6 The fit — `V`.**
+      Curvature sweep, then SPSA in registered blocks (rule 7c), at most
+      three. The fitted constants are kept only if fitted over unfitted
+      passes SPRT `[0,3]`.
+    - **D.7.7 The gate: the kernel against the head — `V`.**
+      The loss-permitting bracket `[-1.75, 0.25]`, with a `10+0.1` read and
+      a 4T read registered beside it.
+    - **D.7.8 Problem review on the new kernel — `R2`.**
+      Each problem the combined kernel left is asked "is this still an
+      issue?", at zero games where a replay, a fixture or a test answers
+      it: the seldepth chains to the ply cap (RAR-S121's replay; the line
+      bound and the extension budget stay only if the chains return), the
+      root fail-high cascade (RAR-R19 to R21), the won-ending clock test
+      (D.6.20), the root promotion rule (D.6.17), the forms that lost on
+      the combined kernel, and Rarog's own accepted forms from D.7.0's
+      list. The result is a table: gone, still there, or new. It feeds the
+      adoption decision and says which D.6 leaves close, stay or re-open.
+    - **D.7.9 Adoption and checkpoint — `V`, then `I1`.**
+      The maintainer's decision on D.7.7 and D.7.8. On adoption: RAR-O08's
+      matches (2) and (5) re-read on the new head, pooled NPS, conversion,
+      the old kernel and the switch deleted, the fingerprint record
+      updated. An adopted kernel releases as 2.8.0.
 - **D.8 Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — `I1`, `R2` for the root driver.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` §3.7 and §3.8
   (the B.2.0 recipe repeated: `src/` 29,190 lines, in-file tests 23%,
@@ -1437,6 +1342,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   D.2 and D.3 are closed, so nothing here waits: the items run in order, each
   on its own branch. P16, the comment pass, merged into D.5.16 on
   2026-11-05.
+  D.8.6, D.8.7 and D.8.19 are read again after D.7 (2026-11-13): a kernel
+  rebuilt there is written in their target shape.
     - **D.8.1 P0: the census as a tool — `I1`.** Commit the census as `tools/diag/arch_census.py` (planned) with a test
      (masked-source parser, `use` edge graph, public census, shape table,
      instrumentation attribution, duplicate finder); it reproduces the
@@ -1601,6 +1508,122 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   probe reorder (NODE-11 here) read +0.3 ± 3.2 at `10+0.1` with tables
   (8,000 games), a neutral repair, and cut table reads by 70% on six 7–8-man
   endings at depth 18, with 2,285 of 2,286 tablebase wins converted (H29).
+- **D.10 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
+  Renumbered from D.7 on 2026-11-13 (maintainer decision), when the
+  search-shape step took that number.
+  Added 2026-11-02 from the comparison with Reckless in D.2. `PageAllocator`
+  (`src/large_pages.rs`) backs every allocation of at least `THRESHOLD`
+  (512 KB) with 2 MB pages on Windows only: the transposition table and each
+  search thread's correction, continuation and pawn tables. On Linux and
+  macOS those allocations go to the system allocator. Linux backs anonymous
+  memory with transparent huge pages unasked only when the kernel's mode is
+  `always`; in the common `madvise` mode the tables stay on 4 KB pages, and
+  the module's own case applies in full (about 100 MB read at random against
+  a second-level TLB that maps 8 MB of 4 KB pages). Reckless maps its table
+  and its big histories with `mmap` and `madvise(MADV_HUGEPAGE)` on Linux.
+  - **Contract.** On Linux the page allocations are 2 MB aligned and advised
+    with `madvise(MADV_HUGEPAGE)`, behind the same `LargePages` option;
+    nothing is locked and no privilege is needed. `large_pages()` reports
+    what the kernel allows (the mode in
+    `/sys/kernel/mm/transparent_hugepage/enabled`, `never` reading as off).
+    The tables, their contents and the search are unchanged: `bench 13`
+    exact on every platform, and the CI's Linux job builds and tests it.
+  - **Measurement.** The one-thread NPS read by PROCESS's method on a Linux
+    host, with the option on and off in one binary and the kernel's mode
+    recorded (WSL2 on the match host is the host available; its mode is part
+    of the record), and a four-thread cell. A behaviour-neutral speed change
+    closes on that read.
+  - **Order.** On its own. RAR-M79 (2026-11-02) read large pages off 2.7%
+    higher in R than on, inside noise, in a session where the four-thread
+    speed loss was absent; whether they take part in the slow host state
+    is unread (`analysis/d2_audit_2026-11-02.md`). Transparent huge pages
+    lock nothing, so the Linux read stands whatever that answer is, and
+    the scope stays every allocation the Windows path takes.
+  - **macOS: not pursued.** Rarog ships macOS for Apple silicon only
+    (maintainer decision 2026-11-02: no Intel macOS build, universal or
+    separate). Apple silicon has no userspace superpage request (it fails
+    on an M1, by a report on Apple's developer forums and OpenJDK's and
+    MySQL's macOS notes; not an Apple document), and its base page is
+    already 16 KB. The 2 MB superpages macOS offers exist on Intel Macs
+    alone. On macOS `large_pages()` stays as it is.
+- **D.11 Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — `R2`, then `M`.** A
+  small research step with its implementation. Added 2026-10-23 by
+  maintainer decision. It held the 2.7.0 cut until 2026-11-13, when the
+  maintainer lifted the hold for 2.7.0; the release after 2.7.0 does not
+  cut until it closes. Known
+  evidence (`analysis/originality_review_2.6.0_2026-10-22.md`, on the
+  2.6.0 source):
+  - The code is Rarog's own. Raw shared token runs with Reckless cover
+    0.34% of Rarog, against 96% between two Reckless versions.
+  - The evaluation weights are Rarog's own fits, with no Stockfish 11
+    table exact or scaled.
+  - Two groups of donor material were copied unchanged:
+    - Stockfish's time budget: about 17 constants in
+      `src/search/time.rs`, which RAR-R14 and RAR-R15 kept as
+      "Rarog's Stockfish-shaped budget".
+    - Reckless's move ordering, history, correction and TT-cutoff
+      updates: 37 of the 50 hard-coded search constants of 150 or
+      more, with their control flow, adopted at B.2.
+  - The evaluation design is Stockfish 11's.
+  - Fathom (MIT) does the Syzygy probing and is not named.
+  - The README says only "inspiration", and PROCESS's independence
+    boundary says constants cross as refitted seeds. Both are out of
+    step with the shipped code.
+  - The maintainer's move-similarity screen (`tools/diag/sim_test.py`,
+    2,000 positions at 100 ms, 2026-10-23) puts Rarog at 56.4%
+    against Stockfish 11, 57.7% against Stockfish 10 and 54.2%
+    against Reckless. Its row runs 50.6–57.7 across nine engines.
+    The related controls read Stockfish 10–11 67.0% and Houdini 6–Fire
+    68.8%. Rarog plays like an unrelated engine against both donors.
+  - Venue rules:
+    - CCRL, CEGT and SPCC do not judge originality.
+    - TCEC sanctioned code copied *covertly* (Houdini and Fire, 2020).
+    - ICGA rule 2 (2019) requires every code and data source to be
+      named at registration and voids undeclared derivatives.
+
+  The step:
+  1. Rerun `tools/diag/originality_scan.py`,
+     `originality_constants.py` and `originality_eval.py` on the
+     release candidate's source, plus the screen if search or
+     evaluation changed since 2.6.0, so that the disclosure describes
+     2.7.0, not 2.6.0.
+  2. Settle the licence with the maintainer. Reckless is AGPL-3.0,
+     and the closely ported blocks are where a derivative-work
+     argument could be made. The options:
+     - credit Reckless and ask its authors (the maintainer sends);
+     - relicense Rarog as AGPL-3.0-or-later;
+     - rewrite and refit those blocks.
+
+     The maintainer chooses; it is not legal advice.
+  3. Write the disclosure where each fact belongs:
+     - README's Acknowledgements, short and for users, naming
+       Stockfish 11's evaluation design, Reckless's search, history
+       and move ordering with some constants unchanged, Stockfish's
+       time budget, and Fathom;
+     - PROCESS's independence boundary, saying what crossed unchanged
+       and that unchanged material is disclosed;
+     - the review, updated for the release head, which also serves as
+       the donor list for an ICGA-style registration.
+  4. Ship the GPL text and Fathom's MIT notice with the release
+     binaries (`release.yml` publishes bare executables today), with
+     a `CHANGELOG.md` entry if the assets change.
+
+  Falsifier and stop rule: a rerun that finds no group beyond the two
+  above leaves the disclosure as drafted. A new group is added to it,
+  not removed by tuning here. Refitting the copied constants is out of
+  scope: that is a strength experiment that needs its own registration
+  and gate. Closes when the README, PROCESS, the licence decision, the
+  shipped notices and the updated review have landed.
+  Added 2026-11-03: Triumviratus (GPL-3.0) is a third donor, for
+  mechanisms only (PROCESS, *The independence boundary*); nothing from it
+  is in the code on that date. A mechanism from it that ships before the
+  cut is named in the disclosure.
+  Moved from E.3.0 on 2026-11-13 (maintainer decision): the disclosure is
+  a Phase D leaf. The 2.7.0 cut runs ahead of D.7, and the hold is lifted
+  for it (maintainer decision 2026-11-13): 2.7.0 ships with 2.6.0's
+  notices, and the disclosure closes before the release after it. A
+  kernel rebuilt in Reckless's form (D.7) makes it heavier for that
+  release.
 
 ## Phase E — Classical checkpoint and release
 
@@ -1621,6 +1644,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   The loss table by cell (TT-1, D.4.5's tool) is read in H.3, on the
   network head's games (moved 2026-11-05: a classical head's games describe
   an engine H.3 will not tune).
+  The wider round robin adds Stockfish 15.1 with `Use NNUE` off beside
+  Stockfish 11 (3,568 against the C head's 3,479, RAR-M75): the classical
+  evaluation under a later search, never rated in this pool (2026-11-13).
 - **E.2 Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4.1 and Fritz 16 at 1T and 4T (Rybka 4.1 replaced Rybka 4, 2026-09-19); the binding arm is 1T — `V`.** The pool measurement defined in section 1, at 1T
   and 4T. Met, or not met with the measured shortfall per engine recorded.
   **The binding arm is 1T:** RAR-M46 measured 4T as the easier arm for three
@@ -1635,87 +1661,30 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   fault, so one crash by Houdini or Rybka voids the pool; Basilisk keeps
   zero tolerance for its own build and accepts a foreign engine's faults
   up to 1% of that engine's games, quoted in the manifest.
-- **E.3 Release 2.7.0 through the tag-driven flow; 3.0.0 is reserved for the first NNUE release — `M`/`V`.** Version, changelog, release notes, fmt, debug and
+- **E.3 Release through the tag-driven flow; 3.0.0 is reserved for the first NNUE release — `M`/`V`.** Version, changelog, release notes, fmt, debug and
   release suites, clippy, feature builds, fingerprint, PGO assets, ISA
-  verification, CI matrix, tag and publish on maintainer instruction. Version
-  is 2.7.0 whatever E.2 reads (maintainer decision 2026-10-22: Rarog 3 is
+  verification, CI matrix, tag and publish on maintainer instruction. E.2's
+  result sets no version (maintainer decision 2026-10-22: Rarog 3 is
   the first NNUE Rarog, F.9; E.2's result is recorded, not a version number;
   2.5.0 was cut at B.10 and 2.6.0 from the C head ahead of E, maintainer
   decisions 2026-10-03 and 2026-10-22). Later classical gains (E.4, F.4.1)
-  release as 2.8.0 and onward under Phase F's rule. The release is cut through the
+  release after it under Phase F's rule. The release is cut through the
   tag-driven flow of **E.3.1**, which also carries the two workflow checks
   this release owed (tag equals version; one fingerprint asserted across the
   matrix) and may land any time earlier.
-    - **E.3.0 Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — `R2`, then `M`.** A
-      small research step with its implementation. Added 2026-10-23 by
-      maintainer decision. E.3.4 does not cut until it closes. Known
-      evidence (`analysis/originality_review_2.6.0_2026-10-22.md`, on the
-      2.6.0 source):
-      - The code is Rarog's own. Raw shared token runs with Reckless cover
-        0.34% of Rarog, against 96% between two Reckless versions.
-      - The evaluation weights are Rarog's own fits, with no Stockfish 11
-        table exact or scaled.
-      - Two groups of donor material were copied unchanged:
-        - Stockfish's time budget: about 17 constants in
-          `src/search/time.rs`, which RAR-R14 and RAR-R15 kept as
-          "Rarog's Stockfish-shaped budget".
-        - Reckless's move ordering, history, correction and TT-cutoff
-          updates: 37 of the 50 hard-coded search constants of 150 or
-          more, with their control flow, adopted at B.2.
-      - The evaluation design is Stockfish 11's.
-      - Fathom (MIT) does the Syzygy probing and is not named.
-      - The README says only "inspiration", and PROCESS's independence
-        boundary says constants cross as refitted seeds. Both are out of
-        step with the shipped code.
-      - The maintainer's move-similarity screen (`tools/diag/sim_test.py`,
-        2,000 positions at 100 ms, 2026-10-23) puts Rarog at 56.4%
-        against Stockfish 11, 57.7% against Stockfish 10 and 54.2%
-        against Reckless. Its row runs 50.6–57.7 across nine engines.
-        The related controls read Stockfish 10–11 67.0% and Houdini 6–Fire
-        68.8%. Rarog plays like an unrelated engine against both donors.
-      - Venue rules:
-        - CCRL, CEGT and SPCC do not judge originality.
-        - TCEC sanctioned code copied *covertly* (Houdini and Fire, 2020).
-        - ICGA rule 2 (2019) requires every code and data source to be
-          named at registration and voids undeclared derivatives.
-
-      The step:
-      1. Rerun `tools/diag/originality_scan.py`,
-         `originality_constants.py` and `originality_eval.py` on the
-         release candidate's source, plus the screen if search or
-         evaluation changed since 2.6.0, so that the disclosure describes
-         2.7.0, not 2.6.0.
-      2. Settle the licence with the maintainer. Reckless is AGPL-3.0,
-         and the closely ported blocks are where a derivative-work
-         argument could be made. The options:
-         - credit Reckless and ask its authors (the maintainer sends);
-         - relicense Rarog as AGPL-3.0-or-later;
-         - rewrite and refit those blocks.
-
-         The maintainer chooses; it is not legal advice.
-      3. Write the disclosure where each fact belongs:
-         - README's Acknowledgements, short and for users, naming
-           Stockfish 11's evaluation design, Reckless's search, history
-           and move ordering with some constants unchanged, Stockfish's
-           time budget, and Fathom;
-         - PROCESS's independence boundary, saying what crossed unchanged
-           and that unchanged material is disclosed;
-         - the review, updated for the release head, which also serves as
-           the donor list for an ICGA-style registration.
-      4. Ship the GPL text and Fathom's MIT notice with the release
-         binaries (`release.yml` publishes bare executables today), with
-         a `CHANGELOG.md` entry if the assets change.
-
-      Falsifier and stop rule: a rerun that finds no group beyond the two
-      above leaves the disclosure as drafted. A new group is added to it,
-      not removed by tuning here. Refitting the copied constants is out of
-      scope: that is a strength experiment that needs its own registration
-      and gate. Closes when the README, PROCESS, the licence decision, the
-      shipped notices and the updated review have landed.
-      Added 2026-11-03: Triumviratus (GPL-3.0) is a third donor, for
-      mechanisms only (PROCESS, *The independence boundary*); nothing from it
-      is in the code on that date. A mechanism from it that ships before the
-      cut is named in the disclosure.
+  **Decision, 2026-11-13 (maintainer):** 2.7.0 is an unscheduled
+  release, cut from the current head before D.7 by PROCESS *Release*
+  with no roadmap step of its own; E.3.4 stays in place for E.3's
+  release, its version set when it is cut. 2.7.0 brings the fixes in
+  `[Unreleased]` and the new executables to users and testers now; a
+  kernel D.7 adopts releases as 2.8.0. The condition is no loss of playing strength against 2.6.0,
+  read by a registered match before the cut: the last read (RAR-M84,
+  2026-11-08, unregistered) had that day's head level with 2.6.0 head to
+  head and 13.6 ± 9.9 Elo lower against the shared field, before D.6.2's
+  nElo +12.2 ± 6.5. The holds of D.11, D.6.17 and D.6.20 on the cut
+  are lifted for 2.7.0 (maintainer decisions 2026-11-13): D.11's
+  stands for the release after it, and D.7.8 asks first whether
+  D.6.17's tie and D.6.20's clock test survive the new kernel.
     - **E.3.1 Tag-driven release flow — `I1`, DONE 2026-10-05.** `release.yml`
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is
@@ -1878,8 +1847,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       selection (AMD Zen 1 and 2) is not exercised there; the forced-tier
       benches run that tier. Landed with E.3.2 as `5efe16f` (PR #14). The
       static Linux runtime's speed stays open for a native host (RAR-P57).
-    - **E.3.4 Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
-      E.3.1 closed (2026-10-05), numbered E.3.2 until 2026-11-04: the version from `2.7.0-dev` to 2.7.0,
+    - **E.3.4 Release cut: the version, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
+      E.3.1 closed (2026-10-05), numbered E.3.2 until 2026-11-04: the version from its `-dev` form to the release's,
       behaviour-neutral with the fingerprint
       held; `CHANGELOG.md`'s `[Unreleased]`, kept as changes landed,
       reviewed and dated; fmt, clippy, debug and release suites, feature

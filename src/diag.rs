@@ -58,6 +58,8 @@ pub mod counters {
         rfp_cut,
         // Hindsight reductions: a reduced child searched deeper or shallower.
         hindsight_up,
+        // Nodes whose depth the line bound cut to twice the iteration's depth.
+        line_room_clamp,
         hindsight_down,
         razor_drop,
         nmp_cut,

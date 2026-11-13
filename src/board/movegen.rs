@@ -87,11 +87,29 @@ pub(super) fn generate_quiets_pinned_into(
 /// tests come first), so the pre-scan is cheap when it fails and pays a full
 /// generation when it succeeds.
 pub(super) fn generate_captures_into(board: &mut Board, moves: &mut MoveList) {
+    gen_captures_only::<false>(board, moves);
+}
+
+/// Legal captures plus the legal non-capturing queen promotions: what a
+/// captures-only search (quiescence outside check, ProbCut) plays. Without the
+/// push, a pawn one step from queening on a free square never promotes there,
+/// and the leaf is read at its static value. The rook, bishop and knight pushes
+/// stay quiet; the staged picker keeps the queen push in its quiet stage.
+pub(super) fn generate_noisy_into(board: &mut Board, moves: &mut MoveList) {
+    gen_captures_only::<true>(board, moves);
+}
+
+fn gen_captures_only<const QUEEN_PUSHES: bool>(board: &mut Board, moves: &mut MoveList) {
     moves.clear();
     let us = board.side_to_move();
     let them = !us;
+    let pushes = if QUEEN_PUSHES {
+        promotion_push_targets(board, us)
+    } else {
+        Bitboard::EMPTY
+    };
 
-    if !has_pseudo_capture(board, us, them) {
+    if pushes.is_empty() && !has_pseudo_capture(board, us, them) {
         crate::diag_count!(board_gen_capture_calls);
         return;
     }
@@ -99,8 +117,54 @@ pub(super) fn generate_captures_into(board: &mut Board, moves: &mut MoveList) {
     let king_sq = board.king_sq(us);
     let pinned = compute_pinned(board, king_sq, us, them);
     gen_captures_with_pin(board, us, them, king_sq, pinned, None, moves);
+    if pushes.any() {
+        push_queen_promotions(board, us, king_sq, pinned, pushes, moves);
+    }
     crate::diag_count!(board_gen_capture_calls);
     crate::diag_add!(board_gen_capture_moves, moves.len() as u64);
+}
+
+/// The free squares our pawns on their seventh rank could push to.
+fn promotion_push_targets(board: &Board, us: Color) -> Bitboard {
+    let pawns = board.pieces(us, Piece::Pawn);
+    let ahead = match us {
+        Color::White => (pawns & Bitboard::RANK_7).north(),
+        Color::Black => (pawns & Bitboard::RANK_2).south(),
+    };
+    ahead & !board.occupied()
+}
+
+/// The legal queen pushes onto `targets`. A push captures nothing, so in check
+/// it must block the single checker; a pinned pawn moves only along its pin.
+fn push_queen_promotions(
+    board: &Board,
+    us: Color,
+    king_sq: Square,
+    pinned: Bitboard,
+    targets: Bitboard,
+    moves: &mut MoveList,
+) {
+    let checkers = board.checkers();
+    if checkers.more_than_one() {
+        return;
+    }
+    let check_mask = if checkers.any() {
+        between(king_sq, checkers.lsb())
+    } else {
+        Bitboard::FULL
+    };
+    let mut targets = targets & check_mask;
+    while targets.any() {
+        let to = targets.pop_lsb();
+        let from = match us {
+            Color::White => Square(to.0 - 8),
+            Color::Black => Square(to.0 + 8),
+        };
+        if pinned.contains(from) && !on_same_ray(from, to, king_sq) {
+            continue;
+        }
+        moves.push_move(Move::new(from, to, PROMO_QUEEN));
+    }
 }
 
 /// [`generate_captures_into`] returning a fresh list.

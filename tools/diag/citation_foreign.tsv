@@ -28,16 +28,19 @@
 66638ae04bbce4d1ffdecfcf19fd7d65ce88e5f7	Basilisk initial snapshot commit
 7551803d287e404cbc746b2e3ba743c463a8b80c	Basilisk follow-up snapshot commit
 75d38ad	GyatsoChess commit
+7cdd5e89	Stockfish master commit of 2026-11-06 (the promotion-generation reference of RAR-S108)
 8791a27e	Colosseum tournament ID (RAR-M57)
 8c4e18fb	SHA-256 prefix of a cluster-qualification baseline binary (2026-09-08)
 8fa63cc	Colosseum cli-v0.5.0 revision (the pinned runner since 2026-11-01)
 91b56c2	Reckless commit of the binary RAR-M20 measured
 9587eeeb	Stockfish commit (the C.0 donor instrument)
 9587eeeb5ed29f834d4f956b92e0e732877c47a7	Stockfish commit (the C.0 donor instrument, full)
+def601cc	Stockfish commit (2026-11-10, RAR-O08's Stockfish dev hybrid)
 9a8dd81	Stockfish commit (position-state reading)
 9c72539	Colosseum cli-v0.4.0 revision (pinned 2026-10-22 to 2026-11-01)
 9f94aa9	Colosseum cli revision of the qualified binary
 ae3a6170	Colosseum tournament ID (RAR-M63, stopped first start)
+aec5cb2	Reckless head of 2026-10-29 (the fail-low store and IIR reading of RAR-S116)
 af712d9	Colosseum rarog-cli-0.3.0 branch head, verified before the 0.3.0 release
 ca05dfa	Colosseum cli-v0.2.0 revision (pinned 2026-09-25 to 2026-10-14)
 ca05dfa2	Colosseum cli-v0.2.0 revision (pinned 2026-09-25 to 2026-10-14)

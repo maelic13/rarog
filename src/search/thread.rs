@@ -10,6 +10,58 @@ use super::history::HistoryTables;
 use super::stack::{PlyArray, StackEntry};
 use super::{InfoSink, MAX_PLY, RootMove, SilentSink};
 
+/// A recursive `negamax` call site, for the test that pins the `cut_node`
+/// each child receives.
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ChildSite {
+    Root,
+    NullMove,
+    NullVerify,
+    ProbCutVerify,
+    ProbCutResearch,
+    Singular,
+    FirstMove,
+    LmrReduced,
+    LmrResearch,
+    ZeroWindow,
+    PvResearch,
+}
+
+#[cfg(test)]
+impl ChildSite {
+    pub(super) const COUNT: usize = 11;
+}
+
+/// Calls counted by site, the caller's `cut_node`, whether the child is a PV
+/// node and the `cut_node` it received. A caller names its site just before
+/// the call and the child consumes it on entry, so a call no site named is
+/// counted as untagged.
+#[cfg(test)]
+#[derive(Default)]
+pub(super) struct CutNodeLog {
+    pub(super) pending: Option<(ChildSite, bool)>,
+    counts: [[[[u64; 2]; 2]; 2]; ChildSite::COUNT],
+    pub(super) untagged: u64,
+}
+
+#[cfg(test)]
+impl CutNodeLog {
+    pub(super) fn receive(&mut self, pv: bool, cut_node: bool) {
+        match self.pending.take() {
+            Some((site, parent)) => {
+                self.counts[site as usize][usize::from(parent)][usize::from(pv)]
+                    [usize::from(cut_node)] += 1;
+            }
+            None => self.untagged += 1,
+        }
+    }
+
+    pub(super) fn calls(&self, site: ChildSite, parent: bool, pv: bool, received: bool) -> u64 {
+        self.counts[site as usize][usize::from(parent)][usize::from(pv)][usize::from(received)]
+    }
+}
+
 /// Everything one search thread owns and mutates while it searches: the
 /// per-ply stack and PV, the move-ordering histories and correction tables,
 /// the root-move records, the node counters, the evaluator, the stop flags and
@@ -95,6 +147,16 @@ pub(super) struct ThreadData {
     pub(super) budget_overrun: i32,
     #[cfg(test)]
     pub(super) budget_truncations: u64,
+    /// The most any node's depth would have carried its line past twice
+    /// its iteration's depth (zero or less when the bound holds), and the
+    /// nodes whose depth the bound cut.
+    #[cfg(test)]
+    pub(super) line_overrun: i32,
+    #[cfg(test)]
+    pub(super) line_clamps: u64,
+    /// The `cut_node` each recursive `negamax` call received, by call site.
+    #[cfg(test)]
+    pub(super) cut_node_log: CutNodeLog,
     /// Late-move reductions applied at a root node and at a node in check,
     /// for the tests of the reduction scope.
     #[cfg(test)]
@@ -158,6 +220,12 @@ impl Default for ThreadData {
             budget_overrun: i32::MIN,
             #[cfg(test)]
             budget_truncations: 0,
+            #[cfg(test)]
+            line_overrun: i32::MIN,
+            #[cfg(test)]
+            line_clamps: 0,
+            #[cfg(test)]
+            cut_node_log: CutNodeLog::default(),
             #[cfg(test)]
             lmr_at_root: 0,
             #[cfg(test)]

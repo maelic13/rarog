@@ -1,0 +1,265 @@
+diff --git a/src/engine.cpp b/src/engine.cpp
+index 941d67b8..394d131a 100644
+--- a/src/engine.cpp
++++ b/src/engine.cpp
+@@ -315,6 +315,11 @@ void Engine::trace_eval() const {
+     sync_cout << "\n" << Eval::trace(p, *network) << sync_endl;
+ }
+ 
++void Engine::hce_scale(const std::string& path) const {
++    verify_network();
++    Eval::hce_scale(path, *network);
++}
++
+ const OptionsMap& Engine::get_options() const { return options; }
+ OptionsMap&       Engine::get_options() { return options; }
+ 
+diff --git a/src/engine.h b/src/engine.h
+index c4c05782..56b1c31a 100644
+--- a/src/engine.h
++++ b/src/engine.h
+@@ -102,6 +102,7 @@ class Engine {
+     // utility functions
+ 
+     void trace_eval() const;
++    void hce_scale(const std::string& path) const;
+ 
+     const OptionsMap& get_options() const;
+     OptionsMap&       get_options();
+diff --git a/src/evaluate.cpp b/src/evaluate.cpp
+index e20246da..c3399517 100644
+--- a/src/evaluate.cpp
++++ b/src/evaluate.cpp
+@@ -26,6 +26,14 @@
+ #include <iostream>
+ #include <memory>
+ #include <sstream>
++#include <cstdint>
++#include <cstring>
++#include <fstream>
++#include <limits>
++#ifndef NOMINMAX
++    #define NOMINMAX
++#endif
++#include <windows.h>
+ 
+ #include "misc.h"
+ #include "nnue/network.h"
+@@ -37,6 +45,74 @@
+ 
+ namespace Stockfish {
+ 
++// Rarog's HCE in place of the network, for Rarog's oracle reads: the search is
++// Stockfish's, unchanged; only the raw evaluation it consumes is Rarog's,
++// loaded from rarog_hce.dll beside the executable and scaled into the
++// network's units by the measured ratio (the `hcescale` command).
++namespace RarogHce {
++
++constexpr std::int64_t Scale1024 = 2660;
++
++using EvaluateFn = std::int32_t (*)(const std::uint64_t*, std::uint8_t, std::uint8_t, std::uint8_t);
++
++EvaluateFn load() {
++    wchar_t path[MAX_PATH];
++    const DWORD length = GetModuleFileNameW(nullptr, path, MAX_PATH);
++    if (!length || length == MAX_PATH)
++        std::abort();
++    wchar_t* separator = path + length;
++    while (separator != path && separator[-1] != L'\\' && separator[-1] != L'/')
++        --separator;
++    const wchar_t name[] = L"rarog_hce.dll";
++    if (separator - path + sizeof(name) / sizeof(name[0]) > MAX_PATH)
++        std::abort();
++    std::copy(name, name + sizeof(name) / sizeof(name[0]), separator);
++    HMODULE library = LoadLibraryW(path);
++    if (!library)
++    {
++        std::cerr << "rarog_hce.dll must sit beside the executable" << std::endl;
++        std::abort();
++    }
++    using AbiFn       = std::uint32_t (*)();
++    const FARPROC abi = GetProcAddress(library, "rarog_hce_abi_version");
++    const FARPROC fn  = GetProcAddress(library, "rarog_hce_evaluate");
++    if (!abi || !fn)
++        std::abort();
++    AbiFn      abiFn;
++    EvaluateFn evaluateFn;
++    std::memcpy(&abiFn, &abi, sizeof(abiFn));
++    std::memcpy(&evaluateFn, &fn, sizeof(evaluateFn));
++    if (abiFn() != 1)
++        std::abort();
++    return evaluateFn;
++}
++
++// Rarog's evaluation in centipawns, from the side to move.
++std::int32_t raw(const Position& pos) {
++    static const EvaluateFn evaluateFn = load();
++    std::uint64_t           pieces[12];
++    for (Color c : {WHITE, BLACK})
++        for (PieceType pt = PAWN; pt <= KING; ++pt)
++            pieces[c * 6 + pt - 1] = pos.pieces(c, pt);
++    const auto value = evaluateFn(
++      pieces, std::uint8_t(pos.side_to_move()),
++      std::uint8_t(pos.can_castle(WHITE_OO) * 1 | pos.can_castle(WHITE_OOO) * 2
++                   | pos.can_castle(BLACK_OO) * 4 | pos.can_castle(BLACK_OOO) * 8),
++      std::uint8_t(std::min(pos.rule50_count(), 100)));
++    if (value == std::numeric_limits<std::int32_t>::min())
++        std::abort();  // a corrupt position must never silently enter the search
++    return value;
++}
++
++// What the search reads where it read the network.
++Value evaluate(const Position& pos) {
++    const std::int64_t scaled = std::int64_t(raw(pos)) * Scale1024 / 1024;
++    return Value(std::clamp<std::int64_t>(scaled, VALUE_TB_LOSS_IN_MAX_PLY + 1,
++                                          VALUE_TB_WIN_IN_MAX_PLY - 1));
++}
++
++}  // namespace RarogHce
++
+ static int simple_eval(const Position& pos) {
+     const Color c = pos.side_to_move();
+     return PawnValue * (pos.count<PAWN>(c) - pos.count<PAWN>(~c)) + pos.non_pawn_material(c)
+@@ -52,7 +128,10 @@ Value Eval::evaluate(const Eval::NNUE::Network&     network,
+                      int                            optimism) {
+ 
+     assert(!pos.checkers());
+-    Value nnue = network.evaluate(pos, accumulators, caches);
++    (void) network;
++    (void) accumulators;
++    (void) caches;
++    Value nnue = RarogHce::evaluate(pos);
+     return scale_evaluation(nnue, optimism, pos);
+ }
+ 
+@@ -88,6 +167,39 @@ Value scale_evaluation(Value nnue, int optimism, const Position& pos) {
+ // a string (suitable for outputting to stdout) that contains the detailed
+ // descriptions and values of each evaluation term. Useful for debugging.
+ // Trace scores are from white's point of view
++// Mean |raw network| and mean |Rarog HCE| over a file of FENs (one per line,
++// anything after ';' ignored), both from the side to move.
++void Eval::hce_scale(const std::string& path, const Eval::NNUE::Network& network) {
++    std::ifstream in(path);
++    if (!in)
++    {
++        sync_cout << "hcescale: cannot read " << path << sync_endl;
++        return;
++    }
++    auto        accumulators = std::make_unique<Eval::NNUE::AccumulatorStack>();
++    auto        caches       = std::make_unique<Eval::NNUE::AccumulatorCaches>(network);
++    double      net = 0, hce = 0;
++    std::size_t count = 0;
++    std::string line;
++    while (std::getline(in, line))
++    {
++        const auto fen = line.substr(0, line.find(';'));
++        if (fen.find_first_not_of(" \t\r") == std::string::npos)
++            continue;
++        StateInfo st;
++        Position  pos;
++        pos.set(fen, false, &st);
++        accumulators->reset();
++        net += std::abs(int(network.evaluate(pos, *accumulators, *caches)));
++        hce += std::abs(RarogHce::raw(pos));
++        ++count;
++    }
++    sync_cout << std::fixed << std::setprecision(2) << "hcescale positions " << count
++              << " mean_network " << net / count << " mean_hce " << hce / count
++              << " hce_over_network " << std::setprecision(4) << hce / net << " scale_1024 "
++              << std::setprecision(0) << 1024.0 * net / hce << sync_endl;
++}
++
+ std::string Eval::trace(Position& pos, const Eval::NNUE::Network& network) {
+ 
+     if (pos.checkers())
+diff --git a/src/evaluate.h b/src/evaluate.h
+index d632fe6b..8d76637e 100644
+--- a/src/evaluate.h
++++ b/src/evaluate.h
+@@ -42,6 +42,7 @@ class AccumulatorStack;
+ }
+ 
+ std::string trace(Position& pos, const Eval::NNUE::Network& network);
++void        hce_scale(const std::string& path, const Eval::NNUE::Network& network);
+ 
+ Value evaluate(const NNUE::Network&           network,
+                const Position&                pos,
+diff --git a/src/position.cpp b/src/position.cpp
+index 9ddad16d..3014de68 100644
+--- a/src/position.cpp
++++ b/src/position.cpp
+@@ -801,6 +801,9 @@ void Position::do_move(
+ 
+     auto& dpps = dirties.dirtyPawnPairs;
+     auto& dts  = dirties.dirtyThreats;
++    // The oracle evaluates no network: skip the threat features' updates.
++    (void) dts;
++    DirtyThreats* const noThreats = nullptr;
+     auto& dp   = dirties.dirtyPiece;
+ 
+     dpps.before[WHITE] = pieces(WHITE, PAWN);
+@@ -828,7 +831,7 @@ void Position::do_move(
+         assert(captured == make_piece(us, ROOK));
+ 
+         Square rfrom, rto;
+-        do_castling<true>(us, from, to, rfrom, rto, &dts, &dp);
++        do_castling<true>(us, from, to, rfrom, rto, noThreats, &dp);
+ 
+         k ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
+         st->nonPawnKey[us] ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
+@@ -853,7 +856,7 @@ void Position::do_move(
+                 assert(piece_on(capsq) == make_piece(them, PAWN));
+ 
+                 // Update board and piece lists in ep case, normal captures are updated later
+-                remove_piece(capsq, &dts);
++                remove_piece(capsq, noThreats);
+             }
+ 
+             st->pawnKey ^= Zobrist::psq[captured][capsq];
+@@ -983,15 +986,15 @@ void Position::do_move(
+ 
+         if (captured && m.type_of() != EN_PASSANT)
+         {
+-            remove_piece(from, &dts);
+-            swap_piece(to, toPc, &dts);
++            remove_piece(from, noThreats);
++            swap_piece(to, toPc, noThreats);
+         }
+         else if (pc == toPc)
+-            move_piece(from, to, &dts);
++            move_piece(from, to, noThreats);
+         else
+         {
+-            remove_piece(from, &dts);
+-            put_piece(toPc, to, &dts);
++            remove_piece(from, noThreats);
++            put_piece(toPc, to, noThreats);
+         }
+     }
+ 
+diff --git a/src/uci.cpp b/src/uci.cpp
+index 344cd09f..3d386784 100644
+--- a/src/uci.cpp
++++ b/src/uci.cpp
+@@ -119,7 +119,7 @@ void UCIEngine::loop() {
+ 
+         else if (token == "uci")
+         {
+-            sync_cout << "id name " << engine_info(true) << "\n"
++            sync_cout << "id name RarogHCE-" << engine_info(true) << "\n"
+                       << engine.get_options() << sync_endl;
+ 
+             sync_cout << "uciok" << sync_endl;
+@@ -155,6 +155,12 @@ void UCIEngine::loop() {
+             sync_cout << engine.visualize() << sync_endl;
+         else if (token == "eval")
+             engine.trace_eval();
++        else if (token == "hcescale")
++        {
++            std::string path;
++            is >> path;
++            engine.hce_scale(path);
++        }
+         else if (token == "compiler")
+             sync_cout << compiler_info() << sync_endl;
+         else if (token == "export_net")

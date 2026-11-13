@@ -8,6 +8,9 @@ analysis/artifacts/see-normalized-20260907/** -text -whitespace
 # Stored arm recipes must stay byte-exact: a CRLF round-trip breaks `git apply`.
 analysis/arm_patches/*.patch -text -whitespace
 
+# Oracle hybrid recipes apply to donor trees with their own endings.
+tools/oracle-hybrids/*.patch -text -whitespace
+
 # Donor snapshot manifests: `sha256sum -c` reads them only with LF endings.
 analysis/triumviratus_snapshot/*.sha256 -text
 

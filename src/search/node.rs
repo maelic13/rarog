@@ -7,13 +7,13 @@ use crate::infra;
 use crate::tt::{Bound, TtEntry, TtProbe, TtStore};
 
 use super::history::{BestMoveUpdate, SearchedMoves, cont_context};
-use super::movepick::{
-    MovePicker, ScoredMoveList, Stage, diversify_root_scores, is_noisy, pick_next,
-};
+use super::movepick::{MovePicker, ScoredMoveList, Stage, diversify_root_scores, pick_next};
 #[cfg(feature = "pricing")]
 use super::pricing::{
     Decision, HiddenMove, NodeEntry, NodeKind, QCapture, QEntry, ReSearch, Rule, Verdict,
 };
+#[cfg(test)]
+use super::thread::ChildSite;
 use super::{MAX_PLY, MAX_QPLY, SearchEvent, Searcher, TB_WIN_SCORE};
 
 /// The evaluator's middlegame material, for the diag census of the margin
@@ -309,6 +309,34 @@ impl Searcher {
         granted
     }
 
+    /// Hold a node's depth to its line's room: a line searches at most twice
+    /// its iteration's depth before quiescence. The extension budget holds
+    /// positive extensions to the iteration's depth; this holds everything
+    /// else that deepens a line (a reduction's room above nominal depth, a
+    /// re-search's extra ply, hindsight's ply) to the room those left.
+    /// Without it such gains carried lines a hundred plies past the
+    /// budget, to the ply cap.
+    #[inline(always)]
+    fn bound_line_depth(&mut self, depth: &mut i32, ply: usize) {
+        let limit = 2 * self.td.root_depth.max(1);
+        let room = limit - infra::to_i32(ply);
+        if *depth > room {
+            crate::diag_count!(line_room_clamp);
+            #[cfg(test)]
+            {
+                self.td.line_clamps += 1;
+            }
+            *depth = room;
+        }
+        #[cfg(test)]
+        {
+            self.td.line_overrun = self
+                .td
+                .line_overrun
+                .max(infra::to_i32(ply) + *depth - limit);
+        }
+    }
+
     /// Whether a node without a singular candidate extends its first move:
     /// an expected cut node at depth 7 or less, out of check, whose estimate
     /// sits `CoreLdseMargin` or more below alpha.
@@ -378,6 +406,8 @@ impl Searcher {
         {
             self.td.root_depth = depth;
         }
+        #[cfg(test)]
+        self.note_child(ChildSite::Root, false);
         self.negamax::<Root, _>(
             board,
             depth,
@@ -404,7 +434,7 @@ impl Searcher {
         entry.captured = captured;
         entry.cont_key = cont_context(
             board.is_in_check(),
-            is_noisy(mv),
+            mv.is_noisy(),
             board.side_to_move(),
             piece,
             mv.to_sq(),
@@ -522,6 +552,13 @@ impl Searcher {
         self.shared.tt.store_eval(key, raw_eval, is_pv);
     }
 
+    /// Name the call site of the `negamax` call that follows and the
+    /// caller's own `cut_node`, for the test that pins each child's type.
+    #[cfg(test)]
+    fn note_child(&mut self, site: ChildSite, parent_cut_node: bool) {
+        self.td.cut_node_log.pending = Some((site, parent_cut_node));
+    }
+
     pub(super) fn negamax<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
@@ -536,6 +573,8 @@ impl Searcher {
         poll: &mut P,
     ) -> i32 {
         debug_assert_eq!(NODE::ROOT, ply == 0, "the root node type is exactly ply 0");
+        #[cfg(test)]
+        self.td.cut_node_log.receive(NODE::PV, cut_node);
         #[cfg(feature = "pricing")]
         let pricing_entry = NodeEntry {
             depth,
@@ -575,6 +614,9 @@ impl Searcher {
             return alpha;
         }
 
+        if !NODE::ROOT {
+            self.bound_line_depth(&mut depth, ply);
+        }
         if depth <= 0 {
             #[cfg(feature = "pricing")]
             {
@@ -682,7 +724,7 @@ impl Searcher {
             if score >= beta
                 && self.td.stack.back(ply, 1).move_count < 4
                 && let Some(mv) = ev.mv.and_then(|mv| board.legal_move(mv))
-                && !is_noisy(mv)
+                && !mv.is_noisy()
             {
                 let stm = board.side_to_move();
                 let piece = board.moving_piece(mv);
@@ -774,7 +816,7 @@ impl Searcher {
         // parent stood was a good one for the parent.
         if !NODE::ROOT && !in_check && excluded.is_null() && (depth < 6 || tt_entry.is_none()) {
             let parent = *self.td.stack.back(ply, 1);
-            if !parent.mv.is_null() && !is_noisy(parent.mv) && parent.static_eval != VALUE_NONE {
+            if !parent.mv.is_null() && !parent.mv.is_noisy() && parent.static_eval != VALUE_NONE {
                 let bonus = (812 * -(static_eval + parent.static_eval) / 128).clamp(-144, 324);
                 self.td
                     .hist
@@ -878,6 +920,11 @@ impl Searcher {
             }
         }
 
+        // Hindsight may have added a ply; the line's bound still holds.
+        if !NODE::ROOT {
+            self.bound_line_depth(&mut depth, ply);
+        }
+
         // Razoring: far enough below alpha that only a tactic can help, so
         // the node asks quiescence. Not on a PV line, not when alpha is
         // already a decisive-looking score, not when a quiet TT move or a
@@ -888,7 +935,7 @@ impl Searcher {
             && eval_for_pruning
                 < alpha - self.cfg.core.razor_base - self.cfg.core.razor_square * depth * depth
             && alpha < RAZOR_ALPHA_LIMIT
-            && (tt_move.is_null() || is_noisy(tt_move))
+            && (tt_move.is_null() || tt_move.is_noisy())
             && ev.bound != Some(Bound::Lower)
         {
             crate::diag_count!(razor_drop);
@@ -1089,6 +1136,8 @@ impl Searcher {
                 self.td.null_move_plies.push(ply);
                 board.make_null_move();
                 self.shared.tt.prefetch(board.hash());
+                #[cfg(test)]
+                self.note_child(ChildSite::NullMove, cut_node);
                 let score = -self.negamax::<NonPv, _>(
                     board,
                     depth - reduction,
@@ -1167,6 +1216,8 @@ impl Searcher {
                         let tt_pv_here = self.td.stack[ply].tt_pv;
                         let laterality_here = self.td.stack[ply].laterality;
                         self.td.nmp_min_ply = min_ply;
+                        #[cfg(test)]
+                        self.note_child(ChildSite::NullVerify, cut_node);
                         let verified = self.negamax::<NonPv, _>(
                             board,
                             reduced,
@@ -1266,7 +1317,7 @@ impl Searcher {
                 let move_cap = self.cfg.proof.probcut_move_cap;
                 let base_depth = (depth - 4 - improving_i).max(0);
                 let mut captures = MoveList::new();
-                board.generate_legal_captures_into(&mut captures);
+                board.generate_legal_noisy_into(&mut captures);
                 let mut scored = ScoredMoveList::new();
                 self.score_tactical_moves(
                     board,
@@ -1346,6 +1397,12 @@ impl Searcher {
                             let adjusted = (probcut_beta
                                 + self.cfg.proof.probcut_adjust * (base_depth - probcut_depth))
                                 .min(INF_SCORE);
+                            // The child is typed a cut node, so its fail low
+                            // still rewards the capture's noisy history;
+                            // typed an all node, which also drops that
+                            // reward, it measured weaker in games.
+                            #[cfg(test)]
+                            self.note_child(ChildSite::ProbCutVerify, cut_node);
                             score = -self.negamax::<NonPv, _>(
                                 board,
                                 probcut_depth,
@@ -1364,6 +1421,10 @@ impl Searcher {
                                     crate::diag_count!(probcut_deeper_research);
                                 }
                                 probcut_depth = base_depth;
+                                // The same verification at the full
+                                // depth, typed as above.
+                                #[cfg(test)]
+                                self.note_child(ChildSite::ProbCutResearch, cut_node);
                                 score = -self.negamax::<NonPv, _>(
                                     board,
                                     base_depth,
@@ -1484,6 +1545,8 @@ impl Searcher {
             {
                 self.td.singular_searches += 1;
             }
+            #[cfg(test)]
+            self.note_child(ChildSite::Singular, cut_node);
             let score = self.negamax::<NonPv, _>(
                 board,
                 singular_depth,
@@ -1514,7 +1577,7 @@ impl Searcher {
                     singular_beta - score,
                     NODE::PV,
                     ev.pv_line(false),
-                    !is_noisy(tt_move),
+                    !tt_move.is_noisy(),
                     corr_abs,
                 );
                 node_extension = self.within_extension_budget(node_extension, extension_spent);
@@ -1669,7 +1732,7 @@ impl Searcher {
             // fetched for nothing, which costs less than waiting for it.
             self.shared.tt.prefetch(board.key_after_hint(mv));
             let is_capture = mv.is_capture();
-            let is_quiet = board.is_quiet_move(mv);
+            let is_quiet = mv.is_quiet();
             let mut search_count = 0u32;
             let moving_piece = board.moving_piece(mv);
             let captured_piece = board.captured_piece(mv);
@@ -2025,6 +2088,8 @@ impl Searcher {
 
             if searched == 0 {
                 search_count += 1;
+                #[cfg(test)]
+                self.note_child(ChildSite::FirstMove, cut_node);
                 score = if child_is_pv {
                     -self.negamax::<Pv, _>(
                         board,
@@ -2133,6 +2198,8 @@ impl Searcher {
                     );
                     self.td.stack[ply].reduction = reduction;
                     search_count += 1;
+                    #[cfg(test)]
+                    self.note_child(ChildSite::LmrReduced, cut_node);
                     score = -self.negamax::<NonPv, _>(
                         board,
                         reduced_depth,
@@ -2189,6 +2256,8 @@ impl Searcher {
                                  new_depth {new_depth}"
                             );
                             search_count += 1;
+                            #[cfg(test)]
+                            self.note_child(ChildSite::LmrResearch, cut_node);
                             score = -self.negamax::<NonPv, _>(
                                 board,
                                 new_depth,
@@ -2205,6 +2274,8 @@ impl Searcher {
                     }
                 } else {
                     search_count += 1;
+                    #[cfg(test)]
+                    self.note_child(ChildSite::ZeroWindow, cut_node);
                     score = -self.negamax::<NonPv, _>(
                         board,
                         new_depth,
@@ -2222,6 +2293,8 @@ impl Searcher {
                 // beats alpha is searched again with the full window.
                 if NODE::PV && score > alpha {
                     search_count += 1;
+                    #[cfg(test)]
+                    self.note_child(ChildSite::PvResearch, cut_node);
                     score = -self.negamax::<Pv, _>(
                         board,
                         new_depth,
@@ -2323,7 +2396,7 @@ impl Searcher {
                     );
                     // A fail-high above the static eval with a quiet move
                     // trains the correction; see the node's end.
-                    if !in_check && !is_noisy(mv) && score > static_eval {
+                    if !in_check && !mv.is_noisy() && score > static_eval {
                         self.train_correction(board, depth, score - static_eval, ply);
                     }
                     // Stored after the updates, which read no table entry it
@@ -2413,7 +2486,7 @@ impl Searcher {
         // with the residual's sign (a fail-low above the eval says nothing
         // about how far above).
         if !in_check
-            && !(bound == Bound::Exact && is_noisy(best_move))
+            && !(bound == Bound::Exact && best_move.is_noisy())
             && !(bound == Bound::Upper && best_score >= static_eval)
         {
             self.train_correction(board, depth, best_score - static_eval, ply);
@@ -2641,7 +2714,7 @@ impl Searcher {
         if in_check {
             board.generate_legal_movelist_into(&mut moves);
         } else {
-            board.generate_legal_captures_into(&mut moves);
+            board.generate_legal_noisy_into(&mut moves);
         }
 
         if in_check && moves.is_empty() {
@@ -2684,7 +2757,7 @@ impl Searcher {
         let mut evasion_best = -INF_SCORE;
         for index in 0..scored.len() {
             let picked = pick_next(scored.as_mut_slice(), index);
-            if in_check && !is_noisy(picked.mv) && !is_loss(evasion_best) {
+            if in_check && !picked.mv.is_noisy() && !is_loss(evasion_best) {
                 crate::diag_count!(q_evasion_skip);
                 continue;
             }
@@ -3252,7 +3325,7 @@ mod tests {
         let mate = board.parse_move("a1a8").expect("legal quiet mate");
         let threats = board.threats();
         for mv in board.generate_legal_moves() {
-            if mv != mate && board.is_quiet_move(mv) {
+            if mv != mate && mv.is_quiet() {
                 for _ in 0..64 {
                     searcher.td.hist.update_quiet(
                         threats.all,
@@ -3266,7 +3339,7 @@ mod tests {
         let quiets = board
             .generate_legal_moves()
             .into_iter()
-            .filter(|&mv| board.is_quiet_move(mv))
+            .filter(|&mv| mv.is_quiet())
             .count();
         assert!(quiets > 8, "the skip must be reachable: {quiets} quiets");
         let alpha = MATE_SCORE - 100;
@@ -3346,6 +3419,9 @@ mod tests {
                 .excluded
                 .map_or(Move::NULL, |mv| board.parse_move(mv).expect("legal move"));
             let (depth, ply) = (8, 1);
+            // A node at ply 1 with depth d is reached only in iteration d + 1 or
+            // later, and the search's per-line limits read that iteration.
+            searcher.td.root_depth = depth + 1;
             let score = if self.pv {
                 searcher.negamax::<Pv, _>(
                     &mut board,
@@ -3433,6 +3509,71 @@ mod tests {
             .null_move_at_node(),
             "a node in check never takes it"
         );
+    }
+
+    /// Every recursive call types its child by its own rule: the null-move
+    /// child, ProbCut's verification searches and a reduced late move are
+    /// cut nodes; the null-move verification, the root and a PV re-search
+    /// are not; the exclusion search inherits its node's type; the first move and
+    /// the zero-window searches take the opposite of their parent's. Read
+    /// from the value each child received, over a search that reaches every
+    /// call site.
+    #[test]
+    fn each_recursive_call_types_its_child_by_its_rule() {
+        let mut searcher = Searcher::default();
+        // Verification from depth 4 so the null-move verification is reached.
+        searcher.cfg.proof.nmp_verify_depth = 4;
+        for fen in crate::bench::BENCH_FENS {
+            let mut board = Board::from_fen(fen).expect("valid FEN");
+            for depth in 1..=10 {
+                let score = searcher.search_root_window(
+                    &mut board,
+                    depth,
+                    -INF_SCORE,
+                    INF_SCORE,
+                    &mut || SearchEvent::None,
+                );
+                assert!(score.abs() <= INF_SCORE);
+            }
+        }
+        let log = &searcher.td.cut_node_log;
+        assert_eq!(log.untagged, 0, "a negamax call with no call site");
+        // The cut_node each site's child must receive, from the parent's
+        // cut_node and whether the child is a PV node.
+        type Rule = fn(bool, bool) -> bool;
+        let rules: [(ChildSite, Rule); 11] = [
+            (ChildSite::Root, |_, _| false),
+            (ChildSite::NullMove, |_, _| true),
+            (ChildSite::NullVerify, |_, _| false),
+            (ChildSite::ProbCutVerify, |_, _| true),
+            (ChildSite::ProbCutResearch, |_, _| true),
+            (ChildSite::Singular, |parent, _| parent),
+            (ChildSite::FirstMove, |parent, pv| !pv && !parent),
+            (ChildSite::LmrReduced, |_, _| true),
+            (ChildSite::LmrResearch, |parent, _| !parent),
+            (ChildSite::ZeroWindow, |parent, _| !parent),
+            (ChildSite::PvResearch, |_, _| false),
+        ];
+        assert_eq!(rules.len(), ChildSite::COUNT, "a site without a rule");
+        for (site, expected) in rules {
+            let mut calls = 0;
+            for parent in [false, true] {
+                for pv in [false, true] {
+                    for received in [false, true] {
+                        let n = log.calls(site, parent, pv, received);
+                        calls += n;
+                        if received != expected(parent, pv) {
+                            assert_eq!(
+                                n, 0,
+                                "{site:?}: parent cut_node {parent}, child PV {pv}, \
+                                 received {received}"
+                            );
+                        }
+                    }
+                }
+            }
+            assert!(calls > 0, "{site:?} was never reached");
+        }
     }
 
     /// The root never takes a null move.
@@ -3549,6 +3690,9 @@ mod tests {
     ) -> (i32, i32, Searcher) {
         let mut searcher = Searcher::default();
         setup(&mut searcher);
+        // A node at ply 1 with depth 8 is reached only in iteration 9 or
+        // later, and the search's per-line limits read that iteration.
+        searcher.td.root_depth = 9;
         let mut board = Board::from_fen(HANGING_QUEEN).expect("valid FEN");
         let estimate = searcher.corrected_eval(&board, 1);
         let beta = estimate - 100 + beta_offset;
@@ -3773,6 +3917,9 @@ mod tests {
                 "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
             )
             .expect("valid FEN");
+            // A node at ply 1 with depth 4 is reached only in iteration 5 or
+            // later, and the search's per-line limits read that iteration.
+            searcher.td.root_depth = 5;
             let estimate = searcher.corrected_eval(&board, 1);
             // Beta above the stored score keeps reverse futility, the null
             // move, ProbCut and the table cutoff out of the way.
@@ -3884,6 +4031,39 @@ mod tests {
             truncations += searcher.td.budget_truncations;
         }
         assert!(truncations > 0, "the budget never bound");
+    }
+
+    /// No line searches past twice its iteration's depth, so a line cannot
+    /// reach the ply cap before iteration 63: from a promotion race whose
+    /// lines once reached the cap by depth 10, every node keeps its line
+    /// within the bound, the bound cuts some nodes, and the selective depth
+    /// stays below the cap.
+    #[test]
+    fn no_line_searches_past_twice_the_iteration_depth() {
+        let mut searcher = Searcher::default();
+        let mut board =
+            Board::from_fen("8/2p2P1P/2n2P2/1k6/p7/6N1/P5K1/8 b - - 0 44").expect("valid FEN");
+        for iteration in 1..=10 {
+            let score = searcher.search_root_window(
+                &mut board,
+                iteration,
+                -INF_SCORE,
+                INF_SCORE,
+                &mut || SearchEvent::None,
+            );
+            assert!(score.abs() < INF_SCORE);
+            assert!(
+                searcher.td.line_overrun <= 0,
+                "a line overran its bound by {} at depth {iteration}",
+                searcher.td.line_overrun
+            );
+            assert!(
+                searcher.td.seldepth < MAX_PLY - 1,
+                "selective depth {} reached the cap at depth {iteration}",
+                searcher.td.seldepth
+            );
+        }
+        assert!(searcher.td.line_clamps > 0, "the bound never cut a node");
     }
 
     /// A middlegame search runs singular searches and extends or reduces
@@ -4000,6 +4180,65 @@ mod tests {
         });
         let entry = searcher.shared.tt.probe(board.hash()).expect("stored");
         assert!(!entry.is_pv_node());
+    }
+
+    /// A fail-low node stores the best-scoring of its moves, which replaces
+    /// the move the entry held and is searched first at the next visit; a
+    /// fail high stores the move that cut. Storing no move at a fail low,
+    /// so that the entry kept its move, played weaker in games.
+    #[test]
+    fn a_fail_low_store_carries_its_best_scoring_move() {
+        // After 1.f3 e5, 2.g4 walks into Qh4 mate: every other move scores
+        // above it.
+        let fen = "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq - 0 2";
+        let fail_low = |searcher: &mut Searcher, board: &mut Board| {
+            let score =
+                searcher.search_root_window(board, 5, 1_000, 1_001, &mut || SearchEvent::None);
+            assert!(score <= 1_000, "the window is above every move");
+            searcher.shared.tt.probe(board.hash()).expect("stored")
+        };
+
+        // An earlier, shallower entry holding the move that is mated: the
+        // fail low replaces its bound, its depth and its move.
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen(fen).expect("valid FEN");
+        let held = board.parse_move("g2g4").expect("legal move");
+        searcher.shared.tt.store(TtStore {
+            key: board.hash(),
+            depth: 1,
+            score: -500,
+            bound: Bound::Lower,
+            mv: held,
+            ply: 0,
+            static_eval: VALUE_NONE,
+            is_pv: false,
+        });
+        let entry = fail_low(&mut searcher, &mut board);
+        assert_eq!(entry.bound(), Some(Bound::Upper));
+        assert_eq!(i32::from(entry.depth), 5, "the fail low replaced the entry");
+        assert!(entry.best_move().is_some());
+        assert_ne!(
+            entry.best_move(),
+            Some(held),
+            "a better-scoring move replaced it"
+        );
+
+        // With no earlier entry the upper bound still carries a move.
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen(fen).expect("valid FEN");
+        let entry = fail_low(&mut searcher, &mut board);
+        assert_eq!(entry.bound(), Some(Bound::Upper));
+        assert!(entry.best_move().is_some());
+
+        // A fail high stores the move that cut.
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen(fen).expect("valid FEN");
+        let score =
+            searcher.search_root_window(&mut board, 5, -1_001, -1_000, &mut || SearchEvent::None);
+        assert!(score >= -1_000, "the window is below the best move");
+        let entry = searcher.shared.tt.probe(board.hash()).expect("stored");
+        assert_eq!(entry.bound(), Some(Bound::Lower));
+        assert!(entry.best_move().is_some());
     }
 
     #[test]
