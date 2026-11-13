@@ -2127,7 +2127,7 @@ mod tests {
         // already at or above beta.
         const DEEP: [(&str, &str, u32); 5] = [
             ("CoreNmpRClamp", KIWIPETE, 10),
-            ("CoreSingDoubleNotTtPv", PAWN_ENDING, 9),
+            ("CoreSingDoubleNotTtPv", KNIGHT_UP, 10),
             ("CoreSingTripleNotTtPv", SEMI_SLAV, 12),
             ("CoreLmrSingularCap", TWO_PIECES, 10),
             ("CoreFpEvalAboveBeta", PAWN_ENDING, 13),
