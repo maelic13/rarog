@@ -8,6 +8,14 @@ plain and to the point.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
+## [Unreleased]
+
+### Fixed
+
+- **A found mate is kept.** When a deeper search lost sight of a mate it
+  had already found, the engine could switch to another move and take
+  longer to win; it now keeps the mating move.
+
 ## [2.7.0] - 2026-11-13
 
 Fixes and new downloads. 2.7.0 fixes many search, clock and protocol
