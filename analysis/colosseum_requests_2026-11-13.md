@@ -13,8 +13,13 @@ Priority.
 - **Then the measurement guards:** 5 and 6.
 - **Then fidelity and coverage:** 2 and 3.
 - **The rest are conveniences:** 7 to 10.
+- **For the next oracle read (RAR-O09) on Colosseum:** 2, which its clock
+  legs need, then 11 to 13, which let its reads be checked from the run's
+  own files. Nothing else in the CLI blocks it: 0.5.0's `match` already
+  takes a node budget, a move time and a clock for each side. The rest is
+  on Rarog's side (its wrapper, PLAN D.7.1.1).
 
-Items 4 to 10 were checked against the pinned 0.5.0 (`81EA6CBA…`): its
+Items 4 to 13 were checked against the pinned 0.5.0 (`81EA6CBA…`): its
 `--help`, its source and its run artifacts.
 
 ## 1. SPSA without an iteration barrier (priority)
@@ -104,6 +109,14 @@ line's first four fields and always appends `0 1`.
   on this book.
 - **Not affected:** within one Colosseum run, both sides get the same openings,
   so gates are fair.
+- **On a match between different engines** (added for RAR-O09). The two
+  time managers do not lose the same share. Reckless's soft bound reads
+  the move number (`src/time.rs:35`, `0.0594 - 0.0492 * exp(-0.0386 *
+  fullmove)`): at `3.380+0.034` it is 51 ms at move 1 against 93 ms at
+  move 9, before its multiplier, where Rarog loses 15%. A clock match
+  between them on
+  Colosseum therefore does not replicate RAR-O08's fastchess match, and
+  the clock-use share RAR-O09 reads would be measured on reset counters.
 
 **Request.**
 
@@ -291,6 +304,88 @@ retry wrappers.
 - A run started beside a busy process waits, then starts within a few seconds
   of that process ending.
 - It gives up at the deadline with a clear message.
+
+## 11. `winc` and `binc` carry the mover's own increment
+
+**Observed.** `colosseum-engine/src/runner.rs`, `move_limits` (lines
+1369 to 1386 at the pin) builds the clock command as
+
+```
+GoLimits::Clock { wtime: clocks.white, btime: clocks.black, winc: inc, binc: inc }
+```
+
+with `inc` the increment of the side to move's own control. With a clock per
+side (`--a-increment-ms 100 --b-increment-ms 113`) the engine to move is told
+its opponent has its own increment. The remaining times are right.
+
+**Effect.**
+
+- **None for Rarog or Reckless.** Both read only their own side's increment
+  (`src/search/time.rs:149-152`; Reckless `src/uci.rs`).
+- **An engine that reads the opponent's clock** is misinformed in every
+  time-odds game. Equal clocks are unaffected.
+
+**Request.** `winc` from White's control and `binc` from Black's.
+
+**Check.** A game at 10000+100 against 11270+113 sends `winc 100 binc 113`,
+or the reverse by colour, on every `go`.
+
+## 12. A fixed match's score in `results.txt` and the run record
+
+**Observed.**
+
+- A `match` run's `results.txt` holds wins, draws and losses by colour,
+  terminations, faults, time losses and the per-side search figures, but no
+  Elo, nElo or pentanomial line (`tools/results/rar-s124-stc/results.txt`).
+- Its `run-record.json` holds `official_sample.pentanomial` as five zeros:
+  `colosseum-cli/src/composition/match_command.rs:380` writes
+  `pentanomial: [0; 5]`. RAR-S124's run record shows 2,000 scored games,
+  1,000 completed pairs and `[0, 0, 0, 0, 0]`.
+- The counts exist: `checkpoint.json` holds `[24, 252, 474, 221, 29]` for
+  that run, and the run record's progress fields hold `Ptnml` and
+  `nElo -6.2 +/- 15.2` as strings. Rarog's wrapper recounts the PGN to get
+  them.
+
+**Request.**
+
+- Fill `official_sample.pentanomial` from the paired sample.
+- Add the pentanomial, Elo and nElo with their intervals to `results.txt`,
+  as an `sprt` run reports them.
+
+**Check.** On a recorded match the run record's five counts equal a recount
+of the PGN by pair, and `results.txt` carries the figures the progress output
+printed.
+
+## 13. Node-budget compliance in the summary
+
+**Observed.**
+
+- In a fixed-node game the harness sends `go nodes N` and nothing else, with
+  a 600-second deadline (`runner.rs`, `FIXED_SEARCH_DEADLINE`). It cannot
+  count nodes; the PGN's `n=` is the engine's last `info` line
+  (`colosseum-uci/src/process.rs:655-657`).
+- `results.txt` and the telemetry give each side's mean and median reported
+  nodes only. An engine that overshoots or ignores its budget does not show:
+  in `tools/results/smoke-cli050-match` (20,000 nodes) the largest `n=` was
+  19,994 and the mean 13,815; in `c03-lazy-nodes` (150,000 nodes, CLI 0.2.0)
+  3,868 of 239,963 moves reported more than the budget, the largest 150,006.
+- RAR-O09's first match gives each side its own budget, and its validity
+  rule is "no move reports more than its side's budget plus one".
+
+**Request.** In a run with a node budget, report for each side the largest
+reported node count and the number of moves whose reported count exceeds
+that side's budget, in `results.txt` and the telemetry.
+
+**Check.**
+
+- On `smoke-cli050-match` the summary reads a largest count of 19,994 and no
+  move over budget.
+- An engine started with a budget it ignores is named, with its count of
+  moves over budget.
+
+**Not requested.** Limits finer than a millisecond: a clock of 3.380+0.034
+against 3+0.03 gives 1.127 on the base and 1.133 on the increment, a
+difference too small to matter here.
 
 ## For the GUI, after the split
 
