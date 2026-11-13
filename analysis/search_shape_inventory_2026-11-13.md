@@ -175,7 +175,7 @@ values differ.
 | ST1 | Node type in quiescence | untyped; stores keep only a stored PV bit (`node.rs:2606-2611`) | typed; a PV node's children are PV (`search.rs:1208`, `:1347`) | – | B.4 cluster (RAR-S88), C | D |
 
 Late-move pruning, quiet futility, history pruning, both SEE allowances, the
-LMR formula with its 28 terms, the cutoff count, the PV-flag propagation at a
+LMR formula term for term, the cutoff count, the PV-flag propagation at a
 fail low and the correction's admission rule have the donor's form
 (`node.rs:1791-2064`, `:453-502`, `:2482-2496`; `search.rs:793-851`,
 `:861-936`, `:1183-1200`); only values differ.
