@@ -60,6 +60,8 @@ field, about 3,475 on CCRL's Blitz scale.
     - [ ] **D.6.26** Pawnless endings a minor ahead read as wins — **RESEARCH / R2**
     - [ ] **D.6.27** IIR has no node-type condition — **RESEARCH / R2**
     - [ ] **D.6.28** Clock use: a tenth of the budget is left unspent — **RESEARCH / R2**
+    - [ ] **D.6.29** Quiescence never scores a stalemate — **RESEARCH / R2**
+    - [ ] **D.6.30** A later iteration can overwrite a proven mate — **RESEARCH / R2**
 - [ ] **D.7** Search shape: the kernel against its donor on Rarog's evaluation, rebuilt whole in Reckless's form if the reads or the maintainer say so — **R3**
     - [ ] **D.7.0** Investigation: the inventory of departures, the seeds and the registration of the reads — **RESEARCH / R3**
     - [ ] **D.7.1** The fixed-match script takes a node budget and a move time per engine — **READY_FOR_IMPLEMENTATION / I1**
@@ -157,7 +159,7 @@ field, about 3,475 on CCRL's Blitz scale.
 |---|---|---|
 | Originality disclosure (2026-10-23 review of 2.6.0): Stockfish's time-budget constants and Reckless's move-ordering and history constants were copied unchanged, the evaluation design is Stockfish 11's, Fathom is not named, and the README credits only "inspiration". The code and the evaluation weights are Rarog's own, and the move-similarity screen reads Rarog like an unrelated engine against both donors (56.4% Stockfish 11, 54.2% Reckless; related controls 67–69%) | **D.11** (E.3.0 until 2026-11-13): rerun the scans on the release head, the maintainer settles the licence (Reckless is AGPL-3.0), then README, PROCESS's boundary and the binaries' notices | The release after 2.7.0; lifted for the 2.7.0 cut by maintainer decision 2026-11-13 |
 
-Follow the earliest unblocked leaf in PLAN's register order, which the board's Now shows. Since 2026-11-13 (maintainer decision) that order leaves the numbering in two places: D.6.8 first (done 2026-11-13), then D.7 ahead of the other open D.6 leaves, each of which is asked first whether it is still an issue on the kernel D.7 leaves behind. 2.7.0, an unscheduled release with no step, was cut 2026-11-13 before D.7; the Basilisk check for new ports (research only) runs next, before D.7. Held items stay unticked in place.
+Follow the earliest unblocked leaf in PLAN's register order, which the board's Now shows. Since 2026-11-13 (maintainer decision) that order leaves the numbering in two places: D.6.8 first (done 2026-11-13), then D.7 ahead of the other open D.6 leaves, each of which is asked first whether it is still an issue on the kernel D.7 leaves behind. 2.7.0, an unscheduled release with no step, was cut 2026-11-13 before D.7; the Basilisk check for new ports ran the same day (`analysis/basilisk_check_2026-11-13.md`: D.6.29, D.6.30, evidence for D.6.28, inputs to D.7.0). Held items stay unticked in place.
 
 ## Model mapping
 

@@ -68,6 +68,15 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-11-13 — The Basilisk check after 2.7.0** (`analysis/basilisk_check_2026-11-13.md`;
+  maintainer decision: after the release, before D.7). Basilisk's B.4 to
+  B.6 work read against Rarog: two new cards (D.6.29, a stalemate
+  quiescence never scores; D.6.30, a proven mate a later iteration can
+  overwrite), new evidence for D.6.28 (2.7.0's field gap sits in the
+  low-clock band its horizon rule shapes), BOARD-9 and H.4, and a list of
+  departures for D.7.0. Nothing ported; no Basilisk cluster gain counts
+  as evidence for one of its pieces here.
+
 - **2026-11-13 — Rarog 2.7.0 released (maintainer decision), an unscheduled
   release before D.7.** It carries D.1's clock, D.3's protocol repairs,
   D.5's behaviour-neutral repairs, D.6.15's draw verdicts, D.6.1, D.6.2,

@@ -362,7 +362,9 @@ and each is asked first whether it is still an issue on the kernel D.7
 leaves behind. 2.7.0, an unscheduled release with no step of its own, was
 cut 2026-11-13, before D.7, on a registered read against 2.6.0 (E.3).
 The Basilisk check for new ports, research only, follows the cut and
-precedes D.7 (maintainer decision 2026-11-13).
+precedes D.7 (maintainer decision 2026-11-13); done 2026-11-13
+(`analysis/basilisk_check_2026-11-13.md`: D.6.29, D.6.30, evidence for
+D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
@@ -389,7 +391,9 @@ precedes D.7 (maintainer decision 2026-11-13).
 | D.6.25 | RESEARCH | R2 | Screen: does any search at the gate's budget pick the bishop promotion, or score the same-coloured pair above a draw at the root; minutes |
 | D.6.26 | RESEARCH | R2 | Screen: the pawnless one-minor-ahead classes against Syzygy over an enumeration, and their exposure in gate games; minutes |
 | D.6.27 | RESEARCH | R2 | After D.7: the donor has no IIR; re-evaluate first, close if moot |
-| D.6.28 | RESEARCH | R2 | Screen: the unspent clock share by move number on gate games; then one knob |
+| D.6.28 | RESEARCH | R2 | Screened 2026-11-13 on RAR-M87's games: the field gap sits in the low-clock band the horizon rule shapes; next, the horizon against a field, registered, forfeits its invariant |
+| D.6.29 | RESEARCH | R2 | Screen: a `diag` count of king-and-pawns stalemates quiescence misses; minutes |
+| D.6.30 | RESEARCH | R2 | Screen: iterations that lose a proven mate on the canaries and replayed gate games; minutes |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -1231,6 +1235,47 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       low-clock rule, the hard bound, the forfeit margin). Candidate: one
       knob, `tm_opt_scale`, registered as an SPRT `[0,3]` with a `10+0.1`
       harm read and the forfeit count as its invariant. `R2` card.
+      **RAR-M87's games, 2026-11-13** (`analysis/basilisk_check_2026-11-13.md` §3): the low-clock
+      rule is the mechanism, and the field gap sits where it acts. Below
+      one second `sudden_death_horizon` (`time.rs:101`) sets the horizon
+      to `clock_s × TmHorizonPerSec` (50), where 2.6.0 kept 50 moves at
+      every clock: the optimum falls to 0.65 of 2.6.0's at 500 ms and
+      0.43 at 300 ms, the clock stops falling near 420–575 ms against
+      154 ms, and the 2.7.0 head ended its games with 616 ms left against
+      379. Split by whether Rarog's clock fell under 500 ms while the game
+      was undecided (|s| < 150), the head's gap to 2.6.0 against the field
+      is −33.8 ± 10.1 Elo inside the band and +9.0 ± 10.7 outside
+      (−18.7 ± 8.5 and +28.4 ± 14.5 at 1,000 ms): a biased split, but the
+      obvious bias favours the head in both buckets. The rule answered
+      forfeits RAR-R14 sized at about 0.01 Elo, and RAR-R17 read the
+      horizon at 100 against 53 head to head only (−0.9 ± 8.0). So the
+      narrower candidate is the horizon, not `tm_opt_scale`: confine the
+      contraction to where the forfeits were (`TmHorizonPerSec` near 167,
+      its range widened past 100), read against a field, not head to
+      head, the forfeit count its invariant. Evidence layer: a post-hoc
+      split of game outcomes, which chooses and does not accept.
+    - **D.6.29 Quiescence never scores a stalemate — `R2`.** (found
+      2026-11-13, the Basilisk check, `analysis/basilisk_check_2026-11-13.md` §1): out of
+      check with no capture to search, quiescence never asks whether the
+      side to move has a legal move, so a stalemate reached through a
+      capture reads as its stand-pat. Basilisk's rebuilt quiescence tests
+      the narrow case, the mover just left with king and pawns, inside a
+      cluster gated as a whole (B.4, +31.7), so the piece has no read of
+      its own; Reckless lacks it too, so D.7 does not supply it. Screen,
+      zero games: a `diag` counter of quiescence nodes out of check with
+      no capture, the mover left with king and pawns and no legal move,
+      over `bench 13` and replayed gate games; near zero closes it
+      `NO_CHANGE`. `R2` card.
+    - **D.6.30 A later iteration can overwrite a proven mate — `R2`.**
+      (found 2026-11-13, the Basilisk check, `analysis/basilisk_check_2026-11-13.md` §1):
+      each completed iteration replaces the root's score and move
+      (`search/mod.rs:1074-1080`); the mate watch stops the search and
+      keeps nothing, so an iteration that loses a mate to pruning or a
+      table artefact replaces it. Basilisk keeps a proven mate against
+      such an iteration. The root driver outlives D.7. Screen, zero
+      games: on the mate canaries and replayed gate games, count
+      completed iterations whose score leaves the mate band after an
+      earlier one proved a mate; zero closes it `NO_CHANGE`. `R2` card.
   Evidence for items already here (H18–H21, H25): item 4 (NODE-2), the
   donor form read +3.3 ± 9.1 in Basilisk (2,000 games) and each of its
   consumers alone (IIR, the no-TT-move LMR term) threw a promotion fixture
@@ -1324,6 +1369,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       other way; the investigation chooses and says why. The parity
       instrument's design. RAR-O09's registration with its predictions.
       Ends `READY_FOR_IMPLEMENTATION` or `NO_CHANGE`.
+      Inputs from the Basilisk check (2026-11-13, `analysis/basilisk_check_2026-11-13.md` §1–2):
+      Basilisk's rebuilt quiescence and root were gated as clusters, so no
+      single piece carries a read here. The departures they name: the
+      delta rule (Basilisk deleted it; Reckless has none); the quiescence
+      TT cutoff at PV nodes and its fail-hard tail; recapture and evasion
+      pruning; the aspiration centre (Rarog computes an effort-weighted
+      average and mean square per root move that only tests read); the
+      ply cap before the draw test, which returns the evaluation even in
+      check (Reckless tests the draw first); kings in the non-pawn
+      correction key (Reckless includes them); and the cutoff count
+      raised by an exclusion search's fail-high (as Reckless).
     - **D.7.1 The fixed-match script takes a node budget and a move time per engine — `I1`.**
       `tools/sprt.ps1`: a node budget and a move time for each engine,
       beside `-TCA` and `-TCB`. Each is proved live by a smoke in which an
@@ -2312,6 +2368,10 @@ labels H1–H45.
   already fades with the clock, as Rarog's does (`eval_rule50_damping`),
   Stockfish 19's fifty-move bands in the TT key read −3.7 in Triumviratus,
   and fading the correction with the counter −2.7.
+  Basilisk's paired reads (BAS-S59, BAS-S60, 2026-11-13): kings in the
+  non-pawn key +11.6 ± 9.3 alone, undecided together with razoring
+  (+2.2 ± 4.2 over 10,000 games); the fifty-move key −4.5 ± 8.4; neither
+  adopted.
   *Stockfish 19 mechanisms Basilisk adopted that Rarog lacks* (D.6.18; §C
   of the cross-check): upcoming-repetition detection (cuckoo; Basilisk found
   it must act as a cutoff at the draw window, not a draw score); seekMate
@@ -2368,6 +2428,11 @@ labels H1–H45.
   Each shortcut ships with a build switch that runs the original beside it at
   every node and aborts on the first disagreement (TM-10, as Triumviratus
   checked every identical-tree patch).
+  The Basilisk check (2026-11-13) adds one lead: Rarog builds every
+  quiet-stage threat map eagerly, slider loops included
+  (`movepick.rs:500-516`), where Basilisk builds them lazily (part of
+  BAS-P29's +4%). First count quiet stages that build a slider map no
+  quiet move uses.
 
 ## 3. Measurement protocols
 
