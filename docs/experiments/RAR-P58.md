@@ -1,4 +1,4 @@
-# RAR-P58 — Toolchain update rustc 1.99.1 -> 1.100.0: the exact fingerprint, pooled PGO NPS and plain NPS — REGISTERED 2026-11-13, before any build
+# RAR-P58 — Toolchain update rustc 1.99.1 -> 1.100.0: the exact fingerprint, pooled PGO NPS and plain NPS — REGISTERED 2026-11-13, before any build; READ 2026-11-13: PGO −0.24%, pass
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -8,7 +8,8 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
   compiler (the maintainer's pre-release order, 2026-11-13).
 - **Kind:** performance qualification of a build change. The engine source
   does not change; every build must bench 11,477,040.
-- Disposition: open
+- Disposition: accepted — read 2026-11-13: the fingerprint exact on both compilers;
+  PGO −0.24% (95% −0.41% .. −0.07%) passes step 2's −0.5% line; plain −0.25%.
 - **Why:** PROCESS, *Toolchain and harness notes*: Rarog follows the latest
   stable Rust (maintainer decision 2026-10-21); a bump is qualified, its
   speed read and recorded, and a measured slowdown does not revert it.
@@ -92,4 +93,70 @@ and is reported. A regression is reported and does not revert the pin.
 
 ## Result / disposition
 
-Not read yet.
+**PASS: the fingerprint exact on both compilers; pooled PGO NPS −0.24%,
+inside the −0.5% line; plain −0.25%, not resolved.**
+
+- **Commits** (on `pre-2.7.0`): registration `449e3dd`; `cc987be`, the
+  one fix the new compiler demanded: clippy 1.100's `redundant_clone`
+  (denied in `Cargo.toml`) finds four test sites where a board is cloned
+  and the original never used again (`tests/board_v2.rs`,
+  `tests/multipv_syzygy.rs`, `tests/board_correctness.rs`, and
+  `src/search/node.rs` inside its `#[cfg(test)]` module); each now moves
+  the value. Test code only, exact. Pin `c020904`: `rust-toolchain.toml`
+  channel `1.100.0`, `Cargo.toml` `rust-version = "1.100"`, nothing else.
+- **Compilers** (`rustc -Vv` in `analysis/artifacts/toolchain-1.100/`):
+  base `rustc 1.99.1 (58cf8f9c3 2026-10-13)`, LLVM 23.1.1; candidate
+  `rustc 1.100.0 (0ef1bc386 2026-11-09)`, LLVM 23.1.5, auto-installed by
+  rustup from the pin and resolved as `1.100.0-x86_64-pc-windows-msvc`.
+- **Pools** (`analysis/artifacts/toolchain-1.100/`, each with its
+  manifest): PGO `pool-1.99.1` from `449e3dd` (clean) and `pool-1.100.0`
+  from `c020904` (clean), four distinct builds each; plain
+  `plainpool-1.99.1` (content `2EF2EC186997A99B`) and `plainpool-1.100.0`
+  (content `D3BB649609EAD7B1`), four builds each identical but for link
+  stamps. Every copy benched **11,477,040**.
+- **Qualification on 1.100.0** (`analysis/artifacts/toolchain-1.100/verify/`,
+  each once on the final state): `cargo fmt --check` exit 0; `cargo clippy
+  --all-features --all-targets` and `cargo clippy --all-targets` exit 0,
+  **0 warnings** (4 errors before `cc987be`); `cargo clippy -p xtask
+  --all-targets` 0 warnings; `cargo test` **525 passed, 0 failed, 12
+  ignored**; `cargo test --release` **527 passed, 0 failed, 11 ignored**;
+  `--features texel --lib` **287 passed**; `--features tune --lib` **286
+  passed**; `cargo test -p xtask` **57 passed**; `cargo build --release`
+  then `bench 13`: **11,477,040 / EBF 2.537** exact;
+  `tools/build_test.ps1 -Suffix tc1100` (pext PGO through xtask) exit 0 at
+  11,477,040. No `unsafe` site was touched.
+- **PGO read** (`read/`, `read.log`, `read-step2.log`), guard-idle host
+  (CPU 0.7–2.7% before it; 1.1–2.3% before each cycle), no disturbed cycle.
+  Step 1: levels 2,825,650 against 2,819,224, **−0.23%**, 95% −0.45% ..
+  −0.00%, between the two lines, so step 2 ran as registered. Step 2, six
+  cycles: per-build medians base 2,819,218 / 2,821,297 / 2,821,994 /
+  2,826,509, candidate 2,817,489 / 2,813,004 / 2,813,690 / 2,817,488;
+  levels **2,822,254 against 2,815,418**; **−0.24%**, 95% **−0.41% ..
+  −0.07%** (t 2.447, df 6); verdict "pass: no regression" against the
+  −0.5% line.
+- **Plain read** (`plain-read/`, `plain-read.log`), step 1 only: levels
+  **2,551,244 against 2,544,899**, **−0.25%**, 95% **−0.70% .. +0.21%**;
+  no disturbed cycle. The tool's "closed NO_CHANGE" is its acceptance
+  wording; as registered this is a measurement, and it is not resolved.
+- **Against the last bump:** 1.98.1 to 1.99.1 cost 1.63% with a profile
+  and 3.63% without one (RAR-P37, RAR-P38); this one costs about a quarter
+  of a percent either way, so the profile neither gains nor loses
+  materially relative to the plain code.
+- **Elo, expected not measured:** about −0.5 at `3+0.03` by PROCESS's 2
+  Elo per 1% NPS.
+
+**Prediction calibration, appended after exposure.** Predicted: the
+fingerprint exact (0.98), PGO 0.0% in [−1.0%, +1.0%], plain 0.0% in
+[−1.5%, +1.5%]. Observed: the fingerprint exact; PGO −0.24% (−0.41% ..
+−0.07%), plain −0.25% (−0.70% .. +0.21%). All three calls held. The PGO
+point estimate missed in **sign** only within the band: a small, resolved
+loss where 0.0% was predicted, the size RAR-P18's minor step read. The
+assumption that an LLVM patch step moves nothing measurable was slightly
+optimistic; that it moves less than a major step held by a factor of
+about seven. **Unpredicted:** a clippy failure in test code, which the
+stop rule covered as an exact fix. **Instrument note:**
+`nps_build_pool.ps1` must be launched with PowerShell 7 (`pwsh`); a first
+launch under Windows PowerShell 5.1 failed on cargo's stderr before any
+build and was discarded.
+
+**Retry trigger:** the next pinned bump re-runs this row.

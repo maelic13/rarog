@@ -386,7 +386,8 @@ to 1.99.1 (LLVM 22 to 23) cost 1.6% at the same fingerprint (RAR-P37), all
 of it code generation (plain builds −3.6%, RAR-P38). **Maintainer decision
 2026-10-21:** Rarog follows the latest stable Rust whenever possible; a bump
 is qualified and its speed read and recorded, and a measured slowdown does
-not revert it.
+not revert it. 1.99.1 to 1.100.0, an LLVM patch step, cost 0.24% with a
+profile and about the same without (RAR-P58).
 
 If a PGO build dies with "target must match host", the rustup default host has
 drifted to windows-gnu, so the pinned toolchain resolves to its gnu variant
