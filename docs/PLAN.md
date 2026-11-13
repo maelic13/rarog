@@ -393,7 +393,7 @@ D.6.28, and inputs to D.7.0).
 | D.6.27 | RESEARCH | R2 | After D.7: the donor has no IIR; re-evaluate first, close if moot |
 | D.6.28 | RESEARCH | R2 | Screened 2026-11-13 on RAR-M87's games: the field gap sits in the low-clock band the horizon rule shapes; next, the horizon against a field, registered, forfeits its invariant |
 | D.6.29 | READY_FOR_IMPLEMENTATION | I1 | Screened 2026-11-13: 19.2% of replayed searches hold a misread stalemate; the narrow repair, a root-change replay, then case 3 `[-5,5]` |
-| D.6.30 | RESEARCH | R2 | Screen: iterations that lose a proven mate on the canaries and replayed gate games; minutes |
+| D.6.30 | READY_FOR_IMPLEMENTATION | I1 | Screened 2026-11-13: 3 of 12,520 replayed searches play another move after a proven win (all games won); keep the proven win, case 1 if the fingerprint holds |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -1310,6 +1310,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       games: on the mate canaries and replayed gate games, count
       completed iterations whose score leaves the mate band after an
       earlier one proved a mate; zero closes it `NO_CHANGE`. `R2` card.
+      **Screened 2026-11-13** (`analysis/d630_mate_screen_2026-11-13.md`,
+      rule frozen before the replay): on the same 200 replayed games, 267
+      searches prove a win; a later iteration loses it in 35, 15 end
+      without it and 3 play a different move. All twelve games were won,
+      so the cost is a delayed mate, not a result. By the rule a repair:
+      **the repair** keeps the last proving iteration's move and score
+      when a later completed iteration no longer proves a win, as
+      Basilisk does; a deeper iteration proving a shorter win still
+      replaces it. **Contract:** root driver only, once per iteration;
+      MultiPV keeps its own lines. **Interactions:** the soft stop's
+      stability and fall factors and the mate watch read the root score
+      and move, so the kept win also holds the clock decisions on it.
+      **Gate:** if `bench 13` reproduces the fingerprint (no bench search
+      ends without its win), repair case 1: an activation and correctness
+      read on the replay (searches ending without a proven win go to
+      zero), no strength gate. Expected value small; it may shorten the
+      won-ending thinks D.6.20 holds.
   Evidence for items already here (H18–H21, H25): item 4 (NODE-2), the
   donor form read +3.3 ± 9.1 in Basilisk (2,000 games) and each of its
   consumers alone (IIR, the no-TT-move LMR term) threw a promotion fixture
