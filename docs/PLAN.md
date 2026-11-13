@@ -349,8 +349,8 @@ D.6.8 stays first, because D.7.2's equal-node match needs one count per
 position. D.7, the search-shape step, then runs ahead of every other open
 D.6 leaf; those leaves keep their numbers, which tests and records cite,
 and each is asked first whether it is still an issue on the kernel D.7
-leaves behind. The 2.7.0 cut (E.3.4) runs ahead of the register, before
-D.7, on a registered no-regression read against 2.6.0 (E.3).
+leaves behind. 2.7.0, an unscheduled release with no step of its own, is
+cut before D.7 on a registered no-regression read against 2.6.0 (E.3).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
@@ -369,8 +369,8 @@ D.7, on a registered no-regression read against 2.6.0 (E.3).
 | D.6.10 | RESEARCH | R2 | Screen before any implementation |
 | D.6.13 | RESEARCH | R2 | After D.7: the donor's aspiration form is part of a rebuilt kernel; re-evaluate first, close if moot |
 | D.6.16 | RESEARCH | R2 | After D.7: quiescence is rebuilt in the donor's form; re-evaluate the gain pruning on it first |
-| D.6.17 | RESEARCH | R2 | Card: the wrong-pick branch fired on D.6.3's candidate (a transposing rook kept by root order); Basilisk's root rule is the prior, the ignored transposing-rook anchor the acceptance test; lands before the 2.7.0 cut |
-| D.6.20 | RESEARCH | R2 | Screen before any implementation; a measured instance: the won-ending clock test is red since `ee0b3e4` (9.5 s against 8 s), ignored as its acceptance test |
+| D.6.17 | RESEARCH | R2 | Card: the wrong-pick branch fired on D.6.3's candidate (a transposing rook kept by root order); Basilisk's root rule is the prior, the ignored transposing-rook anchor the acceptance test; after D.7, asked first by D.7.8 (its hold on 2.7.0 lifted 2026-11-13) |
+| D.6.20 | RESEARCH | R2 | Screen before any implementation; a measured instance: the won-ending clock test is red since `ee0b3e4` (9.5 s against 8 s), ignored as its acceptance test; after D.7, asked first by D.7.8 (its hold on 2.7.0 lifted 2026-11-13) |
 | D.6.21 | RESEARCH | R2 | Screen: does a one- or two-ply search already read the 88 above 0; minutes |
 | D.6.22 | RESEARCH | R2 | Screen: a per-site scale that keeps the draws near 0 and the wins above it; minutes |
 | D.6.23 | RESEARCH | R2 | Screen: raw against corrected at the non-verdict leaves near the verdicts in the 63 fixture searches; minutes |
@@ -1036,7 +1036,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `queen_promotion_though_the_rook_was_searched_first`, ignored
       until the rule lands (`d41bae3`);
       `promotion_on_f8_wins_where_the_rook_transposes` stays active. It
-      lands before the 2.7.0 cut (maintainer decision 2026-11-11).
+      was to land before the 2.7.0 cut (maintainer decision 2026-11-11);
+      that hold was lifted 2026-11-13 (maintainer decision): the rook is a
+      true tie that changes no result, and D.7 replaces the root order
+      that breaks it, so D.7.8 asks first.
     - **D.6.20 The fail-high stop's hole — `R2`.** (H24): the stop at twice the target is
       checked only when a window returns (`search/mod.rs:977-978`), so a
       window that never fails high runs to the maximum (RAR-R26's rec3,
@@ -1059,7 +1062,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the per-window timing that would show whether this is the hole
       above or another cause is not yet read: that is the leaf's first
       read. The test is ignored as this leaf's acceptance test
-      (`b6914f0`) and held in GUIDE.
+      (`b6914f0`). Its hold on the 2.7.0 cut was lifted 2026-11-13
+      (maintainer decision): the hole is older than 2.6.0, the hard
+      maximum bounds it, and the stop sits in the loop D.7 replaces, so
+      D.7.8 asks first.
     - **D.6.21 Won KPK positions read at or below 0 — `R2`.** (D.5.19's read,
       2026-11-02; Basilisk's A3): 88 of 445,128 won KPK positions read at
       or below 0 for the winner, 78 of the wrong sign and 10 exactly 0,
@@ -1655,28 +1661,30 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   fault, so one crash by Houdini or Rybka voids the pool; Basilisk keeps
   zero tolerance for its own build and accepts a foreign engine's faults
   up to 1% of that engine's games, quoted in the manifest.
-- **E.3 Release 2.7.0 through the tag-driven flow; 3.0.0 is reserved for the first NNUE release — `M`/`V`.** Version, changelog, release notes, fmt, debug and
+- **E.3 Release through the tag-driven flow; 3.0.0 is reserved for the first NNUE release — `M`/`V`.** Version, changelog, release notes, fmt, debug and
   release suites, clippy, feature builds, fingerprint, PGO assets, ISA
-  verification, CI matrix, tag and publish on maintainer instruction. Version
-  is 2.7.0 whatever E.2 reads (maintainer decision 2026-10-22: Rarog 3 is
+  verification, CI matrix, tag and publish on maintainer instruction. E.2's
+  result sets no version (maintainer decision 2026-10-22: Rarog 3 is
   the first NNUE Rarog, F.9; E.2's result is recorded, not a version number;
   2.5.0 was cut at B.10 and 2.6.0 from the C head ahead of E, maintainer
   decisions 2026-10-03 and 2026-10-22). Later classical gains (E.4, F.4.1)
-  release as 2.8.0 and onward under Phase F's rule. The release is cut through the
+  release after it under Phase F's rule. The release is cut through the
   tag-driven flow of **E.3.1**, which also carries the two workflow checks
   this release owed (tag equals version; one fingerprint asserted across the
   matrix) and may land any time earlier.
-  **Decision, 2026-11-13 (maintainer):** 2.7.0 is cut from the current
-  head, before D.7, so that the fixes in `[Unreleased]` and the new
-  executables reach users and testers now; a kernel D.7 adopts releases
-  as 2.8.0. The condition is no loss of playing strength against 2.6.0,
+  **Decision, 2026-11-13 (maintainer):** 2.7.0 is an unscheduled
+  release, cut from the current head before D.7 by PROCESS *Release*
+  with no roadmap step of its own; E.3.4 stays in place for E.3's
+  release, its version set when it is cut. 2.7.0 brings the fixes in
+  `[Unreleased]` and the new executables to users and testers now; a
+  kernel D.7 adopts releases as 2.8.0. The condition is no loss of playing strength against 2.6.0,
   read by a registered match before the cut: the last read (RAR-M84,
   2026-11-08, unregistered) had that day's head level with 2.6.0 head to
   head and 13.6 ± 9.9 Elo lower against the shared field, before D.6.2's
-  nElo +12.2 ± 6.5. D.11's hold on the cut is lifted for 2.7.0
-  (maintainer decision 2026-11-13). GUIDE's other two holds on the cut
-  (D.6.17's root rule, D.6.20's clock test) stand until the maintainer
-  resolves or lifts each.
+  nElo +12.2 ± 6.5. The holds of D.11, D.6.17 and D.6.20 on the cut
+  are lifted for 2.7.0 (maintainer decisions 2026-11-13): D.11's
+  stands for the release after it, and D.7.8 asks first whether
+  D.6.17's tie and D.6.20's clock test survive the new kernel.
     - **E.3.1 Tag-driven release flow — `I1`, DONE 2026-10-05.** `release.yml`
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is
@@ -1839,8 +1847,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       selection (AMD Zen 1 and 2) is not exercised there; the forced-tier
       benches run that tier. Landed with E.3.2 as `5efe16f` (PR #14). The
       static Linux runtime's speed stays open for a native host (RAR-P57).
-    - **E.3.4 Release cut: version 2.7.0, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
-      E.3.1 closed (2026-10-05), numbered E.3.2 until 2026-11-04: the version from `2.7.0-dev` to 2.7.0,
+    - **E.3.4 Release cut: the version, the `[Unreleased]` changelog reviewed and dated, suites, the release PR squash-merged, the `v` tag pushed on instruction through E.3.1's workflow — `M`.** E.3's own work, a leaf of its own since
+      E.3.1 closed (2026-10-05), numbered E.3.2 until 2026-11-04: the version from its `-dev` form to the release's,
       behaviour-neutral with the fingerprint
       held; `CHANGELOG.md`'s `[Unreleased]`, kept as changes landed,
       reviewed and dated; fmt, clippy, debug and release suites, feature
