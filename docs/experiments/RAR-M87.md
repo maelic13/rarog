@@ -8,7 +8,9 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
 - **Kind:** the registered read that the 2.7.0 cut needs (PLAN E.3, maintainer
   decision 2026-11-13: "no loss of playing strength against 2.6.0, shown by a
   registered match before the cut"). It accepts no engine change.
-- Disposition: open
+- Disposition: observation — the read finds a **loss**: G −7.6 Elo
+  [−14.4, −0.7] against the field; head to head +10.1 ± 8.7. The release
+  decision is the maintainer's, made after the result (see *Result*).
 - **Why a field, not only head to head:** RAR-M84 (2026-11-08, unregistered)
   had the head level with 2.6.0 head to head (−4.8 ± 14.1) and 13.6 ± 9.9
   lower against a shared field, most of it far weaker than either build
@@ -122,4 +124,60 @@ faults are read here.
 
 ## Result
 
-Not played yet.
+Played 2026-11-13 on an idle host. The field leg ran 14:07–17:40, 20,000 of
+20,000 games scored, status `completed` (`result.json` SHA-256 `23860fb3…70f5`,
+`games.pgn` `2f1c3875…4197`). The head-to-head leg ran 17:41–18:02, 2,000 games,
+`completed` (`result.json` `434c3825…2e01`, `games.pgn` `b52e6e1e…5404`); it is
+the frozen command, started from the maintainer's terminal by
+`analysis/artifacts/m87-release-read/run_h2h.ps1` so they could watch it, after
+the chain was cut to end at the field leg. **Faults: none** in either leg, no
+time losses, no infrastructure faults, so the fault rule removes nothing.
+
+**The field leg**, Colosseum's per-pair Elo from `results.txt` with its
+pentanomial 95% interval:
+
+| Opponent | Head | 2.6.0 | Head − 2.6.0 |
+|---|---|---|---|
+| Stockfish 10 | −81.2 [−92.2, −70.3] | −78.8 [−89.8, −67.9] | −2.4 |
+| Komodo 14.1 | −13.2 [−23.9, −2.5] | −8.3 [−18.6, +1.9] | −4.9 |
+| Fire 8.3 | +52.0 [+41.0, +63.0] | +71.0 [+60.8, +81.3] | −19.0 |
+| Houdini 5 | +23.1 [+12.2, +34.2] | +32.4 [+21.6, +43.3] | −9.3 |
+| Ethereal 13.07 | +42.8 [+31.3, +54.4] | +45.1 [+34.1, +56.1] | −2.3 |
+
+**G = −7.6 Elo**, SE_G 3.50, the line −1.645 · SE_G = −5.76, 95% interval
+[−14.4, −0.7]. **The read finds a loss.** The registration did not say which
+of Colosseum's two pair intervals to use; with the trinomial ones SE_G is
+3.94, the line −6.49 and the interval [−15.3, +0.2], also a loss. All five
+gaps are negative and they do not differ beyond chance (χ² 3.2 on 4 degrees of
+freedom); Fire's −19.0 is the largest. The pooled standings agree: 2.6.0
+3,470.7 ± 6.9, the head 3,463.1 ± 6.9.
+
+**Head to head**, which decides nothing: the head **+10.1 ± 8.7 Elo**, nElo
++17.7 ± 15.2, 521/1016/463, pentanomial [18, 224, 460, 278, 20].
+
+**Calibration.** G was predicted at −4, 80% band [−15, +7], P(no loss) 0.65:
+the result lies inside the band, the centre 3.6 low; the miss is in magnitude
+and confidence, not sign. Head to head was predicted at 0 [−12, +12]; +10.1
+lies inside. The failure mode named most likely, a field deficit that head to
+head does not show, is what was read: the two legs differ by about 18 Elo,
+about three standard errors.
+
+**Clock use, a lead and not a cause** (evidence layer: time per move, not Elo;
+`analysis/artifacts/m87-release-read/m87_time_use.py`, output beside it, the
+clock rebuilt from each move's `t=` at 3,000 + 30 ms). The head thinks 65.5 ms
+a move against 69.0 (0.949). On mate-scored moves 6.5 against 18.7, the stop on
+a proved mate; on the rest 69.9 against 72.6 (0.962): more in its first ten
+moves (113.0 against 102.4), level in moves 11–30, less in moves 31–60 (44.4
+against 56.0, 0.79) and with under a second on its clock (42.2 against 49.1).
+It ends its games with 616 ms left against 379 (medians 567 and 263), about
+5% of a game's budget unspent. RAR-M84 read the same, 4.2% less time on
+non-mate moves. The head-to-head games show the same profile (non-mate 0.960,
+706 against 491 ms left; medians 625 and 280) while the head scored +10.1 there, so
+the clock profile alone does not explain the field gap. It is a candidate
+mechanism for a research card, untested.
+
+**Disposition: loss.** By the frozen rule the 2.7.0 cut does not proceed on
+this read. The maintainer decides what follows after seeing the result, a
+one-off exception for 2.7.0 recorded as such (maintainer, 2026-11-13: "this
+time I will make decision after we see how bad it is"); the decision is
+recorded here when made.
