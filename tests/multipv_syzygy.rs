@@ -178,7 +178,7 @@ fn the_six_man_record_positions_report_a_win_a_ponder_move_and_a_legal_line() {
             "{fen}: {line}"
         );
         assert!(!result.pondermove.is_null(), "{fen}: {raw:#?}");
-        let mut played = board.clone();
+        let mut played = board;
         let pv = line.split(" pv ").nth(1).expect("pv");
         assert!(pv.split_whitespace().count() > 1, "{fen}: {line}");
         for uci in pv.split_whitespace() {

@@ -3270,7 +3270,7 @@ mod tests {
             for ply in 0..MAX_PLY {
                 assert_eq!(searcher.td.stack[ply].reduction, 0, "{context}, ply {ply}");
             }
-            let mut line = root.clone();
+            let mut line = root;
             let pv_len = searcher.td.pv_len[0].min(MAX_PLY);
             assert!(pv_len > 0, "{context}: empty root PV");
             for &mv in &searcher.td.pv_table[0][..pv_len] {

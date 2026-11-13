@@ -202,7 +202,7 @@ fn legal_quiets_and_captures_partition_all_legal_moves() {
             .iter()
             .map(ToString::to_string)
             .collect::<BTreeSet<_>>();
-        let mut capture_board = board.clone();
+        let mut capture_board = board;
         let captures = capture_board
             .generate_legal_captures()
             .iter()
