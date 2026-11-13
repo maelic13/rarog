@@ -1273,8 +1273,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       59,053 stalemates in 17.9M king-and-pawns nodes. Above the 1% rule,
       so a repair. **The repair:** out of check, a side to move with only
       king and pawns and no legal move scores the draw, before the stand
-      pat, as the main search scores a stalemate; Basilisk's narrow form,
-      not widened to positions with pieces. **Contract:** per-node code,
+      pat, as the main search scores a stalemate. **Form:** Reckless
+      `0756957` has none (its quiescence returns a mate in check and
+      otherwise stands pat); Stockfish dev's quiescence tests it only when
+      no move was searched, the side to move has no piece, the last move
+      captured a knight or more and no pawn can push, and Basilisk follows
+      it without the push filter. Stockfish's is the form, not widened to
+      positions with pieces; it departs from the primary donor, so taking
+      it is the maintainer's decision (2026-11-06 rule). The screen
+      counted every king-and-pawns node, a superset of the form's trigger,
+      so the root-change replay, run with the form, gives its own reach.
+      **Contract:** per-node code,
       so an existence test, not a move list (no allocation, no large copy):
       king steps first, then pawn pushes and captures, stopping at the
       first legal move; only king-and-pawns nodes pay, 4.3% of quiescence
