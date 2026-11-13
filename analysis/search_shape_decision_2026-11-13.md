@@ -379,17 +379,17 @@ Other edits in the same documentation commit:
 - **GUIDE.** The regenerated board, the checkpoint's search-deficit and
   active-experiment rows, and the holds table (D.6.13, D.6.16, D.6.27).
 
-## 10. Models, by GUIDE's mapping
+## 10. Models, by GUIDE's mapping (families only since 2026-11-13)
 
 | Leaf | Model and mode | Why |
 |---|---|---|
-| D.6.8 | Claude Opus 5 — High | a counting contract with re-search cases to decide |
-| D.6.28 | Claude Opus 5 — High | a bounded screen and one knob |
-| D.7.0 | Claude Fable 5.1 — High | the interaction map and the experiment design are the open questions |
-| D.7.1 | Claude Sonnet 5 — Medium | a specified harness option with smokes |
-| D.7.2, D.7.5, D.7.6, D.7.7, D.7.9 | Claude Sonnet 5 — High | preparation, verification and reading of registered runs |
-| D.7.3, D.7.4 | Claude Opus 5 — High | kernel implementation against a reference |
-| D.7.8 | Claude Opus 5 — High | one bounded question per form |
+| D.6.8 | Claude Opus — High | a counting contract with re-search cases to decide |
+| D.6.28 | Claude Opus — High | a bounded screen and one knob |
+| D.7.0 | Claude Fable — High | the interaction map and the experiment design are the open questions |
+| D.7.1 | Claude Sonnet — Medium | a specified harness option with smokes |
+| D.7.2, D.7.5, D.7.6, D.7.7, D.7.9 | Claude Sonnet — High | preparation, verification and reading of registered runs |
+| D.7.3, D.7.4 | Claude Opus — High | kernel implementation against a reference |
+| D.7.8 | Claude Opus — High | one bounded question per form |
 
 ## 11. Not verified, and decisions that are the maintainer's
 
@@ -431,5 +431,6 @@ The maintainer's decisions:
 4. Large pages on Linux is renumbered D.10. The originality disclosure
    moves from E.3.0 to D.11, Phase D's last leaf.
 5. 2.7.0 is cut from the current head before D.7, if a registered read
-   shows no loss of strength against 2.6.0.
+   shows no loss of strength against 2.6.0. The originality disclosure's
+   hold is lifted for 2.7.0 and stands for the release after it.
 6. `d6` and `oracle-reads` reach `master` as one PR.

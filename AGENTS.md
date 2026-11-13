@@ -413,12 +413,14 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   block and restate them rather than referring back. Routine internal checks do
   not become the maintainer's chores. Always name the next executable leaf.
 - When reporting the next step, use its PLAN capability class and GUIDE's
-  mapping to recommend one Claude model with its thinking mode
-  (`Claude: <model> — <mode>`) and a brief task-specific reason; Claude
-  models only, by maintainer decision 2026-09-25. Prefer the least costly model judged sufficient and
+  mapping to recommend one Claude model family (Fable, Opus or Sonnet)
+  with its thinking mode (`Claude: <family> — <mode>`) and a brief
+  task-specific reason; Claude models only, by maintainer decision
+  2026-09-25, and the family without a version, by maintainer decision
+  2026-11-13: versions move too fast to store. Prefer the least costly family judged sufficient and
   reserve deeper review for unresolved design, interaction or correctness
   questions; choose each mode independently at the lowest sufficient effort;
-  never substitute newer models, and say so when a mode name is unknown rather
+  never name a version, and say so when a mode name is unknown rather
   than inventing one. A recommendation is a task judgment, not a guarantee, and
   changes no active setting.
 - PLAN records capability classes, not vendor generations. Do not silently

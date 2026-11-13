@@ -399,7 +399,7 @@ D.7, on a registered no-regression read against 2.6.0 (E.3).
 | D.8.20 | READY_FOR_IMPLEMENTATION | I1 | Its census has no dependency |
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
-| D.11 | RESEARCH | R2 | The originality disclosure, moved from E.3.0; a hold on the 2.7.0 cut until the maintainer resolves or lifts it |
+| D.11 | RESEARCH | R2 | The originality disclosure, moved from E.3.0; its hold is lifted for 2.7.0 (maintainer decision 2026-11-13) and stands for the release after it |
 
 ## Phase D — Clock, threads, robustness
 
@@ -1542,7 +1542,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     alone. On macOS `large_pages()` stays as it is.
 - **D.11 Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — `R2`, then `M`.** A
   small research step with its implementation. Added 2026-10-23 by
-  maintainer decision. E.3.4 does not cut until it closes. Known
+  maintainer decision. It held the 2.7.0 cut until 2026-11-13, when the
+  maintainer lifted the hold for 2.7.0; the release after 2.7.0 does not
+  cut until it closes. Known
   evidence (`analysis/originality_review_2.6.0_2026-10-22.md`, on the
   2.6.0 source):
   - The code is Rarog's own. Raw shared token runs with Reckless cover
@@ -1611,10 +1613,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   is in the code on that date. A mechanism from it that ships before the
   cut is named in the disclosure.
   Moved from E.3.0 on 2026-11-13 (maintainer decision): the disclosure is
-  a Phase D leaf. The 2.7.0 cut now runs ahead of D.7, so whether the
-  disclosure runs with that cut or the hold is lifted for 2.7.0 is the
-  maintainer's decision at the cut. A kernel rebuilt in Reckless's form
-  (D.7) makes the disclosure heavier for the release after it.
+  a Phase D leaf. The 2.7.0 cut runs ahead of D.7, and the hold is lifted
+  for it (maintainer decision 2026-11-13): 2.7.0 ships with 2.6.0's
+  notices, and the disclosure closes before the release after it. A
+  kernel rebuilt in Reckless's form (D.7) makes it heavier for that
+  release.
 
 ## Phase E — Classical checkpoint and release
 
@@ -1670,8 +1673,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   read by a registered match before the cut: the last read (RAR-M84,
   2026-11-08, unregistered) had that day's head level with 2.6.0 head to
   head and 13.6 ± 9.9 Elo lower against the shared field, before D.6.2's
-  nElo +12.2 ± 6.5. GUIDE's holds on the cut (D.6.17's root rule,
-  D.6.20's clock test, D.11's disclosure) stand until the maintainer
+  nElo +12.2 ± 6.5. D.11's hold on the cut is lifted for 2.7.0
+  (maintainer decision 2026-11-13). GUIDE's other two holds on the cut
+  (D.6.17's root rule, D.6.20's clock test) stand until the maintainer
   resolves or lifts each.
     - **E.3.1 Tag-driven release flow — `I1`, DONE 2026-10-05.** `release.yml`
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
