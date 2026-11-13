@@ -392,7 +392,7 @@ D.6.28, and inputs to D.7.0).
 | D.6.26 | RESEARCH | R2 | Screen: the pawnless one-minor-ahead classes against Syzygy over an enumeration, and their exposure in gate games; minutes |
 | D.6.27 | RESEARCH | R2 | After D.7: the donor has no IIR; re-evaluate first, close if moot |
 | D.6.28 | RESEARCH | R2 | Screened 2026-11-13 on RAR-M87's games: the field gap sits in the low-clock band the horizon rule shapes; next, the horizon against a field, registered, forfeits its invariant |
-| D.6.29 | RESEARCH | R2 | Screen: a `diag` count of king-and-pawns stalemates quiescence misses; minutes |
+| D.6.29 | READY_FOR_IMPLEMENTATION | I1 | Screened 2026-11-13: 19.2% of replayed searches hold a misread stalemate; the narrow repair, a root-change replay, then case 3 `[-5,5]` |
 | D.6.30 | RESEARCH | R2 | Screen: iterations that lose a proven mate on the canaries and replayed gate games; minutes |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -1266,6 +1266,31 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       no capture, the mover left with king and pawns and no legal move,
       over `bench 13` and replayed gate games; near zero closes it
       `NO_CHANGE`. `R2` card.
+      **Screened 2026-11-13** (`analysis/d629_stalemate_screen_2026-11-13.md`,
+      rule frozen before the replay): on 200 replayed head-to-head games of
+      RAR-M87, 19.2% of searches (2,403 of 12,520, in 164 games) hold at
+      least one stalemate quiescence reads 100 cp or more from the draw;
+      59,053 stalemates in 17.9M king-and-pawns nodes. Above the 1% rule,
+      so a repair. **The repair:** out of check, a side to move with only
+      king and pawns and no legal move scores the draw, before the stand
+      pat, as the main search scores a stalemate; Basilisk's narrow form,
+      not widened to positions with pieces. **Contract:** per-node code,
+      so an existence test, not a move list (no allocation, no large copy):
+      king steps first, then pawn pushes and captures, stopping at the
+      first legal move; only king-and-pawns nodes pay, 4.3% of quiescence
+      nodes. **Competing explanations of no effect:** the misreads sit in
+      lines already refuted, and the main search scores the stalemate one
+      ply up whenever the capture is searched there. **Interactions:** the
+      depth-0 TT store of such a node (now a draw), the stand-pat refine
+      and fail-high blend it bypasses, and the draw score (no contempt).
+      **Cheapest kill before games:** the same replay with the repair,
+      counting searches whose root move or score differs; none moved
+      closes it `NO_CHANGE`. **Gate:** it moves the fingerprint and shared
+      quiescence scores in about a fifth of searches, and could matter
+      either way, so case 3, `[-5,5]` with its cap, its exposure read
+      from Colosseum's database at registration. The diag counters
+      (`q_kp_nodes`, `q_kp_stalemate`, `q_kp_stalemate_misread`) stay as
+      its activation check.
     - **D.6.30 A later iteration can overwrite a proven mate — `R2`.**
       (found 2026-11-13, the Basilisk check, `analysis/basilisk_check_2026-11-13.md` §1):
       each completed iteration replaces the root's score and move

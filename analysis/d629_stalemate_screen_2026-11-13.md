@@ -42,4 +42,26 @@ Seen before this was written: `bench 13` only (below).
 2,482,373 quiescence nodes; 97 stalemates; 87 of them misread by 100 cp or
 more.
 
-The replay: not run yet.
+**The replay** (`replay.json` SHA-256 `5f1a4379…`, driver `bccb9e53…`):
+200 games, 12,520 searches, 419,837,709 quiescence nodes. King-and-pawns
+nodes out of check are 4.27% of them (17,928,024); 59,053 are stalemates
+(0.33% of those, against bench's 0.08%), and 41,790 of those reach the
+stand pat 100 cp or more from the draw. **2,403 searches, 19.2%, hold at
+least one misread stalemate**, in 164 of the 200 games; a search that
+holds one holds 4 at the median and 37 at the 90th percentile.
+
+**Decision by the frozen rule: 19.2% is above 1%, so D.6.29 becomes a
+repair card** (PLAN D.6.29, `READY_FOR_IMPLEMENTATION`).
+
+**Calibration.** Predicted 0.3% [0.03%, 2%]; the miss is in magnitude,
+about sixty-fold, and in instrument: the prediction scaled bench's
+per-node rate, but the registered quantity is the share of searches with
+at least one, and a search of some 33,000 quiescence nodes in a pawn
+ending reaches one easily even at 0.33% of its king-and-pawns nodes. The
+assumption that failed was reading a per-node rate as a per-search share.
+
+**What this does not show.** Whether any root move or score changes: a
+misread stalemate inside a refuted line changes nothing at the root, and
+the main search scores a stalemate correctly one ply up whenever the
+capture is searched there. Evidence layer: node counts, which choose and
+do not accept.

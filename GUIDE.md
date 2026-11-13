@@ -60,7 +60,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [ ] **D.6.26** Pawnless endings a minor ahead read as wins — **RESEARCH / R2**
     - [ ] **D.6.27** IIR has no node-type condition — **RESEARCH / R2**
     - [ ] **D.6.28** Clock use: a tenth of the budget is left unspent — **RESEARCH / R2**
-    - [ ] **D.6.29** Quiescence never scores a stalemate — **RESEARCH / R2**
+    - [ ] **D.6.29** Quiescence never scores a stalemate — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.6.30** A later iteration can overwrite a proven mate — **RESEARCH / R2**
 - [ ] **D.7** Search shape: the kernel against its donor on Rarog's evaluation, rebuilt whole in Reckless's form if the reads or the maintainer say so — **R3**
     - [ ] **D.7.0** Investigation: the inventory of departures, the seeds and the registration of the reads — **RESEARCH / R3**
