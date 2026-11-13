@@ -161,6 +161,18 @@
     Treat the absolute Elo as a comparison against the CLOCK result for the
     same pair, not as a rating.
 
+.PARAMETER TCA / TCB / NodesA / NodesB / MoveTimeA / MoveTimeB
+    One engine's own search limit: a clock "base+inc" (-TCA/-TCB), a node
+    budget per move (-NodesA/-NodesB, fastchess `nodes=N`) or a move time in
+    seconds (-MoveTimeA/-MoveTimeB, `st=S`). An engine without its own takes
+    the shared -Nodes, -MoveTime or -TC. Each engine gets exactly one limit,
+    and both engines' limits are of one kind: a node budget against a clock
+    compares nothing. Refused: two limits for one engine, two kinds, a
+    shared limit no engine would read, a value of 0 or less given
+    explicitly, and any per-engine limit in calibrate mode (a null pair).
+    Equal nodes are not equal work across engines that count nodes
+    differently; that is what the per-engine budget is for.
+
 .PARAMETER TimeMargin
     fastchess timeout margin in milliseconds. Default 20. This prevents small
     Windows scheduler / process IO jitter from being counted as a time
@@ -243,6 +255,11 @@ param(
     [string]$TCB = "",
     [double]$MoveTime = 0,
     [int]$Nodes = 0,
+    # Per-engine node budgets and move times, beside -TCA/-TCB.
+    [int]$NodesA = 0,
+    [int]$NodesB = 0,
+    [double]$MoveTimeA = 0,
+    [double]$MoveTimeB = 0,
     [int]$TimeMargin = 20,
     [switch]$Adjudicate,
     [switch]$NoAdjudication,
@@ -369,39 +386,66 @@ if ($Mode -ne "calibrate" -and $Mode -ne "fixed" -and $Elo0 -ge $Elo1) {
     throw "SPRT requires -Elo0 lower than -Elo1."
 }
 
-# Resolve the search limit: clock (default) unless a fixed movetime or a fixed
-# node count is given. All three are mutually exclusive; fastchess would accept
-# two limits at once and silently apply whichever it parses last, so refuse.
+# Resolve each engine's search limit: its own -TCA/-NodesA/-MoveTimeA (or the
+# B side's), else the shared -Nodes, -MoveTime or -TC, in that order. fastchess
+# accepts two limits at once and silently applies whichever it parses last, so
+# anything but one limit per engine, of one kind for both, is refused.
 if ($MoveTime -gt 0 -and $Nodes -gt 0) {
     throw "-MoveTime and -Nodes are mutually exclusive: pick one search limit."
 }
-if ($Nodes -gt 0) {
-    $tcArg   = "nodes=$Nodes"
-    $tcLabel = "nodes=$Nodes (fixed nodes/move; NO time management)"
+foreach ($name in @('Nodes', 'NodesA', 'NodesB', 'MoveTime', 'MoveTimeA', 'MoveTimeB')) {
+    $value = Get-Variable -Name $name -ValueOnly
+    if ($value -lt 0 -or ($PSBoundParameters.ContainsKey($name) -and $value -le 0)) {
+        throw "-$name must be positive when given (got $value)."
+    }
+}
+$resolveLimit = {
+    param([string]$Side, [string]$Clock, [int]$NodeBudget, [double]$Seconds)
+    $own = @()
+    if ($Clock) { $own += [pscustomobject]@{ Kind = 'clock'; Arg = "tc=$Clock"; Flag = "-TC$Side" } }
+    if ($NodeBudget -gt 0) { $own += [pscustomobject]@{ Kind = 'nodes'; Arg = "nodes=$NodeBudget"; Flag = "-Nodes$Side" } }
+    if ($Seconds -gt 0) { $own += [pscustomobject]@{ Kind = 'movetime'; Arg = "st=$Seconds"; Flag = "-MoveTime$Side" } }
+    if ($own.Count -gt 1) {
+        throw "Engine $Side has more than one limit ($(($own | ForEach-Object Flag) -join ', ')): give each engine one."
+    }
+    if ($own.Count -eq 1) { return [pscustomobject]@{ Kind = $own[0].Kind; Arg = $own[0].Arg; Own = $true } }
+    if ($Nodes -gt 0) { return [pscustomobject]@{ Kind = 'nodes'; Arg = "nodes=$Nodes"; Own = $false } }
+    if ($MoveTime -gt 0) { return [pscustomobject]@{ Kind = 'movetime'; Arg = "st=$MoveTime"; Own = $false } }
+    return [pscustomobject]@{ Kind = 'clock'; Arg = "tc=$TC"; Own = $false }
+}
+$limitA = & $resolveLimit 'A' $TCA $NodesA $MoveTimeA
+$limitB = & $resolveLimit 'B' $TCB $NodesB $MoveTimeB
+$perEngine = $limitA.Own -or $limitB.Own
+if ($perEngine) {
+    if ($Mode -eq "calibrate") { throw "A calibration is a null pair: it takes no per-engine limit." }
+    if ($limitA.Kind -ne $limitB.Kind) {
+        throw ("The engines' limits are of two kinds ($NameA $($limitA.Arg), $NameB $($limitB.Arg)): " +
+               "a match compares one kind. Give both a clock, both a node budget or both a move time.")
+    }
+    $shared = @(@(@{ Name = '-Nodes'; Set = $Nodes -gt 0 }, @{ Name = '-MoveTime'; Set = $MoveTime -gt 0 },
+                  @{ Name = '-TC'; Set = $PSBoundParameters.ContainsKey('TC') }) | Where-Object { $_.Set })
+    if ($limitA.Own -and $limitB.Own -and $shared.Count -gt 0) {
+        throw "Both engines carry their own limit, so $($shared[0].Name) would be read by neither; remove it."
+    }
+    foreach ($limit in @($limitA, $limitB)) {
+        if ($limit.Kind -eq 'clock' -and $limit.Arg -notmatch '^tc=\d+(\.\d+)?\+\d+(\.\d+)?$') {
+            throw "Clock '$($limit.Arg.Substring(3))' is not <seconds>+<increment seconds>."
+        }
+    }
+}
+$labelOf = @{ clock = 'clock'; nodes = 'fixed nodes/move; NO time management'; movetime = 'fixed time/move' }
+if ($limitA.Kind -eq 'nodes') {
     Write-Host "NOTE: fixed-nodes match - speed and time management are both removed." -ForegroundColor Yellow
     Write-Host "      Diagnostic only. Not a strength gate: TM is invisible here." -ForegroundColor Yellow
-} elseif ($MoveTime -gt 0) {
-    $tcArg   = "st=$MoveTime"
-    $tcLabel = "st=$MoveTime (fixed ${MoveTime}s/move)"
+}
+if ($perEngine) {
+    $tcLabel = "per engine: $NameA $($limitA.Arg), $NameB $($limitB.Arg) ($($labelOf[$limitA.Kind]))"
 } else {
-    $tcArg   = "tc=$TC"
-    $tcLabel = "tc=$TC (clock)"
+    $tcLabel = "$($limitA.Arg) ($($labelOf[$limitA.Kind]))"
 }
-$clockOdds = [bool]($TCA -or $TCB)
-if ($clockOdds) {
-    if ($Nodes -gt 0 -or $MoveTime -gt 0) { throw "-TCA and -TCB set clocks; a -Nodes or -MoveTime match has none." }
-    if ($Mode -eq "calibrate") { throw "A calibration is a null pair: it takes no time odds." }
-    $tcA = if ($TCA) { $TCA } else { $TC }
-    $tcB = if ($TCB) { $TCB } else { $TC }
-    foreach ($clock in @($tcA, $tcB)) {
-        if ($clock -notmatch '^\d+(\.\d+)?\+\d+(\.\d+)?$') { throw "Clock '$clock' is not <seconds>+<increment seconds>." }
-    }
-    $tcArg   = $null
-    $tcLabel = "time odds: $NameA tc=$tcA, $NameB tc=$tcB (clock)"
-}
-$tcArgsA = @(if ($clockOdds) { "tc=$tcA" })
-$tcArgsB = @(if ($clockOdds) { "tc=$tcB" })
-$tcArgsEach = @(if (-not $clockOdds) { $tcArg })
+$tcArgsA = @(if ($perEngine) { $limitA.Arg })
+$tcArgsB = @(if ($perEngine) { $limitB.Arg })
+$tcArgsEach = @(if (-not $perEngine) { $limitA.Arg })
 
 # Locate fastchess.
 $fastchess = $FastchessPath
