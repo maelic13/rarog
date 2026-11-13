@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **11,477,040 / EBF 2.537** at engine source `aee0b3b` (D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.99.1`) | RAR-S105, RAR-P36 |
+| Fingerprint | `bench 13` **9,077,016 / EBF 2.481** at engine source `ba1d2cd` (D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -130,45 +130,55 @@ gating. The rules below decide order and acceptance in this roadmap.
    what horizon, and what the gate would otherwise measure. Maintainer
    decision 2026-09-20. The whole-surface refit stays at B.6.
 
-7c. **A tune runs in blocks with a movement stop rule, not on one horizon.**
-   RAR-S75 ran 5,000 iterations and its last 1,100 were worth +4.43 ± 2.90;
-   restarting the same 82 coordinates from its endpoint with a fresh gain
-   schedule (RAR-S78, another 5,000) gained +13.1 ± 5.4, carried by
-   coordinates the first run had barely moved. The limit was the decaying
-   gain, not the games: a coordinate whose gradient appears only after
-   others have moved receives it when the schedule is spent, and the right
-   horizon cannot be predicted because it depends on how far the seeds are
-   from the optimum. So a registered tune is a sequence of blocks, each
-   2,000 iterations × 30 games on Colosseum (60,000 games, about 12.5 h),
-   each started from the previous block's rounded centres with a fresh
-   schedule, the same surface and the same steps. After each block, count
-   the coordinates that moved at least one step from the block's seeds: at
-   least three, and the next block runs; fewer, and the tune stops with the
-   last block's rounded centres as theta; never more than three blocks
-   without a new registration. Block size, count and ceiling are registered
-   before the first game and never change after it. Nothing is baked
-   between blocks; a later block starts through `colosseum.ps1 -SeedFrom`
-   from the previous block's run directory, on the same config group and
-   tune file, and the wrapper refuses an unfinished source, another binary
-   or another surface. Maintainer decision 2026-09-25. **Amended 2026-09-26:**
-   the count is a device for saving unattended compute, never a reason to
-   end a tune the maintainer is watching: RAR-S82's block 1 ended with one
-   coordinate two steps out and still travelling and eleven at half a step,
-   and the count said stop. A chained launch may run every registered block
-   unconditionally; theta stays the last completed block, and a block cut
-   short never counts. A tune is judged by its gate, not by its movement.
-   **Amended 2026-10-20 (maintainer decision, C.10.4):** the chain of
-   2,000-iteration blocks is the shape for seeds far from their optimum.
-   Where a pilot and an earlier block read the surface as near its optimum
-   with small gradients, a tune may instead be registered as one longer run
-   with a larger perturbation and a smaller gain ratio (RAR-S104: 4,000
-   iterations, perturbations twice the b43 step, `r-end` 0.0016 in a
-   committed `schedule_<group>.json`), because the signal-to-noise of each
-   gradient estimate grows with the perturbation and a restarted schedule
-   only re-inflates the random walk near an optimum; the registration
-   derives the resolution it buys. The b43 step stays the unit of "a full
-   step" in every reading (`tools/spsa_theta_audit.py --movement-config`), and a run
-   cut short is still not theta.
+7c. **A tune is one run, read at checkpoints, and stopped when its
+   gradients are gone.** Adopted 2026-11-13 (maintainer decision) from
+   Basilisk's B.5.6 and B.5.8, replacing the blocks this rule held from
+   2026-09-25 (RAR-S75, RAR-S78, RAR-S82–S83) and its 2026-10-20 shape
+   (RAR-S104); the record is `analysis/spsa_method_adoption_2026-11-13.md`.
+   - *Shape.* 30 games an iteration on 15 slots, with a registered ceiling:
+     6,000 iterations (180,000 games) unless the registration argues
+     another. The perturbation is two steps (the config's `step`, the b43
+     step) where the seed has two steps of room inside its range,
+     otherwise the largest from one to two steps the room allows; a
+     coordinate with under one step of room keeps one step and is named at
+     registration. `r_end` is 0.00155. `tools/spsa_config_to_colosseum.py
+     <group> --rule7c --ceiling N` writes the files.
+   - *Checkpoints.* Iteration 2,000, then every 1,000.
+     `tools/colosseum.ps1 -Mode spsa -Ceiling N` plays to each with the
+     runner's `--stop-after-iteration`, and `tools/spsa_read.py` reads the
+     last 1,000 iterations there.
+   - *The test.* For each coordinate, `z = Σ δ·D / √(Σ D²)`: δ is its
+     perturbation's sign at an iteration, regenerated from the run's seed,
+     and D the plus side's wins less its losses. With no gradient z has
+     mean 0 and variance 1 exactly, because the tuner drew the signs. The
+     window is **live** if any |z| passes the familywise 5% line for the
+     surface's coordinate count, or if `Σ z² − n` is at least `2·√(2n)`;
+     otherwise it is **quiet**.
+   - *The rule.* Quiet: the tune stops, and theta is that checkpoint's
+     rounded centres. Live: the next 1,000 iterations run. The maintainer
+     may stop at any checkpoint (a file named `STOP` in the run directory),
+     and theta is then that checkpoint's centres. A run stopped between
+     checkpoints is not theta; it resumes. A run with engine, time or
+     infrastructure faults stops for the maintainer, who may accept them
+     once analysed.
+   - *Rails.* A centre within one perturbation of a bound, its z pointing
+     outward past the familywise line, stops the tune for a new
+     registration of the range. A weaker outward push (z of 2 or more) is
+     reported and stops nothing.
+   - *The record.* Each read appends every coordinate's z, the tune's own
+     read of its gain, the stop's floor in Elo and a frozen forecast for
+     the next 2,000 iterations. The forecast decides nothing until three
+     scored forecasts have each fallen within twice the combined SD of the
+     forecast and of the gain read it is scored against.
+
+   Quiet means no gradient above the stated floor, not convergence. A tune
+   is judged by its gate, not by its read, and a stop is never read from
+   net travel or a count of movers. The 2,000-iteration minimum is there
+   because a gradient can appear late (Basilisk's B.4.6 read quiet over its
+   first 1,000 iterations and live over its second). In the blocks' shape a
+   quiet read at 82 coordinates could not exclude about 11 Elo, which is
+   what RAR-S78's restart found; the doubled perturbation exists to lower
+   that floor.
 
 8. **State the measurement layer.** Theory truth, move quality, conversion,
    fixed-node tree shape, NPS and game strength are different units with no
@@ -345,23 +355,24 @@ from here to the end: no step waits for a later one, and no work is listed
 twice (HISTORY's number map holds what moved).
 On 2026-11-13 (maintainer decision, after RAR-O08) the order of work left
 the numbering in two places, and the rows below are in the order of work.
-D.6.8 stays first, because D.7.2's equal-node match needs one count per
-position. D.7, the search-shape step, then runs ahead of every other open
+D.6.8 ran first (done 2026-11-13), because D.7.2's equal-node match needs
+one count per position. D.7, the search-shape step, then runs ahead of every other open
 D.6 leaf; those leaves keep their numbers, which tests and records cite,
 and each is asked first whether it is still an issue on the kernel D.7
 leaves behind. 2.7.0, an unscheduled release with no step of its own, is
 cut before D.7 on a registered no-regression read against 2.6.0 (E.3).
+The Basilisk check for new ports, research only, follows the cut and
+precedes D.7 (maintainer decision 2026-11-13).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.8 | READY_FOR_IMPLEMENTATION | R2 | Screened (RAR-S123): count each position once, 16.1% of the count today; decide re-searches first; gate case 2 |
 | D.7.0 | RESEARCH | R3 | The inventory of every departure from Reckless `0756957`, the seed table from the hybrid's configuration, the parity design, RAR-O09's registration |
 | D.7.1 | READY_FOR_IMPLEMENTATION | I1 | `sprt.ps1` takes a node budget and a move time per engine, each with a wire smoke |
 | D.7.2 | RESEARCH | V | RAR-O09's three reads after D.6.8; the rebuild opens at +10 or more at equal nodes, otherwise the maintainer decides after consultation |
 | D.7.3 | RESEARCH | I2 | Opens with D.7.2's decision |
 | D.7.4 | RESEARCH | I2 | Opens with D.7.2's decision; parity before any game |
 | D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games |
-| D.7.6 | RESEARCH | V | The fit in registered blocks; kept only if fitted over unfitted passes `[0,3]` |
+| D.7.6 | RESEARCH | V | The fit as one rule 7c run read at checkpoints; kept only if fitted over unfitted passes the gate PROCESS's SPSA procedure chooses |
 | D.7.7 | RESEARCH | V | The kernel against the head on the loss-permitting bracket; `10+0.1` and 4T reads |
 | D.7.8 | RESEARCH | R2 | Each known problem asked "still an issue?" on the new kernel |
 | D.7.9 | RESEARCH | V | Adoption by maintainer decision on D.7.7 and D.7.8; meters; the old kernel deleted |
@@ -532,6 +543,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   2026-11-05: the piece-term definitions to E.4's refit, `Hash` at any size
   to G.2, and the low-priority notes, Stockfish 19's mechanisms and the
   root and in-check reductions to H.2 under Phase H's rule.
+  D.6.1 to D.6.7 landed in `89b4a92` (PR #17, "Fix castling and queen
+  promotions in the search and bound long lines"). Their full text stays
+  here, not in the archive: D.7.8 and the items after D.7 come back to
+  them (maintainer decision 2026-11-13).
   **Order, 2026-11-13 (maintainer decision):** D.6.8 runs first, then D.7.
   The other open items wait for D.7 and none is dropped. After D.7.8 each
   is asked first whether it is still an issue on the kernel D.7 leaves
@@ -938,7 +953,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      constants or by the donor's in-check and draw handling at the cap, if a
      read at a rated time control finds more than 0.1% of searches reaching
      it.
-    - **D.6.8 A depth-0 entry is counted as two nodes — `R2`.** (DRIVER-11): `check_stop` at
+    - **D.6.8 A depth-0 entry is counted as two nodes — `R2`, DONE 2026-11-13.** (DRIVER-11): `check_stop` at
      the `negamax` entry and again at the `quiescence` entry it hands to, so
      reported nodes, `go nodes`, the bench count and the LMR spread's phase
      read the double count; the donor counts once per move made. Screen: the
@@ -963,6 +978,33 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      full-depth re-search and ProbCut's verification re-enter a child
      without a new move, at least 1.2% more. The donor's one count per
      move made covers them; the screen's four paths do not.
+     **Contract decided 2026-11-13:** a position is counted once, when a
+     move or a null move reaches it, as RAR-S123's frozen rule says; a
+     re-search enters a position a move already reached and counts
+     nothing, the donor's one count per move made, which is what D.7.2's
+     equal-node match needs. The null move is counted, by the frozen
+     rule, where the donor does not count it.
+     Implemented 2026-11-13 as `ba1d2cd`: `count_node` is called once
+     after each move the main loop, ProbCut and quiescence make and after
+     the null move, and the node entries only read the stop flag.
+     `bench 13` 9,077,016 / EBF 2.481. On the old tree (an uncommitted
+     arm keeping the old clock for the LMR spread, which read exactly
+     11,477,040) the count reads 9,475,302, inside RAR-S123's bound of
+     9,489,974; the rest is the spread's new phase.
+     `a_depth_one_search_counts_each_root_move_once` pins it: 20 at depth
+     1 from the start position, 51 on the old count. Two test
+     preconditions were fixed first, each in its own commit and read on
+     both trees: the transposing promotion anchor pins the transposition,
+     not a margin between two searches of a tie (`56da869`), and the
+     double singular liveness probe moves to the knight-up position at
+     depth 10 (`10059f9`). **Gate registered as RAR-S124,** before any
+     game: case 2, 2,000 games at `3+0.03` against `10059f9`, the −13
+     harm rule; every search of every game reads the count.
+     **Gate read 2026-11-13 (RAR-S124): kept,** nElo −6.2 ± 15.2 against
+     the −13 rule, no fault; the same depth and time a move, nodes a move
+     ×0.826, the count's own ratio on the bench's fixed tree. The
+     fingerprint moves to 9,077,016 / EBF 2.481. Kept means no harm
+     beyond roughly −20 nElo.
     - **D.6.9 The endgame scale's target — `R2`.** (EVAL-5): `evaluate` adds tempo to `mg`,
      tapers, then `scale_endgame` multiplies the whole; both donor commits
      scale the endgame half only (`v = mg·p + eg·(128−p)·sf/64`), so the forms
@@ -1309,9 +1351,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       parity passed puts the difference outside the kernel: one diagnosis,
       then stop.
     - **D.7.6 The fit — `V`.**
-      Curvature sweep, then SPSA in registered blocks (rule 7c), at most
-      three. The fitted constants are kept only if fitted over unfitted
-      passes SPRT `[0,3]`.
+      Curvature sweep, then one SPSA run under rule 7c, read at
+      checkpoints and stopped when its gradients are gone. The fitted
+      constants are kept only if fitted over unfitted passes the gate
+      PROCESS's SPSA procedure chooses from the tune's own gain read before
+      any gate game: a fixed 6,000 games where the read is +10 Elo or more,
+      otherwise SPRT `[0,3]`.
     - **D.7.7 The gate: the kernel against the head — `V`.**
       The loss-permitting bracket `[-1.75, 0.25]`, with a `10+0.1` read and
       a 4T read registered beside it.
@@ -1685,6 +1730,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   are lifted for 2.7.0 (maintainer decisions 2026-11-13): D.11's
   stands for the release after it, and D.7.8 asks first whether
   D.6.17's tie and D.6.20's clock test survive the new kernel.
+  **The read, 2026-11-13 (RAR-M87): a loss.** Against a five-engine
+  field the head is G −7.6 Elo [−14.4, −0.7] below 2.6.0; head to head
+  it is +10.1 ± 8.7. The maintainer decided after the result, as an
+  exception for 2.7.0 and not a release rule, to ship it as it is for its
+  fixes. The head leaves about 5% of its clock unspent, a lead for a
+  research card, untested.
     - **E.3.1 Tag-driven release flow — `I1`, DONE 2026-10-05.** `release.yml`
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is

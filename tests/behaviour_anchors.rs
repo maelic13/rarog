@@ -159,15 +159,21 @@ fn queen_promotion_where_the_rook_only_transposes() {
     let s = summary(&r);
     assert_eq!(r.bestmove.to_string(), "a7a8q", "{s}");
     assert!(r.score > 0, "{s}");
-    // At the depth the budget reached the queen scores no lower than the
-    // rook (481 and 435 on 2026-11-08), so the choice is not a rook ahead
-    // held back by root order.
-    let (queen, rook) = (alone(fen, "a7a8q", r.depth), alone(fen, "a7a8r", r.depth));
-    assert!(
-        queen >= rook,
-        "queen {queen}, rook {rook} at depth {}",
-        r.depth
-    );
+    // After `Rxa8 Rxa8` either promotion reaches the same position, so the
+    // two are a true tie. Two separate searches of a tie differ by their
+    // own noise (the queen 481 and the rook 435 on one tree, 572 and 573 on
+    // another), so the test pins the transposition, not a margin.
+    let after = |promotion: &str| {
+        let mut line = board(fen);
+        for uci in [promotion, "d8a8", "a5a8"] {
+            let mv = line
+                .parse_move(uci)
+                .unwrap_or_else(|| panic!("{uci} legal after {promotion}"));
+            line.make_move(mv);
+        }
+        line.to_fen()
+    };
+    assert_eq!(after("a7a8q"), after("a7a8r"), "the rook line transposes");
 }
 
 // After `gxf8` with either piece, `Rxf8+ Bxf8` reaches the same position,

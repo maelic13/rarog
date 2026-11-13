@@ -44,8 +44,9 @@
     match     -> a fixed-length measurement with an interval. Decides nothing.
     calibrate -> the null pair, owed only on a runner, scheduler or topology
                  change (RAR-M03). Requires byte-identical binaries.
-    spsa      -> a tune. Needs -ConfigGroup, -Iterations and -TotalGames;
-                 -SeedFrom <run dir> starts a block from a finished tune (PLAN rule 7c).
+    spsa      -> a tune under PLAN rule 7c: one run to the registered -Ceiling,
+                 read at checkpoints by tools/spsa_read.py and stopped when its
+                 gradients are gone. Needs -ConfigGroup and -Ceiling.
     gauntlet  -> a rating gauntlet; participants are passed in -ExtraArgs.
 
 .PARAMETER NameA
@@ -81,11 +82,30 @@
     benched. AGENTS.md's one failure mode is a stale binary measured, and a
     fingerprint is the cheapest thing that catches it.
 
-.PARAMETER SeedFrom
-    A finished tune's run directory. The new block starts from its rounded
-    final values (Colosseum's --seed-from) with a fresh schedule, the same
-    surface and the same steps; the source must be completed, tuned on this
-    same binary and on this same surface, and the manifest records it.
+.PARAMETER Ceiling
+    A tune's registered ceiling in iterations (PLAN rule 7c: 6,000 unless the
+    registration argues another). The surface files must be the rule 7c
+    conversion for it: tools/spsa_config_to_colosseum.py <group> --rule7c
+    --ceiling <N>. The run is played a segment at a time with the runner's
+    --stop-after-iteration, to iteration -FirstCheckpoint (2,000) and then every
+    -CheckpointEvery (1,000), and at each checkpoint tools/spsa_read.py reads
+    the last -Window (1,000) iterations and records the verdict:
+      CONTINUE         the next segment runs;
+      STOP_QUIET       the tune stops; theta is the checkpoint's rounded centres;
+      STOP_CEILING     the ceiling is reached; theta likewise;
+      STOP_RAIL        the tune stops for a new registration of the range;
+      FAULT            the run recorded faults; it stops for the maintainer, who
+                       may accept them once analysed (python tools/spsa_read.py
+                       <dir> --accept-faults "<reason>") and run the command again;
+      STOP_MAINTAINER  a file named STOP in the run directory stops the tune at
+                       the next checkpoint, with that checkpoint's centres as theta.
+    Running the same command again resumes an interrupted tune at its recorded
+    seed; a stopped tune is never extended.
+
+.PARAMETER AllowShortRun
+    Lifts rule 7c's production shape (first checkpoint 2,000, every 1,000,
+    window 1,000, 30 games an iteration on 15 slots) for an instrument smoke on
+    a separately generated surface. Never for a registered tune.
 
 .PARAMETER CategoricalTuneBuild
     A categorical A/B on ONE tune build: the same executable on both sides,
@@ -110,9 +130,8 @@
         -MaxPairs 24000 -Seed 7 -Dir tools/results/<experiment>
 
 .EXAMPLE
-    ./tools/colosseum.ps1 -Mode spsa -Engine tools/test_engines/rarog-b23core-tune.exe `
-        -ConfigGroup b23core -Iterations 5000 -TotalGames 150000 `
-        -Seed 7 -Dir tools/results/<experiment>
+    ./tools/colosseum.ps1 -Mode spsa -Engine tools/test_engines/<tune build>.exe `
+        -ConfigGroup <group> -Ceiling 6000 -Seed 7 -Dir tools/results/<experiment>
 #>
 param(
     [ValidateSet("sprt", "match", "calibrate", "spsa", "gauntlet")][string]$Mode = "sprt",
@@ -125,10 +144,13 @@ param(
     [Parameter(Mandatory)][string]$Dir,
     [int]$MaxPairs = 0,
     [int]$Games = 0,
-    [int]$TotalGames = 0,
     [string]$ConfigGroup = "",
-    [string]$SeedFrom = "",
-    [int]$Iterations = 0,
+    [int]$Ceiling = 0,
+    [int]$FirstCheckpoint = 2000,
+    [int]$CheckpointEvery = 1000,
+    [int]$Window = 1000,
+    [int]$GamesPerIteration = 30,
+    [switch]$AllowShortRun,
     [int]$Seed = 0,
     [string[]]$OptionsA = @(),
     [string[]]$OptionsB = @(),
@@ -183,27 +205,36 @@ $OptionsB = & $splitOpts $OptionsB
 # asked for. Refuse rather than reinterpret.
 $modeIgnores = switch ($Mode) {
     "sprt"      { @{ Games = "-Games sizes a fixed match; an SPRT is capped by -MaxPairs"
-                     TotalGames = "-TotalGames is a tune budget"
                      ConfigGroup = "-ConfigGroup names a tune surface"
-                     SeedFrom = "-SeedFrom seeds a tune from a finished one"
-                     Iterations = "-Iterations is a tune horizon" } }
+                     Ceiling = "-Ceiling is a tune's ceiling"
+                     FirstCheckpoint = "-FirstCheckpoint is a tune's"
+                     CheckpointEvery = "-CheckpointEvery is a tune's"
+                     Window = "-Window is a tune's read"
+                     GamesPerIteration = "-GamesPerIteration is a tune's"
+                     AllowShortRun = "-AllowShortRun is a tune smoke's" } }
     "match"     { @{ MaxPairs = "-MaxPairs caps an SPRT; a fixed match is sized by -Games"
                      Bracket = "-Bracket selects SPRT bounds; a fixed match has none"
-                     TotalGames = "-TotalGames is a tune budget"
                      ConfigGroup = "-ConfigGroup names a tune surface"
-                     SeedFrom = "-SeedFrom seeds a tune from a finished one"
-                     Iterations = "-Iterations is a tune horizon" } }
+                     Ceiling = "-Ceiling is a tune's ceiling"
+                     FirstCheckpoint = "-FirstCheckpoint is a tune's"
+                     CheckpointEvery = "-CheckpointEvery is a tune's"
+                     Window = "-Window is a tune's read"
+                     GamesPerIteration = "-GamesPerIteration is a tune's"
+                     AllowShortRun = "-AllowShortRun is a tune smoke's" } }
     "calibrate" { @{ MaxPairs = "-MaxPairs caps an SPRT; a null pair is sized by -Games"
                      Bracket = "-Bracket selects SPRT bounds; a null pair has none"
                      ThreadsB = "-ThreadsB gives arm B its own thread count; a null pair's arms are identical"
                      BaseMsB = "-BaseMsB gives arm B its own clock; a null pair's arms are identical"
                      IncrementMsB = "-IncrementMsB gives arm B its own clock; a null pair's arms are identical"
-                     TotalGames = "-TotalGames is a tune budget"
                      ConfigGroup = "-ConfigGroup names a tune surface"
-                     SeedFrom = "-SeedFrom seeds a tune from a finished one"
-                     Iterations = "-Iterations is a tune horizon" } }
-    "spsa"      { @{ MaxPairs = "-MaxPairs caps an SPRT; a tune is sized by -TotalGames"
-                     Games = "-Games sizes a fixed match; a tune is sized by -TotalGames"
+                     Ceiling = "-Ceiling is a tune's ceiling"
+                     FirstCheckpoint = "-FirstCheckpoint is a tune's"
+                     CheckpointEvery = "-CheckpointEvery is a tune's"
+                     Window = "-Window is a tune's read"
+                     GamesPerIteration = "-GamesPerIteration is a tune's"
+                     AllowShortRun = "-AllowShortRun is a tune smoke's" } }
+    "spsa"      { @{ MaxPairs = "-MaxPairs caps an SPRT; a tune is sized by -Ceiling"
+                     Games = "-Games sizes a fixed match; a tune is sized by -Ceiling"
                      Bracket = "-Bracket selects SPRT bounds; a tune has none"
                      EngineA = "a tune has one engine: pass -Engine"
                      EngineB = "a tune has one engine: pass -Engine"
@@ -212,10 +243,13 @@ $modeIgnores = switch ($Mode) {
                      IncrementMsB = "-IncrementMsB gives arm B its own clock; a tune has one engine" } }
     "gauntlet"  { @{ MaxPairs = "-MaxPairs caps an SPRT"
                      Bracket = "-Bracket selects SPRT bounds"
-                     TotalGames = "-TotalGames is a tune budget"
                      ConfigGroup = "-ConfigGroup names a tune surface"
-                     SeedFrom = "-SeedFrom seeds a tune from a finished one"
-                     Iterations = "-Iterations is a tune horizon"
+                     Ceiling = "-Ceiling is a tune's ceiling"
+                     FirstCheckpoint = "-FirstCheckpoint is a tune's"
+                     CheckpointEvery = "-CheckpointEvery is a tune's"
+                     Window = "-Window is a tune's read"
+                     GamesPerIteration = "-GamesPerIteration is a tune's"
+                     AllowShortRun = "-AllowShortRun is a tune smoke's"
                      EngineA = "gauntlet participants are passed in -ExtraArgs"
                      EngineB = "gauntlet participants are passed in -ExtraArgs"
                      ThreadsB = "-ThreadsB gives arm B its own thread count; gauntlet participants carry their own"
@@ -250,8 +284,27 @@ if ($Mode -eq "match" -and $PSBoundParameters.ContainsKey('Games') -and ($Games 
 if ($Mode -eq "spsa") {
     if (-not $Engine) { throw "-Mode spsa needs -Engine (the tune build)." }
     if (-not $ConfigGroup) { throw "-ConfigGroup is required: name a registered surface in tools/spsa_configs." }
-    if ($Iterations -le 0) { throw "-Iterations is required: the registered horizon sizes c_end." }
-    if ($TotalGames -le 0) { throw "-TotalGames is required: a tune budget is stated in games." }
+    if ($Ceiling -le 0) { throw "-Ceiling is required: the registered ceiling in iterations (PLAN rule 7c)." }
+    # PLAN rule 7c's production shape; only an instrument smoke may lift it.
+    $production = [ordered]@{ FirstCheckpoint = 2000; CheckpointEvery = 1000; Window = 1000; GamesPerIteration = 30 }
+    if (-not $AllowShortRun) {
+        foreach ($name in $production.Keys) {
+            $value = Get-Variable -Name $name -ValueOnly
+            if ($value -ne $production[$name]) {
+                throw "PLAN rule 7c's production shape has -$name $($production[$name]), not $value; -AllowShortRun is for an instrument smoke only."
+            }
+        }
+        if ($Concurrency -ne 0 -and $Concurrency -ne 15) {
+            throw "PLAN rule 7c's production shape plays 15 slots, not -Concurrency $Concurrency; -AllowShortRun is for an instrument smoke only."
+        }
+    }
+    if ($Ceiling -lt $FirstCheckpoint -or $FirstCheckpoint -lt $Window -or $CheckpointEvery -lt 1 -or $Window -lt 1 -or $GamesPerIteration -lt 2) {
+        throw "A tune needs window <= first checkpoint <= ceiling, a positive spacing and at least one game pair an iteration."
+    }
+    # The checkpoints, then the ceiling where it is not on the grid.
+    $checkpoints = [System.Collections.Generic.List[int]]::new()
+    for ($k = $FirstCheckpoint; $k -lt $Ceiling; $k += $CheckpointEvery) { $checkpoints.Add($k) }
+    $checkpoints.Add($Ceiling)
 }
 if ($Mode -eq "gauntlet" -and $ExtraArgs.Count -eq 0) {
     throw "-Mode gauntlet needs its participants, labels and ratings in -ExtraArgs."
@@ -367,9 +420,8 @@ for ($i = 0; $i -lt $engines.Count; $i++) {
     Assert-AdvertisedOptions -Advertised $details -Wanted @("Hash=$Hash", "Threads=$armThreads") -Label $arm.Label
 }
 
-# ─── Guard 8: the tune surface belongs to this binary and this horizon ────
+# ─── Guard 8: the tune surface belongs to this binary and this ceiling ────
 $surfaceFiles = @()
-$seedSource = $null
 if ($Mode -eq "spsa") {
     $configs = Join-Path $PSScriptRoot "spsa_configs"
     $surfacePath = Join-Path $configs "config_$ConfigGroup.json"
@@ -383,61 +435,27 @@ if ($Mode -eq "spsa") {
     Assert-CoreSurfaceArm -Names $names -Advertised $advertised["tune"] -Flavor $manifests["tune"].flavor -ConfigGroup $ConfigGroup
 
     $tuned = @(Assert-TuneSurface -Advertised $advertised["tune"] -Surface $surface `
-        -Iterations $Iterations -Label (Split-Path $engines[0].Path -Leaf) -Fixed $fixed)
-    Write-Host "  Tune surface verified: $($tuned.Count) coordinates at N = $Iterations"
+        -Iterations $Ceiling -Label (Split-Path $engines[0].Path -Leaf) -Fixed $fixed)
+    Write-Host "  Tune surface verified: $($tuned.Count) coordinates at the ceiling N = $Ceiling"
 
-    # The generated tune file is the registration in another notation. If it has
-    # drifted from the JSON, the run would tune a surface nobody registered.
-    python (Join-Path $PSScriptRoot "spsa_config_to_colosseum.py") $ConfigGroup --iterations $Iterations --check
+    # The generated files are the registration in another notation. The files
+    # this run reads, beside its run file, must be the rule 7c conversion of the
+    # JSON for this ceiling, or the run would tune a surface nobody registered.
+    if ((Split-Path $RunFile -Leaf) -ne "$ConfigGroup.run.toml") {
+        throw "A tune's run file is the generated $ConfigGroup.run.toml, not $(Split-Path $RunFile -Leaf)."
+    }
+    $surfaceDir = Split-Path $RunFile -Parent
+    python (Join-Path $PSScriptRoot "spsa_config_to_colosseum.py") $ConfigGroup --rule7c --ceiling $Ceiling --out $surfaceDir --check
     if ($LASTEXITCODE -ne 0) {
-        throw ("The generated Colosseum surface for '$ConfigGroup' at N = $Iterations does not match " +
-               "config_$ConfigGroup.json. Regenerate it with tools/spsa_config_to_colosseum.py " +
-               "and commit the result before tuning.")
+        throw ("The Colosseum surface for '$ConfigGroup' in $surfaceDir is not the rule 7c conversion of " +
+               "config_$ConfigGroup.json at the ceiling N = $Ceiling. Regenerate it with " +
+               "tools/spsa_config_to_colosseum.py $ConfigGroup --rule7c --ceiling $Ceiling and commit it before tuning.")
     }
     $surfaceFiles = @(
         $surfacePath
         $(if (Test-Path $fixedPath) { $fixedPath })
-        (Join-Path $configs "colosseum\$ConfigGroup.tune.toml")
+        (Join-Path $surfaceDir "$ConfigGroup.tune.toml")
     ) | Where-Object { $_ }
-
-    # ─── Guard 8b: a block is seeded only from a FINISHED tune of this binary ──
-    # PLAN rule 7c: a later block starts from the previous block's rounded
-    # centres; a block cut short does not seed the next, and every block of one
-    # tune runs the same binary on the same surface. The CLI refuses an
-    # unfinished source too; this guard names the reason before it is invoked.
-    if ($SeedFrom) {
-        $SeedFrom = [System.IO.Path]::GetFullPath($SeedFrom, (Get-Location).Path)
-        $seedResultPath = Join-Path $SeedFrom "result.json"
-        if (-not (Test-Path -LiteralPath $seedResultPath)) {
-            throw "SEED SOURCE: $SeedFrom has no result.json; only a finished tune's run directory seeds a block."
-        }
-        $seedResult = Get-Content -LiteralPath $seedResultPath -Raw | ConvertFrom-Json
-        $seedStatus = "$($seedResult.driver.status)"
-        $seedDone = [int]$seedResult.tuned_result.completed_iterations
-        $seedHorizon = [int]$seedResult.tuned_result.settings.iterations
-        if ($seedStatus -ne "completed" -or $seedDone -ne $seedHorizon) {
-            throw ("SEED SOURCE NOT COMPLETED: $SeedFrom is '$seedStatus' at $seedDone of $seedHorizon iterations; " +
-                   "a block cut short does not seed the next (PLAN rule 7c).")
-        }
-        $tuneSha = (Get-HarnessSha256 $engines[0].Path).ToUpperInvariant()
-        if ("$($seedResult.engine_sha256)".ToUpperInvariant() -ne $tuneSha) {
-            throw ("SEED SOURCE BINARY: $SeedFrom was tuned on $($seedResult.engine_sha256), not this tune build " +
-                   "($tuneSha); every block of one tune runs the same binary.")
-        }
-        $seedNames = @($seedResult.tuned_result.parameters | ForEach-Object { $_.name })
-        $surfaceNames = @($surface.PSObject.Properties.Name)
-        if (($seedNames -join '|') -ne ($surfaceNames -join '|')) {
-            throw ("SEED SOURCE SURFACE: $SeedFrom tuned [$($seedNames -join ', ')], not config_$ConfigGroup.json's " +
-                   "coordinates in its order.")
-        }
-        $seedSource = [pscustomobject]@{
-            Directory = $SeedFrom; ResultPath = $seedResultPath
-            ResultSha256 = (Get-HarnessSha256 $seedResultPath).ToUpperInvariant()
-            Iterations = $seedDone; Tuned = @{}
-        }
-        foreach ($p in $seedResult.tuned_result.parameters) { $seedSource.Tuned[$p.name] = [int64]$p.tuned }
-        Write-Host "  Seed source verified: $SeedFrom, $seedDone iterations, same tune build, same surface"
-    }
 }
 
 # ─── The command ──────────────────────────────────────────────────────────
@@ -471,9 +489,8 @@ switch ($Mode) {
                   if ($Games -gt 0) { $commandArgs += @('--games', "$Games") } }
     "calibrate" { $commandArgs += @($engines[0].Path, $engines[1].Path)
                   if ($Games -gt 0) { $commandArgs += @('--games', "$Games") } }
-    "spsa"      { $commandArgs += @($engines[0].Path, '--total-games', "$TotalGames") }
+    "spsa"      { $commandArgs += @($engines[0].Path, '--iterations', "$Ceiling", '--games-per-iteration', "$GamesPerIteration") }
 }
-if ($Mode -eq "spsa" -and $SeedFrom) { $commandArgs += @('--seed-from', $SeedFrom) }
 # Without labels the runner names each side after its executable, and a
 # same-binary A/B becomes `name (A)` and `name (B)`; the labels give every
 # report and the PGN the arms' registered names instead.
@@ -664,27 +681,23 @@ if ([int]$resolved.master_seed -ne $Seed) {
     }
 }
 if ($Mode -eq "spsa") {
-    if ([int]$resolved.total_games -ne $TotalGames) {
-        Add-Violation "tune budget is $($resolved.total_games) games, expected $TotalGames"
+    if ([int]$resolved.settings.iterations -ne $Ceiling) {
+        Add-Violation "tune horizon is $($resolved.settings.iterations) iterations, expected the ceiling $Ceiling"
     }
-    if ([int]$resolved.settings.iterations -ne $Iterations) {
-        Add-Violation "tune horizon is $($resolved.settings.iterations) iterations, expected $Iterations"
+    if ([int]$resolved.settings.games_per_iteration -ne $GamesPerIteration) {
+        Add-Violation "games per iteration is $($resolved.settings.games_per_iteration), expected $GamesPerIteration"
     }
-
-    if ($seedSource) {
-        $seeded = $resolved.tune.seeded_from
-        if (-not $seeded) {
-            Add-Violation "seed source not applied: the resolved tune carries no seeded_from"
-        } elseif ("$($seeded.result_sha256)".ToUpperInvariant() -ne $seedSource.ResultSha256) {
-            Add-Violation "seed source result.json hash is $($seeded.result_sha256), expected $($seedSource.ResultSha256)"
-        }
-        foreach ($p in $resolved.tune.parameters) {
-            if ([int64]$p.initial -ne $seedSource.Tuned[$p.name]) {
-                Add-Violation "$($p.name) starts at $($p.initial), not the seed source's $($seedSource.Tuned[$p.name])"
-            }
-        }
-    } elseif ($resolved.tune.seeded_from) {
-        Add-Violation "the resolved tune is seeded from $($resolved.tune.seeded_from.run_directory) without -SeedFrom"
+    # PLAN rule 7c's gain ratio, which the rule 7c run file sets.
+    if ([Math]::Abs([double]$resolved.r_end - 0.00155) -gt 1e-12) {
+        Add-Violation "r_end is $($resolved.r_end), expected PLAN rule 7c's 0.00155"
+    }
+    # Theta is a checkpoint's rounded centres, never a window average.
+    if ($null -ne $resolved.final_window_percent) {
+        Add-Violation "the estimator is a final-window average; rule 7c's theta is a checkpoint's centres"
+    }
+    # A tune is one run: the blocks seeded from a finished run are retired.
+    if ($resolved.tune.seeded_from) {
+        Add-Violation "the resolved tune is seeded from $($resolved.tune.seeded_from.run_directory); a tune is one run (PLAN rule 7c)"
     }
 }
 
@@ -809,9 +822,9 @@ if ($Mode -eq "sprt") {
 }
 if ($Mode -eq "spsa") {
     $lines.Add("tune_surface:     $ConfigGroup, $($resolved.tune.parameters.Count) coordinates")
-    $lines.Add("tune_horizon:     $($resolved.settings.iterations) iterations x $($resolved.settings.games_per_iteration) games = $($resolved.total_games) games")
+    $lines.Add("tune_ceiling:     $($resolved.settings.iterations) iterations x $($resolved.settings.games_per_iteration) games = $([int64]$resolved.settings.iterations * [int64]$resolved.settings.games_per_iteration) games at most")
     $lines.Add("tune_r_end:       $($resolved.r_end)")
-    $lines.Add("seed_from:        $(if ($seedSource) { "$($seedSource.Directory) ($($seedSource.Iterations) iterations; result.json sha256 $($seedSource.ResultSha256))" } else { 'none (seeds are the engine defaults)' })")
+    $lines.Add("tune_checkpoints: $($checkpoints -join ', ') (window $Window; tools/spsa_read.py, PLAN rule 7c)$(if ($AllowShortRun) { '; SHORT RUN, an instrument smoke' })")
     $lines.Add((Format-ColosseumRailWarnings -Warnings @($dry.rail_warnings)))
 }
 $lines.Add("host_busy_percent: $(if ($null -eq $hostState.BusyPercent) { 'unreadable' } else { '{0:N1}' -f $hostState.BusyPercent })")
@@ -846,6 +859,132 @@ if ($DryRun) {
     Add-Content -LiteralPath $manifestPath -Encoding utf8 -Value "dry_run_only:     true (no game was played)"
     Write-Host "Dry run only; no game was played. Resolved configuration: $dryPath"
     return
+}
+
+# ─── A tune: one run, a segment to each checkpoint, read there (rule 7c) ──
+if ($Mode -eq "spsa") {
+    $reader = Join-Path $PSScriptRoot "spsa_read.py"
+    $readsPath = Join-Path $Dir "spsa-read.jsonl"
+    $acceptHint = ("After the analysis the maintainer may accept the recorded faults: " +
+                   "python tools/spsa_read.py `"$Dir`" --accept-faults `"<reason>`"; then run this command again.")
+    # The runner's own count of completed iterations, safe while it is paused.
+    function Get-TuneCompleted {
+        if (-not (Test-Path -LiteralPath (Join-Path $Dir "checkpoint.json"))) { return 0 }
+        $text = & $cli.Path spsa history $Dir --json 2>$null
+        if ($LASTEXITCODE -ne 0) { throw "colosseum-cli spsa history exited $LASTEXITCODE on $Dir." }
+        [int](($text -join "`n") | ConvertFrom-Json).report.completed_iterations
+    }
+    function Test-CheckpointRead([int]$At) {
+        if (-not (Test-Path -LiteralPath $readsPath)) { return $false }
+        [bool](@(Get-Content -LiteralPath $readsPath | Where-Object { $_.Trim() } |
+            ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { [int]$_.at -eq $At }).Count)
+    }
+    function Read-TuneCheckpoint([int]$At, [switch]$WriteTheta) {
+        $readArgs = @($reader, $Dir, '--at', "$At", '--window', "$Window", '--first', "$FirstCheckpoint",
+            '--every', "$CheckpointEvery", '--cli', $cli.Path, '--record', '--json')
+        if ($WriteTheta) { $readArgs += '--write-theta' }
+        $text = & python @readArgs
+        if ($LASTEXITCODE -ne 0) { throw "tools/spsa_read.py failed at iteration $At (exit $LASTEXITCODE)." }
+        ($text -join "`n") | ConvertFrom-Json
+    }
+
+    # A stopped tune is never extended. A FAULT read stops it for the
+    # maintainer; once its faults are accepted the reader gives that checkpoint
+    # its real verdict, so the run goes on from that read.
+    if (Test-Path -LiteralPath $readsPath) {
+        $last = Get-Content -LiteralPath $readsPath | Where-Object { $_.Trim() } | Select-Object -Last 1 | ConvertFrom-Json
+        $faultAccepted = "$($last.verdict)" -eq "FAULT" -and (Test-Path -LiteralPath (Join-Path $Dir "faults-accepted.json"))
+        if (-not $faultAccepted) {
+            if ("$($last.verdict)" -eq "FAULT") { throw "STOPPED - $Dir read FAULT at iteration $($last.at). $acceptHint" }
+            if ("$($last.verdict)" -ne "CONTINUE" -or (Test-Path -LiteralPath (Join-Path $Dir "theta-$($last.at).txt"))) {
+                throw "STOPPED - $Dir ended at iteration $($last.at) with $($last.verdict); a stopped tune is never extended."
+            }
+        }
+    }
+
+    $verdict = $null
+    $read = $null
+    foreach ($checkpoint in $checkpoints) {
+        $completed = Get-TuneCompleted
+        if ($completed -gt $checkpoint) {
+            if (-not (Test-CheckpointRead $checkpoint)) { throw "The run is past the checkpoint $checkpoint, which was never read." }
+            continue
+        }
+        if ($completed -lt $checkpoint) {
+            $segmentLog = $logPath -replace '\.log$', "_to$checkpoint.log"
+            # Ctrl+C stops this script with the runner; the manifest must still
+            # say the invocation ended without a read.
+            $segmentReturned = $false
+            try {
+                & $cli.Path @commandArgs --stop-after-iteration "$checkpoint" 2>&1 | Tee-Object -FilePath $segmentLog
+                $segmentExit = $LASTEXITCODE
+                $segmentReturned = $true
+            } finally {
+                if (-not $segmentReturned) {
+                    Add-Content -LiteralPath $manifestPath -Encoding utf8 -Value @(
+                        "interrupted_utc:  $((Get-Date).ToUniversalTime().ToString('u'))"
+                        "interrupted:      the wrapper was stopped before iteration $checkpoint; the run directory holds its durable iterations. Re-run the same command to resume."
+                    )
+                }
+            }
+            # 6 is the runner's clean pause at --stop-after-iteration, 0 its completed horizon.
+            $expectedExit = if ($checkpoint -eq $Ceiling) { 0 } else { 6 }
+            if ($segmentExit -ne $expectedExit) {
+                Add-Content -LiteralPath $manifestPath -Encoding utf8 -Value "segment_to_$($checkpoint): exit $segmentExit, expected $expectedExit"
+                throw "colosseum-cli exited $segmentExit before iteration $checkpoint (expected $expectedExit); see $segmentLog and $Dir."
+            }
+            $completed = Get-TuneCompleted
+            if ($completed -ne $checkpoint) { throw "The run paused at iteration $completed, not at the checkpoint $checkpoint." }
+        }
+        $read = Read-TuneCheckpoint -At $checkpoint
+        $verdict = "$($read.verdict)"
+        if ($verdict -eq "CONTINUE" -and (Test-Path -LiteralPath (Join-Path $Dir "STOP"))) {
+            $read = Read-TuneCheckpoint -At $checkpoint -WriteTheta
+            $verdict = "STOP_MAINTAINER"
+        }
+        Add-Content -LiteralPath $manifestPath -Encoding utf8 -Value ("checkpoint {0,5}:  {1}; max |z| {2} (line {3}); excess {4} SD; gain {5} (null SD {6}); forecast {7} +/- {8}" -f
+            $checkpoint, $verdict, $read.max_abs_z, $read.familywise_line, $read.excess_sd, $read.gain.elo, $read.gain.null_sd, $read.forecast.elo, $read.forecast.sd)
+        Write-Host "Checkpoint ${checkpoint}: $verdict (max |z| $($read.max_abs_z) against $($read.familywise_line); excess $($read.excess_sd) SD)"
+        if ($verdict -ne "CONTINUE") { break }
+    }
+
+    $status = Get-ColosseumRunStatus -CliPath $cli.Path -Dir $Dir
+    $completion = [System.Collections.Generic.List[string]]::new()
+    $completion.Add("completed_utc:    $((Get-Date).ToUniversalTime().ToString('u'))")
+    $completion.Add("verdict:          $verdict at iteration $($read.at)")
+    if ($verdict -in @("STOP_QUIET", "STOP_CEILING", "STOP_MAINTAINER")) {
+        $completion.Add("theta:            $(Join-Path $Dir "theta-$($read.at).txt")")
+    }
+    $completion.Add("read:             $(Join-Path $Dir 'spsa-read.txt')")
+    $resultPath = Join-Path $Dir "result.json"
+    if (Test-Path -LiteralPath $resultPath) {
+        $completion.Add((Format-ColosseumClampWarnings -Result (Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json)))
+    }
+    foreach ($artifact in @('spsa-read.jsonl', 'result.json', 'run-record.json', 'games.pgn', 'resolved-config.json')) {
+        $path = Join-Path $Dir $artifact
+        if (Test-Path -LiteralPath $path) { $completion.Add("$($artifact)_sha256: $(Get-HarnessSha256 $path)") }
+    }
+    $completion | ForEach-Object { Add-Content -LiteralPath $manifestPath -Encoding utf8 -Value $_ }
+    if ($status.durable.journal.refused) {
+        throw "The run's journal does not match its checkpoint: $($status.durable.journal.refused). See $Dir."
+    }
+
+    Write-Host ""
+    switch ($verdict) {
+        { $_ -in "STOP_QUIET", "STOP_CEILING", "STOP_MAINTAINER" } {
+            Write-Host "Tune stopped ($verdict) at iteration $($read.at). Theta: $(Join-Path $Dir "theta-$($read.at).txt")"
+            Write-Host "  Read:     $(Join-Path $Dir 'spsa-read.txt')"
+            Write-Host "  Manifest: $manifestPath"
+            Write-Host "  A tune is judged by its gate, not by its read."
+            return
+        }
+        "STOP_RAIL" { throw "RAIL - $($read.rails -join ', ') at a bound with z pointing outward past the familywise line at iteration $($read.at): register the range again; no theta." }
+        "FAULT" {
+            $named = @($read.faults.PSObject.Properties | Where-Object { $_.Value } | ForEach-Object { "$($_.Name) $($_.Value)" })
+            throw "FAULT - the run recorded faults by iteration $($read.at): $($named -join ', '). The maintainer decides. $acceptHint"
+        }
+        default { throw "Unexpected verdict '$verdict' at a registered checkpoint." }
+    }
 }
 
 # Ctrl+C stops this script along with the runner, so nothing after the run

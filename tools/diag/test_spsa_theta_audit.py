@@ -125,5 +125,54 @@ class Wires(unittest.TestCase):
             spsa_theta_audit.load(result, config)
 
 
+class CheckpointTests(unittest.TestCase):
+    """A rule 7c tune read where it stopped, through the reader's loader."""
+
+    def setUp(self):
+        import importlib.util
+        import tempfile
+        spec = importlib.util.spec_from_file_location(
+            "test_spsa_read_for_audit", Path(__file__).resolve().parent / "test_spsa_read.py")
+        self.helpers = importlib.util.module_from_spec(spec)
+        sys.modules["test_spsa_read_for_audit"] = self.helpers
+        spec.loader.exec_module(self.helpers)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = self.helpers.simulate(Path(self.tmp.name) / "run", gradients=[0.12, 0.0], starts=[30, 50],
+                                         bounds=[(0, 100), (0, 100)], c0=[8.0, 6.0], ceiling=3000, completed=2000)
+        # Registered steps of 4 and 6: coordinate 0 perturbs by two, coordinate 1 by one.
+        self.config = {"K0": {"value": 30, "min_value": 0, "max_value": 100, "step": 4},
+                       "K1": {"value": 50, "min_value": 0, "max_value": 100, "step": 6}}
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_theta_is_the_checkpoints_rounded_centres(self):
+        run = spsa_theta_audit.load_checkpoint(self.dir, self.config, 2000, cli=None,
+                                               history_json=self.dir / "history.json")
+        history = __import__("json").loads((self.dir / "history.json").read_text(encoding="utf-8"))
+        centres = history["report"]["rows"][2000]["centers"]
+        self.assertEqual(list(run["tuned"]), [float(self.helpers.sr.round_half_away(x)) for x in centres])
+        self.assertEqual(run["horizon"], 2000)
+        self.assertEqual(run["path"].shape, (2001, 2))
+        # A full step is the registered step, not the graded perturbation.
+        self.assertEqual(list(run["step"]), [4.0, 6.0])
+
+    def test_an_earlier_checkpoint_reads_the_path_to_it(self):
+        run = spsa_theta_audit.load_checkpoint(self.dir, self.config, 1000, cli=None,
+                                               history_json=self.dir / "history.json")
+        self.assertEqual(run["path"].shape, (1001, 2))
+
+    def test_a_checkpoint_past_the_run_is_refused(self):
+        with self.assertRaises(AssertionError):
+            spsa_theta_audit.load_checkpoint(self.dir, self.config, 2500, cli=None,
+                                             history_json=self.dir / "history.json")
+
+    def test_a_perturbation_outside_one_to_two_steps_is_refused(self):
+        config = dict(self.config, K0=dict(self.config["K0"], step=3))
+        with self.assertRaises(AssertionError):
+            spsa_theta_audit.load_checkpoint(self.dir, config, 2000, cli=None,
+                                             history_json=self.dir / "history.json")
+
+
 if __name__ == "__main__":
     unittest.main()

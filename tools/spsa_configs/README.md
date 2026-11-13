@@ -13,6 +13,15 @@ exempts them from the audit's seed checks. B.8 folded the arm features
 group's build line records how its binary was built then; a tune build of
 the current head is `./tools/build_test.ps1 -Suffix <name> -Tune`.
 
+**Since 2026-11-13 a tune is one run read at checkpoints** (PLAN rule 7c):
+`python tools/spsa_config_to_colosseum.py <group> --rule7c --ceiling 6000`
+writes the group's files, and `./tools/colosseum.ps1 -Mode spsa -Engine
+<tune.exe> -ConfigGroup <group> -Ceiling 6000 -Seed <n> -Dir
+tools/results/<run>` plays it to each checkpoint and reads it there with
+`tools/spsa_read.py`. The groups below were registered and run as blocks;
+their `-Iterations`, `-TotalGames` and `-SeedFrom` lines are history, and
+their committed files still `--check` in the block form (`--iterations`).
+
 ## `d16fix` — D.1.6.3's fit of the cascade cluster, registered by RAR-R21
 
 - **Surface:** fifteen coordinates: the five aspiration coordinates

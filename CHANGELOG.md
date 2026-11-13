@@ -36,6 +36,11 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   `Rarog dev-20261104-209b555a`, and the start-up line names the CPU build.
 - **Building from source: `--native` is optional.** The build instructions no
   longer recommend it: it is not always faster, so compare with `bench`.
+- **Building from source needs Rust 1.100.0**, which rustup installs on the
+  first build. The engine plays exactly as before.
+- **Node counts count each position once.** `nodes`, `nps` and `go nodes`
+  no longer count a position again when the search looks at it a second
+  time, so they read about a sixth lower for the same search.
 - **`go mate` searches until it finds the mate.** It no longer stops at a fixed
   depth, so it finds more mates. In a position without one it runs until
   `stop`.

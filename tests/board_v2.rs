@@ -390,7 +390,7 @@ fn board_v2_normal_hinted_staged_and_null_paths_restore_every_field() {
         }
 
         if !board.is_in_check() {
-            let mut null_board = board.clone();
+            let mut null_board = board;
             null_board.make_null_move();
             null_board
                 .check_consistency()

@@ -1168,7 +1168,7 @@ impl Searcher {
             };
 
             // SF-style between-iteration stop.
-            // movetime mode: no soft stop — check_stop (every 2048 nodes) fires at maximum_ms.
+            // movetime mode: no soft stop — count_node (every 2048 nodes) fires at maximum_ms.
             // clock mode: stop when elapsed exceeds the dynamically scaled optimum.
             let elapsed_ms = self.elapsed_ms();
             if elapsed_ms >= self.cfg.limits.maximum_ms {
@@ -1824,7 +1824,15 @@ impl Searcher {
         }
     }
 
-    fn check_stop<P: FnMut() -> SearchEvent + ?Sized>(&mut self, poll: &mut P) -> bool {
+    /// Count the position a move or a null move just reached, then look
+    /// for a reason to stop: another thread's stop, the node limit, and on
+    /// every 2048th count the GUI and the clock. Each position is counted
+    /// once: a re-search, the hand-off to quiescence, razoring's
+    /// quiescence search, a null-move verification and an exclusion search
+    /// enter a position already counted and add nothing, so `nodes`, `nps`,
+    /// `go nodes` and the bench count one thing. A reason to stop sets
+    /// `td.stopped`, which every node reads on entry.
+    fn count_node<P: FnMut() -> SearchEvent + ?Sized>(&mut self, poll: &mut P) {
         let total_nodes = self.record_node();
         if let Some(shared_state) = self.shared.pool()
             && (self.cfg.limits.nodes > 0 || self.td.nodes & SHARED_NODE_BATCH_MASK == 0)
@@ -1833,11 +1841,11 @@ impl Searcher {
                 STOP_QUIT => {
                     self.td.quit = true;
                     self.td.stopped = true;
-                    return true;
+                    return;
                 }
                 STOP_SEARCH => {
                     self.td.stopped = true;
-                    return true;
+                    return;
                 }
                 _ => {}
             }
@@ -1847,7 +1855,7 @@ impl Searcher {
             if let Some(shared_state) = self.shared.pool() {
                 shared_state.request_stop();
             }
-            return true;
+            return;
         }
         if self.td.nodes & 2047 == 0 {
             match poll() {
@@ -1880,7 +1888,6 @@ impl Searcher {
                 }
             }
         }
-        self.td.stopped
     }
 
     fn record_node(&mut self) -> u64 {
@@ -2127,7 +2134,7 @@ mod tests {
         // already at or above beta.
         const DEEP: [(&str, &str, u32); 5] = [
             ("CoreNmpRClamp", KIWIPETE, 10),
-            ("CoreSingDoubleNotTtPv", PAWN_ENDING, 9),
+            ("CoreSingDoubleNotTtPv", KNIGHT_UP, 10),
             ("CoreSingTripleNotTtPv", SEMI_SLAV, 12),
             ("CoreLmrSingularCap", TWO_PIECES, 10),
             ("CoreFpEvalAboveBeta", PAWN_ENDING, 13),
@@ -2937,9 +2944,9 @@ mod tests {
         };
         searcher.td.nodes = 2047;
 
-        let stopped = searcher.check_stop(&mut || SearchEvent::PonderHit);
+        searcher.count_node(&mut || SearchEvent::PonderHit);
 
-        assert!(stopped);
+        assert!(searcher.td.stopped);
         assert!(searcher.td.ponderhit);
         assert!(!searcher.td.pondering);
     }
@@ -3163,6 +3170,20 @@ mod tests {
         assert!(lines.last().expect("a line was printed").bound.is_empty());
     }
 
+    /// A position is counted once, when a move reaches it: a depth-1 search
+    /// from the start position makes its twenty root moves, and neither the
+    /// root nor a child's hand-off to quiescence adds a count.
+    #[test]
+    fn a_depth_one_search_counts_each_root_move_once() {
+        let board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .expect("valid FEN");
+        let mut options = SearchOptions::default();
+        options.limits.depth = Some(1);
+        let result = Searcher::default().search(board, &options, false, || SearchEvent::None);
+        assert_eq!(result.depth, 1);
+        assert_eq!(result.nodes, 20);
+    }
+
     #[test]
     fn the_hard_limit_waits_for_the_first_iteration() {
         let mut searcher = Searcher::default();
@@ -3175,10 +3196,12 @@ mod tests {
         };
         searcher.td.root_depth = 1;
         searcher.td.nodes = 2047;
-        assert!(!searcher.check_stop(&mut || SearchEvent::None));
+        searcher.count_node(&mut || SearchEvent::None);
+        assert!(!searcher.td.stopped);
         searcher.td.root_depth = 2;
         searcher.td.nodes = 4095;
-        assert!(searcher.check_stop(&mut || SearchEvent::None));
+        searcher.count_node(&mut || SearchEvent::None);
+        assert!(searcher.td.stopped);
     }
 
     #[test]

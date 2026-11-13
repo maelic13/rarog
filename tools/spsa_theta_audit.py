@@ -1,10 +1,14 @@
 """List the fitted constants a tune's analysis must read before its bake.
 
-    python tools/spsa_theta_audit.py <run dir> <config.json> [--movement-config <config.json>]
+    python tools/spsa_theta_audit.py <run dir> <config.json> --at <K> [--movement-config <config.json>]
                                      [--out audit.json] [--draws 2000]
 
-Reads a finished SPSA run's `result.json` and the registered config the run
-used (seeds and steps). Every coordinate in one of three lists gets a line in
+A rule 7c tune (PLAN rule 7c) is read with `--at K`, the checkpoint where it
+stopped: the centres the runner recorded up to K, every move checked against
+its regenerated signs by tools/spsa_read.py, and theta the rounded centres at
+K, as the reader writes them to theta-<K>.txt. Without `--at` it reads a
+finished block run's `result.json`, as the tunes before rule 7c left them.
+Either way it reads the registered config the run used (seeds and steps). Every coordinate in one of three lists gets a line in
 the tune's written analysis before theta is baked, saying what it shows about
 the mechanism: a term tuned toward off, two terms moving to cancel, a margin
 compensating for a mis-scaled input, a rail hiding a wanted value outside the
@@ -23,18 +27,61 @@ Also printed, as diagnostics: each coordinate's z (net travel over the root
 sum of its squared steps; mean 0, variance 1 with no gradient) and the run's
 mean z^2 against the null of every step's sign re-drawn (seed 20261021).
 
-Wires (asserted): the run completed every iteration; the knobs are the
-config's, in its order, with its seeds and steps; every step equals the
-schedule's a_k / c_k * |difference_k| on at least 99.8% of entries (the rest
-are clamps); the last centres round to the tuned values.
+Wires (asserted): the knobs are the config's, in its order, with its seeds;
+for a finished block run, the run completed every iteration, c0 is the
+registered step, every step equals the schedule's a_k / c_k *
+|difference_k| on at least 99.8% of entries (the rest are clamps) and the
+last centres round to the tuned values; at a checkpoint, K is completed, c0
+is one to two registered steps (rule 7c's graded perturbation) and the moves
+pass the reader's check. A full step is the registered (b43) step.
 """
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import pathlib
+import sys
 
 import numpy as np
+
+TOOLS = pathlib.Path(__file__).resolve().parent
+DEFAULT_CLI = TOOLS / "bin" / ("colosseum-cli.exe" if sys.platform == "win32" else "colosseum-cli")
+
+
+def spsa_read():
+    """tools/spsa_read.py, loaded by path: the reader owns the run's loader."""
+    spec = importlib.util.spec_from_file_location("spsa_read", TOOLS / "spsa_read.py")
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader
+    sys.modules["spsa_read"] = module  # dataclasses resolve their module by name
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_checkpoint(run_dir: pathlib.Path, config: dict, at: int, cli: pathlib.Path | None = DEFAULT_CLI,
+                    history_json: pathlib.Path | None = None) -> dict:
+    """A rule 7c tune at checkpoint `at`: the path to it and theta, its rounded centres."""
+    sr = spsa_read()
+    run = sr.load_run(run_dir, cli=cli, history_json=history_json)
+    assert 0 < at <= run.completed, f"--at {at}: the run has {run.completed} completed iterations"
+    names = run.names
+    assert names == list(config), "the run's knobs are not the config's, in order"
+    start = np.array(run.centres[0], dtype=float)
+    assert list(start) == [float(config[n]["value"]) for n in names], "seeds differ from the config"
+    c0 = np.array(run.c0, dtype=float)
+    step = np.array([float(config[n]["step"]) for n in names])
+    # c0 is rebuilt from a c_end the tune file prints to four decimals, rounded down.
+    assert np.all(c0 >= step * (1 - 1e-3)) and np.all(c0 <= 2 * step * (1 + 1e-6)), \
+        "c0 is not one to two registered steps"
+    path = np.array(run.centres[: at + 1], dtype=float)
+    clamped = sum(run.arm_clamped(k, i) for k in range(at) for i in range(run.n))
+    return {
+        "names": names, "path": path, "steps": np.diff(path, axis=0), "c0": c0, "horizon": at,
+        "tuned": np.array([float(sr.round_half_away(x)) for x in path[-1]]),
+        "low": np.array(run.minimum, dtype=float), "high": np.array(run.maximum, dtype=float),
+        "clamped_arms": int(clamped), "step": step,
+    }
 
 
 def load(result: dict, config: dict) -> dict:
@@ -123,12 +170,18 @@ def main() -> int:
                     help="a config whose steps are the unit of 'a full step' (the b43 steps) when the run's own steps were scaled")
     ap.add_argument("--out", type=pathlib.Path, default=None)
     ap.add_argument("--draws", type=int, default=2000)
+    ap.add_argument("--at", type=int, default=None, help="a rule 7c tune's checkpoint, where it stopped")
+    ap.add_argument("--cli", type=pathlib.Path, default=DEFAULT_CLI, help="the pinned runner, for --at")
     args = ap.parse_args()
-    result = json.loads((args.run_dir / "result.json").read_text(encoding="utf-8"))
     config = json.loads(args.config.read_text(encoding="utf-8"))
-    run = load(result, config)
+    if args.at is not None:
+        run = load_checkpoint(args.run_dir, config, args.at, cli=args.cli)
+        unit = run["step"]
+    else:
+        result = json.loads((args.run_dir / "result.json").read_text(encoding="utf-8"))
+        run = load(result, config)
+        unit = run["c0"]
     names = run["names"]
-    unit = run["c0"]
     if args.movement_config is not None:
         movement = json.loads(args.movement_config.read_text(encoding="utf-8"))
         missing = [n for n in names if n not in movement]
@@ -139,7 +192,7 @@ def main() -> int:
     p95 = float(np.quantile(null, 0.95))
     report = {
         "run_dir": str(args.run_dir), "coordinates": len(names), "iterations": run["horizon"],
-        "clamped_steps": run["clamped_steps"], **lists,
+        "clamped": run.get("clamped_steps", run.get("clamped_arms")), **lists,
         "mean_z2": stat, "null_mean": float(null.mean()), "null_p95": p95,
         "p": float((np.sum(null >= stat) + 1) / (args.draws + 1)),
         "abs_z_ge_2": [n for n, v in zip(names, z) if abs(v) >= 2],
@@ -147,7 +200,9 @@ def main() -> int:
     }
     if args.out is not None:
         args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(f"{len(names)} coordinates x {run['horizon']} iterations ({run['clamped_steps']} clamped steps)")
+    clamps = (f"{run['clamped_steps']} clamped steps" if "clamped_steps" in run
+              else f"{run['clamped_arms']} clamped arms; theta at iteration {run['horizon']}")
+    print(f"{len(names)} coordinates x {run['horizon']} iterations ({clamps})")
     print(f"full-step movers ({len(lists['full_step_movers'])}): "
           + (", ".join(f"{n} {lists['steps_moved'][n]:+.2f}" for n in lists["full_step_movers"]) or "none"))
     print(f"rails ({len(lists['rails'])}): "

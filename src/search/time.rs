@@ -15,7 +15,7 @@ pub(super) struct RuntimeLimits {
     pub nodes: u64,
     /// Soft limit: between-iteration stop threshold (clock mode).
     /// In movetime mode this equals `maximum_ms`; the between-iteration
-    /// soft-stop logic is skipped entirely for movetime — only `check_stop`
+    /// soft-stop logic is skipped entirely for movetime — only `count_node`
     /// (every 2048 nodes) fires at `maximum_ms`.
     pub(super) optimum_ms: f64,
     /// Hard limit: mid-iteration abort threshold.
@@ -137,7 +137,7 @@ pub(super) fn compute_runtime_limits(
         // reserve here cost ~10 % of thinking time. Stockfish measured
         // `tpm=110.2` with `t=0` at 100 ms/move, so the harness tolerates ~10 %
         // past the nominal time.
-        // check_stop (every 2048 nodes) aborts within ~1 ms of `maximum_ms`
+        // count_node (every 2048 nodes) aborts within ~1 ms of `maximum_ms`
         // and the pre/post latency is only ~3 ms, so the full budget lands
         // ~3 % over nominal — comfortably inside that tolerance.
         let movetime = (options.move_time as f64).max(1.0);
