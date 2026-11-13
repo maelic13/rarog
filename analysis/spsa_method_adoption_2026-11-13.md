@@ -65,9 +65,20 @@ asked for the same system here. The rule now reads:
   the block-form files, and `-Ceiling` in a gate; a 6,000-iteration tune and a
   short smoke shape resolve.
 
-**Not yet run:** a live smoke of the checkpoint loop (a short tune with
-`-AllowShortRun` through a real pause, read and resume). The host was busy with
-another session's match when the port finished, so it waits for an idle host.
+**Live smoke, 2026-11-13, idle host.** `colosseum.ps1 -Mode spsa` on the
+staged `rarog-b23core-tune.exe` with `config_b23core.json` converted for a
+40-iteration ceiling into `tools/results/smoke-r7c-surface/`, `-AllowShortRun
+-FirstCheckpoint 20 -CheckpointEvery 10 -Window 20 -GamesPerIteration 4
+-Concurrency 4 -Seed 20261113`: the runner paused at exactly iteration 20 (its
+own history: 20 completed, status `cancelled`, its clean pause), the reader
+recorded one read, STOP_QUIET (max |z| 2.42 against 3.42; excess +0.3 SD), and
+wrote `theta-20.txt`; the manifest carries the checkpoint line, the verdict and
+theta's path. The same command run again resumed at the recorded seed and
+refused: "a stopped tune is never extended". The smoke found one defect, the
+manifest's game total printed empty (the runner resolves no `total_games` for
+`--iterations`), fixed by computing it; the guard suite passes 70/70 after it.
+A CONTINUE between segments is exercised by the reader's synthetic tests, not
+by this smoke, whose first window read quiet.
 
 ## Rarog's recorded tunes under the new reader
 
