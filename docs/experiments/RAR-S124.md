@@ -1,4 +1,4 @@
-# RAR-S124 — D.6.8's gate: each position counted once, a 2,000-game fixed read with a harm rule
+# RAR-S124 — D.6.8's gate: each position counted once, a 2,000-game fixed read with a harm rule — READ 2026-11-13: kept, nElo −6.2 ± 15.2
 
 Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -6,7 +6,8 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   maintainer's command.
 - **Kind:** a repair's harm read, AGENTS' repair case 2, as
   [RAR-S123](RAR-S123.md)'s frozen decision rule names it.
-- Disposition: open
+- Disposition: retained — read 2026-11-13: nElo −6.2 ± 15.2 against the −13 harm
+  rule; D.6.8 closed, fingerprint 9,077,016 / EBF 2.481.
 - **Inherits:** RAR-S123. 16.1% of `td.nodes` on `bench 13` counted a
   position the search had already counted (the hand-off to quiescence
   12.3%, the exclusion search 2.9%, razoring 0.9%), and LMR's and
@@ -117,6 +118,32 @@ its commit, rustc 1.100.0, `tools/build_test.ps1`.
   defect stays open in D.6.8, and a rework is registered as a new
   experiment (AGENTS, *Gating*).
 
-## Result
+## Result (2026-11-13)
 
-Not played yet.
+**The harm rule does not fire: nElo −6.2 ± 15.2, against the rule's −13.**
+Elo −3.6 ± 8.9 over 2,000 paired games, W/D/L 480/1019/501 for the
+candidate, pentanomial [24, 252, 474, 221, 29] (the manifest's recount of
+`games.pgn` agrees). No time loss, no engine or infrastructure fault, no
+abnormal game; host 1.3% busy at the start, no waiver. Run 2026-11-13
+11:47–12:07 UTC by the maintainer; manifest
+`tools/results/colosseum_match_rar-s124-stc_20261113_124724.manifest.txt`,
+its log's result line 1205, the evidence in `tools/results/rar-s124-stc/`.
+The manifest names both binaries by the SHA-256 above.
+
+**In the games** (the manifest's search lines): the candidate searched
+130,493 nodes a move in 66.6 ms against the baseline's 157,896 in 66.5 ms,
+at mean depth 13.39 against 13.40. Its nodes a move are ×0.826 the
+baseline's, the ratio the count alone gave on the bench's fixed tree: the
+same work, counted in the new unit, so its reported 1.96M nps against 2.38M
+is a change of unit, not of speed.
+
+**Calibration (games).** Predicted 0 ± 10 nElo with P(no harm) 0.94.
+Observed −6.2 ± 15.2: inside the band, the rule not fired. A hit at this
+resolution; the read cannot separate −6 from 0, so the effort share's
+direction, the named failure mode, is neither shown nor excluded. Depth and
+time a move unchanged, which the prediction's "no real work changes"
+implied.
+
+**Disposition: retained.** D.6.8 closes. The fingerprint record moves to
+9,077,016 / EBF 2.481 at `ba1d2cd`, and the changelog gets its entry. As
+AGENTS' case 2 reads it, "kept" means no harm beyond roughly −20 nElo.

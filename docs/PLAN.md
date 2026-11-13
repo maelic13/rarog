@@ -49,7 +49,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **11,477,040 / EBF 2.537** at engine source `aee0b3b` (on `master` as `89b4a92`, PR #17; D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
+| Fingerprint | `bench 13` **9,077,016 / EBF 2.481** at engine source `ba1d2cd` (D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -345,8 +345,8 @@ from here to the end: no step waits for a later one, and no work is listed
 twice (HISTORY's number map holds what moved).
 On 2026-11-13 (maintainer decision, after RAR-O08) the order of work left
 the numbering in two places, and the rows below are in the order of work.
-D.6.8 stays first, because D.7.2's equal-node match needs one count per
-position. D.7, the search-shape step, then runs ahead of every other open
+D.6.8 ran first (done 2026-11-13), because D.7.2's equal-node match needs
+one count per position. D.7, the search-shape step, then runs ahead of every other open
 D.6 leaf; those leaves keep their numbers, which tests and records cite,
 and each is asked first whether it is still an issue on the kernel D.7
 leaves behind. 2.7.0, an unscheduled release with no step of its own, is
@@ -354,7 +354,6 @@ cut before D.7 on a registered no-regression read against 2.6.0 (E.3).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.8 | GAME_GATE | R2 | Implemented `ba1d2cd` (bench 9,077,016): one count per position a move or a null move reaches, a re-search counts nothing; gate RAR-S124 registered, case 2, the maintainer's run |
 | D.7.0 | RESEARCH | R3 | The inventory of every departure from Reckless `0756957`, the seed table from the hybrid's configuration, the parity design, RAR-O09's registration |
 | D.7.1 | READY_FOR_IMPLEMENTATION | I1 | `sprt.ps1` takes a node budget and a move time per engine, each with a wire smoke |
 | D.7.2 | RESEARCH | V | RAR-O09's three reads after D.6.8; the rebuild opens at +10 or more at equal nodes, otherwise the maintainer decides after consultation |
@@ -942,7 +941,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      constants or by the donor's in-check and draw handling at the cap, if a
      read at a rated time control finds more than 0.1% of searches reaching
      it.
-    - **D.6.8 A depth-0 entry is counted as two nodes — `R2`.** (DRIVER-11): `check_stop` at
+    - **D.6.8 A depth-0 entry is counted as two nodes — `R2`, DONE 2026-11-13.** (DRIVER-11): `check_stop` at
      the `negamax` entry and again at the `quiescence` entry it hands to, so
      reported nodes, `go nodes`, the bench count and the LMR spread's phase
      read the double count; the donor counts once per move made. Screen: the
@@ -989,6 +988,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      depth 10 (`10059f9`). **Gate registered as RAR-S124,** before any
      game: case 2, 2,000 games at `3+0.03` against `10059f9`, the −13
      harm rule; every search of every game reads the count.
+     **Gate read 2026-11-13 (RAR-S124): kept,** nElo −6.2 ± 15.2 against
+     the −13 rule, no fault; the same depth and time a move, nodes a move
+     ×0.826, the count's own ratio on the bench's fixed tree. The
+     fingerprint moves to 9,077,016 / EBF 2.481. Kept means no harm
+     beyond roughly −20 nElo.
     - **D.6.9 The endgame scale's target — `R2`.** (EVAL-5): `evaluate` adds tempo to `mg`,
      tapers, then `scale_endgame` multiplies the whole; both donor commits
      scale the endgame half only (`v = mg·p + eg·(128−p)·sf/64`), so the forms
