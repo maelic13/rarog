@@ -371,10 +371,10 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.0 | RESEARCH | R3 | The inventory of every departure from Reckless `0756957`, the seed table from the hybrid's configuration, the parity design, RAR-O09's registration |
-| D.7.2 | RESEARCH | V | RAR-O09's three reads after D.6.8; the rebuild opens at +10 or more at equal nodes, otherwise the maintainer decides after consultation |
-| D.7.3 | RESEARCH | I2 | Opens with D.7.2's decision |
-| D.7.4 | RESEARCH | I2 | Opens with D.7.2's decision; parity before any game |
+| D.7.1.1 | READY_FOR_IMPLEMENTATION | I1 | The Colosseum wrapper's move time, per-side node budget and foreign arm, with guard tests and smokes; then RAR-O09's Colosseum commands |
+| D.7.2 | READY_FOR_IMPLEMENTATION | V | RAR-O09 registered 2026-11-13: preparation, then four maintainer-run matches; the rebuild opens at +10 or more at equal work, otherwise the maintainer decides after consultation |
+| D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); opens with D.7.2's decision |
+| D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units, the seed table, eight commits); opens with D.7.2's decision; parity before any game |
 | D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games |
 | D.7.6 | RESEARCH | V | The fit as one rule 7c run read at checkpoints; kept only if fitted over unfitted passes the gate PROCESS's SPSA procedure chooses |
 | D.7.7 | RESEARCH | V | The kernel against the head on the loss-permitting bracket; `10+0.1` and 4T reads |
@@ -1369,7 +1369,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   node; nothing yet says which.
 
   **Aim.** Two questions. Is Rarog's kernel, which departs from its donor
-  in at least twelve forms and was fitted around them, weaker than the
+  in about a hundred places (D.7.0) and was fitted around them, weaker than the
   donor's whole form on this evaluation? And do the problems the combined
   kernel has not solved (D.7.8's list) disappear in the donor's whole
   form, not in parts of it? The second is a reason for the step in its own
@@ -1415,7 +1415,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   disclose and the weight of the licence question. PROCESS's boundary
   governs the implementation: architecture and mechanisms cross, constants
   cross as fitted seeds, the code is Rarog's own.
-    - **D.7.0 Investigation: the inventory of departures, the seeds and the registration of the reads — `R3`.**
+    - **D.7.0 Investigation: the inventory of departures, the seeds and the registration of the reads — `R3`, DONE 2026-11-13.**
       Every place Rarog's kernel departs from Reckless `0756957`, with file
       and line on both sides, its unit, the record that chose it and
       whether a gate accepted it. The verified start is section 5 of the
@@ -1439,6 +1439,36 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       check (Reckless tests the draw first); kings in the non-pawn
       correction key (Reckless includes them); and the cutoff count
       raised by an exclusion search's fail-high (as Reckless).
+      **Done** (`analysis/search_shape_inventory_2026-11-13.md`): the
+      kernel departs from the donor in about a hundred places, 69 of them
+      in the node body, quiescence, the wrapper and the root window. Eight
+      rest on an SPRT of their own, two that kept Rarog's form and six
+      that rejected an alternative on the old kernel; about thirty-five
+      rode inside a cluster's gate. Found beyond the list above: the
+      donor's store on every alpha raise and its forced store at PV
+      nodes; ProbCut at cut nodes only, at any depth and in check; a draw
+      score of −2 to +2; no TT move in the donor's quiescence; the
+      picker's promotion pushes and skip survivors; the correction's
+      minor table and weights. Corrected: the donor does cut on a table
+      hit at a PV quiescence node unless the score is decisive, and the
+      queen push in quiescence (D.6.2) is the donor's form. The record
+      behind the twofold draw rule is RAR-S18's four-part bundle, not the
+      root-aware rule alone, so the new kernel takes the donor's rule.
+      Units: the new kernel works in the donor's units, the evaluation
+      multiplied by 2536/1024 at the wrapper and scores divided back
+      where they leave the kernel; Phase B converted the constants at
+      ×0.457 and its seeds needed +138.6 of fitting. Parity: decision
+      records from a tracing twin of the hybrid, reproduced exactly, and
+      tree statistics on 500 positions against a measured noise floor;
+      identical trees are not attainable, because the two engines hash
+      their keys into the tables differently. RAR-O09 is registered with
+      four matches and a frozen use; its prediction for the deciding
+      match is 0 [−20, +20] and 0.20 that the rule fires, because
+      RAR-O08's own reads put the donor about 1.1 to 1.2 times the
+      head's positions a second with the odds and 8% ahead in clock
+      spent. Verdict: `READY_FOR_IMPLEMENTATION` for D.7.1.1 and D.7.2;
+      D.7.3 and D.7.4 are specified there and open with D.7.2's
+      decision.
     - **D.7.1 The fixed-match script takes a node budget and a move time per engine — `I1`, DONE 2026-11-13.**
       `tools/sprt.ps1`: a node budget and a move time for each engine,
       beside `-TCA` and `-TCB`. Each is proved live by a smoke in which an
@@ -1466,23 +1496,65 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       a move the search never scored, after a stop inside that
       iteration, prints `cp 0`, as Stockfish does (`search.cpp`, `pv`).
       Bench searches to a depth, so the fingerprint holds; repair case 1.
-    - **D.7.2 RAR-O09: the donor's search against the head at equal nodes, at equal move time and at a long control — `V`.**
-      Reckless's hybrid against the head, both rebuilt on the head after
-      D.6.8: 3,000 games at equal nodes a move (tree shape alone), 3,000 at
-      equal time a move with the bridge's odds (shape and kernel speed),
-      2,000 at `10+0.1` with clocks (whether the surplus holds at a long
-      control). The differences to RAR-O08's match (5) are the shares of
-      clock use and speed. Maintainer-run, about three hours.
+        - **D.7.1.1 The Colosseum wrapper takes a move time, a node budget per engine and a foreign arm — `I1`.**
+          Added 2026-11-13 by D.7.0, so RAR-O09 can run on Colosseum.
+          Colosseum CLI 0.5.0's `match` already takes a node budget, a
+          move time and a clock for each side; `tools/colosseum.ps1`
+          does not pass them. `-MoveTimeMs` and `-MoveTimeMsB` with a
+          run file `tools/colosseum/match-fixed-movetime.toml` (planned);
+          `-NodesB`; `-ForeignB`, which declares an arm without a
+          sidecar, records its hash and `id name`, requires A's sidecar
+          and takes `-ExpectBench` for A alone, where today such an arm
+          passes on warnings; without the switch a sidecar-less arm is
+          refused. Each refusal and control in
+          `tools/diag/test_colosseum_guards.ps1`; a smoke per limit in
+          which an absurd value moves the PGN and the score. Then
+          RAR-O09's four commands with their dry runs, written into its
+          registration. Handoff:
+          `analysis/search_shape_inventory_2026-11-13.md` section 9.
+          Tooling only: no engine build.
+    - **D.7.2 RAR-O09: the donor's search against the head at equal work, at equal move time and on the clock at two controls — `V`.**
+      Registered 2026-11-13 (`docs/experiments/RAR-O09.md`). Reckless's
+      hybrid against the head, both rebuilt on the head, four fixed
+      matches: 3,000 games at equal work a move (tree shape alone), 3,000
+      at equal thinking time a move with the bridge's odds (shape and
+      kernel speed), 3,000 at `3+0.03` with clocks (RAR-O08's match (5)
+      again, on these binaries and this runner) and 2,000 at `10+0.1`.
+      The differences between them are the shares of speed and clock
+      use. Two instrument facts set the commands. Rarog counts a null
+      move's child and the donor does not, so the donor's node budget is
+      130,000 divided by one plus its null-move share, measured on a
+      counting twin before any game. The donor stops 15 ms before its
+      move time, so it is given 94 ms to Rarog's 70. Preparation: the
+      two arms and the twin, the null-move share, the odds re-measured,
+      a move-time smoke, then the four commands handed over. Runner:
+      Colosseum once D.7.1.1 has landed and the pinned CLI keeps the
+      book's move counters, else fastchess; chosen before the first
+      game. Maintainer-run, about three hours.
     - **D.7.3 Parity instrument: Rarog and the hybrid on one position set — `I2`.**
       Nodes to each depth and the rate at which each mechanism fires, on
       the same positions and the same evaluation; a planted difference
       must show.
+      Designed by D.7.0
+      (`analysis/search_shape_inventory_2026-11-13.md` section 7) in two
+      layers. A tracing twin of the hybrid writes each decision's inputs
+      and outputs, and every rule function of the new kernel must
+      reproduce them exactly. Tree statistics on 500 game positions are
+      judged against a noise floor the twin measures on itself, with
+      three planted differences that must fail. This leaf builds the
+      twin, the trace format, the statistics tool and the floor; the
+      rule tests land with D.7.4.
     - **D.7.4 The kernel in the donor's form, behind one switch — `I2`.**
       Own code in Rarog's structure, written in D.8's target shape (probes,
       not interleaved instrumentation). Parity by D.7.3 before any game;
       debug and release tests, fmt, clippy, the allocation guard and the
       search-path perft; the old kernel's fingerprint exact with the switch
       off.
+      Handoff: `analysis/search_shape_inventory_2026-11-13.md` section 3
+      (each departure with its proposal: the donor's form, kept, or
+      dropped and asked again in D.7.8), section 5 (the donor's units and
+      the seed table) and section 8 (scope, the order of eight commits
+      and the invariants).
     - **D.7.5 The unfitted paired run — `V`.**
       2,000 games against the head (rule 8's screen). Clearly negative with
       parity passed puts the difference outside the kernel: one diagnosis,
