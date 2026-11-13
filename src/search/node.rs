@@ -2578,6 +2578,18 @@ impl Searcher {
         if qply == 0 {
             crate::diag_count!(q_qply0);
         }
+        // Quiescence never asks whether the side to move can move, so a
+        // stalemate reads as its stand pat; count where that can happen.
+        #[cfg(feature = "diag")]
+        let diag_kp_stalemate =
+            !in_check && !board.has_non_pawn_material(board.side_to_move()) && {
+                crate::diag_count!(q_kp_nodes);
+                board.generate_legal_movelist().is_empty()
+            };
+        #[cfg(feature = "diag")]
+        if diag_kp_stalemate {
+            crate::diag_count!(q_kp_stalemate);
+        }
         let hash = board.hash();
         #[cfg(feature = "diag")]
         let diag_q_sample = crate::diag::sampled(hash, ply + qply, crate::diag::SAMPLE_QSEARCH);
@@ -2651,6 +2663,10 @@ impl Searcher {
                 crate::diag_count!(q_stand_pat_refined);
             }
             stand_pat_for_pruning = stand_pat;
+            #[cfg(feature = "diag")]
+            if diag_kp_stalemate && stand_pat.abs() >= 100 {
+                crate::diag_count!(q_kp_stalemate_misread);
+            }
             if stand_pat >= beta {
                 #[cfg(feature = "diag")]
                 if diag_q_sample {

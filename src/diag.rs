@@ -199,6 +199,13 @@ pub mod counters {
         q_qply0,
         q_tt_hit_pv,
         q_tt_hit_pv_shallow,
+        // Quiescence nodes out of check whose side to move has only king
+        // and pawns, EXACT; those with no legal move, a stalemate the
+        // quiescence scores as its stand pat; and those of them that reach
+        // the stand pat with it 100 cp or more from the draw.
+        q_kp_nodes,
+        q_kp_stalemate,
+        q_kp_stalemate_misread,
         // The interior estimate refined by a stored bound, split by the
         // entry's origin: depth 0 is a quiescence result.
         est_refined_from_q,
