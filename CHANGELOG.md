@@ -8,7 +8,12 @@ plain and to the point.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
-## [Unreleased]
+## [2.7.0] - 2026-11-13
+
+Fixes and new downloads. 2.7.0 fixes many search, clock and protocol
+faults, comes as one download per system that picks the fastest code for
+your CPU, and needs nothing installed. It plays at about 2.6.0's strength:
+slightly stronger head to head, slightly weaker against other engines.
 
 ### Added
 
@@ -53,14 +58,13 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   to twice the depth being searched.
 - **Queen promotions are seen at the end of a search.** The final,
   captures-only part of the search overlooked a pawn promoting to a queen
-  without capturing. It now looks at that move too, which makes the engine
-  stronger.
+  without capturing. It now looks at that move too.
 - **Castling is searched like any other quiet move.** The search
   handled castling partly by its rules for captures; it now treats it as an
   ordinary non-capturing move.
-- **No more full-time-limit thinks in won endings.** In some won endings
-  the engine could spend its whole time limit on a single move. It now
-  plays the move once the search has run well past its target.
+- **Fewer long thinks in won endings.** In some won endings the engine
+  could spend its whole time limit on a single move. It now usually plays
+  the move once the search has run well past its target.
 - **Recognised draws keep their verdict.** Endings the engine knows are dead
   draws, such as a rook pawn with a bishop of the wrong colour, were often
   scored as clearly winning during a search. The engine now keeps its draw
