@@ -438,8 +438,8 @@ and statistical on whole trees.
 - *Plant:* one constant changed in a test build must fail the kind it
   belongs to and no other.
 - The trace stays in ignored storage with its hash recorded. It is the
-  donor's behaviour as numbers, and whether a sample is versioned is the
-  maintainer's call with D.11.
+  donor's behaviour as numbers, and it is not versioned (maintainer
+  decision 2026-11-13), so the rule tests are a local check, not CI's.
 
 **Layer B: tree statistics.**
 
@@ -564,11 +564,15 @@ D.7.4's first engine commit.
 The maintainer's:
 
 1. **The runner for RAR-O09**, by the registration's rule, before the first
-   game.
-2. **Whether the trace is versioned** or stays in ignored storage (D.11).
+   game. 2026-11-13: fastchess, unless Colosseum CLI is improved first; so
+   D.7.1.1 does not hold D.7.2.
+2. **Whether the trace is versioned.** 2026-11-13: it stays in ignored
+   storage.
 3. **If match (1) reads below +10:** whether the second aim alone opens the
    rebuild. My recommendation is fixed in the registration: against it at or
-   below zero, unresolved between.
+   below zero, unresolved between. 2026-11-13: the maintainer agrees with
+   the assessment and may still open the rebuild against it, as PLAN's
+   rule allows.
 
 ## 11. Models, by GUIDE's mapping
 

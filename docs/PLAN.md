@@ -371,8 +371,8 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.1.1 | READY_FOR_IMPLEMENTATION | I1 | The Colosseum wrapper's move time, per-side node budget and foreign arm, with guard tests and smokes; then RAR-O09's Colosseum commands |
-| D.7.2 | READY_FOR_IMPLEMENTATION | V | RAR-O09 registered 2026-11-13: preparation, then four maintainer-run matches; the rebuild opens at +10 or more at equal work, otherwise the maintainer decides after consultation |
+| D.7.2 | READY_FOR_IMPLEMENTATION | V | RAR-O09 registered 2026-11-13: preparation, then four maintainer-run matches, on fastchess unless Colosseum CLI is improved first (maintainer, 2026-11-13); the rebuild opens at +10 or more at equal work, otherwise the maintainer decides after consultation |
+| D.7.1.1 | READY_FOR_IMPLEMENTATION | I1 | Does not hold D.7.2, which runs on fastchess (maintainer, 2026-11-13), so its row follows it; the Colosseum wrapper's move time, per-side node budget and foreign arm, with guard tests and smokes, when a foreign arm is next wanted on Colosseum |
 | D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); opens with D.7.2's decision |
 | D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units, the seed table, eight commits); opens with D.7.2's decision; parity before any game |
 | D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games |
@@ -1512,7 +1512,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           RAR-O09's four commands with their dry runs, written into its
           registration. Handoff:
           `analysis/search_shape_inventory_2026-11-13.md` section 9.
-          Tooling only: no engine build.
+          Tooling only: no engine build. Not needed for RAR-O09 on
+          fastchess, the maintainer's expected runner (2026-11-13), so
+          D.7.2 does not wait for it.
     - **D.7.2 RAR-O09: the donor's search against the head at equal work, at equal move time and on the clock at two controls — `V`.**
       Registered 2026-11-13 (`docs/experiments/RAR-O09.md`). Reckless's
       hybrid against the head, both rebuilt on the head, four fixed

@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.7.1.1** (`I1`): The Colosseum wrapper takes a move time, a node budget per engine and a foreign arm.
+**Now: D.7.2** (`V`): RAR-O09: the donor's search against the head at equal work, at equal move time and on the clock at two controls.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
