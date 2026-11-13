@@ -15,6 +15,10 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 - **A found mate is kept.** When a deeper search lost sight of a mate it
   had already found, the engine could switch to another move and take
   longer to win; it now keeps the mating move.
+- **A tiny node budget still plays a searched move.** With a budget too
+  small for even the shortest search, the engine played its first legal
+  move and reported being mated; it now finishes that search first, and
+  never reports a score it did not find.
 
 ## [2.7.0] - 2026-11-13
 

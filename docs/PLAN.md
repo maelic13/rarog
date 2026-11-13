@@ -1458,8 +1458,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       1 at 0.000 s against depth 9 at about 24 ms; 5 ms against 200 ms a
       move scored 0.5/20 and 19.5/20, depth 6 at 5–8 ms against depth
       11–12 at 200 ms. Observed in passing: at a budget of 1 node the
-      2.7.0 engine reports `score mate 0`, a score from no completed
-      iteration; output only, at a budget no read uses.
+      2.7.0 engine stopped inside the first iteration, printed its
+      no-score marker as `score mate -0` and played the first legal move
+      unsearched. Fixed in `112eb14` (maintainer decision 2026-11-13, both
+      donors' forms): a node budget waits for the first iteration, as the
+      clock already did and as Reckless does (`time.rs`, `check_time`);
+      a move the search never scored, after a stop inside that
+      iteration, prints `cp 0`, as Stockfish does (`search.cpp`, `pv`).
+      Bench searches to a depth, so the fingerprint holds; repair case 1.
     - **D.7.2 RAR-O09: the donor's search against the head at equal nodes, at equal move time and at a long control — `V`.**
       Reckless's hybrid against the head, both rebuilt on the head after
       D.6.8: 3,000 games at equal nodes a move (tree shape alone), 3,000 at
