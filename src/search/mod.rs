@@ -177,6 +177,16 @@ pub struct SearchResult {
 }
 
 /// Persistent state for one legal root move across iterative-deepening passes.
+/// The last completed iteration that proved a win, kept against a later
+/// iteration that no longer proves one.
+struct ProvedWin {
+    mv: Move,
+    ponder: Move,
+    score: i32,
+    pv: [Move; MAX_PLY],
+    pv_len: usize,
+}
+
 #[derive(Debug, Clone)]
 struct RootMove {
     mv: Move,
@@ -955,10 +965,7 @@ impl Searcher {
         let mut tot_best_move_changes = 0.0_f64; // decaying count of best-move changes
         let mut stable_iterations = 0_u32;
         let mut mate_watch = MateWatch::default();
-        // The move of the last completed iteration that proved a win, for the
-        // diag count of later iterations that lose it.
-        #[cfg(feature = "diag")]
-        let mut diag_proved_win: Option<Move> = None;
+        let mut proved_win: Option<ProvedWin> = None;
         // The soft target the last completed iteration set; a root window
         // that fails high this far past it ends the search.
         let mut soft_target_ms = f64::INFINITY;
@@ -1085,15 +1092,31 @@ impl Searcher {
                         Move::NULL
                     };
                 }
-                #[cfg(feature = "diag")]
+                // A deeper iteration loses a proven win to pruning or a table
+                // artefact far more often than it refutes it, and playing its
+                // move only delays the mate: keep the proven win's move, score
+                // and line until another iteration proves a win.
                 if best_score >= MATE_SCORE - infra::to_i32(MAX_PLY) {
                     crate::diag_count!(iter_mate_win);
-                    diag_proved_win = Some(bestmove);
-                } else if let Some(proved) = diag_proved_win {
+                    let pv_len = self.td.pv_len[0].min(MAX_PLY);
+                    proved_win = Some(ProvedWin {
+                        mv: bestmove,
+                        ponder: pondermove,
+                        score: best_score,
+                        pv: self.td.pv_table[0],
+                        pv_len,
+                    });
+                } else if let Some(proved) = &proved_win {
                     crate::diag_count!(iter_mate_win_lost);
-                    if bestmove != proved {
+                    #[cfg(feature = "diag")]
+                    if bestmove != proved.mv {
                         crate::diag_count!(iter_mate_win_lost_move);
                     }
+                    bestmove = proved.mv;
+                    pondermove = proved.ponder;
+                    best_score = proved.score;
+                    self.td.pv_table[0] = proved.pv;
+                    self.td.pv_len[0] = proved.pv_len;
                 }
                 if let Some(root_move) = self
                     .td
@@ -1271,11 +1294,11 @@ impl Searcher {
         }
 
         #[cfg(feature = "diag")]
-        if let Some(proved) = diag_proved_win
+        if let Some(proved) = &proved_win
             && best_score < MATE_SCORE - infra::to_i32(MAX_PLY)
         {
             crate::diag_count!(search_mate_win_dropped);
-            if bestmove != proved {
+            if bestmove != proved.mv {
                 crate::diag_count!(search_mate_win_dropped_move);
             }
         }
