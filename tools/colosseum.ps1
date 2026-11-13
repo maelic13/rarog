@@ -822,7 +822,7 @@ if ($Mode -eq "sprt") {
 }
 if ($Mode -eq "spsa") {
     $lines.Add("tune_surface:     $ConfigGroup, $($resolved.tune.parameters.Count) coordinates")
-    $lines.Add("tune_ceiling:     $($resolved.settings.iterations) iterations x $($resolved.settings.games_per_iteration) games = $($resolved.total_games) games at most")
+    $lines.Add("tune_ceiling:     $($resolved.settings.iterations) iterations x $($resolved.settings.games_per_iteration) games = $([int64]$resolved.settings.iterations * [int64]$resolved.settings.games_per_iteration) games at most")
     $lines.Add("tune_r_end:       $($resolved.r_end)")
     $lines.Add("tune_checkpoints: $($checkpoints -join ', ') (window $Window; tools/spsa_read.py, PLAN rule 7c)$(if ($AllowShortRun) { '; SHORT RUN, an instrument smoke' })")
     $lines.Add((Format-ColosseumRailWarnings -Warnings @($dry.rail_warnings)))
