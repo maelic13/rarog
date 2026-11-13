@@ -6,7 +6,16 @@ decision 2026-11-13: Colosseum CLI stays Rarog's main harness). Each request is
 proved from artifacts, not inferred. Evidence: `docs/experiments/RAR-M88.md`
 and `analysis/artifacts/harness-speed-2026-11-13/` (ignored storage).
 
-Priority: 1 (tuning speed) is the important one; 2 is fidelity; 3 is coverage.
+Priority.
+
+- **First:** 1, tuning speed, and 4, moves-per-period clocks, the only
+  experiment Colosseum cannot run at all.
+- **Then the measurement guards:** 5 and 6.
+- **Then fidelity and coverage:** 2 and 3.
+- **The rest are conveniences:** 7 to 10.
+
+Items 4 to 10 were checked against the pinned 0.5.0 (`81EA6CBA…`): its
+`--help`, its source and its run artifacts.
 
 ## 1. SPSA without an iteration barrier (priority)
 
@@ -126,3 +135,166 @@ mostly CI work.
 
 **Check.** Each new asset runs `colosseum-cli --version` and a short `match`
 on its platform.
+
+## 4. Moves-per-period time controls
+
+**Observed.**
+
+- `match --help` offers per side only `--*-movetime-ms`, `--*-base-ms`,
+  `--*-increment-ms`, `--*-nodes` and `--*-depth`.
+- Neither `colosseum-core/src/time.rs` nor `colosseum-uci/src/position.rs`
+  mentions `movestogo`. The `go` line is `go wtime btime winc binc` only.
+
+**Why it matters.**
+
+- PLAN F.10's gate is a CCRL 40/15 or Blitz list rating, and 40/15 is 40
+  moves per period, repeating.
+- Rarog's time manager has a separate `movestogo` branch
+  (`src/search/time.rs`), which no Colosseum game can reach.
+- fastchess plays these controls (`tc=40/900`). This is the one experiment
+  family Rarog cannot run through Colosseum at all.
+
+**Request.** Per side, a time control of N moves in T, repeating, with an
+optional increment.
+
+- The engine receives `movestogo` (the moves left in the period).
+- The clock is refilled at each period boundary.
+- The PGN `TimeControl` tag is written in the standard form (`40/900`).
+- `match`, `sprt`, `tournament` and `gauntlet` all accept it.
+
+**Check.**
+
+- A smoke at `10/5` (10 moves in 5 s) logs `movestogo 10` on each side's first
+  move, `1` on the tenth, and the refilled clock on the eleventh.
+- A Rarog game at `40/15`-shaped conditions shows its explicit-`movestogo`
+  branch active, read from the engine's own debug output.
+
+## 5. Placement for engines with more than one thread
+
+**Observed.**
+
+- With `--placement auto` and `--cores-per-game 4`, a game's slot is both SMT
+  siblings of each of its cores. Windows then packs four busy threads onto two
+  or three cores' siblings.
+- Rarog's 4T/1T NPS ratio read 2.5–2.7 in that slot (RAR-M74, RAR-P46,
+  RAR-M78 to RAR-M81)
+  against 4.03 with an explicit one-logical-CPU-per-core list (RAR-M82, on
+  0.5.0). Reckless was packed the same way.
+- Rarog's wrapper (`tools/colosseum.ps1`) refuses a sibling in an explicit
+  list but cannot stop `auto` with Threads above 1.
+
+**Request.** When any engine in a slot runs more than one thread, automatic
+placement gives the slot one logical CPU per physical core and no SMT sibling.
+The other way is to refuse `auto` there with a message naming the explicit
+form. The resolved configuration says which policy applied.
+
+**Check.** A 4T `match` with `--placement auto` resolves to one logical CPU per
+core, and Rarog's 4T/1T NPS ratio reads near 4 in it, as RAR-M82's did.
+
+## 6. Host load recorded during the run
+
+**Observed.**
+
+- The run record's `host` block holds static facts only: OS, architecture,
+  logical CPUs and capabilities (RAR-M88's `run-record.json`).
+- Rarog's idle check runs once, before the start. Nothing records whether
+  something else ran on the game CPUs during play.
+- That is what voided RAR-M48's first pool. The four-thread reads needed an
+  external `typeperf` sampler (RAR-M81, RAR-M82).
+
+**Request.** While a run plays, sample each logical CPU's busy time outside the
+run's own engine processes, a few times a second, and record a summary in the
+run record: per game CPU, the share of seconds above a threshold. Then:
+
+- flag a run in `results.txt` whose game CPUs were disturbed beyond a stated
+  limit;
+- optionally, pause between games while the host is busy.
+
+**Check.**
+
+- A run with a CPU-bound process started on one game CPU partway through is
+  flagged, and names that CPU.
+- An undisturbed run is not flagged.
+
+## 7. Clock left on every move
+
+**Observed.**
+
+- Colosseum's PGN move comments carry `s`, `d`, `t`, `h` and `n`, but not the
+  clock left.
+- `games.jsonl` holds clock summaries per game, not per move.
+- fastchess writes `tl=` on every move. RAR-M88 had to reconstruct Colosseum's
+  clock from the time control and `t=`.
+
+**Request.** Add the mover's clock after the move to each move comment (or to
+`games.jsonl`), in milliseconds.
+
+**Check.** On a smoke game, each move's clock equals the previous one for that
+side, minus `t`, plus the increment.
+
+## 8. The conversion read in `results.txt`
+
+**Observed.** Since 0.5.0, `results.txt` carries colour, terminations, faults,
+time losses and per-side search. It does not carry the conversion read that
+Rarog's gauntlet registrations use (RAR-M73):
+`tools/diag/conversion_audit.py` counts the draws and losses after a side has
+held at least a minor piece's material advantage for 12 plies, with a lone
+minor excluded, per 1,000 games.
+
+**Request.** Report that count per engine in `results.txt`, with the threshold
+and persistence stated. Rarog keeps its PGN-based tool as the harness-neutral
+check.
+
+**Check.** On a recorded gauntlet PGN, Colosseum's count equals
+`conversion_audit.py`'s.
+
+## 9. The SPSA checkpoint verdict in `spsa status`
+
+**Observed.**
+
+- PLAN rule 7c reads a tune at iteration 2,000 and every 1,000 after, by a
+  per-coordinate gradient test.
+- `tools/spsa_read.py`, shared with Basilisk, does that from the run directory.
+- Someone must stop the run at each checkpoint, read it, and resume or end it.
+
+**Request.**
+
+- `spsa status` prints the checkpoint verdict: quiet, live, a centre pushed
+  outward at a bound, or faults.
+- The run file can register checkpoints, so the run stops itself at a quiet
+  checkpoint and continues on a live one.
+- The statistics must match `spsa_read.py` exactly, which keeps its synthetic
+  tests (`tools/diag/test_spsa_read.py`) as the reference.
+
+**Check.**
+
+- On a recorded tune, `spsa status` agrees with `spsa_read.py` at every
+  checkpoint.
+- A registered run stops itself at the first quiet checkpoint.
+
+## 10. Wait for an idle host before starting
+
+**Observed.** Rarog's wrapper refuses a start when the host is above 15% CPU
+over a 2-second window (`Assert-HarnessHostIdle`, `tools/harness_common.ps1`).
+On 2026-10-24 the Claude desktop app's own bursts refused six starts in a row,
+on a host a 12-second read showed at 0.2%. Long runs since start through
+retry wrappers.
+
+**Request.**
+
+- An option to wait for an idle host before the first game, with a stated
+  window, threshold and deadline.
+- The run record records the reading it started on.
+
+**Check.**
+
+- A run started beside a busy process waits, then starts within a few seconds
+  of that process ending.
+- It gives up at the deadline with a clear message.
+
+## For the GUI, after the split
+
+The GUI's database (`%APPDATA%/Colosseum/data/colosseum.sqlite`) has an empty
+`engines` table. Engine names, versions and paths are only in
+`tournament_engines.engine_config_json` (`$.meta.name`, `$.meta.version`,
+`$.path`), so a join on `engines` returns nothing.
