@@ -372,7 +372,6 @@ D.6.28, and inputs to D.7.0).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.7.0 | RESEARCH | R3 | The inventory of every departure from Reckless `0756957`, the seed table from the hybrid's configuration, the parity design, RAR-O09's registration |
-| D.7.1 | READY_FOR_IMPLEMENTATION | I1 | `sprt.ps1` takes a node budget and a move time per engine, each with a wire smoke |
 | D.7.2 | RESEARCH | V | RAR-O09's three reads after D.6.8; the rebuild opens at +10 or more at equal nodes, otherwise the maintainer decides after consultation |
 | D.7.3 | RESEARCH | I2 | Opens with D.7.2's decision |
 | D.7.4 | RESEARCH | I2 | Opens with D.7.2's decision; parity before any game |
@@ -1440,11 +1439,27 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       check (Reckless tests the draw first); kings in the non-pawn
       correction key (Reckless includes them); and the cutoff count
       raised by an exclusion search's fail-high (as Reckless).
-    - **D.7.1 The fixed-match script takes a node budget and a move time per engine — `I1`.**
+    - **D.7.1 The fixed-match script takes a node budget and a move time per engine — `I1`, DONE 2026-11-13.**
       `tools/sprt.ps1`: a node budget and a move time for each engine,
       beside `-TCA` and `-TCB`. Each is proved live by a smoke in which an
       absurd value moves the PGN and the score, and the combinations that
       make no sense are refused.
+      **Done:** `-NodesA`/`-NodesB` (fastchess `nodes=`) and
+      `-MoveTimeA`/`-MoveTimeB` (`st=`) beside `-TCA`/`-TCB`; an engine
+      without its own limit takes the shared `-Nodes`, `-MoveTime` or
+      `-TC`. Refused, each by `tools/diag/test_sprt_limits.ps1` (16/16,
+      eleven refusals and five controls that reach the engine check): two
+      limits for one engine, two kinds across the engines, a shared limit
+      neither reads, a value of 0 or less given explicitly, a per-engine
+      limit in a calibration, a malformed clock. Smokes
+      (`analysis/artifacts/d71-smoke-2026-11-13/`, the D.6.8 arms, 20
+      games each, `-Mode fixed`): a node budget of 1 against 20,000
+      scored 0/20 and 20/20 with the sides swapped, the PGN showing depth
+      1 at 0.000 s against depth 9 at about 24 ms; 5 ms against 200 ms a
+      move scored 0.5/20 and 19.5/20, depth 6 at 5–8 ms against depth
+      11–12 at 200 ms. Observed in passing: at a budget of 1 node the
+      2.7.0 engine reports `score mate 0`, a score from no completed
+      iteration; output only, at a budget no read uses.
     - **D.7.2 RAR-O09: the donor's search against the head at equal nodes, at equal move time and at a long control — `V`.**
       Reckless's hybrid against the head, both rebuilt on the head after
       D.6.8: 3,000 games at equal nodes a move (tree shape alone), 3,000 at

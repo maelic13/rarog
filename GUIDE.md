@@ -64,7 +64,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.6.30** A later iteration can overwrite a proven mate — DONE 2026-11-13
 - [ ] **D.7** Search shape: the kernel against its donor on Rarog's evaluation, rebuilt whole in Reckless's form if the reads or the maintainer say so — **R3**
     - [ ] **D.7.0** Investigation: the inventory of departures, the seeds and the registration of the reads — **RESEARCH / R3**
-    - [ ] **D.7.1** The fixed-match script takes a node budget and a move time per engine — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.7.1** The fixed-match script takes a node budget and a move time per engine — DONE 2026-11-13
     - [ ] **D.7.2** RAR-O09: the donor's search against the head at equal nodes, at equal move time and at a long control — **RESEARCH / V**
     - [ ] **D.7.3** Parity instrument: Rarog and the hybrid on one position set — **RESEARCH / I2**
     - [ ] **D.7.4** The kernel in the donor's form, behind one switch — **RESEARCH / I2**
