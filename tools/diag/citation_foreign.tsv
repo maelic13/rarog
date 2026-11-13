@@ -115,3 +115,5 @@ db98633b	Stockfish commit (the hybrid accumulator update on king moves)
 e1a884c	Triumviratus commit (experts 5-7 margins unbaked)
 f7a83be	Triumviratus commit (NUMA spread, threads up to the whole machine)
 f7e1489	Triumviratus commit (per-thread state aligned to 128 bytes)
+d76a98c	Basilisk master at the 2026-11-13 Basilisk check
+fdb35fa	Basilisk branch b6-perft-pins at the 2026-11-13 Basilisk check
