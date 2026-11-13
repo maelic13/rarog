@@ -73,7 +73,8 @@ Driver, scripts and outputs: `analysis/artifacts/harness-speed-2026-11-13/` (`ru
 - **SPSA on one host.** Colosseum CLI is about 20% faster than weather-factory, because it has no process boundary between iterations. Within an iteration both are bounded by the same iteration barrier: about 22 s for 30 games on 15 slots.
 - **Opening counters.** A throughput comparison between runners must hold the opening's move counters equal, or normalise for the engine's clock use. Comparisons of games per hour across runners that complete EPD counters differently are confounded.
 - **Gates.** Earlier gates are unaffected: both arms of a gate get the same completed openings.
-- **The counter difference.** Colosseum resets the book's counters, which fastchess and the book's other users do not. It is recorded for the Colosseum maintainer in `analysis/colosseum_requests_2026-11-13.md`.
+- **The counter difference.** Colosseum resets the book's counters, which fastchess and the book's other users do not. It is request 2 in `analysis/colosseum_requests_2026-11-13.md`.
+- **Maintainer decision 2026-11-13, after this read.** Colosseum CLI stays Rarog's main harness, and fastchess and weather-factory stay the backup, as PROCESS's *Harness* says. The next CLI release takes the requests in `analysis/colosseum_requests_2026-11-13.md`. The first is SPSA without an iteration barrier: tune slots filled 79–80% against 98% in matches, about 1.24x available.
 - **Retry trigger.** Measure again when fastchess changes its shutdown, when Colosseum's `spsa` loses its iteration barrier, when either runner changes how it completes openings, or before retiring either harness.
 
 ## Source
