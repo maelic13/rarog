@@ -206,6 +206,17 @@ pub mod counters {
         q_kp_nodes,
         q_kp_stalemate,
         q_kp_stalemate_misread,
+        // Completed single-PV root iterations, EXACT: those that prove a
+        // win; later ones in the same search that no longer do; and of those,
+        // the ones whose move differs from the last proving iteration's.
+        iter_mate_win,
+        iter_mate_win_lost,
+        iter_mate_win_lost_move,
+        // Single-PV searches, EXACT: those that proved a win in a completed
+        // iteration and end without one, and of those, the ones whose final
+        // move differs from the last proving iteration's.
+        search_mate_win_dropped,
+        search_mate_win_dropped_move,
         // The interior estimate refined by a stored bound, split by the
         // entry's origin: depth 0 is a quiescence result.
         est_refined_from_q,

@@ -955,6 +955,10 @@ impl Searcher {
         let mut tot_best_move_changes = 0.0_f64; // decaying count of best-move changes
         let mut stable_iterations = 0_u32;
         let mut mate_watch = MateWatch::default();
+        // The move of the last completed iteration that proved a win, for the
+        // diag count of later iterations that lose it.
+        #[cfg(feature = "diag")]
+        let mut diag_proved_win: Option<Move> = None;
         // The soft target the last completed iteration set; a root window
         // that fails high this far past it ends the search.
         let mut soft_target_ms = f64::INFINITY;
@@ -1080,6 +1084,16 @@ impl Searcher {
                     } else {
                         Move::NULL
                     };
+                }
+                #[cfg(feature = "diag")]
+                if best_score >= MATE_SCORE - infra::to_i32(MAX_PLY) {
+                    crate::diag_count!(iter_mate_win);
+                    diag_proved_win = Some(bestmove);
+                } else if let Some(proved) = diag_proved_win {
+                    crate::diag_count!(iter_mate_win_lost);
+                    if bestmove != proved {
+                        crate::diag_count!(iter_mate_win_lost_move);
+                    }
                 }
                 if let Some(root_move) = self
                     .td
@@ -1254,6 +1268,16 @@ impl Searcher {
                 .any(|rm| rm.last_search_depth > completed_depth)
         {
             crate::diag_count!(root_interrupted_fallback);
+        }
+
+        #[cfg(feature = "diag")]
+        if let Some(proved) = diag_proved_win
+            && best_score < MATE_SCORE - infra::to_i32(MAX_PLY)
+        {
+            crate::diag_count!(search_mate_win_dropped);
+            if bestmove != proved {
+                crate::diag_count!(search_mate_win_dropped_move);
+            }
         }
 
         // Dump per-search counters (no-op without `--features diag`).
