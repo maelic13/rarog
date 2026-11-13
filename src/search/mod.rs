@@ -1753,6 +1753,11 @@ impl Searcher {
     /// The score a line prints: the tables' where they replace the search's,
     /// otherwise the search's own.
     fn displayed_score(&self, root_move: Option<&Move>, score: i32) -> i32 {
+        // A move the search never scored, after a stop inside the first
+        // iteration, prints 0: the marker would read as a mate.
+        if score == -INF_SCORE {
+            return 0;
+        }
         self.tb_root_score(root_move, score).unwrap_or(score)
     }
 
@@ -1897,7 +1902,12 @@ impl Searcher {
                 _ => {}
             }
         }
-        if self.cfg.limits.nodes > 0 && total_nodes >= self.cfg.limits.nodes {
+        // Not before the first iteration has completed, as for the clock
+        // below: a search stopped inside it has no score and no searched move.
+        if self.cfg.limits.nodes > 0
+            && total_nodes >= self.cfg.limits.nodes
+            && self.td.root_depth > 1
+        {
             self.td.stopped = true;
             if let Some(shared_state) = self.shared.pool() {
                 shared_state.request_stop();
@@ -2465,6 +2475,51 @@ mod tests {
         // The last line now names d2d4, so nothing more is printed.
         searcher.report_result_line(&result);
         assert_eq!(lines.lock().unwrap().len(), 2);
+    }
+
+    /// A search stopped inside its first iteration has no score; its line
+    /// printed the marker as `mate -0`.
+    #[test]
+    fn a_move_the_search_never_scored_prints_zero() {
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        let a2a3 = Move::from_uci("a2a3").expect("valid move");
+        let result = SearchResult {
+            bestmove: a2a3,
+            pondermove: Move::NULL,
+            score: -INF_SCORE,
+            depth: 0,
+            pv: vec![a2a3],
+            seldepth: 0,
+            nodes: 1,
+            tb_hits: 0,
+            elapsed_ms: 0,
+            exit: SearchExit::Stop,
+            ponderhit: false,
+        };
+        searcher.report_line(&result);
+        let printed = lines.lock().unwrap().clone();
+        assert_eq!(printed.len(), 1, "{printed:?}");
+        assert!(printed[0].contains(" score cp 0 nodes "), "{printed:?}");
+    }
+
+    /// A node budget smaller than the first iteration still completes it, so
+    /// the move played was searched and the score is one the search found.
+    #[test]
+    fn a_node_budget_waits_for_the_first_iteration() {
+        let board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .expect("valid FEN");
+        let mut options = SearchOptions::default();
+        options.limits.nodes = 1;
+        let result = Searcher::default().search(board, &options, false, || SearchEvent::None);
+        assert_eq!(result.depth, 1);
+        assert!(
+            result.score.abs() < MATE_SCORE - infra::to_i32(MAX_PLY),
+            "{}",
+            result.score
+        );
+        // The twenty root moves, and the first node of depth 2 that stops it.
+        assert_eq!(result.nodes, 21);
     }
 
     /// A tablebase score is exact however the search's window failed, so its
