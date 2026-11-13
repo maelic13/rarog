@@ -168,8 +168,9 @@ line because the PGN names them alike. A tune now counts the iterations on
 which each coordinate's arm was clamped at a range end (`result.json`
 schema 4, `tune_audit`), and its dry run lists `rail_warnings`, the
 coordinates whose first arms `seed ± c_0` already leave the range. The
-wrapper records both in the manifest and `spsa_block_rule.py` prints the
-clamps beside its verdict. Neither is a refusal. The re-pin was qualified as
+wrapper records both in the manifest and `spsa_block_rule.py` printed the
+clamps beside its verdict (the block rule retired 2026-11-13 with the blocks;
+`spsa_read.py` reports each coordinate's clamped share at every checkpoint). Neither is a refusal. The re-pin was qualified as
 above: both digests through `setup_tools.ps1`, `test_colosseum_guards.ps1`
 58/58 with the new reporting cases, a real `match` and an `spsa` dry run
 through the wrapper, and a `datagen.ps1` run. No null pair was played: a

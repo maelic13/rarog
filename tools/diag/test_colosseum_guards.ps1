@@ -38,6 +38,12 @@ foreach ($required in @($EngineA, $EngineB, $TuneEngine, $OffArmTuneEngine)) {
 
 $scratch = Join-Path ([System.IO.Path]::GetTempPath()) ("rarog-guards-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $scratch | Out-Null
+# A tune reads the rule 7c conversion of its surface beside its run file. The
+# suite generates one for b23core inside the ignored tools/results, where the
+# run file's relative path to the tune policy resolves, and checks it there.
+$surfaceScratch = Join-Path $repo ("tools\results\guards-surface-" + [guid]::NewGuid())
+python (Join-Path $repo "tools\spsa_config_to_colosseum.py") b23core --rule7c --ceiling 6000 --out $surfaceScratch | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Could not generate the rule 7c surface the tune cases need." }
 
 function Merge-Arguments {
     # PowerShell's hashtable `+` throws on a duplicate key, which is exactly what
@@ -117,7 +123,8 @@ try {
     }
     $tune = @{
         Mode = "spsa"; Engine = (Copy-Arm -Source $TuneEngine -Name "tuneArm")
-        ConfigGroup = "b23core"; Iterations = 5000; TotalGames = 150000; Seed = 7
+        ConfigGroup = "b23core"; Ceiling = 6000; Seed = 7
+        RunFile = (Join-Path $surfaceScratch "b23core.run.toml")
         Dir = (Join-Path $scratch "tune"); DryRun = $true; AllowBusyHost = $true
     }
 
@@ -308,64 +315,27 @@ try {
     # At N = 1e8 the smallest registered step (3) perturbs by 0.458, which rounds
     # to zero on an integer option: the coordinate would look tuned and move
     # nothing.
-    Invoke-Case -Name "tune horizon the surface cannot resolve" -Expect "rounds to zero" `
-        -Arguments (Merge-Arguments $tune @{ Iterations = 100000000; TotalGames = 3000000 })
+    Invoke-Case -Name "tune ceiling the surface cannot resolve" -Expect "rounds to zero" `
+        -Arguments (Merge-Arguments $tune @{ Ceiling = 100000000 })
 
     Invoke-Case -Name "control: the registered tune resolves" -Expect "" -Arguments $tune
 
-    # -SeedFrom (PLAN rule 7c): a block starts only from a FINISHED tune of the
-    # same binary on the same surface. The negatives use a forged result.json
-    # in the shape cli-v0.2.0 writes; the wrapper refuses before the CLI runs.
-    $tuneSha = (Get-FileHash -Algorithm SHA256 -LiteralPath $tune.Engine).Hash.ToUpperInvariant()
-    $b23 = Get-Content -LiteralPath (Join-Path $repo "tools\spsa_configs\config_b23core.json") -Raw | ConvertFrom-Json
-    function New-SeedSource([string]$Name, [hashtable]$Overrides = @{}, [switch]$NoResult) {
-        $dir = Join-Path $scratch "seed-$Name"
-        New-Item -ItemType Directory -Path $dir -Force | Out-Null
-        if ($NoResult) { return $dir }
-        $parameters = @($b23.PSObject.Properties | ForEach-Object {
-            [pscustomobject]@{ name = $_.Name; original = $_.Value.value; estimate = [double]$_.Value.value
-                               tuned = $_.Value.value; min = $_.Value.min_value; max = $_.Value.max_value } })
-        $doc = @{
-            engine_sha256 = $tuneSha.ToLowerInvariant()
-            driver = @{ status = "completed" }
-            tuned_result = @{ completed_iterations = 5000; settings = @{ iterations = 5000; games_per_iteration = 30 }
-                              parameters = $parameters }
-        }
-        foreach ($key in $Overrides.Keys) {
-            $path = $key -split '\.'
-            $node = $doc
-            for ($i = 0; $i -lt $path.Count - 1; $i++) { $node = $node[$path[$i]] }
-            $node[$path[-1]] = $Overrides[$key]
-        }
-        $doc | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $dir "result.json") -Encoding utf8
-        $dir
-    }
-    Invoke-Case -Name "seed source without a result" -Expect "SEED SOURCE" `
-        -Arguments (Merge-Arguments $tune @{ SeedFrom = (New-SeedSource "empty" -NoResult) })
-    Invoke-Case -Name "seed source stopped before its horizon" -Expect "SEED SOURCE NOT COMPLETED" `
-        -Arguments (Merge-Arguments $tune @{ SeedFrom = (New-SeedSource "short" @{ "tuned_result.completed_iterations" = 1240; "driver.status" = "stopped" }) })
-    Invoke-Case -Name "seed source tuned on another binary" -Expect "SEED SOURCE BINARY" `
-        -Arguments (Merge-Arguments $tune @{ SeedFrom = (New-SeedSource "other" @{ "engine_sha256" = ("0" * 64) }) })
-    $fewer = @($b23.PSObject.Properties | Select-Object -Skip 1 | ForEach-Object {
-        [pscustomobject]@{ name = $_.Name; original = $_.Value.value; estimate = [double]$_.Value.value
-                           tuned = $_.Value.value; min = $_.Value.min_value; max = $_.Value.max_value } })
-    Invoke-Case -Name "seed source on another surface" -Expect "SEED SOURCE SURFACE" `
-        -Arguments (Merge-Arguments $tune @{ SeedFrom = (New-SeedSource "surface" @{ "tuned_result.parameters" = $fewer }) })
-    Invoke-Case -Name "-SeedFrom in a gate" -Expect "ignores" `
-        -Arguments (Merge-Arguments $base @{ SeedFrom = (New-SeedSource "gate") })
-    # The positive control needs a real finished Colosseum tune of a staged tune
-    # build; B.2.7's run and binary serve when this host still holds them, at the
-    # horizon its committed tune file was generated for (--check refuses another).
-    $b27Run = Join-Path $repo "tools\results\b27all-spsa"
-    $b27Tune = "tools/test_engines/rarog-b27core-tune.exe"
-    if ((Test-Path -LiteralPath (Join-Path $b27Run "result.json")) -and (Test-Path -LiteralPath (Join-Path $repo $b27Tune))) {
-        Invoke-Case -Name "control: a block seeded from a finished tune" -Expect "" `
-            -Arguments (Merge-Arguments $tune @{ Engine = (Copy-Arm -Source $b27Tune -Name "b27Arm"); ConfigGroup = "b27all"
-                                                 Iterations = 5000; TotalGames = 150000; SeedFrom = $b27Run
-                                                 Dir = (Join-Path $scratch "block2") })
-    } else {
-        Write-Host "  SKIP  control: a block seeded from a finished tune (B.2.7's run or binary not staged)" -ForegroundColor Yellow
-    }
+    # PLAN rule 7c: one run to a registered ceiling, read at checkpoints.
+    Invoke-Case -Name "a tune without a ceiling" -Expect "-Ceiling is required" `
+        -Arguments (Merge-Arguments $tune -Remove @("Ceiling"))
+    Invoke-Case -Name "a tune off the production shape" -Expect "production shape" `
+        -Arguments (Merge-Arguments $tune @{ FirstCheckpoint = 1000 })
+    Invoke-Case -Name "a tune on 14 slots" -Expect "production shape" `
+        -Arguments (Merge-Arguments $tune @{ Concurrency = 14 })
+    Invoke-Case -Name "a surface converted for another ceiling" -Expect "not the rule 7c conversion" `
+        -Arguments (Merge-Arguments $tune @{ Ceiling = 5000 })
+    Invoke-Case -Name "a block-form surface" -Expect "not the rule 7c conversion" `
+        -Arguments (Merge-Arguments $tune -Remove @("RunFile"))
+    Invoke-Case -Name "-Ceiling in a gate" -Expect "ignores" `
+        -Arguments (Merge-Arguments $base @{ Ceiling = 6000 })
+    Invoke-Case -Name "control: a short tune smoke resolves" -Expect "" `
+        -Arguments (Merge-Arguments $tune @{ AllowShortRun = $true; FirstCheckpoint = 20; CheckpointEvery = 10
+                                             Window = 20; GamesPerIteration = 4; Concurrency = 4 })
 
     # A gauntlet resolves through `tournament run`, whose dry run names the
     # command and its clock differently from the two-arm commands; the first
@@ -507,7 +477,10 @@ try {
         }
     }.GetNewClosure()
 } finally {
-    if (-not $KeepScratch) { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue }
+    if (-not $KeepScratch) {
+        Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $surfaceScratch -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
 $failed = @($results | Where-Object { -not $_.Passed })
