@@ -361,6 +361,8 @@ D.6 leaf; those leaves keep their numbers, which tests and records cite,
 and each is asked first whether it is still an issue on the kernel D.7
 leaves behind. 2.7.0, an unscheduled release with no step of its own, is
 cut before D.7 on a registered no-regression read against 2.6.0 (E.3).
+The Basilisk check for new ports, research only, follows the cut and
+precedes D.7 (maintainer decision 2026-11-13).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
@@ -1728,6 +1730,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   are lifted for 2.7.0 (maintainer decisions 2026-11-13): D.11's
   stands for the release after it, and D.7.8 asks first whether
   D.6.17's tie and D.6.20's clock test survive the new kernel.
+  **The read, 2026-11-13 (RAR-M87): a loss.** Against a five-engine
+  field the head is G −7.6 Elo [−14.4, −0.7] below 2.6.0; head to head
+  it is +10.1 ± 8.7. The maintainer decided after the result, as an
+  exception for 2.7.0 and not a release rule, to ship it as it is for its
+  fixes. The head leaves about 5% of its clock unspent, a lead for a
+  research card, untested.
     - **E.3.1 Tag-driven release flow — `I1`, DONE 2026-10-05.** `release.yml`
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is

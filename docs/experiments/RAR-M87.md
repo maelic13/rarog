@@ -9,8 +9,8 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
   decision 2026-11-13: "no loss of playing strength against 2.6.0, shown by a
   registered match before the cut"). It accepts no engine change.
 - Disposition: observation — the read finds a **loss**: G −7.6 Elo
-  [−14.4, −0.7] against the field; head to head +10.1 ± 8.7. The release
-  decision is the maintainer's, made after the result (see *Result*).
+  [−14.4, −0.7] against the field; head to head +10.1 ± 8.7. The maintainer
+  decided after the result to ship 2.7.0 as it is (see *Result*).
 - **Why a field, not only head to head:** RAR-M84 (2026-11-08, unregistered)
   had the head level with 2.6.0 head to head (−4.8 ± 14.1) and 13.6 ± 9.9
   lower against a shared field, most of it far weaker than either build
@@ -179,5 +179,13 @@ mechanism for a research card, untested.
 **Disposition: loss.** By the frozen rule the 2.7.0 cut does not proceed on
 this read. The maintainer decides what follows after seeing the result, a
 one-off exception for 2.7.0 recorded as such (maintainer, 2026-11-13: "this
-time I will make decision after we see how bad it is"); the decision is
-recorded here when made.
+time I will make decision after we see how bad it is").
+
+**Decision, 2026-11-13 (maintainer, after the result): 2.7.0 ships as it
+is.** The read's loss is small and bounded (a loss beyond about −14 Elo is
+unlikely), its cause is not known, and the release carries fixes users and
+testers meet (crashes and exits on bad input or a closed output, `stop`
+ignored after `setoption`, a halved `Hash`, multi-thread depth, mate and
+`isready` faults). The clock-use lead above goes to a research card; it is
+not a condition of the release. Taken after the games were seen, this is an
+exception for 2.7.0, not a release rule.
