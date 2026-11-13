@@ -354,7 +354,7 @@ cut before D.7 on a registered no-regression read against 2.6.0 (E.3).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.8 | READY_FOR_IMPLEMENTATION | R2 | Screened (RAR-S123): count each position once, 16.1% of the count today; decide re-searches first; gate case 2 |
+| D.6.8 | GAME_GATE | R2 | Implemented `ba1d2cd` (bench 9,077,016): one count per position a move or a null move reaches, a re-search counts nothing; gate RAR-S124 registered, case 2, the maintainer's run |
 | D.7.0 | RESEARCH | R3 | The inventory of every departure from Reckless `0756957`, the seed table from the hybrid's configuration, the parity design, RAR-O09's registration |
 | D.7.1 | READY_FOR_IMPLEMENTATION | I1 | `sprt.ps1` takes a node budget and a move time per engine, each with a wire smoke |
 | D.7.2 | RESEARCH | V | RAR-O09's three reads after D.6.8; the rebuild opens at +10 or more at equal nodes, otherwise the maintainer decides after consultation |
@@ -967,6 +967,28 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      full-depth re-search and ProbCut's verification re-enter a child
      without a new move, at least 1.2% more. The donor's one count per
      move made covers them; the screen's four paths do not.
+     **Contract decided 2026-11-13:** a position is counted once, when a
+     move or a null move reaches it, as RAR-S123's frozen rule says; a
+     re-search enters a position a move already reached and counts
+     nothing, the donor's one count per move made, which is what D.7.2's
+     equal-node match needs. The null move is counted, by the frozen
+     rule, where the donor does not count it.
+     Implemented 2026-11-13 as `ba1d2cd`: `count_node` is called once
+     after each move the main loop, ProbCut and quiescence make and after
+     the null move, and the node entries only read the stop flag.
+     `bench 13` 9,077,016 / EBF 2.481. On the old tree (an uncommitted
+     arm keeping the old clock for the LMR spread, which read exactly
+     11,477,040) the count reads 9,475,302, inside RAR-S123's bound of
+     9,489,974; the rest is the spread's new phase.
+     `a_depth_one_search_counts_each_root_move_once` pins it: 20 at depth
+     1 from the start position, 51 on the old count. Two test
+     preconditions were fixed first, each in its own commit and read on
+     both trees: the transposing promotion anchor pins the transposition,
+     not a margin between two searches of a tie (`56da869`), and the
+     double singular liveness probe moves to the knight-up position at
+     depth 10 (`10059f9`). **Gate registered as RAR-S124,** before any
+     game: case 2, 2,000 games at `3+0.03` against `10059f9`, the −13
+     harm rule; every search of every game reads the count.
     - **D.6.9 The endgame scale's target — `R2`.** (EVAL-5): `evaluate` adds tempo to `mg`,
      tapers, then `scale_endgame` multiplies the whole; both donor commits
      scale the endgame half only (`v = mg·p + eg·(128−p)·sf/64`), so the forms
