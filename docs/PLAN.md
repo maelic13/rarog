@@ -359,8 +359,8 @@ D.6.8 ran first (done 2026-11-13), because D.7.2's equal-node match needs
 one count per position. D.7, the search-shape step, then runs ahead of every other open
 D.6 leaf; those leaves keep their numbers, which tests and records cite,
 and each is asked first whether it is still an issue on the kernel D.7
-leaves behind. 2.7.0, an unscheduled release with no step of its own, is
-cut before D.7 on a registered no-regression read against 2.6.0 (E.3).
+leaves behind. 2.7.0, an unscheduled release with no step of its own, was
+cut 2026-11-13, before D.7, on a registered read against 2.6.0 (E.3).
 The Basilisk check for new ports, research only, follows the cut and
 precedes D.7 (maintainer decision 2026-11-13).
 
@@ -1735,7 +1735,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   it is +10.1 ± 8.7. The maintainer decided after the result, as an
   exception for 2.7.0 and not a release rule, to ship it as it is for its
   fixes. The head leaves about 5% of its clock unspent, a lead for a
-  research card, untested.
+  research card, untested. **Released 2026-11-13** as 2.7.0 from the
+  `v2.7.0` tag, fingerprint 9,077,016 / EBF 2.481.
     - **E.3.1 Tag-driven release flow — `I1`, DONE 2026-10-05.** `release.yml`
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is
@@ -2399,6 +2400,11 @@ and adjudication never change after games are seen.
 - 2.6.0, cut from the C head ahead of Phase E (maintainer decision
   2026-10-22), meets the same rule against 2.5.0 (RAR-M76): STC +153.4 ±
   10.7, `10+0.1` +149.3 ± 15.1, 4T +149.7 ± 14.7.
+- 2.7.0, an unscheduled release cut before D.7 (maintainer decision
+  2026-11-13), was read against 2.6.0 (RAR-M87): G −7.6 Elo [−14.4, −0.7]
+  against a five-engine field, a loss by its rule, and +10.1 ± 8.7 head to
+  head. The maintainer shipped it for its fixes after seeing the result,
+  an exception for 2.7.0 and not a rule.
 - NNUE releases require a win over the last classical release at STC, LTC and
   4T, and a clean platform matrix.
 - Tag, push and publish only on maintainer instruction. From E.3.1 on, a
