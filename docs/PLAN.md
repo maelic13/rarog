@@ -71,6 +71,7 @@ classical stage.
 | B search | 251 equal-time (247.97, RAR-O03) | 120–200 | selectivity explains 272; a Reckless-shaped stack fitted locally. **Measured at B.9: 272 ± 14 recovered**, G(0) −247.97 → +24.24 ± 8.01 (RAR-O04): above the band, the head beats the oracle |
 | C evaluation | 182 same-search at equal nodes, 266 at equal time (RAR-O05; RAR-O02's 329 was the 2.3.2 evaluation); 129 at equal nodes after C.3 (RAR-O06); **99 at C.11 (RAR-O07)** | 100–160 | six families, whole-surface refits, endgame conversion. **C.0 (2026-10-05):** C.0's screen supports two family clusters (king safety, winnability and scale), not six, and its prior for the family clusters together is 30–90 (`analysis/eval_programme_2026-10-05.md`). **C.3.6 (2026-10-09):** C.2's refit and C.3's king unit closed 52 ± 26 of the 182 in the same search (RAR-O06); one reading does not split them, and the refit is not a family cluster. The band is corrected at C.11 by RAR-O07's measurement (registered 2026-10-11), never by an estimate. **Measured at C.11 (RAR-O07, 2026-10-21): 82.5 ± 25.2 recovered at equal nodes**, +181.7 → +99.2 ± 16.6: below the planned 100–160 and in the upper half of C.0's 30–90 prior for the family clusters; Rarog's own strength gain over Phase C is read by C.11's pool gauntlet and E.1, not by this meter |
 | D clock, SMP, robustness | unmeasured | 15–40 | Reckless-shaped node-fraction TM; 4T quality |
+| D.7 search shape | 22.5 ± 7.9 at equal clock against Phase B's donor as it is (RAR-O08, match 5); the shares of tree shape, clock use and kernel speed are unread | 0–70 | conditional on D.7.2's reads or the maintainer's decision: the kernel in the donor's whole form, seeded from the hybrid's configuration and fitted. Equal strength is accepted (maintainer decision 2026-11-13), so the band starts at 0 |
 | Speed inside B and C | — | 10–30 | per-node cost of the new search and evaluation modules. **B.9:** the B head is 26.2% slower than 2.4.0 in pooled bench NPS (RAR-P35), after B.7 won back about 20% inside B (+35.5 Elo, RAR-S98); B's gates already include that cost and that recovery, so this row recorded nothing of B's separately and now applies to C. **C.12** owns the recovery (added 2026-10-13) |
 
 **Corrected at B.9:** the search programme alone recovered more than its
@@ -231,7 +232,10 @@ gating. The rules below decide order and acceptance in this roadmap.
    A miss is recorded as sign, magnitude, mechanism, interaction, confidence
    or instrument. `NO_CHANGE`, refuted and too-sparse are successful outcomes.
 10. **Deficit meters are re-measured at every programme checkpoint**: the
-    equal-time gap against the frozen Stockfish-search oracle (B), the
+    equal-time gap against the frozen Stockfish-search oracle (B) and, from
+    RAR-O08 on, against Reckless's search on Rarog's evaluation, the
+    stronger reference (the head +59.8 ± 8.1 over the first and −22.5 ± 7.9
+    against the second, 2026-11-13), the
     same-search gap against Stockfish's classical HCE (C), the conversion
     instrument (A.5), pooled-PGO NPS, and the pool score against the four
     target engines.
@@ -339,14 +343,32 @@ maintainer decision 2026-11-04; both are done. On 2026-11-05 (maintainer
 request) the roadmap was checked so that the numbering is the order of work
 from here to the end: no step waits for a later one, and no work is listed
 twice (HISTORY's number map holds what moved).
+On 2026-11-13 (maintainer decision, after RAR-O08) the order of work left
+the numbering in two places, and the rows below are in the order of work.
+D.6.8 stays first, because D.7.2's equal-node match needs one count per
+position. D.7, the search-shape step, then runs ahead of every other open
+D.6 leaf; those leaves keep their numbers, which tests and records cite,
+and each is asked first whether it is still an issue on the kernel D.7
+leaves behind. The 2.7.0 cut (E.3.4) runs ahead of the register, before
+D.7, on a registered no-regression read against 2.6.0 (E.3).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.6.8 | READY_FOR_IMPLEMENTATION | R2 | Screened (RAR-S123): count each position once, 16.1% of the count today; decide re-searches first; gate case 2 |
+| D.7.0 | RESEARCH | R3 | The inventory of every departure from Reckless `0756957`, the seed table from the hybrid's configuration, the parity design, RAR-O09's registration |
+| D.7.1 | READY_FOR_IMPLEMENTATION | I1 | `sprt.ps1` takes a node budget and a move time per engine, each with a wire smoke |
+| D.7.2 | RESEARCH | V | RAR-O09's three reads after D.6.8; the rebuild opens at +10 or more at equal nodes, otherwise the maintainer decides after consultation |
+| D.7.3 | RESEARCH | I2 | Opens with D.7.2's decision |
+| D.7.4 | RESEARCH | I2 | Opens with D.7.2's decision; parity before any game |
+| D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games |
+| D.7.6 | RESEARCH | V | The fit in registered blocks; kept only if fitted over unfitted passes `[0,3]` |
+| D.7.7 | RESEARCH | V | The kernel against the head on the loss-permitting bracket; `10+0.1` and 4T reads |
+| D.7.8 | RESEARCH | R2 | Each known problem asked "still an issue?" on the new kernel |
+| D.7.9 | RESEARCH | V | Adoption by maintainer decision on D.7.7 and D.7.8; meters; the old kernel deleted |
 | D.6.9 | RESEARCH | R2 | Screen before any implementation |
 | D.6.10 | RESEARCH | R2 | Screen before any implementation |
-| D.6.13 | RESEARCH | R2 | Screen before any implementation |
-| D.6.16 | RESEARCH | R2 | Screen before any implementation |
+| D.6.13 | RESEARCH | R2 | After D.7: the donor's aspiration form is part of a rebuilt kernel; re-evaluate first, close if moot |
+| D.6.16 | RESEARCH | R2 | After D.7: quiescence is rebuilt in the donor's form; re-evaluate the gain pruning on it first |
 | D.6.17 | RESEARCH | R2 | Card: the wrong-pick branch fired on D.6.3's candidate (a transposing rook kept by root order); Basilisk's root rule is the prior, the ignored transposing-rook anchor the acceptance test; lands before the 2.7.0 cut |
 | D.6.20 | RESEARCH | R2 | Screen before any implementation; a measured instance: the won-ending clock test is red since `ee0b3e4` (9.5 s against 8 s), ignored as its acceptance test |
 | D.6.21 | RESEARCH | R2 | Screen: does a one- or two-ply search already read the 88 above 0; minutes |
@@ -355,8 +377,8 @@ twice (HISTORY's number map holds what moved).
 | D.6.24 | RESEARCH | R2 | Screen: a narrowed or discounted fortress on the same enumeration, draws kept at 0 and wins lifted; minutes |
 | D.6.25 | RESEARCH | R2 | Screen: does any search at the gate's budget pick the bishop promotion, or score the same-coloured pair above a draw at the root; minutes |
 | D.6.26 | RESEARCH | R2 | Screen: the pawnless one-minor-ahead classes against Syzygy over an enumeration, and their exposure in gate games; minutes |
-| D.6.27 | RESEARCH | R2 | Screen before any implementation: IIR applications by node type on RAR-S117's replay; minutes |
-| D.7 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
+| D.6.27 | RESEARCH | R2 | After D.7: the donor has no IIR; re-evaluate first, close if moot |
+| D.6.28 | RESEARCH | R2 | Screen: the unspent clock share by move number on gate games; then one knob |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -376,6 +398,8 @@ twice (HISTORY's number map holds what moved).
 | D.8.19 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.20 | READY_FOR_IMPLEMENTATION | I1 | Its census has no dependency |
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
+| D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
+| D.11 | RESEARCH | R2 | The originality disclosure, moved from E.3.0; a hold on the 2.7.0 cut until the maintainer resolves or lifts it |
 
 ## Phase D — Clock, threads, robustness
 
@@ -394,6 +418,10 @@ records from before 2026-11-01, where D.4 is the tablebase leaf. On
 2026-11-05 five strength candidates left D.6 (D.6.11 to E.4, D.6.12 to G.2,
 D.6.14, D.6.18 and D.6.19 to H.2) and D.8.17 merged into D.5.16; their
 numbers are retired, not reused.
+On 2026-11-13 (maintainer decision) the search-shape step took D.7, large
+pages on Linux moved from D.7 to D.10 and the originality disclosure
+moved from E.3.0 to D.11; D.7 runs before the open D.6 leaves, which keep
+their numbers.
 
 A finished step keeps its heading over a short summary; its full
 text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
@@ -504,6 +532,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   2026-11-05: the piece-term definitions to E.4's refit, `Hash` at any size
   to G.2, and the low-priority notes, Stockfish 19's mechanisms and the
   root and in-check reductions to H.2 under Phase H's rule.
+  **Order, 2026-11-13 (maintainer decision):** D.6.8 runs first, then D.7.
+  The other open items wait for D.7 and none is dropped. After D.7.8 each
+  is asked first whether it is still an issue on the kernel D.7 leaves
+  behind: an item the rebuild made moot closes with that reason, one whose
+  defect remains keeps its card, and a form that lost its gate on the
+  combined kernel (D.6.3, D.6.4, the fail-soft cluster of RAR-R19 to R21,
+  one-retry aspiration) is re-opened or added where D.7.8 finds its
+  problem still there.
     - **D.6.1 Castling is neither quiet nor noisy — `R2`, DONE 2026-11-10.** (NODE-3, BOARD-1):
      `is_quiet_move` is `flags <= DOUBLE_PUSH` while castling has flags 2 and
      3, and `is_noisy` is capture or promotion, so in the move loop castling
@@ -1131,6 +1167,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       LMR term, and D.6.4's store, which is an ordering change alone once
       IIR ignores those nodes. Gate: `[0,3]` if the card predicts a gain,
       else case 3. `R2` card.
+    - **D.6.28 Clock use: a tenth of the budget is left unspent — `R2`.** (found
+      2026-11-13 in RAR-O08's games): against a budget of the base plus the
+      increment times its own moves, Rarog's head spent 87.1 to 88.9% of
+      its clock where Reckless's time manager spent 94.9 to 95.1% and
+      Stockfish classical's 93.5 to 94.1%; in the first twenty moves Rarog
+      spent 0.76 to 0.77 of the base and Reckless 0.84 to 0.87. Rarog's
+      budget constants are Stockfish's, and Stockfish dev reads 88.7 to
+      89.7%. The layer is clock use, not Elo: D.1 made the engine keep more
+      reserve when its clock runs low, and whether the total left unspent
+      costs strength was not read. Independent of the kernel, so it
+      survives D.7 either way, and D.7.2's equal-move-time read sizes it.
+      Screen, zero games: the unspent share by move number and by game
+      length on Colosseum's gate games, and where the reserve sits (the
+      low-clock rule, the hard bound, the forfeit margin). Candidate: one
+      knob, `tm_opt_scale`, registered as an SPRT `[0,3]` with a `10+0.1`
+      harm read and the forfeit count as its invariant. `R2` card.
   Evidence for items already here (H18–H21, H25): item 4 (NODE-2), the
   donor form read +3.3 ± 9.1 in Basilisk (2,000 games) and each of its
   consumers alone (IIR, the no-TT-move LMR term) threw a promotion fixture
@@ -1151,42 +1203,127 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   read as explosion.
   Evidence layer: counters and node counts choose and never accept; only the
   registered gate does (AGENTS, *Gating*).
-- **D.7 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
-  Added 2026-11-02 from the comparison with Reckless in D.2. `PageAllocator`
-  (`src/large_pages.rs`) backs every allocation of at least `THRESHOLD`
-  (512 KB) with 2 MB pages on Windows only: the transposition table and each
-  search thread's correction, continuation and pawn tables. On Linux and
-  macOS those allocations go to the system allocator. Linux backs anonymous
-  memory with transparent huge pages unasked only when the kernel's mode is
-  `always`; in the common `madvise` mode the tables stay on 4 KB pages, and
-  the module's own case applies in full (about 100 MB read at random against
-  a second-level TLB that maps 8 MB of 4 KB pages). Reckless maps its table
-  and its big histories with `mmap` and `madvise(MADV_HUGEPAGE)` on Linux.
-  - **Contract.** On Linux the page allocations are 2 MB aligned and advised
-    with `madvise(MADV_HUGEPAGE)`, behind the same `LargePages` option;
-    nothing is locked and no privilege is needed. `large_pages()` reports
-    what the kernel allows (the mode in
-    `/sys/kernel/mm/transparent_hugepage/enabled`, `never` reading as off).
-    The tables, their contents and the search are unchanged: `bench 13`
-    exact on every platform, and the CI's Linux job builds and tests it.
-  - **Measurement.** The one-thread NPS read by PROCESS's method on a Linux
-    host, with the option on and off in one binary and the kernel's mode
-    recorded (WSL2 on the match host is the host available; its mode is part
-    of the record), and a four-thread cell. A behaviour-neutral speed change
-    closes on that read.
-  - **Order.** On its own. RAR-M79 (2026-11-02) read large pages off 2.7%
-    higher in R than on, inside noise, in a session where the four-thread
-    speed loss was absent; whether they take part in the slow host state
-    is unread (`analysis/d2_audit_2026-11-02.md`). Transparent huge pages
-    lock nothing, so the Linux read stands whatever that answer is, and
-    the scope stays every allocation the Windows path takes.
-  - **macOS: not pursued.** Rarog ships macOS for Apple silicon only
-    (maintainer decision 2026-11-02: no Intel macOS build, universal or
-    separate). Apple silicon has no userspace superpage request (it fails
-    on an M1, by a report on Apple's developer forums and OpenJDK's and
-    MySQL's macOS notes; not an Apple document), and its base page is
-    already 16 KB. The 2 MB superpages macOS offers exist on Intel Macs
-    alone. On macOS `large_pages()` stays as it is.
+- **D.7 Search shape: the kernel against its donor on Rarog's evaluation, rebuilt whole in Reckless's form if the reads or the maintainer say so — `R3` investigation, `I1`/`I2`/`V`/`R2` sub-steps.**
+  Added 2026-11-13 from RAR-O08 and
+  `analysis/search_shape_decision_2026-11-13.md` (maintainer decision the
+  same day). Reckless's search, unchanged, on Rarog's evaluation is
+  22.5 ± 7.9 Elo ahead of Rarog's head at equal clock, and it is Phase B's
+  own donor: its search source at `0756957` differs from B.0's snapshot
+  in two lines, neither behaviour. Stockfish dev's search is 88.7 ± 7.7
+  behind Reckless's and level with Stockfish classical's, so the donor
+  stays Reckless and no separate HCE shape is indicated: a kernel in the
+  donor's form is not redone for the network, and its constants are F.6's
+  seeds. The 22.5 bundles tree shape, clock use and the kernel's speed per
+  node; nothing yet says which.
+
+  **Aim.** Two questions. Is Rarog's kernel, which departs from its donor
+  in at least twelve forms and was fitted around them, weaker than the
+  donor's whole form on this evaluation? And do the problems the combined
+  kernel has not solved (D.7.8's list) disappear in the donor's whole
+  form, not in parts of it? The second is a reason for the step in its own
+  right (maintainer, 2026-11-13).
+
+  **Decision rule.** The data decides: D.7.2's reads open the rebuild at
+  +10 Elo or more for the donor at equal nodes, the 95% interval excluding
+  zero. Below that the agent reports the reads with a recommendation, and
+  the maintainer decides after that consultation and may open the rebuild
+  against the rule; the decision and its reason are recorded here.
+
+  **Acceptance.** Equal strength is accepted (maintainer decision
+  2026-11-13): the rebuilt kernel is gated against the head on the
+  loss-permitting bracket, never adopted ungated, and D.7.8's review is
+  the other half of the judgment. Adoption is the maintainer's decision on
+  both.
+
+  **Method.** One cluster (rule 3): the node body, quiescence, the root
+  window and the evaluation wrapper move together behind one switch, the
+  old kernel beside it until adoption. The seeds are the hybrid's own
+  configuration, the one point of known strength. Parity with the hybrid
+  is checked at zero games before any game is played. Donor forms are not
+  tried one at a time on the old kernel: D.6.3, D.6.4, the fail-soft
+  cluster (RAR-R20, RAR-R21) and one-retry aspiration (RAR-S89) lost
+  there. Rarog's own gate-accepted forms that the donor lacks are listed
+  by D.7.0 with a keep-or-drop proposal each and re-read in D.7.8.
+
+  **Carried over unchanged.** The frozen evaluation, board and move
+  generation, the table, time management, Lazy SMP, the root driver, the
+  protocol, tablebases, D.1 to D.5's repairs and D.4's instruments.
+
+  **Invariants.** Table bounds and the mate and tablebase bands; the draw,
+  repetition and rule-50 identities; no allocation per node; the
+  search-path perft; one count per position (D.6.8); the acceptance tests
+  of D.6.17 and D.6.20.
+
+  **Stop rules.** D.7.2 below its bar and no maintainer decision to
+  proceed: D.7.3 to D.7.9 close `NO_CHANGE`. Parity not reached: no games.
+  The gate at H0: the old kernel stays; this is one cluster, so one
+  rejection stops the step.
+
+  **Independence.** A kernel nearer the donor's raises what D.11 must
+  disclose and the weight of the licence question. PROCESS's boundary
+  governs the implementation: architecture and mechanisms cross, constants
+  cross as fitted seeds, the code is Rarog's own.
+    - **D.7.0 Investigation: the inventory of departures, the seeds and the registration of the reads — `R3`.**
+      Every place Rarog's kernel departs from Reckless `0756957`, with file
+      and line on both sides, its unit, the record that chose it and
+      whether a gate accepted it. The verified start is section 5 of the
+      analysis: quiescence's fail-low return and its shape, the null move's
+      population, LMR at the root and in check, the re-search depth, the
+      reductions on unreduced searches, IIR, multi-cut, the extension
+      budget and line bound, aspiration, optimism, upcoming repetition.
+      The seed table from the hybrid's configuration: the evaluation scaled
+      by 2536/1024 into the donor's units, or the constants converted the
+      other way; the investigation chooses and says why. The parity
+      instrument's design. RAR-O09's registration with its predictions.
+      Ends `READY_FOR_IMPLEMENTATION` or `NO_CHANGE`.
+    - **D.7.1 The fixed-match script takes a node budget and a move time per engine — `I1`.**
+      `tools/sprt.ps1`: a node budget and a move time for each engine,
+      beside `-TCA` and `-TCB`. Each is proved live by a smoke in which an
+      absurd value moves the PGN and the score, and the combinations that
+      make no sense are refused.
+    - **D.7.2 RAR-O09: the donor's search against the head at equal nodes, at equal move time and at a long control — `V`.**
+      Reckless's hybrid against the head, both rebuilt on the head after
+      D.6.8: 3,000 games at equal nodes a move (tree shape alone), 3,000 at
+      equal time a move with the bridge's odds (shape and kernel speed),
+      2,000 at `10+0.1` with clocks (whether the surplus holds at a long
+      control). The differences to RAR-O08's match (5) are the shares of
+      clock use and speed. Maintainer-run, about three hours.
+    - **D.7.3 Parity instrument: Rarog and the hybrid on one position set — `I2`.**
+      Nodes to each depth and the rate at which each mechanism fires, on
+      the same positions and the same evaluation; a planted difference
+      must show.
+    - **D.7.4 The kernel in the donor's form, behind one switch — `I2`.**
+      Own code in Rarog's structure, written in D.8's target shape (probes,
+      not interleaved instrumentation). Parity by D.7.3 before any game;
+      debug and release tests, fmt, clippy, the allocation guard and the
+      search-path perft; the old kernel's fingerprint exact with the switch
+      off.
+    - **D.7.5 The unfitted paired run — `V`.**
+      2,000 games against the head (rule 8's screen). Clearly negative with
+      parity passed puts the difference outside the kernel: one diagnosis,
+      then stop.
+    - **D.7.6 The fit — `V`.**
+      Curvature sweep, then SPSA in registered blocks (rule 7c), at most
+      three. The fitted constants are kept only if fitted over unfitted
+      passes SPRT `[0,3]`.
+    - **D.7.7 The gate: the kernel against the head — `V`.**
+      The loss-permitting bracket `[-1.75, 0.25]`, with a `10+0.1` read and
+      a 4T read registered beside it.
+    - **D.7.8 Problem review on the new kernel — `R2`.**
+      Each problem the combined kernel left is asked "is this still an
+      issue?", at zero games where a replay, a fixture or a test answers
+      it: the seldepth chains to the ply cap (RAR-S121's replay; the line
+      bound and the extension budget stay only if the chains return), the
+      root fail-high cascade (RAR-R19 to R21), the won-ending clock test
+      (D.6.20), the root promotion rule (D.6.17), the forms that lost on
+      the combined kernel, and Rarog's own accepted forms from D.7.0's
+      list. The result is a table: gone, still there, or new. It feeds the
+      adoption decision and says which D.6 leaves close, stay or re-open.
+    - **D.7.9 Adoption and checkpoint — `V`, then `I1`.**
+      The maintainer's decision on D.7.7 and D.7.8. On adoption: RAR-O08's
+      matches (2) and (5) re-read on the new head, pooled NPS, conversion,
+      the old kernel and the switch deleted, the fingerprint record
+      updated. An adopted kernel releases as 2.8.0.
 - **D.8 Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — `I1`, `R2` for the root driver.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` §3.7 and §3.8
   (the B.2.0 recipe repeated: `src/` 29,190 lines, in-file tests 23%,
@@ -1199,6 +1336,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   D.2 and D.3 are closed, so nothing here waits: the items run in order, each
   on its own branch. P16, the comment pass, merged into D.5.16 on
   2026-11-05.
+  D.8.6, D.8.7 and D.8.19 are read again after D.7 (2026-11-13): a kernel
+  rebuilt there is written in their target shape.
     - **D.8.1 P0: the census as a tool — `I1`.** Commit the census as `tools/diag/arch_census.py` (planned) with a test
      (masked-source parser, `use` edge graph, public census, shape table,
      instrumentation attribution, duplicate finder); it reproduces the
@@ -1363,6 +1502,119 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   probe reorder (NODE-11 here) read +0.3 ± 3.2 at `10+0.1` with tables
   (8,000 games), a neutral repair, and cut table reads by 70% on six 7–8-man
   endings at depth 18, with 2,285 of 2,286 tablebase wins converted (H29).
+- **D.10 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
+  Renumbered from D.7 on 2026-11-13 (maintainer decision), when the
+  search-shape step took that number.
+  Added 2026-11-02 from the comparison with Reckless in D.2. `PageAllocator`
+  (`src/large_pages.rs`) backs every allocation of at least `THRESHOLD`
+  (512 KB) with 2 MB pages on Windows only: the transposition table and each
+  search thread's correction, continuation and pawn tables. On Linux and
+  macOS those allocations go to the system allocator. Linux backs anonymous
+  memory with transparent huge pages unasked only when the kernel's mode is
+  `always`; in the common `madvise` mode the tables stay on 4 KB pages, and
+  the module's own case applies in full (about 100 MB read at random against
+  a second-level TLB that maps 8 MB of 4 KB pages). Reckless maps its table
+  and its big histories with `mmap` and `madvise(MADV_HUGEPAGE)` on Linux.
+  - **Contract.** On Linux the page allocations are 2 MB aligned and advised
+    with `madvise(MADV_HUGEPAGE)`, behind the same `LargePages` option;
+    nothing is locked and no privilege is needed. `large_pages()` reports
+    what the kernel allows (the mode in
+    `/sys/kernel/mm/transparent_hugepage/enabled`, `never` reading as off).
+    The tables, their contents and the search are unchanged: `bench 13`
+    exact on every platform, and the CI's Linux job builds and tests it.
+  - **Measurement.** The one-thread NPS read by PROCESS's method on a Linux
+    host, with the option on and off in one binary and the kernel's mode
+    recorded (WSL2 on the match host is the host available; its mode is part
+    of the record), and a four-thread cell. A behaviour-neutral speed change
+    closes on that read.
+  - **Order.** On its own. RAR-M79 (2026-11-02) read large pages off 2.7%
+    higher in R than on, inside noise, in a session where the four-thread
+    speed loss was absent; whether they take part in the slow host state
+    is unread (`analysis/d2_audit_2026-11-02.md`). Transparent huge pages
+    lock nothing, so the Linux read stands whatever that answer is, and
+    the scope stays every allocation the Windows path takes.
+  - **macOS: not pursued.** Rarog ships macOS for Apple silicon only
+    (maintainer decision 2026-11-02: no Intel macOS build, universal or
+    separate). Apple silicon has no userspace superpage request (it fails
+    on an M1, by a report on Apple's developer forums and OpenJDK's and
+    MySQL's macOS notes; not an Apple document), and its base page is
+    already 16 KB. The 2 MB superpages macOS offers exist on Intel Macs
+    alone. On macOS `large_pages()` stays as it is.
+- **D.11 Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — `R2`, then `M`.** A
+  small research step with its implementation. Added 2026-10-23 by
+  maintainer decision. E.3.4 does not cut until it closes. Known
+  evidence (`analysis/originality_review_2.6.0_2026-10-22.md`, on the
+  2.6.0 source):
+  - The code is Rarog's own. Raw shared token runs with Reckless cover
+    0.34% of Rarog, against 96% between two Reckless versions.
+  - The evaluation weights are Rarog's own fits, with no Stockfish 11
+    table exact or scaled.
+  - Two groups of donor material were copied unchanged:
+    - Stockfish's time budget: about 17 constants in
+      `src/search/time.rs`, which RAR-R14 and RAR-R15 kept as
+      "Rarog's Stockfish-shaped budget".
+    - Reckless's move ordering, history, correction and TT-cutoff
+      updates: 37 of the 50 hard-coded search constants of 150 or
+      more, with their control flow, adopted at B.2.
+  - The evaluation design is Stockfish 11's.
+  - Fathom (MIT) does the Syzygy probing and is not named.
+  - The README says only "inspiration", and PROCESS's independence
+    boundary says constants cross as refitted seeds. Both are out of
+    step with the shipped code.
+  - The maintainer's move-similarity screen (`tools/diag/sim_test.py`,
+    2,000 positions at 100 ms, 2026-10-23) puts Rarog at 56.4%
+    against Stockfish 11, 57.7% against Stockfish 10 and 54.2%
+    against Reckless. Its row runs 50.6–57.7 across nine engines.
+    The related controls read Stockfish 10–11 67.0% and Houdini 6–Fire
+    68.8%. Rarog plays like an unrelated engine against both donors.
+  - Venue rules:
+    - CCRL, CEGT and SPCC do not judge originality.
+    - TCEC sanctioned code copied *covertly* (Houdini and Fire, 2020).
+    - ICGA rule 2 (2019) requires every code and data source to be
+      named at registration and voids undeclared derivatives.
+
+  The step:
+  1. Rerun `tools/diag/originality_scan.py`,
+     `originality_constants.py` and `originality_eval.py` on the
+     release candidate's source, plus the screen if search or
+     evaluation changed since 2.6.0, so that the disclosure describes
+     2.7.0, not 2.6.0.
+  2. Settle the licence with the maintainer. Reckless is AGPL-3.0,
+     and the closely ported blocks are where a derivative-work
+     argument could be made. The options:
+     - credit Reckless and ask its authors (the maintainer sends);
+     - relicense Rarog as AGPL-3.0-or-later;
+     - rewrite and refit those blocks.
+
+     The maintainer chooses; it is not legal advice.
+  3. Write the disclosure where each fact belongs:
+     - README's Acknowledgements, short and for users, naming
+       Stockfish 11's evaluation design, Reckless's search, history
+       and move ordering with some constants unchanged, Stockfish's
+       time budget, and Fathom;
+     - PROCESS's independence boundary, saying what crossed unchanged
+       and that unchanged material is disclosed;
+     - the review, updated for the release head, which also serves as
+       the donor list for an ICGA-style registration.
+  4. Ship the GPL text and Fathom's MIT notice with the release
+     binaries (`release.yml` publishes bare executables today), with
+     a `CHANGELOG.md` entry if the assets change.
+
+  Falsifier and stop rule: a rerun that finds no group beyond the two
+  above leaves the disclosure as drafted. A new group is added to it,
+  not removed by tuning here. Refitting the copied constants is out of
+  scope: that is a strength experiment that needs its own registration
+  and gate. Closes when the README, PROCESS, the licence decision, the
+  shipped notices and the updated review have landed.
+  Added 2026-11-03: Triumviratus (GPL-3.0) is a third donor, for
+  mechanisms only (PROCESS, *The independence boundary*); nothing from it
+  is in the code on that date. A mechanism from it that ships before the
+  cut is named in the disclosure.
+  Moved from E.3.0 on 2026-11-13 (maintainer decision): the disclosure is
+  a Phase D leaf. The 2.7.0 cut now runs ahead of D.7, so whether the
+  disclosure runs with that cut or the hold is lifted for 2.7.0 is the
+  maintainer's decision at the cut. A kernel rebuilt in Reckless's form
+  (D.7) makes the disclosure heavier for the release after it.
 
 ## Phase E — Classical checkpoint and release
 
@@ -1383,6 +1635,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   The loss table by cell (TT-1, D.4.5's tool) is read in H.3, on the
   network head's games (moved 2026-11-05: a classical head's games describe
   an engine H.3 will not tune).
+  The wider round robin adds Stockfish 15.1 with `Use NNUE` off beside
+  Stockfish 11 (3,568 against the C head's 3,479, RAR-M75): the classical
+  evaluation under a later search, never rated in this pool (2026-11-13).
 - **E.2 Target gate: ≥50% against Critter 1.6a, Houdini 3, Rybka 4.1 and Fritz 16 at 1T and 4T (Rybka 4.1 replaced Rybka 4, 2026-09-19); the binding arm is 1T — `V`.** The pool measurement defined in section 1, at 1T
   and 4T. Met, or not met with the measured shortfall per engine recorded.
   **The binding arm is 1T:** RAR-M46 measured 4T as the easier arm for three
@@ -1408,76 +1663,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   tag-driven flow of **E.3.1**, which also carries the two workflow checks
   this release owed (tag equals version; one fingerprint asserted across the
   matrix) and may land any time earlier.
-    - **E.3.0 Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — `R2`, then `M`.** A
-      small research step with its implementation. Added 2026-10-23 by
-      maintainer decision. E.3.4 does not cut until it closes. Known
-      evidence (`analysis/originality_review_2.6.0_2026-10-22.md`, on the
-      2.6.0 source):
-      - The code is Rarog's own. Raw shared token runs with Reckless cover
-        0.34% of Rarog, against 96% between two Reckless versions.
-      - The evaluation weights are Rarog's own fits, with no Stockfish 11
-        table exact or scaled.
-      - Two groups of donor material were copied unchanged:
-        - Stockfish's time budget: about 17 constants in
-          `src/search/time.rs`, which RAR-R14 and RAR-R15 kept as
-          "Rarog's Stockfish-shaped budget".
-        - Reckless's move ordering, history, correction and TT-cutoff
-          updates: 37 of the 50 hard-coded search constants of 150 or
-          more, with their control flow, adopted at B.2.
-      - The evaluation design is Stockfish 11's.
-      - Fathom (MIT) does the Syzygy probing and is not named.
-      - The README says only "inspiration", and PROCESS's independence
-        boundary says constants cross as refitted seeds. Both are out of
-        step with the shipped code.
-      - The maintainer's move-similarity screen (`tools/diag/sim_test.py`,
-        2,000 positions at 100 ms, 2026-10-23) puts Rarog at 56.4%
-        against Stockfish 11, 57.7% against Stockfish 10 and 54.2%
-        against Reckless. Its row runs 50.6–57.7 across nine engines.
-        The related controls read Stockfish 10–11 67.0% and Houdini 6–Fire
-        68.8%. Rarog plays like an unrelated engine against both donors.
-      - Venue rules:
-        - CCRL, CEGT and SPCC do not judge originality.
-        - TCEC sanctioned code copied *covertly* (Houdini and Fire, 2020).
-        - ICGA rule 2 (2019) requires every code and data source to be
-          named at registration and voids undeclared derivatives.
-
-      The step:
-      1. Rerun `tools/diag/originality_scan.py`,
-         `originality_constants.py` and `originality_eval.py` on the
-         release candidate's source, plus the screen if search or
-         evaluation changed since 2.6.0, so that the disclosure describes
-         2.7.0, not 2.6.0.
-      2. Settle the licence with the maintainer. Reckless is AGPL-3.0,
-         and the closely ported blocks are where a derivative-work
-         argument could be made. The options:
-         - credit Reckless and ask its authors (the maintainer sends);
-         - relicense Rarog as AGPL-3.0-or-later;
-         - rewrite and refit those blocks.
-
-         The maintainer chooses; it is not legal advice.
-      3. Write the disclosure where each fact belongs:
-         - README's Acknowledgements, short and for users, naming
-           Stockfish 11's evaluation design, Reckless's search, history
-           and move ordering with some constants unchanged, Stockfish's
-           time budget, and Fathom;
-         - PROCESS's independence boundary, saying what crossed unchanged
-           and that unchanged material is disclosed;
-         - the review, updated for the release head, which also serves as
-           the donor list for an ICGA-style registration.
-      4. Ship the GPL text and Fathom's MIT notice with the release
-         binaries (`release.yml` publishes bare executables today), with
-         a `CHANGELOG.md` entry if the assets change.
-
-      Falsifier and stop rule: a rerun that finds no group beyond the two
-      above leaves the disclosure as drafted. A new group is added to it,
-      not removed by tuning here. Refitting the copied constants is out of
-      scope: that is a strength experiment that needs its own registration
-      and gate. Closes when the README, PROCESS, the licence decision, the
-      shipped notices and the updated review have landed.
-      Added 2026-11-03: Triumviratus (GPL-3.0) is a third donor, for
-      mechanisms only (PROCESS, *The independence boundary*); nothing from it
-      is in the code on that date. A mechanism from it that ships before the
-      cut is named in the disclosure.
+  **Decision, 2026-11-13 (maintainer):** 2.7.0 is cut from the current
+  head, before D.7, so that the fixes in `[Unreleased]` and the new
+  executables reach users and testers now; a kernel D.7 adopts releases
+  as 2.8.0. The condition is no loss of playing strength against 2.6.0,
+  read by a registered match before the cut: the last read (RAR-M84,
+  2026-11-08, unregistered) had that day's head level with 2.6.0 head to
+  head and 13.6 ± 9.9 Elo lower against the shared field, before D.6.2's
+  nElo +12.2 ± 6.5. GUIDE's holds on the cut (D.6.17's root rule,
+  D.6.20's clock test, D.11's disclosure) stand until the maintainer
+  resolves or lifts each.
     - **E.3.1 Tag-driven release flow — `I1`, DONE 2026-10-05.** `release.yml`
       and `cargo xtask release-check`; 2.5.0 was released through it, nine
       assets at 11,171,726 (run 37284706939). The procedure is
