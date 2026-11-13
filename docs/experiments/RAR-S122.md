@@ -5,6 +5,8 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Date / owner:** registered 2026-11-11, before any game. The run is the
   maintainer's command.
 - **Kind:** a playing-strength gate for a repair, AGENTS' repair case 3.
+- Disposition: retained — kept at the cap 2026-11-11, 12,000 games without a
+  bound, nElo −1.0 ± 6.2; D.6.7 closed, fingerprint 11,477,040.
 - **Inherits:** [RAR-S121](RAR-S121.md), the screen.
   - No search reaches the ply cap at the gate games' node counts. 0.109%
     reach it at ten-thirds of them, and 1.962% at twenty times (22 of 60

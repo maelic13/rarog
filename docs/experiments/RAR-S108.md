@@ -7,6 +7,8 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   close the item, is appended here before any game and is the maintainer's
   command.
 - **Kind:** zero-game screen for a strength candidate.
+- Disposition: accepted — H1 2026-11-10 at 11,108 games, nElo +12.2 ± 6.5;
+  D.6.2 closed, fingerprint 13,038,236.
 - **Baseline:** `d6` at `bc90ebf`, engine source `72c4e60`, bench 11,946,003 /
   EBF 2.547.
 - **Research question:** how often does quiescence stand pat, or fail to beat

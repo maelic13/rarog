@@ -8,6 +8,8 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Kind:** zero-game screen, then AGENTS' repair case 2 if the screen does not
   close the item: a classification repair that moves the fingerprint, expected
   near zero, where a small loss is acceptable for correctness.
+- Disposition: retained — kept 2026-11-10 by its harm rule: nElo −4.9 ± 15.2
+  against −13; D.6.1 closed, fingerprint 11,946,003.
 - **Baseline:** `d6` at `5c6fbd6`, the same engine source as `b202174`, bench
   15,625,852 / EBF 2.563. The candidate is named when it is built.
 - **Research question:** does castling's double classification reach search

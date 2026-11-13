@@ -5,7 +5,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Date / owner:** registered 2026-11-11, before any of its cap counts was
   read. The read is the agent's (deterministic, no games).
 - **Kind:** a zero-game screen for a correctness defect at the search's edge.
-- Disposition: research — read 2026-11-11: READY_FOR_IMPLEMENTATION, the form "bound the lines";
+- Disposition: observation — read 2026-11-11: READY_FOR_IMPLEMENTATION, the form "bound the lines";
   the cap is reached in 1.96% of searches at `60+0.6`'s node counts (none at `3+0.03`'s), and
   depth gained outside the extension budget carries 88% of those lines' excess plies.
 - **Baseline:** `d6` at `01b3d2b`, engine behaviour of `ee0b3e4`, bench

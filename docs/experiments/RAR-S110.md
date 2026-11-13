@@ -8,6 +8,9 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   the maintainer's command.
 - **Kind:** a zero-game screen for one candidate cluster: D.6.3's two child types
   and D.6.4's fail-low TT move.
+- Disposition: observation — read 2026-11-10: back to research, because three
+  bench positions carry 56.5% of the coupling; the null half leaves the cluster,
+  ProbCut stays by its history-reward channel.
 - **Baseline:** `d6` at `44f14d6`, engine source `ee0b3e4`, bench 13,038,236 /
   EBF 2.540.
 - **Inherits** [RAR-S109](RAR-S109.md) and its correction (`44f14d6`):

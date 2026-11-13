@@ -7,6 +7,9 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   no games). A gate, if the item ends `READY_FOR_IMPLEMENTATION`, is registered
   with the implementation, before any game, and is the maintainer's command.
 - **Kind:** a zero-game readiness read for one repair candidate.
+- Disposition: observation — read 2026-11-11: ready for implementation, after
+  D.6.3's gate; the change searches 0.870 of the source's interior nodes
+  game-like, and no tactic is lost.
 - **Baseline:** `d6` at `e23fe05`, engine source `ee0b3e4`, bench 13,038,236 /
   EBF 2.540.
 - **Inherits:**

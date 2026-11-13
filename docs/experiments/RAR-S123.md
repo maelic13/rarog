@@ -5,6 +5,9 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Date / owner:** registered 2026-11-12, before its counts were read. The
   read is the agent's: no games and no timing.
 - **Kind:** a zero-game readiness screen for a repair to a counting contract.
+- Disposition: observation — read 2026-11-12: 16.1% of `td.nodes` counts the
+  same position again, so reported `nps` reads about 19% high; D.6.8 ready,
+  gate case 2.
 - **Baseline:** `d6` at `5f9a4a2`, engine behaviour of `aee0b3b`, bench
   11,477,040 / EBF 2.537.
 

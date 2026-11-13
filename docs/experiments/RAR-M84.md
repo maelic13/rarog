@@ -21,6 +21,9 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
     `1cf43864…b630`, Critter 1.6a `a8988ac9…63d2`.
 - **Kind:** an observation, not a measurement anyone gates on. Nothing was
   registered and no prediction was frozen, so it accepts and rejects nothing.
+- Disposition: observation — played 2026-11-08/09, unregistered: head to head
+  level (−4.8 ± 14.1), the head 13.6 ± 9.9 below 2.6.0 against the shared field;
+  it accepts and rejects nothing.
 
 ## The run
 

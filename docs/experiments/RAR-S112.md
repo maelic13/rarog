@@ -7,6 +7,8 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   item ends `READY_FOR_IMPLEMENTATION`, is registered with the implementation,
   before any game, and is the maintainer's command.
 - **Kind:** a zero-game readiness read for one repair candidate.
+- Disposition: observation — read 2026-11-11: ready for implementation; the
+  children fail high 2.2% fresh and 2.9% game-like, and no tactic is lost at 100k.
 - **Baseline:** `d6` at `e23fe05`, engine source `ee0b3e4`, bench 13,038,236 /
   EBF 2.540.
 - **Inherits:**

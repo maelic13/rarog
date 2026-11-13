@@ -8,6 +8,8 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Kind:** a zero-game read. It is the fresh-process per-position read that
   [RAR-S110](RAR-S110.md)'s C4 rule puts before any characterisation of the
   coupling.
+- Disposition: observation — read 2026-11-10: the coupling is not general
+  without shared state; back to research as two separable repairs.
 - **Baseline:** `d6` at `b17bb30`, engine source `ee0b3e4`, bench 13,038,236 /
   EBF 2.540.
 - **Inherits** RAR-S110, which is history and is not reopened:

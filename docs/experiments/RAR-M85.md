@@ -7,6 +7,9 @@ Indexed under *2. Measurement, harness and tuning* in [`docs/EXPERIMENTS.md`](..
   and valid reason and never because a candidate failed it.
 - **Kind:** a review of an instrument, from records and one read of existing
   files. No engine run, no game.
+- Disposition: retained — decided 2026-11-11: the canary rule is kept as a
+  diagnostic; a later settle never holds a candidate from its gate, and a lost
+  tactic stops one only with WAC under its floor.
 - **Question:** what do the canary rule's two legs measure, and what may hold a
   candidate before its gate?
 - **Why now:** [RAR-S109](RAR-S109.md) and [RAR-S110](RAR-S110.md) held D.6.3

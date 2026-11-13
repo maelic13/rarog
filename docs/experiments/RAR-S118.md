@@ -8,7 +8,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   stale-state defect. It can close either `NO_CHANGE`. It cannot make the
   estimate change ready: that needs a direction read registered after this
   one (*Readiness needs a direction*, the ledger's *Repeated lessons*).
-- Disposition: research — read 2026-11-11: LDSE would fire at 23.8% of exclusion nodes
+- Disposition: observation — read 2026-11-11: LDSE would fire at 23.8% of exclusion nodes
   under the plain estimate with no singular outcome moving; a direction read is next.
   The re-entry rewrite closes `NO_CHANGE`.
 - **Baseline:** `d6` at `9df630a`, engine behaviour of `ee0b3e4`, bench

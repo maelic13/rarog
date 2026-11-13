@@ -8,6 +8,9 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   maintainer's command.
 - **Kind:** a zero-game screen for two repair candidates, read together because
   they share a signal (PLAN's register: D.6.3 is screened with D.6.4).
+- Disposition: observation — read 2026-11-10: both items held in research by
+  the canary rule; together they search 30% fewer nodes, 34% below their
+  separate effects, so they are one cluster.
 - **Baseline:** `d6` at `dcf9058`, engine source `ee0b3e4`, bench 13,038,236 /
   EBF 2.540.
 - **Research questions:** do the children Rarog types `cut_node = true` at the
