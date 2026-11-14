@@ -417,8 +417,13 @@ D.6.28, and inputs to D.7.0).
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11 | RESEARCH | R2 | The originality disclosure, moved from E.3.0; its hold is lifted for 2.7.0 (maintainer decision 2026-11-13) and stands for the release after it |
+| D.12.0 | RESEARCH | R3 | Added 2026-11-14 (maintainer: Basilisk's findings are hints, not Rarog's best answer); not started: Rarog's own board interactions mapped and its options ranked before any of D.12's leaves runs |
 | D.12.1 | RESEARCH | R2 | Added 2026-11-14 (maintainer: the board revisited in depth); not started: the contract audit and the instruments, Basilisk's cross-engine harness reused; D.7 keeps Rarog's board, so nothing waits for D.7 |
+| D.12.1.1 | RESEARCH | I2 | Added 2026-11-14 from Basilisk's board findings; after D.12.0, which may reshape it: the search replay with its verify mode and stub control, and the engine screen calibrated on C.12's pairs |
+| D.12.1.2 | RESEARCH | V | After D.12.1.1: SEE asks and capture generations repeated at a node, counted on its trace; a card, if any, waits for the decision on D.7.3 to D.7.9 |
 | D.12.2 | RESEARCH | R2 | After D.12.1: each component against Stockfish 19, classical Stockfish, Basilisk, Reckless and Triumviratus, Basilisk's B.7.2 leads its first inputs; its frozen handoff is D.12.3's contract |
+| D.12.2.1 | RESEARCH | R2 | After D.12.1.1: SEE's king-legality test from aligned sliders, Rarog's contract kept exactly; fixtures first; stops at the replay under its floor |
+| D.12.2.2 | RESEARCH | I1 | After D.12.1.1: unmake restoring the derived keys from its record instead of recomputing them; stops at the replay under its floor |
 | D.12.3 | RESEARCH | I2 | After D.12.2: the accepted components, one commit each, behind the contract, exact fingerprint while the generation order is unchanged |
 | D.12.4 | RESEARCH | V | After D.12.3: pooled-PGO NPS of the rebuilt board, the microbenchmark per component beside it; a component that does not pay returns to Rarog's form |
 
@@ -1979,8 +1984,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
 - **D.12 Board review and rebuild: the contract audited, each component read against the donors' boards, rebuilt where another form measures better — `R2`, then `I2`/`V`.**
   Added 2026-11-14 (maintainer: the board implementation is revisited in
   depth), on the model of Basilisk's B.7 (audit and instruments, review,
-  rebuild, speed read). Board work is 24% of the time at `bench 13`
-  (RAR-M48), and the board is what D.7's kernel, should it land, and F.1's
+  rebuild, speed read). Board work is about 22% of the time at
+  `bench 13` in the last profile (generation 9.6%, SEE 7.1%, make/unmake
+  4.9%; `analysis/c12_speed_review_2026-10-18.md`; corrected 2026-11-14
+  from a 24% cited to RAR-M48, which holds no share), and the board is
+  what D.7's kernel, should it land, and F.1's
   board events are built on; D.7 keeps Rarog's board, so this step does
   not wait for it. Rarog's form stays wherever it measures better.
   D.8.4 and D.8.5 (geometry into one module, the split of
@@ -1988,7 +1996,57 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   rebases, and neither changes behaviour. Triumviratus's board leads
   (TB-4 to TB-8), deferred to H.4, are read here first; H.4 keeps what
   this step does not take. Not started; no work before the maintainer
-  opens it.
+  opens it. Basilisk's board findings for Rarog (imported 2026-11-14 from
+  Basilisk's B.7, `analysis/basilisk_board_handoff_2026-11-14.md`, placed
+  against Rarog's records in
+  `analysis/d12_basilisk_board_placement_2026-11-14.md`) add four leaves,
+  run in this order after D.12.0: D.12.1.1, D.12.1.2, D.12.2.1,
+  D.12.2.2. Their figures are Basilisk's priors; nothing is adopted
+  without Rarog's own registered read.
+    - **D.12.0 Rarog's own board interactions, and whether Basilisk's leads are Rarog's best options — `R3`.**
+      Added 2026-11-14 (maintainer: what worked in Basilisk is a hint,
+      not the best solution for Rarog). Research only, before any of
+      D.12's leaves runs; nothing is built or timed. It starts from
+      Rarog's source and records, not from the import.
+      *The interaction map.* For each board component, its producers,
+      consumers and shared signals inside Rarog, read in source: SEE's
+      callers and thresholds (the picker's good-capture split and its
+      divisor, the node's pruning thresholds, quiescence's scoring,
+      threshold and bad-capture floor, ProbCut) and what they do with
+      an answer; the per-node `CheckInfo`, `Threats` and pinned set and
+      every reader of each (generation, staged king moves, quiet
+      scoring, `gives_check_with`, make's check hint); the derived keys
+      and their consumers (the pawn cache, the correction tables, the TT
+      prefetch's key prediction); the undo record and the history
+      stack; generation order as an input to the fingerprint, the
+      picker's partition and the tree. Where a change to one component
+      moves another's population, cost or answer, it says so, and which
+      changes stay behaviour-neutral by construction.
+      *The options.* For each component, Rarog's candidates ranked by
+      an upper bound from Rarog's own profile and counts (C.12's head
+      profile and the `diag` counters; a fresh profile, if the bounds
+      need one, is prepared and handed to the maintainer), with Rarog's
+      recorded results (RAR-M31 to RAR-M39, RAR-M43, RAR-M44, C.12's
+      dropped list) and every donor's form (Stockfish, Reckless,
+      Triumviratus, Basilisk) as candidates, none preferred. In
+      particular: generation, the largest board share (9.6%) and
+      Rarog's widest measured gap to Basilisk (29%), which none of the
+      four leaves addresses; the check queries at about three
+      `gives_check` calls a node; and whether board work is the right
+      target at all against move ordering (20.7%) and the node body
+      (17.2%).
+      *Output.* The map and the ranked list; for each of D.12.1.1,
+      D.12.1.2, D.12.2.1 and D.12.2.2 a decision (keep, reshape or
+      drop) with its reason; any better Rarog option as a new leaf with
+      the same card (mechanism, interactions, invariants, size,
+      falsifier); and what the replay must record for the options kept.
+      A leaf it reshapes gets its prediction rewritten here, before any
+      exposure, the change recorded beside the old one.
+      *Stop rule:* an option whose bound is under the pooled read's
+      resolution (about 0.4% at step 1) is listed, not proposed. If
+      nothing on the board clears it, D.12's speed leaves close
+      `NO_CHANGE` and D.12 keeps only the contract work (D.12.1) and the
+      rebuild's safety net.
     - **D.12.1 Board contract audit and instruments — `R2`.** The
       safety net D.12.3 rebuilds behind. Inventory first what exists and
       what each check covers: `tests/board_correctness.rs`,
@@ -2023,6 +2081,83 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `gives_check`, check-information builds) counted by a throwaway
       build at its bench, and the search's fast `gives_check_with`,
       exposed under a bench-only feature.
+        - **D.12.1.1 Search replay with a verify mode and a stub control, and the engine screen — `I2`.**
+          The instrument of the import's §2, built for Rarog. A
+          `board-trace` feature records every board operation the search
+          makes on its own board, in order, with its result: make with
+          its hint, unmake, the null move and its unmake, each generation
+          stage with its moves in order, `see_ge` and
+          `see_ge_quiet_aware` with their thresholds, `gives_check_with`,
+          the check-information and threat builds, the TT-move legality
+          test, the key prediction for the prefetch and the draw tests.
+          A replayer, in its own crate under `tools/` with a path
+          dependency so the engine binary is untouched, runs a trace on
+          one board and nothing else. `--verify` compares every recorded
+          result: the five keys and the checkers after each make and
+          unmake, each SEE, check and legality answer, each list's moves
+          in order. `--stub` runs the same records and dispatch with
+          empty out-of-line calls: board cost is the timed run less the
+          stub, and the two bracket it. An A/B of two boards on one trace
+          needs no correction. The timing driver alternates binaries on
+          one pinned CPU, refuses a busy host by the harness's measure
+          (`tools/harness_common.ps1`) and archives hashes and every
+          sample. The engine screen is C.12's `quickscreen.py` kept as a
+          tracked tool: plain release builds, `bench 13` on one pinned
+          CPU, 16 rounds with the order reversed on odd rounds, the
+          per-round time ratio, the fingerprint asserted on every run.
+          *Invariants:* the trace build reproduces the fingerprint, since
+          it observes and changes nothing (`diag`'s contract); the
+          recorder allocates, so it is never in a measured binary, and
+          that exception to AGENTS' per-node rule is stated where it is
+          built; verify fails at once on a planted wrong result in each
+          record class; `--all-features` compiles it.
+          *Size:* about ten records a node at Rarog's mix, near 90
+          million for `bench 13`, so timing uses a reduced trace (about
+          40 roots at a node cap) whose rates a node are checked against
+          the full trace's; traces are regenerated on demand, never
+          committed.
+          *Calibration and falsifier:* the replay's rates a node must
+          equal the `diag` counters' at the same revision, and its
+          classes must place within C.12's profile shares (generation,
+          SEE, make/unmake) as Basilisk's placed within its profile. The
+          screen is read once on two of C.12's recorded pairs: `acd767e`
+          with `09bb98c` (pooled +2.14%) and `081041c` (pooled +4.24%,
+          which C.12's non-PGO screen read at +0.1%). A replay that cannot
+          place its classes inside the profile prices nothing; a screen
+          that misranks the first pair screens nothing, and a miss on the
+          second records again that branch-layout changes need PGO.
+          Replay and screen choose candidates; PROCESS's pooled read
+          (`tools/nps_read.py`) decides, and nothing replaces it. Timed
+          reads wait for an idle host the maintainer confirms; anything
+          past a few minutes is handed over. *Retries nothing.*
+        - **D.12.1.2 Two counts on the search's trace: SEE asks and capture generations repeated at a node — `V`.**
+          The import's §5 on Rarog's own full `bench 13` trace
+          (D.12.1.1); deterministic, no idle host. A node is the position
+          key and ply between a make and its unmake. (1) For `see_ge` and
+          `see_ge_quiet_aware` apart (they differ on quiet moves), and by
+          call site (the picker's good-capture split, the node's pruning
+          threshold, quiescence's scoring, threshold and bad-capture
+          floor, ProbCut), the share of calls about a move already asked
+          at the node with another threshold, and the share an earlier
+          answer settles: `see_ge` is `see >= t` (C.12's `seecheck`,
+          172,081 moves × 161 thresholds, and `tests/see_contract.rs`'s
+          threshold walks), so a yes at `t` answers every threshold at or
+          below it and a no every one at or above. (2) The share of noisy
+          and capture generations repeated at the node (ProbCut's
+          `generate_legal_noisy_into`, then the picker's capture stage).
+          *Use:* whether a per-node SEE answer cache, or ProbCut's
+          captures handed to the picker, earns a research card. The bound
+          is the settled share of SEE's 7.1% of the profile and the
+          repeated share of capture generation's part of 9.6%.
+          *Prediction, frozen here:* repeated SEE asks 20% to 40%
+          (quiescence can ask three times about one capture), settled 8%
+          to 20%; repeated capture generations 3% to 10%.
+          *Stop rule:* no card when a bound is under 0.5% of search time.
+          A card is a picker change and waits for the maintainer's
+          decision on D.7.3 to D.7.9, since D.7's kernel would replace
+          these call sites. *Retries nothing:* C.12's one full SEE per
+          tactical move answering every threshold (−0.24%) is another
+          form, which a card would have to beat.
     - **D.12.2 Board review against Stockfish, Basilisk, Reckless and Triumviratus — `R2`.**
       A packet that reads each component against Stockfish 19's
       (`Position` and `StateInfo`), classical Stockfish's, Basilisk's,
@@ -2076,11 +2211,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
          two x-ray slider lookups a line type, bulk pawn shifts) against
          Rarog's. RAR-M44(c) holds: a 12.7% generator gain on the bench
          measured −0.55% pooled-PGO, so only removed work counts and
-         pooled NPS decides.
+         pooled NPS decides. Basilisk's replay read the generator's pins
+         from aligned sliders at −0.5 ns a node, within noise: RAR-M31
+         and C.12's −0.66% stand, and that form is not read again.
       2. *Make and unmake* is the fastest of the five: no lead. Keep the
-         hinted make and the compact undo record; Basilisk's B.7.3 is
-         copying it (Basilisk's make recomputes checkers its search
-         already knew).
+         hinted make; whether the compact undo record should carry the
+         derived keys is D.12.2.2. (Superseded 2026-11-14 by Basilisk's
+         frontier review: the hint is not where make's time is, Basilisk
+         did not copy it, and its nearest form read −0.74%.)
       3. *The capture generator:* `generate_legal_noisy_into` yields 885
          of the 927 legal tactical moves; the 42 non-capturing rook,
          bishop and knight underpromotions go to the quiet stage, as in
@@ -2100,14 +2238,100 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
          (D.12.1); per-operation times alone mislead. Stockfish halves
          `gives_check` and SEE with check information stored at every
          make but pays two to three times more a make; at Basilisk's mix
-         that trade loses (65.8 against 71.7 ns a node), and Rarog's mix
-         may differ.
+         the trade is a wash (cheaper queries save 17.0 ns a node, the
+         dearer make costs 16.8; superseded 2026-11-14, first read as a
+         loss from 65.8 against 71.7), and Rarog's mix may differ.
       7. *Stockfish's two boards as references:* Stockfish 19
          (`edb0d9db`), whose make writes the network's dirty-piece, threat
          and pawn-pair records, was 26% dearer a node than Basilisk;
          classical Stockfish (`9587eeeb`, its last HCE version) 9%. When
          Rarog adds network make records (F.1), price them with this
          harness against Stockfish 19's form.
+        - **D.12.2.1 SEE's king-legality test from aligned sliders — `R2`.**
+          After D.12.1.1 (its verify mode), not the rest of D.12.1.
+          *Mechanism.* `see_recapturer` tests each selected candidate
+          with a full `attackers_to_color` on its king under the exchange
+          occupancy. For a candidate other than the king, every attacker
+          that test can find off the target is a slider on one of the
+          king's empty-board lines: a leaper's or the king's attack on it
+          could come only from the target, which is excluded, or from a
+          check the root move had to resolve. So the test equals: no
+          enemy bishop, rook or queen in the exchange occupancy, off the
+          target, on a line of its kind from the king, with nothing of
+          that occupancy between them but the candidate. That covers the
+          pin (the candidate alone between) and a check the previous
+          capture uncovered (nothing between), which Basilisk's pin-only
+          form does not refuse. Two 64-entry line tables and a
+          between-squares mask a sniper; the king's own recapture keeps
+          the full test. It reads the occupancy of the moment, as now, so
+          the stale-pin defect 4.11b.5 repaired cannot return.
+          *Touches:* `Board::see_recapturer` only; SEE's callers, values
+          and exchange loop are unchanged.
+          *Invariants:* every SEE answer equals the current form's: a
+          debug check of the new against the old on every call (TM-10),
+          D.12.1.1's verify on the whole trace, `tests/see_contract.rs`
+          (the external fixtures and the threshold walks),
+          `tests/see_pins.rs` (the legal-exchange oracle) and the exact
+          fingerprint.
+          *Fixtures first:* oracle-checked positions that separate the
+          two contracts (a recapture refused because the previous capture
+          uncovered a check; a root move that resolves a check by capture
+          or interposition), shown able to fail: a pin-only form fails
+          the first, the current form and the candidate pass all. A
+          counterexample on any fixture or record returns the leaf to
+          RESEARCH with it.
+          *Size, frozen here:* the legality test cost 8.07% of the SEE
+          microbenchmark when 4.11b.5 added it (RAR-M43) and SEE is 7.1%
+          of the profile, so removing the test outright is worth about
+          0.6% of search time, and its replacement is not free.
+          Prediction: pooled-PGO NPS +0.1% to +0.6%. Basilisk's +1.56%
+          (non-PGO) removed a pin array, its filter loop and a departure
+          test, none of which Rarog has.
+          *Falsifier and stop rule:* the replay A/B on the SEE records.
+          A gain under 0.25% of the engine's time a node (the replay's ns
+          a node against `bench 13`'s) stops it `NO_CHANGE` with no
+          engine build; the floor sits under the pooled rule's +0.5%
+          because the replay under-read both of Basilisk's engine gains
+          (4.3 against 6.9 ns, 2.1 against 8.2). Above it, the screen,
+          then PROCESS's two-step pooled read, handed to the maintainer,
+          which decides.
+          *Retries:* not RAR-M35 (the carried attacker set) but the
+          target its lesson named, the per-candidate king-legality test;
+          not C.12's superset pre-test (+0.08%), a form that kept the
+          test. RAR-M34's reopening rule is not engaged, since nothing is
+          shared. No recorded trigger forbids it.
+        - **D.12.2.2 Unmake restoring the derived keys from its record — `I1`.**
+          After D.12.1.1 (its verify mode).
+          *Mechanism.* Unmake already restores the main key, castling,
+          the en-passant square, both clocks and the checkers from
+          `UnmakeInfo`, and discards no work. It recomputes the four
+          derived keys (pawn, minor, both non-pawn) through `add_piece`,
+          `remove_piece` and `move_piece`: a Zobrist load and the masked
+          XORs per piece change, two or three a move. The candidate
+          stores the four keys in the record at make (32 bytes, the
+          record 24 → 56) and gives unmake board-only forms of the three
+          helpers.
+          *Touches:* `UnmakeInfo`, `make_move_inner`, `unmake_move` and
+          the helpers' unmake forms; the null move is unchanged.
+          *Invariants:* every derived key equal after each unmake
+          (`tests/board_differential.rs` rebuilds every derived field;
+          D.12.1.1's verify on the whole trace) and the exact
+          fingerprint. The `UnmakeInfo <= 24` guard moves only in its own
+          commit with this leaf's measurement; RAR-M39's argument was a
+          footprint one, and a 128-ply stack of 56 bytes is 7 KiB, still
+          in L1.
+          *Size, frozen here:* make/unmake is 4.9% of the profile, and
+          the derived keys are a part of unmake's part. Prediction:
+          pooled-PGO NPS −0.2% to +0.6%. Basilisk's +1.86% (non-PGO)
+          removed key updates its unmake overwrote afterwards, work
+          Rarog does not do; Triumviratus's TB-5 copy (keys, fifty-move
+          counter and occupancies, 64 bytes) read −0.61% of cycles there.
+          *Falsifier and stop rule:* the replay A/B on the make and
+          unmake records, by D.12.2.1's floor and path; make's added
+          stores count against unmake's saving.
+          *Retries:* RAR-M39's footprint decision, whose guard names
+          growth as the condition for re-checking it, and TB-5, which
+          D.12 reads before H.4. `acd767e`'s masked key toggles stay.
     - **D.12.3 Rebuild behind the board contract — `I2`.** D.12.2's
       accepted components, one commit each, each passing D.12.1's
       contract and D.4's search-path perft and keeping the exact

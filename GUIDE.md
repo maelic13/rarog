@@ -100,8 +100,13 @@ field, about 3,475 on CCRL's Blitz scale.
 - [ ] **D.10** Large pages on Linux: transparent huge pages for the big tables — **READY_FOR_IMPLEMENTATION / I1**
 - [ ] **D.11** Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — **RESEARCH / R2**
 - [ ] **D.12** Board review and rebuild: the contract audited, each component read against the donors' boards, rebuilt where another form measures better — **R2**
+    - [ ] **D.12.0** Rarog's own board interactions, and whether Basilisk's leads are Rarog's best options — **RESEARCH / R3**
     - [ ] **D.12.1** Board contract audit and instruments — **RESEARCH / R2**
+        - [ ] **D.12.1.1** Search replay with a verify mode and a stub control, and the engine screen — **RESEARCH / I2**
+        - [ ] **D.12.1.2** Two counts on the search's trace: SEE asks and capture generations repeated at a node — **RESEARCH / V**
     - [ ] **D.12.2** Board review against Stockfish, Basilisk, Reckless and Triumviratus — **RESEARCH / R2**
+        - [ ] **D.12.2.1** SEE's king-legality test from aligned sliders — **RESEARCH / R2**
+        - [ ] **D.12.2.2** Unmake restoring the derived keys from its record — **RESEARCH / I1**
     - [ ] **D.12.3** Rebuild behind the board contract — **RESEARCH / I2**
     - [ ] **D.12.4** Board speed read and gate — **RESEARCH / V**
 
