@@ -443,6 +443,9 @@ if ($perEngine) {
 } else {
     $tcLabel = "$($limitA.Arg) ($($labelOf[$limitA.Kind]))"
 }
+# A node budget is read back from the PGN: each move's reported node count
+# (`n=`) shows the budget bound, and against which side's limit.
+$pgnNodes = @(if ($limitA.Kind -eq 'nodes') { 'nodes=true' })
 $tcArgsA = @(if ($perEngine) { $limitA.Arg })
 $tcArgsB = @(if ($perEngine) { $limitB.Arg })
 $tcArgsEach = @(if (-not $perEngine) { $limitA.Arg })
@@ -634,7 +637,7 @@ $dropNoise = {
     -ratinginterval 20 `
     @sprtArgs `
     @adjudicationArgs `
-    -pgnout "file=$pgnOut" `
+    -pgnout "file=$pgnOut" @pgnNodes `
     -output format=fastchess 2>&1 |    # console ticker format (not the PGN path)
     Tee-Object -FilePath $logOut |
     Where-Object { -not (& $dropNoise $_) }

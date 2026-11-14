@@ -45,7 +45,25 @@ revision being measured, then with `RUSTFLAGS="-C target-cpu=native"`:
 `cargo pgo build -- --no-default-features`, run the instrumented binary's
 `bench`, `cargo pgo optimize build -- --no-default-features`. Syzygy is left
 out because Fathom's C needs the MSVC headers and the reads play without
-tablebases.
+tablebases. The patch links `D:/code/rarog-oracle`: recreate it as a detached
+worktree of the Rarog revision being measured
+(`git worktree add --detach D:/code/rarog-oracle <rev>`).
+
+Reckless's counting twin (RAR-O09): the same tree with
+`reckless-0756957-rarog-hce-count.patch` applied on top, built the same
+way. It counts the null moves it makes and prints
+`info string nullmoves <N> nodes <M>` before `bestmove`; it is never
+played, and its `bench` must report the node count of the plain hybrid.
+
+## Reading the limits from a match
+
+`pgn_limits.py` reads a fastchess PGN: games and terminations, each
+engine's mean time a move and the ratio between the two named engines,
+and, in a node-budget match (where `tools/sprt.ps1` records each move's
+reported nodes as `n=`), the largest count and the moves above a budget
+plus a tolerance:
+
+    python -I tools/oracle-hybrids/pgn_limits.py <games.pgn> <A>[=<budget>] <B>[=<budget>] [--tolerance 1]
 
 Stockfish dev: clone `def601cc`, `git apply` the patch, then in MSYS2's
 MinGW64 shell `make -j profile-build ARCH=x86-64-bmi2 COMP=mingw` in `src/`
