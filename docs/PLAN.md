@@ -1655,8 +1655,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           by the same reference; each evaluation's cost a call; and
           Stockfish's classical evaluation against Rarog's in one search;
           then four fixed matches (the start pair and the programmes'
-          ends, each at `3+0.03` and at 150,000 nodes) and RAR-O10's
-          match (c). One night command, the maintainer's. Registration,
+          ends, each at `3+0.03` and at 150,000 nodes), RAR-O10's match
+          (c), and Stockfish dev's search on Rarog's evaluation at equal
+          work (RAR-O09's form for RAR-O08's `sfdev-hce`). One night
+          command, the maintainer's. Registration,
           frozen use and command: `docs/experiments/RAR-O11.md`.
         - **D.7.2.3 The two search programmes compared from their ledgers — `R2`.**
           Added 2026-11-14 (maintainer request). Research only, read-only
