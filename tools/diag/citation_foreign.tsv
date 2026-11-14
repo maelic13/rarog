@@ -27,6 +27,7 @@
 5e539523	Colosseum tournament ID (RAR-M45)
 66638ae04bbce4d1ffdecfcf19fd7d65ce88e5f7	Basilisk initial snapshot commit
 7551803d287e404cbc746b2e3ba743c463a8b80c	Basilisk follow-up snapshot commit
+5f61c94	Basilisk commit: the root rebuild and the joint search tune (RAR-O10)
 75d38ad	GyatsoChess commit
 7cdd5e89	Stockfish master commit of 2026-11-06 (the promotion-generation reference of RAR-S108)
 8791a27e	Colosseum tournament ID (RAR-M57)
@@ -34,6 +35,7 @@
 8fa63cc	Colosseum cli-v0.5.0 revision (the pinned runner since 2026-11-01)
 91b56c2	Reckless commit of the binary RAR-M20 measured
 9587eeeb	Stockfish commit (the C.0 donor instrument)
+edb0d9db	Stockfish 19 commit (Basilisk's B.7.2 board harness, PLAN D.12.2)
 9587eeeb5ed29f834d4f956b92e0e732877c47a7	Stockfish commit (the C.0 donor instrument, full)
 def601cc	Stockfish commit (2026-11-10, RAR-O08's Stockfish dev hybrid)
 9a8dd81	Stockfish commit (position-state reading)

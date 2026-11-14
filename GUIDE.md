@@ -99,6 +99,11 @@ field, about 3,475 on CCRL's Blitz scale.
 - [ ] **D.9** Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — **RESEARCH / R2**
 - [ ] **D.10** Large pages on Linux: transparent huge pages for the big tables — **READY_FOR_IMPLEMENTATION / I1**
 - [ ] **D.11** Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — **RESEARCH / R2**
+- [ ] **D.12** Board review and rebuild: the contract audited, each component read against the donors' boards, rebuilt where another form measures better — **R2**
+    - [ ] **D.12.1** Board contract audit and instruments — **RESEARCH / R2**
+    - [ ] **D.12.2** Board review against Stockfish, Basilisk, Reckless and Triumviratus — **RESEARCH / R2**
+    - [ ] **D.12.3** Rebuild behind the board contract — **RESEARCH / I2**
+    - [ ] **D.12.4** Board speed read and gate — **RESEARCH / V**
 
 ## Phase E — Classical checkpoint and release
 

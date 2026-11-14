@@ -417,6 +417,10 @@ D.6.28, and inputs to D.7.0).
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11 | RESEARCH | R2 | The originality disclosure, moved from E.3.0; its hold is lifted for 2.7.0 (maintainer decision 2026-11-13) and stands for the release after it |
+| D.12.1 | RESEARCH | R2 | Added 2026-11-14 (maintainer: the board revisited in depth); not started: the contract audit and the instruments, Basilisk's cross-engine harness reused; D.7 keeps Rarog's board, so nothing waits for D.7 |
+| D.12.2 | RESEARCH | R2 | After D.12.1: each component against Stockfish 19, classical Stockfish, Basilisk, Reckless and Triumviratus, Basilisk's B.7.2 leads its first inputs; its frozen handoff is D.12.3's contract |
+| D.12.3 | RESEARCH | I2 | After D.12.2: the accepted components, one commit each, behind the contract, exact fingerprint while the generation order is unchanged |
+| D.12.4 | RESEARCH | V | After D.12.3: pooled-PGO NPS of the rebuilt board, the microbenchmark per component beside it; a component that does not pay returns to Rarog's form |
 
 ## Phase D — Clock, threads, robustness
 
@@ -1972,6 +1976,155 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   notices, and the disclosure closes before the release after it. A
   kernel rebuilt in Reckless's form (D.7) makes it heavier for that
   release.
+- **D.12 Board review and rebuild: the contract audited, each component read against the donors' boards, rebuilt where another form measures better — `R2`, then `I2`/`V`.**
+  Added 2026-11-14 (maintainer: the board implementation is revisited in
+  depth), on the model of Basilisk's B.7 (audit and instruments, review,
+  rebuild, speed read). Board work is 24% of the time at `bench 13`
+  (RAR-M48), and the board is what D.7's kernel, should it land, and F.1's
+  board events are built on; D.7 keeps Rarog's board, so this step does
+  not wait for it. Rarog's form stays wherever it measures better.
+  D.8.4 and D.8.5 (geometry into one module, the split of
+  `board/board.rs`) move the same code: whichever lands first, the other
+  rebases, and neither changes behaviour. Triumviratus's board leads
+  (TB-4 to TB-8), deferred to H.4, are read here first; H.4 keeps what
+  this step does not take. Not started; no work before the maintainer
+  opens it.
+    - **D.12.1 Board contract audit and instruments — `R2`.** The
+      safety net D.12.3 rebuilds behind. Inventory first what exists and
+      what each check covers: `tests/board_correctness.rs`,
+      `board_differential.rs`, `board_v2.rs`, `see_contract.rs`,
+      `see_pins.rs`, `slider_backends.rs`, `fuzz_lite.rs`, the board
+      footprint assertions, `benches/board_v2.rs`, D.4's search-path
+      perft and D.5.17's `gives_check` differential. Then close the gaps
+      against Basilisk's B.7.1 checklist: an external oracle on real game
+      positions (FEN, checkers, legal, capture and checking sets, perft
+      and divide); make, unmake and null restoring every field over a
+      walk; clones and long unwinds; history capacity; the Zobrist key
+      set's GF(2) rank (TB-2); FEN robustness (TB-3); the clock outside
+      the key; rule-50, repetition and mate precedence audited apart;
+      SEE against the legal exchange tree. Every check is shown able to
+      fail by a negative control. A semantic defect found here takes the
+      correctness-repair path with its own gate (AGENTS, *Gating*). The
+      timing instrument is Basilisk's contract cross-engine-board-v2
+      (`D:/code/basilisk/tools/board_compare/CONTRACT.md`), reused rather
+      than rebuilt: 512 positions of real games with a python-chess
+      oracle line (`D:/code/basilisk/tests/data/board_micro_positions.fen`),
+      columns `legal_gen`, `capture_gen`, `make_unmake`, `see_captures`
+      (values 100/300/300/500/900), `gives_check` and `board_perft`.
+      Rarog's adapter is a patch on `611307e`
+      (`D:/code/basilisk/tools/board_compare/rarog/board_xv2.diff`: a new
+      bench file and a `[[bench]]` entry, no Rarog source changed), built
+      by `D:/code/basilisk/tools/board_compare/build.py`, beside adapters
+      for Basilisk, Stockfish 19, classical Stockfish and Reckless; the
+      runner is `D:/code/basilisk/tools/diag/board_micro_run.py`
+      (alternating binaries, one pinned CPU, a host gate, every sample
+      kept, semantic counts cross-checked). Added to it here: Rarog's
+      own call mix a search node (makes, generations by stage, SEE,
+      `gives_check`, check-information builds) counted by a throwaway
+      build at its bench, and the search's fast `gives_check_with`,
+      exposed under a bench-only feature.
+    - **D.12.2 Board review against Stockfish, Basilisk, Reckless and Triumviratus — `R2`.**
+      A packet that reads each component against Stockfish 19's
+      (`Position` and `StateInfo`), classical Stockfish's, Basilisk's,
+      Reckless's and Triumviratus's measured ideas; measures Rarog's (its
+      share in the profile at `bench 13`, D.12.1's microbenchmark, the
+      cost a node at Rarog's own call mix); and decides keep, replace or
+      adapt, each with its reason and expected cost. A departures table
+      records every kept Rarog form; the frozen handoff is D.12.3's
+      contract. Components: check information (computed at make as
+      Stockfish's `StateInfo` holds it, or lazily per call; TB-4); make
+      and unmake (what is copied, recomputed and branched; TB-5) and the
+      per-ply dirty-piece record F.1 needs, its contract fixed here
+      (TB-10); legality (the legal and pseudo-legal split, the TT and
+      killer move test, `gives_check`); SEE (TB-6); attacks (TB-7);
+      generation (TB-8; the side as a type parameter, staged delivery,
+      captures not regenerated); repetition; Chess960 representable
+      without a second rewrite (the feature is G.2's); the
+      representation. A technique no source measured is a candidate to
+      measure, not to adopt, and a measured loss counts as much as a
+      gain.
+      **Leads from Basilisk's board review** (recorded 2026-11-14 at the
+      maintainer's request; Basilisk's B.7.2, 2026-11-14, packet
+      `D:/code/basilisk/analysis/b72_board_review_2026-11-14.md` §1.1–1.3,
+      on Basilisk's branch `b7-board-audit`; cite Basilisk's merged commit
+      once its B.7 pull request lands). Rarog was measured at `611307e`.
+      Every figure is Basilisk's measurement, a prior here and not a
+      Rarog result. One session, five alternating rounds, idle Ryzen 9
+      5950X, LLVM 23.1.5 for every arm, no PGO; median ns an operation,
+      Rarog as a share of Basilisk; round-to-round spread 0.3–3.5% a
+      column:
+      - legal generation: Basilisk 48.1, Rarog 62.0 (129%), Reckless
+        51.1, Stockfish 19 76.6, classical Stockfish 89.4;
+      - make and unmake: Rarog **14.7**, the fastest of the five
+        (Basilisk 17.3, classical Stockfish 35.5, Reckless 40.4,
+        Stockfish 19 52.7);
+      - SEE on captures: Rarog 13.8, Basilisk 15.3, both Stockfishes 6.6,
+        Reckless 18.2;
+      - `gives_check`: Rarog 7.6 (its public full form), Basilisk 6.5,
+        both Stockfishes 3.2;
+      - perft a leaf: Basilisk 3.35, Rarog 4.18 (125%), classical
+        Stockfish 5.14, Reckless 5.41, Stockfish 19 6.19;
+      - weighted by Basilisk's counted search mix (a node: 0.92
+        make/unmake, 0.53 capture generations, 0.20 quiet generations,
+        1.42 SEE, 1.44 `gives_check`), board cost a search node:
+        Basilisk 65.8 ns, Rarog 67.0 (102%), classical Stockfish 71.7
+        (109%), Stockfish 19 83.2 (126%).
+      The leads:
+      1. *Legal generation and perft* trail Basilisk by 29% and 25%. Read
+         Basilisk's generator (`D:/code/basilisk/src/board.cpp`,
+         `gen_legal_impl`: templated on colour, a check mask, pins from
+         two x-ray slider lookups a line type, bulk pawn shifts) against
+         Rarog's. RAR-M44(c) holds: a 12.7% generator gain on the bench
+         measured −0.55% pooled-PGO, so only removed work counts and
+         pooled NPS decides.
+      2. *Make and unmake* is the fastest of the five: no lead. Keep the
+         hinted make and the compact undo record; Basilisk's B.7.3 is
+         copying it (Basilisk's make recomputes checkers its search
+         already knew).
+      3. *The capture generator:* `generate_legal_noisy_into` yields 885
+         of the 927 legal tactical moves; the 42 non-capturing rook,
+         bishop and knight underpromotions go to the quiet stage, as in
+         Reckless. Confirm that is intended everywhere the noisy
+         generator is used (quiescence, ProbCut, evasions).
+      4. *SEE policy:* like Stockfish, Rarog passes promotions and en
+         passant without an exchange; on these 927 game moves that passes
+         36 whose exchange loses (the legal exchange tree gives 325 moves
+         at SEE ≥ 0, Rarog 361). Not a defect: decide the policy and
+         record it. Basilisk scores these moves exactly (its BAS-C09
+         departure).
+      5. *`gives_check`:* the harness timed the public full form, since
+         the search's fast form `gives_check_with(CheckInfo)` is
+         `pub(crate)`; time the fast form (D.12.1) before comparing check
+         cost.
+      6. *Rarog's own weighting:* weight the columns by Rarog's call mix
+         (D.12.1); per-operation times alone mislead. Stockfish halves
+         `gives_check` and SEE with check information stored at every
+         make but pays two to three times more a make; at Basilisk's mix
+         that trade loses (65.8 against 71.7 ns a node), and Rarog's mix
+         may differ.
+      7. *Stockfish's two boards as references:* Stockfish 19
+         (`edb0d9db`), whose make writes the network's dirty-piece, threat
+         and pawn-pair records, was 26% dearer a node than Basilisk;
+         classical Stockfish (`9587eeeb`, its last HCE version) 9%. When
+         Rarog adds network make records (F.1), price them with this
+         harness against Stockfish 19's form.
+    - **D.12.3 Rebuild behind the board contract — `I2`.** D.12.2's
+      accepted components, one commit each, each passing D.12.1's
+      contract and D.4's search-path perft and keeping the exact
+      `bench 13` fingerprint while the generation order is unchanged. No
+      search, evaluation or parameter change rides along. Each replaced
+      component keeps, behind a build switch, a check that runs the old
+      form beside the new at every node and aborts on the first
+      disagreement (TM-10). Per-node code obeys AGENTS' allocation and
+      copy rule; the footprint assertions move only with a measured
+      reason.
+    - **D.12.4 Board speed read and gate — `V`.** Pooled-PGO NPS of the
+      rebuilt board against the head by PROCESS's method, D.12.1's
+      microbenchmark per component beside it, and each component's share
+      in the profile; a component that does not pay its cost returns to
+      Rarog's form. A component that changes the generation order, and
+      so the tree, is registered and gated as AGENTS' *Gating* requires.
+      Nanoseconds an operation are not NPS and not Elo.
 
 ## Phase E — Classical checkpoint and release
 
@@ -2669,6 +2822,8 @@ labels H1–H45.
   build-layout leads (TB-4 to TB-8, TB-12, TB-14's layout flags; TB-16's
   negatives; its stack probes, TB-11, are D.8.19's) are read where the
   profile shows their cost, each with exact fingerprint and pooled-PGO NPS.
+  The board's leads, TB-4 to TB-8, are read first by D.12 (added
+  2026-11-14); this step keeps what D.12 does not take.
   D.4.6 left one more lead: a process falls at random into one of two states
   on the same tree, 0.40% apart in NPS, cause unknown
   (`analysis/identical_tree_counters_card_2026-11-05.md`).
