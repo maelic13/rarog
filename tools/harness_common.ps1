@@ -831,8 +831,8 @@ function Assert-TuneSurface {
 }
 function Get-ColosseumPin {
     # One file names the runner: its source revision and the SHA-256 that is
-    # actually enforced. Re-pinning to the published `cli-v0.1.0` archive
-    # (PLAN B.2.6.3) is an edit to this file and to nothing else.
+    # actually enforced. Re-pinning to another published release is an edit
+    # to the pin file and to nothing else.
     param([Parameter(Mandatory)][string]$PinPath)
 
     if (-not (Test-Path -LiteralPath $PinPath -PathType Leaf)) {

@@ -129,6 +129,11 @@ asset URL and the digest GitHub serves for it, checked on download, and the
 top-level `sha256` is checked on the extracted executable. Re-pinning to a
 later release is an edit to that one file.
 
+The CLI has its own repository, `maelic13/colosseum-cli`, since 2026-11-14;
+`maelic13/colosseum` is now the GUI. Releases there are tagged `v<version>`;
+the `cli-v` tags above are the old repository's names for the same builds,
+and 0.5.0 is the same asset, digest and size at the same revision.
+
 The released 0.1.0 reported the same version string as the local build that
 preceded it, so the hash is the only identity that separates builds; 0.2.0
 reports its own version, and the hash stays the enforced identity. Each
