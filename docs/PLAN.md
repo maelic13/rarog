@@ -371,7 +371,7 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.2 | GAME_GATE | V | RAR-O09 prepared 2026-11-14 on fastchess: arms built, null-move share 1.731% (the donor's budget 127,800), odds ×1.1211 (93 ms; 3.363+0.034 and 11.211+0.112), the smoke passed on medians; four maintainer-run matches handed over, about 3.5 hours; the rebuild opens at +10 or more at equal work, otherwise the maintainer decides after consultation |
+| D.7.2 | GAME_GATE | V | RAR-O09 prepared 2026-11-14 on fastchess: arms built, null-move share 1.731% (the donor's budget 127,800), odds ×1.1211 (93 ms; 3.363+0.034 and 11.211+0.112), the smoke passed on medians; match (1) only, about 50 minutes, handed over (maintainer decision 2026-11-14; (2) to (4) optional, run on a named use); the rebuild opens at +10 or more at equal work, otherwise the maintainer decides after consultation |
 | D.7.1.1 | READY_FOR_IMPLEMENTATION | I1 | Does not hold D.7.2, which runs on fastchess (maintainer, 2026-11-13), so its row follows it; the Colosseum wrapper's move time, per-side node budget and foreign arm, with guard tests and smokes, when a foreign arm is next wanted on Colosseum |
 | D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); opens with D.7.2's decision |
 | D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); opens with D.7.2's decision; parity before any game |
@@ -1578,7 +1578,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       exits (one legal move, the iteration cap), which buy nothing under
       a move time, so the bands and match (2)'s ratio are read on the
       median, which sits on the commands (70.0 and 78 ms). The four
-      commands are in the registration.
+      commands are in the registration. Scope cut before any game
+      (maintainer decision 2026-11-14): match (1) runs now, since only it
+      feeds the rule and the rebuild's expectation; (2) to (4) stay
+      prepared and run only when a decision or analysis names a use.
     - **D.7.3 Parity instrument: Rarog and the hybrid on one position set — `I2`.**
       Nodes to each depth and the rate at which each mechanism fires, on
       the same positions and the same evaluation; a planted difference
