@@ -371,7 +371,7 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.2 | READY_FOR_IMPLEMENTATION | V | RAR-O09 registered 2026-11-13: preparation, then four maintainer-run matches, on fastchess unless Colosseum CLI is improved first (maintainer, 2026-11-13); the rebuild opens at +10 or more at equal work, otherwise the maintainer decides after consultation |
+| D.7.2 | GAME_GATE | V | RAR-O09 prepared 2026-11-14 on fastchess: arms built, null-move share 1.731% (the donor's budget 127,800), odds ×1.1211 (93 ms; 3.363+0.034 and 11.211+0.112), the smoke passed on medians; four maintainer-run matches handed over, about 3.5 hours; the rebuild opens at +10 or more at equal work, otherwise the maintainer decides after consultation |
 | D.7.1.1 | READY_FOR_IMPLEMENTATION | I1 | Does not hold D.7.2, which runs on fastchess (maintainer, 2026-11-13), so its row follows it; the Colosseum wrapper's move time, per-side node budget and foreign arm, with guard tests and smokes, when a foreign arm is next wanted on Colosseum |
 | D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); opens with D.7.2's decision |
 | D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); opens with D.7.2's decision; parity before any game |
@@ -1561,6 +1561,24 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       Colosseum once D.7.1.1 has landed and the pinned CLI keeps the
       book's move counters, else fastchess; chosen before the first
       game. Maintainer-run, about three hours.
+      **Prepared 2026-11-14** (`docs/experiments/RAR-O09.md`,
+      *Preparation*): runner fastchess (maintainer decision 2026-11-13);
+      the three arms rebuilt on `1f29e04` (the head at fingerprint
+      8,935,848 / EBF 2.480, the hybrid and its counting twin at bench
+      4,158,758 both); null-move share 1.731% on 200 game positions
+      (2.043% on bench), so the donor's budget is 127,800; odds ×1.1211
+      on an idle host, so 70 against 93 ms a move and clocks of
+      3.363+0.034 and 11.211+0.112. `sprt.ps1` now records each move's
+      nodes in node-budget matches (`c487985`), which match (1)'s
+      validity rule needs. Two rules were amended before any game
+      (maintainer decisions 2026-11-14): the donor reports its budget
+      plus two on about 1% of searches, because it tests its limit at
+      node entry, so its tolerance in match (1) is plus two. The smoke's
+      means fell below their bands through each engine's own early
+      exits (one legal move, the iteration cap), which buy nothing under
+      a move time, so the bands and match (2)'s ratio are read on the
+      median, which sits on the commands (70.0 and 78 ms). The four
+      commands are in the registration.
     - **D.7.3 Parity instrument: Rarog and the hybrid on one position set — `I2`.**
       Nodes to each depth and the rate at which each mechanism fires, on
       the same positions and the same evaluation; a planted difference
