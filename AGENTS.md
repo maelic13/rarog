@@ -93,6 +93,13 @@ that produced a rule are in the ledger rows it cites or in `docs/HISTORY.md`.
   delegated. Prepare and verify the command, inputs, configuration, artifacts
   and live wire, then hand over the runnable job. Cheap local qualification is
   the agent's job.
+- Get the information a use needs and no more. Before registering or
+  running a measurement, name what it is for: a decision, an analysis or
+  understanding a question. A read that feeds nothing is prepared or
+  left out, not run, and runs when a use is named; a decision is never
+  taken without the information it needs either (maintainer decision
+  2026-11-14, after RAR-O09's four matches were cut to the one PLAN's
+  rule reads).
 - When the user interrupts for a correction or scope change, finish and
   qualify that correction, report it and return control. Resume the earlier
   objective only when asked.
