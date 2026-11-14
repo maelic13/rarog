@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.7.1.1** (`I1`): The Colosseum wrapper takes a move time, a node budget per engine and a foreign arm.
+**Now: D.7.3** (`I2`): Parity instrument: Rarog and the hybrid on one position set.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -65,7 +65,7 @@ field, about 3,475 on CCRL's Blitz scale.
 - [ ] **D.7** Search shape: the kernel against its donor on Rarog's evaluation, rebuilt whole in Reckless's form if the reads or the maintainer say so — **R3**
     - [x] **D.7.0** Investigation: the inventory of departures, the seeds and the registration of the reads — DONE 2026-11-13
     - [x] **D.7.1** The fixed-match script takes a node budget and a move time per engine — DONE 2026-11-13
-        - [ ] **D.7.1.1** The Colosseum wrapper takes a move time, a node budget per engine and a foreign arm — **READY_FOR_IMPLEMENTATION / I1**
+        - [x] **D.7.1.1** The Colosseum wrapper takes a move time, a node budget per engine and a foreign arm — DONE 2026-11-14
     - [x] **D.7.2** RAR-O09: the donor's search against the head at equal work, at equal move time and on the clock at two controls — DONE 2026-11-14
         - [x] **D.7.2.1** RAR-O10: Rarog's and Basilisk's evaluations and moves against a reference — DONE 2026-11-14
     - [ ] **D.7.3** Parity instrument: Rarog and the hybrid on one position set — **RESEARCH / I2**

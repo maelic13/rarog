@@ -371,7 +371,6 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.1.1 | READY_FOR_IMPLEMENTATION | I1 | Does not hold D.7.2, which runs on fastchess (maintainer, 2026-11-13), so its row follows it; the Colosseum wrapper's move time, per-side node budget and foreign arm, with guard tests and smokes, when a foreign arm is next wanted on Colosseum |
 | D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); D.7.2.1 read 2026-11-14 (Rarog's evaluation ahead of Basilisk's, Basilisk's moves level within 8% at equal time); waits for Basilisk's evaluation programme or the maintainer's decision |
 | D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); held with D.7.3; parity before any game |
 | D.7.4.1 | RESEARCH | I2 | After D.7.4's parity: the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted; the maintainer is asked about the exchange table first |
@@ -1532,7 +1531,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       a move the search never scored, after a stop inside that
       iteration, prints `cp 0`, as Stockfish does (`search.cpp`, `pv`).
       Bench searches to a depth, so the fingerprint holds; repair case 1.
-        - **D.7.1.1 The Colosseum wrapper takes a move time, a node budget per engine and a foreign arm — `I1`.**
+        - **D.7.1.1 The Colosseum wrapper takes a move time, a node budget per engine and a foreign arm — `I1`, DONE 2026-11-14.**
           Added 2026-11-13 by D.7.0, so RAR-O09 can run on Colosseum.
           Colosseum CLI 0.5.0's `match` already takes a node budget, a
           move time and a clock for each side; `tools/colosseum.ps1`
@@ -1551,6 +1550,20 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           Tooling only: no engine build. Not needed for RAR-O09 on
           fastchess, the maintainer's expected runner (2026-11-13), so
           D.7.2 does not wait for it.
+          **Done 2026-11-14** (`10891ee`): `-MoveTimeMs` and
+          `-MoveTimeMsB` with `tools/colosseum/match-fixed-movetime.toml`,
+          `-NodesB`, and `-ForeignB`; without the switch an arm with no
+          sidecar is now refused in a gate or a match, where it passed on
+          a note before. `tools/diag/test_colosseum_guards.ps1`: 92 of 92
+          cases, 23 of them new. Smokes on the pinned CLI 0.5.0, one
+          binary on both sides, 8 games each: 20,000 against 200 nodes a
+          move read 13,058 against 131 nodes a move and 8–0; 200 against
+          2 ms a move read 190.2 against 1.9 ms and 8–0; a foreign
+          Basilisk arm played 2 games, its SHA-256 and `id name` in the
+          manifest. Not done: RAR-O09's four commands in Colosseum form.
+          A registered experiment never changes its runner, and RAR-O09
+          is on fastchess; the next match with a foreign arm on Colosseum
+          writes its own.
     - **D.7.2 RAR-O09: the donor's search against the head at equal work, at equal move time and on the clock at two controls — `V`, DONE 2026-11-14.**
       Registered 2026-11-13 (`docs/experiments/RAR-O09.md`). Reckless's
       hybrid against the head, both rebuilt on the head, four fixed
