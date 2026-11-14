@@ -322,11 +322,11 @@ function Get-HarnessSha256 {
     (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
 }
 
-function Get-EngineUciOptions {
+function Get-EngineUciText {
+    # The engine's answer to `uci`, through `uciok`.
     param(
         [Parameter(Mandatory)][string]$Path,
-        [int]$TimeoutMs = 15000,
-        [switch]$Detailed
+        [int]$TimeoutMs = 15000
     )
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
@@ -369,7 +369,25 @@ function Get-EngineUciOptions {
     if ($text -notmatch '(?m)^\s*uciok\s*$') {
         throw "Engine '$Path' did not emit 'uciok'; it is not a working UCI engine."
     }
+    $text
+}
 
+function Get-EngineIdName {
+    # The name an engine gives itself, the identity a foreign arm has.
+    param([Parameter(Mandatory)][string]$Path)
+    $match = [regex]::Match((Get-EngineUciText -Path $Path), '(?m)^\s*id\s+name\s+(?<name>.+?)\s*$')
+    if (-not $match.Success) { throw "Engine '$Path' gave no 'id name' in its answer to 'uci'." }
+    $match.Groups['name'].Value
+}
+
+function Get-EngineUciOptions {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [int]$TimeoutMs = 15000,
+        [switch]$Detailed
+    )
+
+    $text = Get-EngineUciText -Path $Path -TimeoutMs $TimeoutMs
     $options = [System.Collections.Generic.List[object]]::new()
     foreach ($line in ($text -split "`r?`n")) {
         $match = [regex]::Match($line, '^\s*option\s+name\s+(?<name>.+?)\s+type\s+(?<type>\S+)(?<tail>.*)$')

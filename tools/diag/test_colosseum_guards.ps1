@@ -235,6 +235,77 @@ try {
     Invoke-Case -Name "fixed-node run file without -Nodes" -Expect "expected the clock" `
         -Arguments (Merge-Arguments $categorical @{ RunFile = (Join-Path $repo "tools\colosseum\match-fixed-nodes.toml") })
 
+    # Each side's own limit: a move time, and arm B's own move time or node
+    # budget. The runner refuses a repeated limit flag, so a resolved value
+    # off the request cannot be staged here; the wire smokes prove the values.
+    $selfOdds = Merge-Arguments $base @{ Mode = "match"; Games = 100; EngineB = $armA; NameB = "armAodds" } @("MaxPairs")
+    Invoke-Case -Name "control: a fixed move-time read resolves" -Expect "" `
+        -Arguments (Merge-Arguments $categorical @{ MoveTimeMs = 100 })
+    Invoke-Case -Name "control: one binary, 100 against 130 ms" -Expect "" `
+        -Arguments (Merge-Arguments $selfOdds @{ MoveTimeMs = 100; MoveTimeMsB = 130 })
+    Invoke-Case -Name "control: one binary, 5,000 against 20,000 nodes" -Expect "" `
+        -Arguments (Merge-Arguments $selfOdds @{ Nodes = 5000; NodesB = 20000 })
+    Invoke-Case -Name "one binary, equal move times" -Expect "require -Mode calibrate" `
+        -Arguments (Merge-Arguments $selfOdds @{ MoveTimeMs = 100; MoveTimeMsB = 100 })
+    Invoke-Case -Name "-MoveTimeMs in a gate" -Expect "-MoveTimeMs is for -Mode match only" `
+        -Arguments (Merge-Arguments $base @{ MoveTimeMs = 100 })
+    Invoke-Case -Name "-NodesB in a null pair" -Expect "-NodesB is for -Mode match only" `
+        -Arguments @{ Mode = "calibrate"; EngineA = $armA; EngineB = $armA; NameA = "a"; NameB = "b"; NodesB = 5000
+                      Dir = (Join-Path $scratch "null"); DryRun = $true; AllowBusyHost = $true }
+    Invoke-Case -Name "-NodesB without -Nodes" -Expect "it needs -Nodes" `
+        -Arguments (Merge-Arguments $selfOdds @{ NodesB = 5000 })
+    Invoke-Case -Name "-MoveTimeMsB without -MoveTimeMs" -Expect "it needs -MoveTimeMs" `
+        -Arguments (Merge-Arguments $selfOdds @{ MoveTimeMsB = 100 })
+    Invoke-Case -Name "a move time and a node budget" -Expect "two limits" `
+        -Arguments (Merge-Arguments $selfOdds @{ MoveTimeMs = 100; Nodes = 5000 })
+    Invoke-Case -Name "time odds on a move-time read" -Expect "a fixed move-time read (-MoveTimeMs) has none" `
+        -Arguments (Merge-Arguments $odds @{ MoveTimeMs = 100 })
+    Invoke-Case -Name "move-time run file without -MoveTimeMs" -Expect "expected the clock" `
+        -Arguments (Merge-Arguments $categorical @{ RunFile = (Join-Path $repo "tools\colosseum\match-fixed-movetime.toml") })
+    Invoke-Case -Name "-MoveTimeMs with the fixed-node run file" -Expect "only one of movetime, base/increment, nodes" `
+        -Arguments (Merge-Arguments $categorical @{ MoveTimeMs = 100; RunFile = (Join-Path $repo "tools\colosseum\match-fixed-nodes.toml") })
+
+    # A foreign arm: a binary with no sidecar is refused in a gate or a match
+    # unless it is arm B declared with -ForeignB, which then must have none,
+    # and arm A's sidecar carries every expectation.
+    $foreign = Join-Path $scratch "foreignB.exe"
+    Copy-Item -LiteralPath (Join-Path $repo $EngineB) -Destination $foreign -Force
+    $bareA = Join-Path $scratch "bareA.exe"
+    Copy-Item -LiteralPath (Join-Path $repo $EngineA) -Destination $bareA -Force
+    $foreignMatch = Merge-Arguments $base @{ Mode = "match"; Games = 100; MoveTimeMs = 100
+                                             EngineB = $foreign; NameB = "foreignB" } @("MaxPairs")
+    $declared = Merge-Arguments $foreignMatch @{ ForeignB = $true }
+    Invoke-Case -Name "a match arm without a sidecar" -Expect "NO SIDECAR - foreignB" -Arguments $foreignMatch
+    Invoke-Case -Name "a gate arm without a sidecar" -Expect "NO SIDECAR - foreignB" `
+        -Arguments (Merge-Arguments $base @{ EngineB = $foreign; NameB = "foreignB" })
+    Invoke-Case -Name "control: a declared foreign arm resolves" -Expect "" -Arguments $declared
+    Invoke-Case -Name "-ForeignB on an arm with a sidecar" -Expect "but armB has one" `
+        -Arguments (Merge-Arguments $declared @{ EngineB = $armB; NameB = "armB" })
+    Invoke-Case -Name "-ForeignB in a gate" -Expect "-ForeignB is for -Mode match only" `
+        -Arguments (Merge-Arguments $base @{ ForeignB = $true; EngineB = $foreign; NameB = "foreignB" })
+    Invoke-Case -Name "-ForeignB with arm A's sidecar missing" -Expect "NO SIDECAR - bareA" `
+        -Arguments (Merge-Arguments $declared @{ EngineA = $bareA; NameA = "bareA" })
+    Invoke-Case -Name "-ExpectBench for the foreign arm too" -Expect "one fingerprint per arm with a sidecar" `
+        -Arguments (Merge-Arguments $declared @{ ExpectBench = @(7185678, 6199302) })
+    Invoke-Case -Name "-ExpectBench off arm A's fingerprint" -Expect "WRONG FINGERPRINT - armA" `
+        -Arguments (Merge-Arguments $declared @{ ExpectBench = @(1) })
+    Invoke-Case -Name "-ExpectRevision off arm A's revision" -Expect "WRONG REVISION - armA" `
+        -Arguments (Merge-Arguments $declared @{ ExpectRevision = "deadbee" })
+    $foreignSha = (Get-FileHash -LiteralPath $foreign -Algorithm SHA256).Hash
+    $declaredBench = Merge-Arguments $declared @{ ExpectBench = @(7185678) }
+    Invoke-Case -Name "control: the foreign arm's identity recorded" -Expect "" -Check {
+        $output = & $wrapper @declaredBench *>&1 | Out-String
+        $path = [regex]::Match($output, 'Manifest: (?<p>\S+manifest\.txt)').Groups['p'].Value
+        if (-not $path -or -not (Test-Path -LiteralPath $path)) { throw "no manifest named in the output" }
+        $text = Get-Content -LiteralPath $path -Raw
+        Remove-Item -LiteralPath $path, ($path -replace 'manifest\.txt$', 'dry-run.json'), ($path -replace 'manifest\.txt$', 'dry-run.notes.txt') -ErrorAction SilentlyContinue
+        foreach ($want in @("sha256:         $foreignSha", '(?m)^  id_name:        \S', 'foreign:        yes',
+                            'expect_bench:     7185678 \(arm armA only; foreignB is foreign\)',
+                            '100ms a move \(fixed move time')) {
+            if ($text -notmatch $want) { throw "the manifest lacks '$want'" }
+        }
+    }.GetNewClosure()
+
     $otherCompiler = Copy-Arm -Source $EngineB -Name "otherCompiler"
     Set-Sidecar -EnginePath $otherCompiler -Fields @{ rustc = "rustc 1.97.0 (not the pinned toolchain)" }
     Invoke-Case -Name "arms built by different compilers" -Expect "COMPILER MISMATCH" `

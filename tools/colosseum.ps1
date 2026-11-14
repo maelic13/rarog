@@ -67,6 +67,25 @@
     arm B's increment; each defaults to arm A's when not given. A sprt or
     match on a clock only.
 
+.PARAMETER MoveTimeMs
+    A fixed time a move in milliseconds instead of the clock, -Mode match
+    only: each side thinks this long on every move and manages no clock
+    (match-fixed-movetime.toml). -MoveTimeMsB gives arm B its own move time,
+    time odds a move; it defaults to arm A's. Checked against the resolved
+    configuration like the clock.
+
+.PARAMETER NodesB
+    Arm B's node budget a move when it differs from arm A's (-Nodes): equal
+    work between two kernels that count nodes differently. Needs -Nodes.
+
+.PARAMETER ForeignB
+    Arm B is a foreign engine with no sidecar, -Mode match only. Its SHA-256
+    and UCI `id name` are its identity in the manifest. Arm A's sidecar is
+    required, -ExpectBench takes arm A's fingerprint alone, -ExpectRevision
+    checks arm A alone, and build-flavour and compiler equality cannot be
+    checked. Without the switch an arm with no sidecar is refused in sprt
+    and match.
+
 .PARAMETER Bracket
     Which SPRT run file: default [0,3], removal [-1.75,0.25], repair [-5,5],
     wide [0,10]. Bounds never change after games are seen.
@@ -167,6 +186,10 @@ param(
     # equal-node companion of an equal-time read). Selects match-fixed-nodes.toml
     # and is checked against the resolved configuration like the clock is.
     [long]$Nodes = 0,
+    [ValidateRange(1, 1000000000000)][long]$NodesB = 0,
+    [ValidateRange(1, 600000)][int]$MoveTimeMs = 0,
+    [ValidateRange(1, 600000)][int]$MoveTimeMsB = 0,
+    [switch]$ForeignB,
     [int]$Concurrency = 0,
     [string]$ExpectRevision = "",
     [long[]]$ExpectBench = @(),
@@ -272,6 +295,21 @@ $baseMsB = if ($PSBoundParameters.ContainsKey('BaseMsB')) { $BaseMsB } else { $B
 $incrementMsB = if ($PSBoundParameters.ContainsKey('IncrementMsB')) { $IncrementMsB } else { $IncrementMs }
 $clockOdds = $baseMsB -ne $BaseMs -or $incrementMsB -ne $IncrementMs
 if ($clockOdds -and $Nodes -gt 0) { throw "-BaseMsB and -IncrementMsB set a clock; a fixed-node read (-Nodes) has none." }
+# A move time, a node budget for arm B alone and a foreign arm exist for a
+# fixed match only: a gate, a tune and a null pair play the registered clock
+# with both arms described by sidecars.
+foreach ($name in @('MoveTimeMs', 'MoveTimeMsB', 'NodesB', 'ForeignB')) {
+    if ($PSBoundParameters.ContainsKey($name) -and $Mode -ne 'match') {
+        throw "-$name is for -Mode match only: a fixed-length diagnostic, never a gate, a tune or a null pair."
+    }
+}
+if ($PSBoundParameters.ContainsKey('NodesB') -and $Nodes -le 0) { throw "-NodesB is arm B's node budget; it needs -Nodes for arm A's." }
+if ($PSBoundParameters.ContainsKey('MoveTimeMsB') -and $MoveTimeMs -le 0) { throw "-MoveTimeMsB is arm B's move time; it needs -MoveTimeMs for arm A's." }
+if ($MoveTimeMs -gt 0 -and $Nodes -gt 0) { throw "-MoveTimeMs and -Nodes are two limits; each side plays one control." }
+if ($clockOdds -and $MoveTimeMs -gt 0) { throw "-BaseMsB and -IncrementMsB set a clock; a fixed move-time read (-MoveTimeMs) has none." }
+$armBNodes = if ($PSBoundParameters.ContainsKey('NodesB')) { $NodesB } else { $Nodes }
+$armBMoveTimeMs = if ($PSBoundParameters.ContainsKey('MoveTimeMsB')) { $MoveTimeMsB } else { $MoveTimeMs }
+$limitOdds = $clockOdds -or $armBNodes -ne $Nodes -or $armBMoveTimeMs -ne $MoveTimeMs
 if ($twoArmModes -contains $Mode) {
     if (-not $EngineA -or -not $EngineB) { throw "-Mode $Mode needs -EngineA and -EngineB." }
 }
@@ -322,7 +360,7 @@ $cli = Assert-ColosseumCli -Path $CliPath -PinPath $PinPath
 if ($Nodes -gt 0 -and $Mode -ne "match") { throw "-Nodes is for -Mode match only: a fixed-node read is a diagnostic, never a gate or a tune." }
 $runFileDefaults = @{
     sprt      = Join-Path $PSScriptRoot "colosseum\sprt-$Bracket.toml"
-    match     = Join-Path $PSScriptRoot ("colosseum\" + $(if ($Nodes -gt 0) { "match-fixed-nodes.toml" } else { "match-fixed.toml" }))
+    match     = Join-Path $PSScriptRoot ("colosseum\" + $(if ($Nodes -gt 0) { "match-fixed-nodes.toml" } elseif ($MoveTimeMs -gt 0) { "match-fixed-movetime.toml" } else { "match-fixed.toml" }))
     calibrate = Join-Path $PSScriptRoot "colosseum\calibrate-null.toml"
     spsa      = Join-Path $PSScriptRoot "spsa_configs\colosseum\$ConfigGroup.run.toml"
     gauntlet  = Join-Path $PSScriptRoot "colosseum\gauntlet.toml"
@@ -359,7 +397,28 @@ if ($CategoricalTuneBuild) {
     Write-Host "  Categorical A/B on one tune build: the PGO-gate rule is waived and recorded." -ForegroundColor Yellow
 }
 $manifests = @{}
+$foreignLabel = if ($ForeignB) { $NameB } else { $null }
+$foreignIdName = $null
 foreach ($arm in $engines) {
+    $sidecar = [System.IO.Path]::ChangeExtension($arm.Path, ".json")
+    $hasSidecar = Test-Path -LiteralPath $sidecar -PathType Leaf
+    if ($arm.Label -eq $foreignLabel) {
+        if ($hasSidecar) {
+            throw ("-ForeignB declares an arm without a sidecar, but $NameB has one ($sidecar); " +
+                   "drop -ForeignB so that sidecar is checked.")
+        }
+        $foreignIdName = Get-EngineIdName -Path $arm.Path
+        $manifests[$arm.Label] = $null
+        Write-Host "  $NameB is a foreign arm: SHA-256 $(Get-HarnessSha256 $arm.Path), id name '$foreignIdName'; no sidecar to check." -ForegroundColor Yellow
+        continue
+    }
+    # Nothing else binds a gate's or a match's arm to a revision, a compiler
+    # and a bench; an arm without a sidecar passed here on a note before.
+    if (-not $hasSidecar -and ($Mode -eq "sprt" -or $Mode -eq "match")) {
+        throw ("NO SIDECAR - $($arm.Label) ($($arm.Path)) has none, so nothing binds it to a revision, " +
+               "a compiler and a bench. Rebuild it with tools/build_test.ps1; a foreign engine in a " +
+               "fixed match is arm B with -ForeignB.")
+    }
     $kind = if ($Mode -eq "spsa" -or $CategoricalTuneBuild) { "tune" } else { "gate" }
     $manifests[$arm.Label] = Assert-EngineProvenance -Path $arm.Path -Label $arm.Label -Kind $kind `
         -RequireManifest:($Mode -eq "spsa") -RequireBinaryHash:($Mode -eq "spsa") `
@@ -368,16 +427,17 @@ foreach ($arm in $engines) {
 
 # ─── Guard 4b: the registered bench fingerprint ───────────────────────────
 if ($ExpectBench.Count -gt 0) {
-    if ($ExpectBench.Count -ne $engines.Count) {
-        throw "-ExpectBench takes one fingerprint per arm; $($engines.Count) arm(s), $($ExpectBench.Count) given."
+    $benchArms = @($engines | Where-Object { $_.Label -ne $foreignLabel })
+    if ($ExpectBench.Count -ne $benchArms.Count) {
+        throw "-ExpectBench takes one fingerprint per arm with a sidecar; $($benchArms.Count) such arm(s), $($ExpectBench.Count) given."
     }
-    for ($i = 0; $i -lt $engines.Count; $i++) {
-        $manifest = $manifests[$engines[$i].Label]
+    for ($i = 0; $i -lt $benchArms.Count; $i++) {
+        $manifest = $manifests[$benchArms[$i].Label]
         if (-not $manifest) {
-            throw "-ExpectBench was given but $($engines[$i].Label) has no sidecar to read a fingerprint from."
+            throw "-ExpectBench was given but $($benchArms[$i].Label) has no sidecar to read a fingerprint from."
         }
         if ([long]$manifest.bench_nodes -ne $ExpectBench[$i]) {
-            throw ("WRONG FINGERPRINT - $($engines[$i].Label) benched $($manifest.bench_nodes), " +
+            throw ("WRONG FINGERPRINT - $($benchArms[$i].Label) benched $($manifest.bench_nodes), " +
                    "not the registered $($ExpectBench[$i]).`nA stale binary is this project's " +
                    "commonest wrong measurement; rebuild the arm before measuring it.")
         }
@@ -386,7 +446,9 @@ if ($ExpectBench.Count -gt 0) {
 }
 
 # ─── Guard 5: both arms share a flavour and a compiler ────────────────────
-if ($twoArmModes -contains $Mode) {
+if ($ForeignB) {
+    Write-Host "  Build flavour and compiler equality not checkable: $NameB is foreign." -ForegroundColor Yellow
+} elseif ($twoArmModes -contains $Mode) {
     Assert-EngineArmEquality -Manifests $manifests -LabelA $NameA -LabelB $NameB
 }
 
@@ -401,11 +463,11 @@ if ($twoArmModes -contains $Mode) {
         # One binary on both sides is legitimate when the arms differ by UCI
         # options: it removes the ~0.36% per-build PGO offset. Refuse only when
         # binary AND options match, because then the test is a null in disguise.
-        if (($OptionsA -join '|') -eq ($OptionsB -join '|') -and $threadsB -eq $Threads -and -not $clockOdds) {
+        if (($OptionsA -join '|') -eq ($OptionsB -join '|') -and $threadsB -eq $Threads -and -not $limitOdds) {
             throw ("Identical binaries AND options require -Mode calibrate; an SPRT " +
                    "centred on zero is not a valid null calibration.")
         }
-        Write-Host "  NOTE: one binary on both sides, differing only by UCI options, threads or clock." -ForegroundColor Yellow
+        Write-Host "  NOTE: one binary on both sides, differing only by UCI options, threads or limits." -ForegroundColor Yellow
     }
 }
 
@@ -513,7 +575,8 @@ if ($Mode -ne "spsa" -and $Mode -ne "gauntlet") {
     foreach ($option in (Get-SideOptions $OptionsB $threadsB)) { $commandArgs += @('--b-option', $option) }
 }
 if ($Concurrency -gt 0) { $commandArgs += @('--concurrency', "$Concurrency") }
-if ($Nodes -gt 0) { $commandArgs += @('--a-nodes', "$Nodes", '--b-nodes', "$Nodes") }
+if ($Nodes -gt 0) { $commandArgs += @('--a-nodes', "$Nodes", '--b-nodes', "$armBNodes") }
+if ($MoveTimeMs -gt 0) { $commandArgs += @('--a-movetime-ms', "$MoveTimeMs", '--b-movetime-ms', "$armBMoveTimeMs") }
 if ($clockOdds) { $commandArgs += @('--b-base-ms', "$baseMsB", '--b-increment-ms', "$incrementMsB") }
 $commandArgs += @('--seed', "$Seed", '--dir', $Dir)
 if ($ExtraArgs.Count -gt 0) { $commandArgs += $ExtraArgs }
@@ -567,19 +630,29 @@ if ($controls.Count -eq 0) { Add-Violation "the resolved configuration states no
 foreach ($pair in $controls) {
     $name = $pair[0]; $control = $pair[1]
     $kind = @($control.control.PSObject.Properties.Name)[0]
+    $sideB = $name -eq 'engine_b_time_control'
     if ($Nodes -gt 0) {
         # A fixed-node read must resolve to fixed nodes on every side; a clock
         # here would measure speed under a label that says it does not.
+        $expectedNodes = if ($sideB) { $armBNodes } else { $Nodes }
         if ($kind -ne 'Nodes') {
-            Add-Violation "$name is a '$kind' control, expected fixed nodes (-Nodes $Nodes)"
-        } elseif ([long]$control.control.Nodes.nodes -ne $Nodes) {
-            Add-Violation "$name is $($control.control.Nodes.nodes) nodes a move, expected $Nodes"
+            Add-Violation "$name is a '$kind' control, expected fixed nodes ($expectedNodes a move)"
+        } elseif ([long]$control.control.Nodes.nodes -ne $expectedNodes) {
+            Add-Violation "$name is $($control.control.Nodes.nodes) nodes a move, expected $expectedNodes"
+        }
+    } elseif ($MoveTimeMs -gt 0) {
+        # A move-time read resolves to a time a move on every side, the side's own.
+        $expectedMs = if ($sideB) { $armBMoveTimeMs } else { $MoveTimeMs }
+        if ($kind -ne 'PerMove') {
+            Add-Violation "$name is a '$kind' control, expected a fixed move time of $expectedMs ms"
+        } elseif ([int]$control.control.PerMove.ms -ne $expectedMs) {
+            Add-Violation "$name is $($control.control.PerMove.ms) ms a move, expected $expectedMs"
         }
     } else {
         $expectedBase = if ($name -eq 'engine_b_time_control') { $baseMsB } else { $BaseMs }
         $expectedIncrement = if ($name -eq 'engine_b_time_control') { $incrementMsB } else { $IncrementMs }
         if ($kind -ne 'Increment') {
-            Add-Violation "$name is a '$kind' control, expected the clock ${expectedBase}+${expectedIncrement} ms (pass -Nodes for a fixed-node read)"
+            Add-Violation "$name is a '$kind' control, expected the clock ${expectedBase}+${expectedIncrement} ms (pass -Nodes or -MoveTimeMs for a per-move read)"
         } else {
             if ([int]$control.control.Increment.base_ms -ne $expectedBase) {
                 Add-Violation "$name base is $($control.control.Increment.base_ms) ms, expected $expectedBase"
@@ -782,13 +855,18 @@ foreach ($arm in $engines) {
     $lines.Add("  rustc:          $(if ($manifest) { $manifest.rustc } else { 'unknown' })")
     $lines.Add("  bench_nodes:    $(if ($manifest) { $manifest.bench_nodes } else { 'unknown' })")
     $lines.Add("  options:        $(if ($arm.Options) { $arm.Options -join ' ' } else { '(none)' })")
+    if ($arm.Label -eq $foreignLabel) {
+        $lines.Add("  id_name:        $foreignIdName")
+        $lines.Add("  foreign:        yes (-ForeignB): no sidecar; identity by SHA-256 and id name; flavour and compiler equality not checked")
+    }
 }
 foreach ($surfaceFile in $surfaceFiles) {
     $lines.Add("surface:          $surfaceFile")
     $lines.Add("  sha256:         $(Get-HarnessSha256 $surfaceFile)")
 }
-$lines.Add("expect_revision:  $(if ($ExpectRevision) { $ExpectRevision } else { '(not constrained)' })")
-$lines.Add("expect_bench:     $(if ($ExpectBench.Count -gt 0) { $ExpectBench -join ', ' } else { '(not constrained)' })")
+$foreignNote = if ($ForeignB) { " (arm $NameA only; $NameB is foreign)" } else { "" }
+$lines.Add("expect_revision:  $(if ($ExpectRevision) { "$ExpectRevision$foreignNote" } else { '(not constrained)' })")
+$lines.Add("expect_bench:     $(if ($ExpectBench.Count -gt 0) { "$($ExpectBench -join ', ')$foreignNote" } else { '(not constrained)' })")
 $lines.Add("repo_revision:    $repoSha")
 $lines.Add("repo_dirty:       $repoDirty")
 $lines.Add("runner:           $($cli.Path)")
@@ -800,7 +878,10 @@ $lines.Add("book:             $Book")
 $lines.Add("book_sha256:      $(Get-HarnessSha256 $Book)")
 $lines.Add("opening_order:    $($resolved.openings.order)")
 $lines.Add("opening_seed:     $Seed")
-$clockText = if ($Nodes -gt 0) { "$Nodes nodes a move (fixed nodes; no clock, no time management)" }
+$clockText = if ($Nodes -gt 0 -and $armBNodes -ne $Nodes) { "A $Nodes, B $armBNodes nodes a move (fixed nodes; no clock, no time management)" }
+             elseif ($Nodes -gt 0) { "$Nodes nodes a move (fixed nodes; no clock, no time management)" }
+             elseif ($MoveTimeMs -gt 0 -and $armBMoveTimeMs -ne $MoveTimeMs) { "A ${MoveTimeMs}ms, B ${armBMoveTimeMs}ms a move (fixed move time; no clock, no time management)" }
+             elseif ($MoveTimeMs -gt 0) { "${MoveTimeMs}ms a move (fixed move time; no clock, no time management)" }
              elseif ($clockOdds) { "A ${BaseMs}ms + ${IncrementMs}ms, B ${baseMsB}ms + ${incrementMsB}ms" }
              else { "${BaseMs}ms + ${IncrementMs}ms" }
 $lines.Add("time_control:     $clockText; margin ${MarginMs}ms")
@@ -845,7 +926,7 @@ if ($Mode -eq "sprt") {
     Write-Host "  H0: nElo<=$($design.elo0)   H1: nElo>=$($design.elo1)   alpha=$($design.alpha)  beta=$($design.beta)"
     Write-Host "  Cap: $([int]$resolved.design.max_pairs * 2) games; no boundary at the cap is unresolved, not an acceptance"
 }
-Write-Host "  TC: $(if ($Nodes -gt 0) { "$Nodes nodes/move (fixed; speed and time management removed)" } elseif ($clockOdds) { "A ${BaseMs}+${IncrementMs}ms, B ${baseMsB}+${incrementMsB}ms" } else { "${BaseMs}+${IncrementMs}ms" })  Margin: ${MarginMs}ms  Hash: ${Hash}  Threads: $(if ($threadsB -ne $Threads) { "A $Threads, B $threadsB" } else { $Threads })  Conc: $($resolved.execution.concurrency)"
+Write-Host "  TC: $clockText  Margin: ${MarginMs}ms  Hash: ${Hash}  Threads: $(if ($threadsB -ne $Threads) { "A $Threads, B $threadsB" } else { $Threads })  Conc: $($resolved.execution.concurrency)"
 Write-Host "  Adjudication: none    Book: $(Split-Path $Book -Leaf) (random, seed $Seed)"
 Write-Host "  Runner: $($cli.Version), sha256 $($cli.Sha256.Substring(0,8))..., pinned at $($cli.Pin.revision.Substring(0,7))"
 Write-Host "  Manifest: $manifestPath"
