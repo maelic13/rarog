@@ -371,9 +371,8 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.2.1 | READY_FOR_IMPLEMENTATION | R2 | RAR-O10 registered 2026-11-14: Rarog's and Basilisk's evaluations alone, and each whole engine's moves, against Stockfish 19, no hybrids; zero games, after Basilisk's running SPRT and before any further oracle read (maintainer, 2026-11-14); an input to the decision on D.7.3 to D.7.9 |
 | D.7.1.1 | READY_FOR_IMPLEMENTATION | I1 | Does not hold D.7.2, which runs on fastchess (maintainer, 2026-11-13), so its row follows it; the Colosseum wrapper's move time, per-side node budget and foreign arm, with guard tests and smokes, when a foreign arm is next wanted on Colosseum |
-| D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); waits for D.7.2.1 and Basilisk's evaluation programme, or the maintainer's decision |
+| D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); D.7.2.1 read 2026-11-14 (Rarog's evaluation ahead of Basilisk's, Basilisk's moves level within 8% at equal time); waits for Basilisk's evaluation programme or the maintainer's decision |
 | D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); held with D.7.3; parity before any game |
 | D.7.4.1 | RESEARCH | I2 | After D.7.4's parity: the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted; the maintainer is asked about the exchange table first |
 | D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games |
@@ -1602,7 +1601,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       programme are read. Reported, not Elo: at equal work the donor took
       91 against 60 ms a move, the opposite of the speed basis the
       registration used.
-        - **D.7.2.1 RAR-O10: Rarog's and Basilisk's evaluations and moves against a reference — `R2`.**
+        - **D.7.2.1 RAR-O10: Rarog's and Basilisk's evaluations and moves against a reference — `R2`, DONE 2026-11-14.**
           Added 2026-11-14 (maintainer request, after RAR-O09). Basilisk's
           search programme gained about 100 Elo more than Rarog's from
           level starts while Basilisk stays about 35 to 80 behind, and its
@@ -1615,6 +1614,19 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           games; a head-to-head match is optional. Registration and
           frozen use: `docs/experiments/RAR-O10.md`. Runs after Basilisk's
           running SPRT ends, before any further oracle read.
+          **Read 2026-11-14:** the anchors pass. Rarog's head is more
+          accurate than Basilisk's head (skill +0.0123 [+0.0016,
+          +0.0235] against Stockfish 19's expected score); Basilisk's
+          leads only with 10 to 24 pawns of material, and is below
+          Rarog's Phase C start at the point. At 100 ms a move Basilisk's
+          moves lose ×1.078 Rarog's (interval including zero), more with
+          the most material, where its evaluation is furthest behind.
+          By the frozen use H1 gains weight: Basilisk's evaluation
+          programme has room, and if D.7 reopens for strength Basilisk's
+          search programme, not Reckless's, is the candidate source. Both
+          engines lose most with the most material (to D.7.8 and E.4); no
+          named lead. Not Elo; an input to the maintainer's decision on
+          D.7.3 to D.7.9.
     - **D.7.3 Parity instrument: Rarog and the hybrid on one position set — `I2`.**
       Nodes to each depth and the rate at which each mechanism fires, on
       the same positions and the same evaluation; a planted difference
