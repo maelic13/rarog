@@ -58,12 +58,13 @@ played, and its `bench` must report the node count of the plain hybrid.
 ## Reading the limits from a match
 
 `pgn_limits.py` reads a fastchess PGN: games and terminations, each
-engine's mean time a move and the ratio between the two named engines,
+engine's mean and median time a move and their ratios between the two
+named engines,
 and, in a node-budget match (where `tools/sprt.ps1` records each move's
 reported nodes as `n=`), the largest count and the moves above a budget
-plus a tolerance:
+plus a tolerance (per engine after a colon, else `--tolerance`):
 
-    python -I tools/oracle-hybrids/pgn_limits.py <games.pgn> <A>[=<budget>] <B>[=<budget>] [--tolerance 1]
+    python -I tools/oracle-hybrids/pgn_limits.py <games.pgn> <A>[=<budget>[:<tol>]] <B>[=<budget>[:<tol>]] [--tolerance 1]
 
 Stockfish dev: clone `def601cc`, `git apply` the patch, then in MSYS2's
 MinGW64 shell `make -j profile-build ARCH=x86-64-bmi2 COMP=mingw` in `src/`
