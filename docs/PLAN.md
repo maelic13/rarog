@@ -371,6 +371,8 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
+| D.7.2.2 | READY_FOR_IMPLEMENTATION | R2 | RAR-O11 registered and prepared 2026-11-14: five engines' moves at equal time and equal nodes, evaluation cost, the start points; zero games, the maintainer's night command; an input to the decision on D.7's donor |
+| D.7.2.3 | RESEARCH | R2 | Added 2026-11-14 (maintainer request): Rarog's and Basilisk's search programmes compared from their ledgers, read-only in Basilisk; research only, the agent's |
 | D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); D.7.2.1 read 2026-11-14 (Rarog's evaluation ahead of Basilisk's, Basilisk's moves level within 8% at equal time); waits for Basilisk's evaluation programme or the maintainer's decision |
 | D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); held with D.7.3; parity before any game |
 | D.7.4.1 | RESEARCH | I2 | After D.7.4's parity: the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted; the maintainer is asked about the exchange table first |
@@ -1640,6 +1642,32 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           engines lose most with the most material (to D.7.8 and E.4); no
           named lead. Not Elo; an input to the maintainer's decision on
           D.7.3 to D.7.9.
+        - **D.7.2.2 RAR-O11: the start points, per-node quality against speed, and evaluation cost — `R2`.**
+          Added 2026-11-14 (maintainer request, after RAR-O10). Rarog and
+          Basilisk ran the same process from level starts and Basilisk's
+          search programme gained more (+318 against +253, RAR-M84, and
+          about +44 since, still open). Three explanations: Basilisk
+          started with a weaker search and had more room; the donor's
+          shape (Stockfish 19 against Reckless); the fit and the build.
+          This read takes the first and the speed question: five engines
+          (Rarog 2.4.0, 2.5.0 and head; Basilisk 1.10.2 and head) on
+          RAR-O10's positions at 100 ms and at 150,000 nodes a move, scored
+          by the same reference; each evaluation's cost a call; and
+          Stockfish's classical evaluation against Rarog's in one search.
+          Zero games; one night command, the maintainer's. Registration,
+          frozen use and command: `docs/experiments/RAR-O11.md`.
+        - **D.7.2.3 The two search programmes compared from their ledgers — `R2`.**
+          Added 2026-11-14 (maintainer request). Research only, read-only
+          in Basilisk. For each programme, its accepted clusters in order
+          with their gate results, split into what came from porting the
+          donor's structure and what from refits and tunes; the
+          mechanisms Basilisk took from Stockfish 19 that Rarog's search
+          lacks, against D.7.0's inventory of Rarog's departures from
+          Reckless; and what each programme measured at its start. It
+          narrows explanations (2) and (3), which RAR-O11 cannot
+          separate. Output: an analysis file in `analysis/`, and whether a
+          Stockfish 19 hybrid read on Rarog's evaluation (the RAR-O08 and
+          RAR-O09 instrument) is worth registering.
     - **D.7.3 Parity instrument: Rarog and the hybrid on one position set — `I2`.**
       Nodes to each depth and the rate at which each mechanism fires, on
       the same positions and the same evaluation; a planted difference
