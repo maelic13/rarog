@@ -71,7 +71,7 @@ classical stage.
 | B search | 251 equal-time (247.97, RAR-O03) | 120–200 | selectivity explains 272; a Reckless-shaped stack fitted locally. **Measured at B.9: 272 ± 14 recovered**, G(0) −247.97 → +24.24 ± 8.01 (RAR-O04): above the band, the head beats the oracle |
 | C evaluation | 182 same-search at equal nodes, 266 at equal time (RAR-O05; RAR-O02's 329 was the 2.3.2 evaluation); 129 at equal nodes after C.3 (RAR-O06); **99 at C.11 (RAR-O07)** | 100–160 | six families, whole-surface refits, endgame conversion. **C.0 (2026-10-05):** C.0's screen supports two family clusters (king safety, winnability and scale), not six, and its prior for the family clusters together is 30–90 (`analysis/eval_programme_2026-10-05.md`). **C.3.6 (2026-10-09):** C.2's refit and C.3's king unit closed 52 ± 26 of the 182 in the same search (RAR-O06); one reading does not split them, and the refit is not a family cluster. The band is corrected at C.11 by RAR-O07's measurement (registered 2026-10-11), never by an estimate. **Measured at C.11 (RAR-O07, 2026-10-21): 82.5 ± 25.2 recovered at equal nodes**, +181.7 → +99.2 ± 16.6: below the planned 100–160 and in the upper half of C.0's 30–90 prior for the family clusters; Rarog's own strength gain over Phase C is read by C.11's pool gauntlet and E.1, not by this meter |
 | D clock, SMP, robustness | unmeasured | 15–40 | Reckless-shaped node-fraction TM; 4T quality |
-| D.7 search shape | 22.5 ± 7.9 at equal clock against Phase B's donor as it is (RAR-O08, match 5); the shares of tree shape, clock use and kernel speed are unread | 0–70 | conditional on D.7.2's reads or the maintainer's decision: the kernel in the donor's whole form, seeded from the hybrid's configuration and fitted. Equal strength is accepted (maintainer decision 2026-11-13), so the band starts at 0 |
+| D.7 search shape | 22.5 ± 7.9 at equal clock against Phase B's donor as it is (RAR-O08, match 5); tree shape at equal work +3.5 ± 8.4 (RAR-O09), so most of it is not shape; the speed and clock shares are unread | 0–70 | conditional on D.7.2's reads or the maintainer's decision: the kernel in the donor's whole form, seeded from the hybrid's configuration and fitted. Equal strength is accepted (maintainer decision 2026-11-13), so the band starts at 0 |
 | Speed inside B and C | — | 10–30 | per-node cost of the new search and evaluation modules. **B.9:** the B head is 26.2% slower than 2.4.0 in pooled bench NPS (RAR-P35), after B.7 won back about 20% inside B (+35.5 Elo, RAR-S98); B's gates already include that cost and that recovery, so this row recorded nothing of B's separately and now applies to C. **C.12** owns the recovery (added 2026-10-13) |
 
 **Corrected at B.9:** the search programme alone recovered more than its
@@ -371,10 +371,10 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.2 | GAME_GATE | V | RAR-O09 prepared 2026-11-14 on fastchess: arms built, null-move share 1.731% (the donor's budget 127,800), odds ×1.1211 (93 ms; 3.363+0.034 and 11.211+0.112), the smoke passed on medians; match (1) only, about 50 minutes, handed over (maintainer decision 2026-11-14; (2) to (4) optional, run on a named use); the rebuild opens at +10 or more at equal work, otherwise the maintainer decides after consultation |
+| D.7.2.1 | READY_FOR_IMPLEMENTATION | R2 | RAR-O10 registered 2026-11-14: Rarog's and Basilisk's evaluations alone, and each whole engine's moves, against Stockfish 19, no hybrids; zero games, after Basilisk's running SPRT and before any further oracle read (maintainer, 2026-11-14); an input to the decision on D.7.3 to D.7.9 |
 | D.7.1.1 | READY_FOR_IMPLEMENTATION | I1 | Does not hold D.7.2, which runs on fastchess (maintainer, 2026-11-13), so its row follows it; the Colosseum wrapper's move time, per-side node budget and foreign arm, with guard tests and smokes, when a foreign arm is next wanted on Colosseum |
-| D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); opens with D.7.2's decision |
-| D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); opens with D.7.2's decision; parity before any game |
+| D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); waits for D.7.2.1 and Basilisk's evaluation programme, or the maintainer's decision |
+| D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); held with D.7.3; parity before any game |
 | D.7.4.1 | RESEARCH | I2 | After D.7.4's parity: the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted; the maintainer is asked about the exchange table first |
 | D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games |
 | D.7.6 | RESEARCH | V | The fit as one rule 7c run read at checkpoints; kept only if fitted over unfitted passes the gate PROCESS's SPSA procedure chooses |
@@ -1543,7 +1543,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           Tooling only: no engine build. Not needed for RAR-O09 on
           fastchess, the maintainer's expected runner (2026-11-13), so
           D.7.2 does not wait for it.
-    - **D.7.2 RAR-O09: the donor's search against the head at equal work, at equal move time and on the clock at two controls — `V`.**
+    - **D.7.2 RAR-O09: the donor's search against the head at equal work, at equal move time and on the clock at two controls — `V`, DONE 2026-11-14.**
       Registered 2026-11-13 (`docs/experiments/RAR-O09.md`). Reckless's
       hybrid against the head, both rebuilt on the head, four fixed
       matches: 3,000 games at equal work a move (tree shape alone), 3,000
@@ -1582,6 +1582,30 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       (maintainer decision 2026-11-14): match (1) runs now, since only it
       feeds the rule and the rebuild's expectation; (2) to (4) stay
       prepared and run only when a decision or analysis names a use.
+      **Read 2026-11-14:** `reckless-hce` **+3.47 ± 8.37** over the head
+      at equal work (3,000 games, valid by a recorded deviation: 110
+      donor moves reported 3 to 5 nodes over budget, against the
+      amended plus two). PLAN's rule does not fire; the frozen
+      recommendation is "unresolved for strength": a rebuild captures
+      only the shape, worth about +3 before any fit. Decision 2 below:
+      D.7.3 to D.7.9 are held by the maintainer (2026-11-14) until
+      D.7.2.1's comparison with Basilisk and Basilisk's own evaluation
+      programme are read. Reported, not Elo: at equal work the donor took
+      91 against 60 ms a move, the opposite of the speed basis the
+      registration used.
+        - **D.7.2.1 RAR-O10: Rarog's and Basilisk's evaluations and moves against a reference — `R2`.**
+          Added 2026-11-14 (maintainer request, after RAR-O09). Basilisk's
+          search programme gained about 100 Elo more than Rarog's from
+          level starts while Basilisk stays about 35 to 80 behind, and its
+          evaluation programme has not started. Without hybrids, which
+          remove the fit each search was tuned around: each evaluation
+          alone against Stockfish 19's expected score on 10,000 game
+          positions, with Stockfish 11's evaluation and Rarog's Phase C
+          start as anchors of known order; each whole engine's move at
+          100 ms scored by the same reference, by position class. Zero
+          games; a head-to-head match is optional. Registration and
+          frozen use: `docs/experiments/RAR-O10.md`. Runs after Basilisk's
+          running SPRT ends, before any further oracle read.
     - **D.7.3 Parity instrument: Rarog and the hybrid on one position set — `I2`.**
       Nodes to each depth and the rate at which each mechanism fires, on
       the same positions and the same evaluation; a planted difference
