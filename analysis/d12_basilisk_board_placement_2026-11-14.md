@@ -18,11 +18,16 @@ Basilisk's results are hints, not the best answer for Rarog).
   latest profile is C.12's head (`analysis/c12_speed_review_2026-10-18.md`):
   generation 9.6%, SEE 7.1%, make/unmake 4.9%, about 22% together; corrected
   in PLAN.
-- **Lead 2 is superseded.** It said Basilisk's B.7.3 copies Rarog's hinted
-  make. Basilisk's later frontier review read the hint as no gain on its
-  replay, and its nearest form (make derives the checkers) at −0.74%; it did
-  not adopt it. Rarog keeps its hinted make, now on no claim that it is the
-  reason for its make column.
+- **Lead 2 is corrected.** It said Basilisk's B.7.3 copies Rarog's hinted
+  make. Basilisk's frontier review found a hinted make no gain on its own
+  replay, in a search that knows `gives_check` before only 43% of its
+  makes; it was not built into Basilisk's engine. The −0.74% (make derives
+  the checkers from the move) is another mechanism. A first correction here
+  over-read this as superseding the hint; Basilisk's note of 2026-11-14
+  corrected it, and PLAN D.12.2's lead 2 now holds the rule: keep the hint
+  while Rarog's search already pays for the answer on nearly every make,
+  and count that precondition (D.12.0) before deciding anything about
+  make.
 - **Lead 6 is superseded.** It said stored check information loses at
   Basilisk's mix (65.8 against 71.7 ns). The later review reads it as a wash:
   against classical Stockfish, cheaper queries save 17.0 ns a node and the

@@ -2042,6 +2042,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       falsifier); and what the replay must record for the options kept.
       A leaf it reshapes gets its prediction rewritten here, before any
       exposure, the change recorded beside the old one.
+      *The check hint first:* its precondition is counted before any
+      option touching make, check information or `gives_check` is
+      ranked (D.12.2, lead 2, the rule and the two counts).
       *Stop rule:* an option whose bound is under the pooled read's
       resolution (about 0.4% at step 1) is listed, not proposed. If
       nothing on the board clears it, D.12's speed leaves close
@@ -2214,11 +2217,58 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
          pooled NPS decides. Basilisk's replay read the generator's pins
          from aligned sliders at −0.5 ns a node, within noise: RAR-M31
          and C.12's −0.66% stand, and that form is not read again.
-      2. *Make and unmake* is the fastest of the five: no lead. Keep the
-         hinted make; whether the compact undo record should carry the
-         derived keys is D.12.2.2. (Superseded 2026-11-14 by Basilisk's
-         frontier review: the hint is not where make's time is, Basilisk
-         did not copy it, and its nearest form read −0.74%.)
+      2. *Make and unmake* is the fastest of the five: no lead. Whether
+         the compact undo record should carry the derived keys is
+         D.12.2.2. *The check hint* (corrected 2026-11-14 at Basilisk's
+         request; the note it replaces over-read Basilisk's evidence as
+         superseding the hint). Basilisk's evidence is for Basilisk's
+         search, where `gives_check` is known before only 43% of makes
+         (38.5% no, 4.5% yes), asked only where a pruning decision needs
+         it: there a hinted make fed the known answers gained nothing on
+         its replay of `bench 13` (+0.2 ns a node, +0.5 with no hint) and
+         was not built into the engine. Its −0.74% is another mechanism,
+         make deriving the checkers from the move with no answer from
+         the search, and says nothing about a hint the search supplies.
+         Its "about 4.0 ns a node uncharged" for Rarog priced Rarog's
+         board under Basilisk's call mix, where a hinted board owes
+         `gives_check` for the 57% of makes Basilisk does not ask about;
+         it is not a cost Rarog's search pays. In Rarog (source at
+         `a43443e`): the main search computes `gives_check` for every
+         move it makes, just before the make, building the node's
+         `CheckInfo` at the first, and hands it to
+         `make_move_with_check`, which then skips `calculate_checkers`
+         for a move that does not check. LMR reads the answer
+         (`lmr_gives_check`), but only for moves after the first, from
+         depth 2, never at the root or in check; for the rest, the
+         answer, and at a node with no such move the `CheckInfo`, is
+         paid only for the hint. ProbCut takes the plain make.
+         Quiescence passes the hint only where its futility or
+         count-limit test already asked, and the plain make otherwise.
+         How many makes skip `calculate_checkers` is not counted.
+         *The rule:* the hint is right exactly while its precondition
+         holds, that the search already needs `gives_check`, and builds
+         the node's `CheckInfo` for it, for nearly every move it makes;
+         while that price is paid anyway, keep the hint. A search
+         rebuild (D.7, if it lands) may change that, so D.12.0
+         re-establishes the precondition on the search current when it
+         runs, before anything about make is decided: over `bench 13`,
+         the share of makes whose answer the search already computed for
+         its own use, and the share of nodes that build `CheckInfo`
+         only for the hint. If nearly every make has the answer, the
+         hint stays. If not, the hint and the node's `CheckInfo` are a
+         cost paid only for make, and the other forms are read: no hint,
+         make computing the checkers with one `attackers_to` on the
+         king (Basilisk's), check squares cached lazily per piece type
+         in the picker, `gives_check` on demand per call, and the hybrid
+         quiescence already uses (the hint where the answer is known,
+         the plain make elsewhere). The checkers are identical in every
+         form, so the fingerprint must not move; pooled-PGO NPS decides,
+         not the microbenchmark. Basilisk's search replay
+         (`D:/code/basilisk/tests/board_replay.cpp`,
+         `D:/code/basilisk/tools/diag/board_replay_run.py`) and engine
+         screen (`D:/code/basilisk/tools/diag/engine_ab.py`, branch
+         `b7-board-audit` at `c6d27da`) show one cheap way to screen
+         first. Neither engine's result transfers to the other.
       3. *The capture generator:* `generate_legal_noisy_into` yields 885
          of the 927 legal tactical moves; the 42 non-capturing rook,
          bishop and knight underpromotions go to the quiet stage, as in

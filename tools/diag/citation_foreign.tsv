@@ -120,3 +120,4 @@ f7e1489	Triumviratus commit (per-thread state aligned to 128 bytes)
 d76a98c	Basilisk master at the 2026-11-13 Basilisk check
 fdb35fa	Basilisk branch b6-perft-pins at the 2026-11-13 Basilisk check
 21ce21c	Basilisk commit: its board findings for Rarog (analysis/basilisk_board_handoff_2026-11-14.md, PLAN D.12)
+c6d27da	Basilisk commit: branch b7-board-audit with its search replay and engine screen (PLAN D.12.2, lead 2)
