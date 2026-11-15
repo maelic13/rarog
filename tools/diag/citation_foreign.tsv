@@ -122,3 +122,4 @@ fdb35fa	Basilisk branch b6-perft-pins at the 2026-11-13 Basilisk check
 21ce21c	Basilisk commit: its board findings for Rarog (analysis/basilisk_board_handoff_2026-11-14.md, PLAN D.12)
 c6d27da	Basilisk commit: branch b7-board-audit with its search replay and engine screen (PLAN D.12.2, lead 2)
 838a3c6	Basilisk commit: its node count moved to Stockfish's, once per move made (RAR-O12, PLAN D.7.2.4)
+d17a62d	Basilisk commit: its B.8.9 speed pass, the head with Stockfish's count read in RAR-O12 (PLAN D.7.2.4)

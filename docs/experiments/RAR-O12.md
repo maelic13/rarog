@@ -68,5 +68,24 @@ Indexed under *3. Search and selectivity › Search-oracle observations* in [`do
   - *Consequence for the frozen use.* The speed and clock shares subtract an equal-work match from the same pair's clock match. RAR-O11's (d3) and RAR-O10's (c) were played with 8bfbbff and `112eb14`, so they no longer pair with (m2) and (m3); the start pair, (d1) against (m1), still does. Whether the two clock matches are played again with the new arms is the maintainer's decision, recorded here before the command is re-issued.
   - *Basis of the predictions.* They stand. The new Basilisk build adds large pages (+0.91% NPS, its B.8.4) and its count, and the prediction for (m2) and (m3) does not move for that.
   - *The two clock matches are played again (maintainer, 2026-11-15).* (c2) Rarog 2.5.0 against Basilisk's new head, and (c3) Rarog's head against Basilisk's new head, each at `3+0.03`, 2,000 games, the same `sprt.ps1` form and seed as the equal-work matches. The speed and clock shares at the ends and the heads are then (c2) − (m2) and (c3) − (m3), on the same binaries. Elo of the Rarog side, frozen before any game: (c2) **−78** [−100, −55], RAR-O11's (d3) −76.3 with a little more Basilisk speed; (c3) **+65** [+45, +85], RAR-O10's (c) +68.4, the same.
+- **The arms and budgets, recorded 2026-11-15 before any game (the maintainer delegated the run, host idle):**
+  - *Arms* (`analysis/artifacts/rar-o12-2026-11-15/engines/`, SHA-256):
+    - Rarog 2.4.0 fdecf86b82408aa4a3780db65005d2c36ace0cba1eced8fdd580edbb8d6894c5;
+    - Rarog 2.5.0 1f58452349d0db4ba051b94d5680010d572a8a183c4627c7d89b0f8f978f4e2e;
+    - Rarog's head, the RAR-S125 candidate kept (`9d7b42f`, `id name` dev-20261115-9d7b42f9, bench 9,067,595), 105072328afe9b7290e089d2120945f9029947978d01c9e1e254b47cc83dca09;
+    - Basilisk 1.10.2 fa874a89c0fc11d593aecb37339179dcf9ce188ff6a68c563ed27669c1a29459;
+    - Basilisk's head, its B.8.9 speed pass's final PGO build of `d17a62d`, which carries its Stockfish count (`838a3c6`, BAS-S64 kept): `basilisk-b89-final-pgo1-pext-pgo.exe`, `id name` dev-20261115-d17a62df, bench 4,688,537, clean tree, 45fb9f7a576b004438928c0a6f73aadceaabc55167b6f3e9f0599fd6846ddb25.
+  - *Ratios in Stockfish's unit*, moves made with the null move not counted, from instrumented builds of each source (`count_patch_sf.py`). Each build reproduced its release's nodes and best move on all 500 positions, 0 mismatches in 2,500. Reported nodes over moves made at `go nodes 150000`:
+
+    | Build | Ratio | Median | Budget | Moves made a search at the budget |
+    |---|---|---|---|---|
+    | Rarog 2.4.0 | 1.4976 | 1.5172 | 224,600 | 145,839 |
+    | Rarog 2.5.0 | 1.2236 | 1.2233 | 183,500 | 145,025 |
+    | Rarog's head | 1.0000 | 1.0000 | 150,000 | 145,048 |
+    | Basilisk 1.10.2 | 1.4066 | 1.4198 | 211,000 | 145,747 |
+    | Basilisk's head | 1.0000 | 1.0000 | 150,000 | 145,102 |
+
+    Both heads at exactly 1 confirm that each counts Stockfish's unit. At the budgets the arms make 145,025 to 145,839 moves a search, within 0.6%. The old-unit reads of the first preparation are kept in `old-unit/`.
+  - *Command* (`night.ps1`, smoked end to end): moves at equal work for all five, 100 ms runs for the two new heads (the older builds' are RAR-O11's), the new labels, the analysis, then (m1), (m2), (m3), (c2) and (c3), 2,000 games each.
 - **Result:** not measured.
 - **Artifacts / commits:** this registration; `analysis/artifacts/rar-o12-2026-11-15/` (ignored): `count_ratio.json` (SHA-256 2fc19eae96d5d9bd9e5068ef5348dbfd2fb9f1b0d8fd889ec499b5f3c1c19e76), `count_ratio_budgets.json` (e6d013646aec47eb1ca166d644c6d8a294aec7a1ba3b996d8dec452f2bb049b0) and their logs, the scripts, Rarog's head's reused moves (cc45ad23c045b7f5739693f746e6e17bedd71197617780c4be1641d125762221), the smoke; the instrumented sources and builds in `analysis/artifacts/rar-o11-2026-11-14/src/` and `count-build/`.
