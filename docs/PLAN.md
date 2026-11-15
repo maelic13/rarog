@@ -371,9 +371,8 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.2.2 | READY_FOR_IMPLEMENTATION | R2 | RAR-O11 registered and prepared 2026-11-14: five engines' moves at equal time and equal nodes, evaluation cost, the start points; zero games, the maintainer's night command; an input to the decision on D.7's donor |
 | D.7.2.3 | RESEARCH | R2 | Added 2026-11-14 (maintainer request): Rarog's and Basilisk's search programmes compared from their ledgers, read-only in Basilisk; research only, the agent's |
-| D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); D.7.2.1 read 2026-11-14 (Rarog's evaluation ahead of Basilisk's, Basilisk's moves level within 8% at equal time); waits for Basilisk's evaluation programme or the maintainer's decision |
+| D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); D.7.2.1 read 2026-11-14 (Rarog's evaluation ahead of Basilisk's, Basilisk's moves level within 8% at equal time); D.7.2.2 read 2026-11-15 (Basilisk's search 75 Elo better per node at the programmes' ends, not by speed; Stockfish's shape unfitted worse than Reckless's at equal work); waits for D.7.2.3 and the maintainer's decision on the donor |
 | D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); held with D.7.3; parity before any game |
 | D.7.4.1 | RESEARCH | I2 | After D.7.4's parity: the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted; the maintainer is asked about the exchange table first |
 | D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games |
@@ -1642,7 +1641,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           engines lose most with the most material (to D.7.8 and E.4); no
           named lead. Not Elo; an input to the maintainer's decision on
           D.7.3 to D.7.9.
-        - **D.7.2.2 RAR-O11: the start points, per-node quality against speed, and evaluation cost — `R2`.**
+        - **D.7.2.2 RAR-O11: the start points, per-node quality against speed, and evaluation cost — `R2`, DONE 2026-11-15.**
           Added 2026-11-14 (maintainer request, after RAR-O10). Rarog and
           Basilisk ran the same process from level starts and Basilisk's
           search programme gained more (+318 against +253, RAR-M84, and
@@ -1660,6 +1659,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           work (RAR-O09's form for RAR-O08's `sfdev-hce`). One night
           command, the maintainer's. Registration,
           frozen use and command: `docs/experiments/RAR-O11.md`.
+          **Read 2026-11-15:** Basilisk did not start with the weaker
+          search: at equal nodes Basilisk 1.10.2 was level in move loss
+          and +27.5 ± 12.0 in games over Rarog 2.4.0, with the less
+          accurate evaluation, so explanation (1) loses weight. Its
+          search programme gained about 65 more than Rarog's, and at the
+          programmes' ends its search plays 75 Elo better per node
+          (Rarog 2.5.0 −76.3 ± 11.1 on the clock, −75.3 ± 11.4 at equal
+          nodes): speed separates nothing. Unfitted on Rarog's evaluation
+          at equal work, Stockfish dev's search is 34.3 ± 12.0 worse than
+          Reckless's (+37.8 ± 8.6 for the head), so a Stockfish donor
+          would rest on the fit, not a better shape. Rarog's evaluation
+          is the cheapest per call of the four and the most accurate;
+          Stockfish's classical evaluation is still lighter in one search
+          and stronger. RAR-O10's match (c): Rarog's head +68.4 ± 9.0
+          over Basilisk's head. D.7.2.3 is what separates the donor's
+          shape as Basilisk built it from its fit and build.
         - **D.7.2.3 The two search programmes compared from their ledgers — `R2`.**
           Added 2026-11-14 (maintainer request). Research only, read-only
           in Basilisk. For each programme, its accepted clusters in order
