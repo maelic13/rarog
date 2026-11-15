@@ -372,7 +372,7 @@ D.6.28, and inputs to D.7.0).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.7.2.3 | RESEARCH | R2 | Added 2026-11-14 (maintainer request); comparison recorded 2026-11-15 (`analysis/d723_search_programmes_2026-11-15.md`): the gap sits in the null-move, ProbCut and singular cluster, quiescence, root and the joint tune, where Rarog kept its own forms; its conclusions are drawn with D.7.2.4's re-read |
-| D.7.2.4 | READY_FOR_IMPLEMENTATION | R2 | RAR-O12 registered and prepared 2026-11-15: RAR-O11's equal-node reads again at equal work in one node unit; zero-game moves and three 2,000-game matches, the maintainer's command, about four hours |
+| D.7.2.4 | READY_FOR_IMPLEMENTATION | R2 | RAR-O12 registered 2026-11-15; held (maintainer, 2026-11-15) until every arm counts as Stockfish does: Basilisk's own adoption, then the same contract in the Basilisk 1.10.2 and 8bfbbff and the Rarog 2.4.0 and 2.5.0 sources read, Rarog's head by D.6.31; then the arms rebuilt and the command re-issued |
 | D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); D.7.2.1 read 2026-11-14 (Rarog's evaluation ahead of Basilisk's, Basilisk's moves level within 8% at equal time); D.7.2.2 read 2026-11-15 (Basilisk's search programme about 65 ahead of Rarog's on the clock; its per-node reads withdrawn, unequal node units; Stockfish's shape unfitted worse than Reckless's at equal work); waits for D.7.2.3 and the maintainer's decision on the donor |
 | D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); held with D.7.3; parity before any game |
 | D.7.4.1 | RESEARCH | I2 | After D.7.4's parity: the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted; the maintainer is asked about the exchange table first |
@@ -395,6 +395,7 @@ D.6.28, and inputs to D.7.0).
 | D.6.26 | RESEARCH | R2 | Screen: the pawnless one-minor-ahead classes against Syzygy over an enumeration, and their exposure in gate games; minutes |
 | D.6.27 | RESEARCH | R2 | After D.7: the donor has no IIR; re-evaluate first, close if moot |
 | D.6.28 | RESEARCH | R2 | Screened 2026-11-13 on RAR-M87's games: the field gap sits in the low-clock band the horizon rule shapes; next, the horizon against a field, registered, forfeits its invariant |
+| D.6.31 | IMPLEMENTED | R2 | `9d7b42f`: a node is counted when a move is made, not when a null move is, as Stockfish and Reckless count; RAR-S125's 2,000-game harm read (case 2) registered and its arms built, the maintainer's command |
 | D.6.29 | RESEARCH | R2 | After D.7: quiescence is rebuilt; D.7.8 asks first whether it still misreads stalemates (19.2% of replayed searches on the 2.7.0 kernel); the repair card and the donor-form decision wait with it |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -1345,6 +1346,24 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       positions left), so it is repair case 1. Activation read on the
       frozen replay: searches ending without a proven win 15 → 0, playing
       another move 3 → 0.
+    - **D.6.31 A null move adds a node to the count — `R2`.**
+      Added 2026-11-15 (maintainer: every engine compared here counts as
+      Stockfish does). Stockfish counts in `do_move` and Reckless in its
+      search `make_move`, once per move made, quiescence's and
+      ProbCut's included, never for a null move; D.6.8's contract also
+      counted the null move's position, about 1.7% of the count
+      (RAR-O09), so every equal-node comparison with them needed a
+      correction. The change: the null move's `count_node` goes, and
+      every reader of the count (the LMR spread's phase, the effort
+      share, the poll, the node limit) reads the new one, as in D.6.8. A
+      test checks that a search making null moves reports exactly its
+      moves made. The liveness probes of `CoreSingDoubleNotTtPv` and
+      `CoreSingTripleNotTtPv` were re-pinned first, in their own commit
+      (`947e5c5`), where both trees move. Implemented as `9d7b42f`,
+      `bench 13` 9,067,595 / EBF 2.479. **Gate:** case 2, a 2,000-game
+      read with the −13 harm rule, registered alone
+      (`docs/experiments/RAR-S125.md`); the arms are built and the dry
+      run passed; the maintainer's command.
   Evidence for items already here (H18–H21, H25): item 4 (NODE-2), the
   donor form read +3.3 ± 9.1 in Basilisk (2,000 games) and each of its
   consumers alone (IIR, the no-TT-move LMR term) threw a promotion fixture

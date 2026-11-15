@@ -54,5 +54,12 @@ Indexed under *3. Search and selectivity › Search-oracle observations* in [`do
 - **Stop rules:** a failed step stops the reads; each match is independent; a host not idle within eight hours stops the step it waits for; no re-run on the same binaries, budgets and positions.
 - **Command (the maintainer's, from `D:\code\rarog`):** `pwsh -NoProfile -File analysis/artifacts/rar-o12-2026-11-15/night.ps1`. It waits for an idle host before each step, logs each step's exit status in `night.log`, and ends with `RAR-O12 night run finished: exit 0`.
 - **Cost:** the moves about 6 minutes, the new labels a few minutes, each match about an hour and ten minutes; about four hours in all.
+- **Held 2026-11-15, before any game (maintainer):** every engine in the read is to count as Stockfish does, once per move made and never for a null move, instead of being equalised by ratio.
+  - Rarog's head moves to that count by D.6.31 (`9d7b42f`, RAR-S125).
+  - Basilisk adopts it in its own engine, and the same contract is then written into the Basilisk 1.10.2 and 8bfbbff sources read here.
+  - Rarog's 2.4.0 and 2.5.0 get the same contract the same way.
+  - Reckless already counts so and is not modified.
+  
+  The arms are then rebuilt and checked with `count_ratio.py` (each at 1.000 against moves made). The budgets become one budget, and the command is re-issued. Instrument, pairs, predictions and uses stand as registered; only the arms' builds and budgets change, before any game.
 - **Result:** not measured.
 - **Artifacts / commits:** this registration; `analysis/artifacts/rar-o12-2026-11-15/` (ignored): `count_ratio.json` (SHA-256 2fc19eae96d5d9bd9e5068ef5348dbfd2fb9f1b0d8fd889ec499b5f3c1c19e76), `count_ratio_budgets.json` (e6d013646aec47eb1ca166d644c6d8a294aec7a1ba3b996d8dec452f2bb049b0) and their logs, the scripts, Rarog's head's reused moves (cc45ad23c045b7f5739693f746e6e17bedd71197617780c4be1641d125762221), the smoke; the instrumented sources and builds in `analysis/artifacts/rar-o11-2026-11-14/src/` and `count-build/`.
