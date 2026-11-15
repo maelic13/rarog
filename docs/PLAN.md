@@ -372,7 +372,7 @@ D.6.28, and inputs to D.7.0).
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.7.2.3 | RESEARCH | R2 | Added 2026-11-14 (maintainer request): Rarog's and Basilisk's search programmes compared from their ledgers, read-only in Basilisk; research only, the agent's |
-| D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); D.7.2.1 read 2026-11-14 (Rarog's evaluation ahead of Basilisk's, Basilisk's moves level within 8% at equal time); D.7.2.2 read 2026-11-15 (Basilisk's search 75 Elo better per node at the programmes' ends, not by speed; Stockfish's shape unfitted worse than Reckless's at equal work); waits for D.7.2.3 and the maintainer's decision on the donor |
+| D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); D.7.2.1 read 2026-11-14 (Rarog's evaluation ahead of Basilisk's, Basilisk's moves level within 8% at equal time); D.7.2.2 read 2026-11-15 (Basilisk's search programme about 65 ahead of Rarog's on the clock; its per-node reads withdrawn, unequal node units; Stockfish's shape unfitted worse than Reckless's at equal work); waits for D.7.2.3 and the maintainer's decision on the donor |
 | D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); held with D.7.3; parity before any game |
 | D.7.4.1 | RESEARCH | I2 | After D.7.4's parity: the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted; the maintainer is asked about the exchange table first |
 | D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games |
@@ -1659,14 +1659,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           work (RAR-O09's form for RAR-O08's `sfdev-hce`). One night
           command, the maintainer's. Registration,
           frozen use and command: `docs/experiments/RAR-O11.md`.
-          **Read 2026-11-15:** Basilisk did not start with the weaker
-          search: at equal nodes Basilisk 1.10.2 was level in move loss
-          and +27.5 ± 12.0 in games over Rarog 2.4.0, with the less
-          accurate evaluation, so explanation (1) loses weight. Its
-          search programme gained about 65 more than Rarog's, and at the
-          programmes' ends its search plays 75 Elo better per node
-          (Rarog 2.5.0 −76.3 ± 11.1 on the clock, −75.3 ± 11.4 at equal
-          nodes): speed separates nothing. Unfitted on Rarog's evaluation
+          **Read 2026-11-15:** on the clock the start was level (Rarog
+          2.4.0 −11.5 ± 11.7 against Basilisk 1.10.2) and Basilisk's
+          search programme gained about 65 more than Rarog's (Rarog 2.5.0
+          −76.3 ± 11.1 against Basilisk's head). The equal-node reads
+          compared unequal node units: Rarog 2.4.0 and 2.5.0 predate
+          D.6.8's count (about 21% high), and both Basilisks count
+          re-searches, 1.10.2 also its hand-off to quiescence; so the
+          per-node and speed readings are withdrawn until a
+          work-equalised re-read (correction the same day, in the
+          record). Unfitted on Rarog's evaluation
           at equal work, Stockfish dev's search is 34.3 ± 12.0 worse than
           Reckless's (+37.8 ± 8.6 for the head), so a Stockfish donor
           would rest on the fit, not a better shape. Rarog's evaluation
