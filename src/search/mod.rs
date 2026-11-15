@@ -1876,13 +1876,13 @@ impl Searcher {
         }
     }
 
-    /// Count the position a move or a null move just reached, then look
-    /// for a reason to stop: another thread's stop, the node limit, and on
-    /// every 2048th count the GUI and the clock. Each position is counted
-    /// once: a re-search, the hand-off to quiescence, razoring's
-    /// quiescence search, a null-move verification and an exclusion search
-    /// enter a position already counted and add nothing, so `nodes`, `nps`,
-    /// `go nodes` and the bench count one thing. A reason to stop sets
+    /// Count the position a move just reached, then look for a reason to
+    /// stop: another thread's stop, the node limit, and on every 2048th
+    /// count the GUI and the clock. A count is a move made, as Stockfish
+    /// and Reckless keep it: a null move, a re-search, the hand-off to
+    /// quiescence, razoring's quiescence search, a null-move verification
+    /// and an exclusion search add nothing, so `nodes`, `nps`, `go nodes`
+    /// and the bench count one thing, the same thing those engines count. A reason to stop sets
     /// `td.stopped`, which every node reads on entry.
     fn count_node<P: FnMut() -> SearchEvent + ?Sized>(&mut self, poll: &mut P) {
         let total_nodes = self.record_node();

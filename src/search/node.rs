@@ -1136,7 +1136,8 @@ impl Searcher {
                 self.td.null_move_plies.push(ply);
                 board.make_null_move();
                 self.shared.tt.prefetch(board.hash());
-                self.count_node(poll);
+                // Not counted: a count is a move made, as Stockfish and
+                // Reckless keep it, so `go nodes` buys the same work in each.
                 #[cfg(test)]
                 self.note_child(ChildSite::NullMove, cut_node);
                 let score = -self.negamax::<NonPv, _>(
@@ -1364,6 +1365,10 @@ impl Searcher {
                     self.td.stack[ply].extension_spent = extension_spent;
                     board.make_move(mv);
                     self.shared.tt.prefetch(board.hash());
+                    #[cfg(test)]
+                    {
+                        self.td.moves_made += 1;
+                    }
                     self.count_node(poll);
                     #[cfg(feature = "pricing")]
                     {
@@ -2081,6 +2086,10 @@ impl Searcher {
             let mv_gives_check = move_gives_check(board, &mut node_ci, mv, &mut gives_check);
             board.make_move_with_check(mv, mv_gives_check);
             self.shared.tt.prefetch(board.hash());
+            #[cfg(test)]
+            {
+                self.td.moves_made += 1;
+            }
             self.count_node(poll);
             let mut new_depth = depth - 1 + extension;
             debug_assert!(
@@ -2950,6 +2959,10 @@ impl Searcher {
                 None => board.make_move(mv),
             }
             self.shared.tt.prefetch(board.hash());
+            #[cfg(test)]
+            {
+                self.td.moves_made += 1;
+            }
             self.count_node(poll);
             let score = -self.quiescence(board, -beta, -alpha, ply + 1, qply + 1, poll);
             board.unmake_move(mv);
@@ -3597,6 +3610,26 @@ mod tests {
     }
 
     /// The root never takes a null move.
+    /// A count is a move made: a middlegame search that makes null moves
+    /// reports exactly the moves it made, so the null moves add nothing.
+    #[test]
+    fn a_null_move_adds_no_count() {
+        let mut searcher = Searcher::default();
+        let mut board =
+            Board::from_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
+                .expect("valid FEN");
+        for depth in 1..=10 {
+            searcher.search_root_window(&mut board, depth, -INF_SCORE, INF_SCORE, &mut || {
+                SearchEvent::None
+            });
+        }
+        assert!(
+            !searcher.td.null_move_plies.is_empty(),
+            "the tree must try null moves"
+        );
+        assert_eq!(searcher.td.nodes, searcher.td.moves_made);
+    }
+
     #[test]
     fn the_root_never_takes_a_null_move() {
         let mut searcher = Searcher::default();

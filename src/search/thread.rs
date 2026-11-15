@@ -126,6 +126,9 @@ pub(super) struct ThreadData {
     /// The plies at which a null move was made, for the tests of its gates.
     #[cfg(test)]
     pub(super) null_move_plies: Vec<usize>,
+    /// Moves made in the tree, for the test of the node count.
+    #[cfg(test)]
+    pub(super) moves_made: u64,
     /// Null-move verification searches started.
     #[cfg(test)]
     pub(super) nmp_verifications: u64,
@@ -206,6 +209,8 @@ impl Default for ThreadData {
             previous_search_score: None,
             #[cfg(test)]
             null_move_plies: Vec::new(),
+            #[cfg(test)]
+            moves_made: 0,
             #[cfg(test)]
             nmp_verifications: 0,
             #[cfg(test)]
