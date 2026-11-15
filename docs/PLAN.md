@@ -371,7 +371,7 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.2.3 | RESEARCH | R2 | Added 2026-11-14 (maintainer request): Rarog's and Basilisk's search programmes compared from their ledgers, read-only in Basilisk; research only, the agent's; its conclusions are drawn with D.7.2.4's re-read |
+| D.7.2.3 | RESEARCH | R2 | Added 2026-11-14 (maintainer request); comparison recorded 2026-11-15 (`analysis/d723_search_programmes_2026-11-15.md`): the gap sits in the null-move, ProbCut and singular cluster, quiescence, root and the joint tune, where Rarog kept its own forms; its conclusions are drawn with D.7.2.4's re-read |
 | D.7.2.4 | READY_FOR_IMPLEMENTATION | R2 | RAR-O12 registered and prepared 2026-11-15: RAR-O11's equal-node reads again at equal work in one node unit; zero-game moves and three 2,000-game matches, the maintainer's command, about four hours |
 | D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); D.7.2.1 read 2026-11-14 (Rarog's evaluation ahead of Basilisk's, Basilisk's moves level within 8% at equal time); D.7.2.2 read 2026-11-15 (Basilisk's search programme about 65 ahead of Rarog's on the clock; its per-node reads withdrawn, unequal node units; Stockfish's shape unfitted worse than Reckless's at equal work); waits for D.7.2.3 and the maintainer's decision on the donor |
 | D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); held with D.7.3; parity before any game |
@@ -1690,6 +1690,24 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           separate. Output: an analysis file in `analysis/`, and whether a
           Stockfish 19 hybrid read on Rarog's evaluation (the RAR-O08 and
           RAR-O09 instrument) is worth registering.
+          **Comparison recorded 2026-11-15**
+          (`analysis/d723_search_programmes_2026-11-15.md`; conclusions
+          wait for D.7.2.4). Not in the selectivity core, where both end
+          near +200 (Rarog's port +65 then its fit +139, Basilisk's +131
+          then +59), but in the next clusters, unfitted as well as
+          fitted: null move, ProbCut and singular (Rarog +50.5, Basilisk
+          +92.8 and +17.6), quiescence (+4.4 against +31.7, +6.5 and
+          +15.0), root (NO_CHANGE against +15.6), and a joint tune after
+          the clusters (not run against +28.2), where Rarog kept its own
+          forms and Basilisk ported Stockfish's whole. Basilisk is faster
+          per position reached at every stage (+11.7% at the heads), with
+          the dearer evaluation. The runner and the SPSA method are not
+          the cause; a plain joint tune of the current search is expected
+          at +5 to +15 and is worth running only if D.7 does not open.
+          About half of D.6's open search leaves belong to the mixed
+          kernel and would go with a full donor form; the clock (D.6.28),
+          the quiescence stalemate (D.6.29) and the evaluation leaves
+          would not.
         - **D.7.2.4 RAR-O12: RAR-O11's equal-node reads again, at equal work in one node unit — `R2`.**
           Added 2026-11-15 (maintainer request, after RAR-O11's
           correction). RAR-O11 compared engines at equal reported nodes,
