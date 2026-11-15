@@ -371,7 +371,8 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.2.3 | RESEARCH | R2 | Added 2026-11-14 (maintainer request): Rarog's and Basilisk's search programmes compared from their ledgers, read-only in Basilisk; research only, the agent's |
+| D.7.2.3 | RESEARCH | R2 | Added 2026-11-14 (maintainer request): Rarog's and Basilisk's search programmes compared from their ledgers, read-only in Basilisk; research only, the agent's; its conclusions are drawn with D.7.2.4's re-read |
+| D.7.2.4 | READY_FOR_IMPLEMENTATION | R2 | RAR-O12 registered and prepared 2026-11-15: RAR-O11's equal-node reads again at equal work in one node unit; zero-game moves and three 2,000-game matches, the maintainer's command, about four hours |
 | D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); D.7.2.1 read 2026-11-14 (Rarog's evaluation ahead of Basilisk's, Basilisk's moves level within 8% at equal time); D.7.2.2 read 2026-11-15 (Basilisk's search programme about 65 ahead of Rarog's on the clock; its per-node reads withdrawn, unequal node units; Stockfish's shape unfitted worse than Reckless's at equal work); waits for D.7.2.3 and the maintainer's decision on the donor |
 | D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); held with D.7.3; parity before any game |
 | D.7.4.1 | RESEARCH | I2 | After D.7.4's parity: the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted; the maintainer is asked about the exchange table first |
@@ -1689,6 +1690,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           separate. Output: an analysis file in `analysis/`, and whether a
           Stockfish 19 hybrid read on Rarog's evaluation (the RAR-O08 and
           RAR-O09 instrument) is worth registering.
+        - **D.7.2.4 RAR-O12: RAR-O11's equal-node reads again, at equal work in one node unit — `R2`.**
+          Added 2026-11-15 (maintainer request, after RAR-O11's
+          correction). RAR-O11 compared engines at equal reported nodes,
+          which were not equal work. Each engine's reported nodes over
+          the positions its tree reaches by a move or a null move,
+          measured on instrumented builds of its own source that
+          reproduce its release's nodes and best move: Rarog 2.4.0
+          ×1.417, 2.5.0 ×1.211, the head ×1.000, Basilisk 1.10.2 ×1.345,
+          Basilisk's head ×1.037. At budgets in that unit, the moves on
+          RAR-O10's positions and three matches (the start pair, the
+          search programmes' ends, the heads). Registration, frozen use
+          and command: `docs/experiments/RAR-O12.md`.
     - **D.7.3 Parity instrument: Rarog and the hybrid on one position set — `I2`.**
       Nodes to each depth and the rate at which each mechanism fires, on
       the same positions and the same evaluation; a planted difference
