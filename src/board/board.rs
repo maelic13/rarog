@@ -8,7 +8,8 @@ use std::fmt;
 
 use super::attacks::{ATTACKS, knight_attacks_of, pawn_attacks_of};
 use super::bitboard::Bitboard;
-use super::movegen::generate_legal_moves;
+use super::cuckoo::CUCKOO;
+use super::movegen::{between, generate_legal_moves};
 use super::moves::{
     CAPTURE, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, DOUBLE_PUSH, EN_PASSANT, Move, MoveList,
     PROMO_BISHOP, PROMO_CAPTURE_BISHOP, PROMO_CAPTURE_KNIGHT, PROMO_CAPTURE_QUEEN,
@@ -76,6 +77,7 @@ struct UnmakeInfo {
     ep_sq: u8, // 255 = no EP
     halfmove_clock: u8,
     fullmove: u16,
+    plies_from_null: u16,
     hash: u64,
     checkers: Bitboard,
 }
@@ -170,6 +172,10 @@ pub struct Board {
     ep_sq: u8,
     halfmove_clock: u8,
     fullmove: u16,
+    /// Moves made since the last null move or since the position was set
+    /// up: how far back the key history holds positions a move sequence
+    /// reached.
+    plies_from_null: u16,
     /// Incrementally updated Zobrist hash.
     hash: u64,
     pawn_hash: u64,
@@ -231,6 +237,7 @@ impl Clone for Board {
             ep_sq: self.ep_sq,
             halfmove_clock: self.halfmove_clock,
             fullmove: self.fullmove,
+            plies_from_null: self.plies_from_null,
             hash: self.hash,
             pawn_hash: self.pawn_hash,
             minor_hash: self.minor_hash,
@@ -273,6 +280,7 @@ impl Board {
             ep_sq: 255,
             halfmove_clock,
             fullmove: 1,
+            plies_from_null: 0,
             hash: 0,
             pawn_hash: 0,
             minor_hash: 0,
@@ -318,6 +326,7 @@ impl Board {
             ep_sq: 255,
             halfmove_clock: 0,
             fullmove: 1,
+            plies_from_null: 0,
             hash: 0,
             pawn_hash: 0,
             minor_hash: 0,
@@ -1250,6 +1259,100 @@ impl Board {
         self.halfmove_clock >= 4 && self.is_repetition(2)
     }
 
+    /// The compact kernel's draw at `ply` plies from the root: the fifty-move
+    /// rule (mate first), material neither side can mate with, or a
+    /// repetition, which needs one earlier occurrence inside the search or
+    /// two anywhere since the last irreversible or null move.
+    pub fn is_draw_at(&self, ply: usize) -> bool {
+        self.is_dead_material() || self.is_rule50_draw() || self.repetition_draw_at(ply)
+    }
+
+    /// No pawn, rook or queen, and: three men or fewer; a minor each, unless
+    /// a king stands in a corner, where a mate can still be forced; or two
+    /// bishops on one side that stand on squares of one colour.
+    pub fn is_dead_material(&self) -> bool {
+        let both = |piece| self.pieces(Color::White, piece) | self.pieces(Color::Black, piece);
+        if (both(Piece::Pawn) | both(Piece::Rook) | both(Piece::Queen)).any() {
+            return false;
+        }
+        let men = self.occupied_count();
+        if men != 4 {
+            return men < 4;
+        }
+        let stm = self.side_to_move;
+        if (self.pieces(stm, Piece::Knight) | self.pieces(stm, Piece::Bishop)).count() == 1 {
+            const CORNERS: Bitboard = Bitboard(0x8100_0000_0000_0081);
+            return (both(Piece::King) & CORNERS).is_empty();
+        }
+        if both(Piece::Knight).any() {
+            return false;
+        }
+        const ONE_SQUARE_COLOUR: Bitboard = Bitboard(0x55AA_55AA_55AA_55AA);
+        (both(Piece::Bishop) & ONE_SQUARE_COLOUR).count() != 1
+    }
+
+    /// How many plies back the key history holds positions this one could
+    /// repeat: none past an irreversible or a null move.
+    fn repetition_window(&self) -> usize {
+        usize::from(self.halfmove_clock)
+            .min(usize::from(self.plies_from_null))
+            .min(self.history.len())
+    }
+
+    /// The key of the position `plies` plies back, inside the history.
+    #[inline(always)]
+    fn key_back(&self, plies: usize) -> u64 {
+        self.history[self.history.len() - plies].hash
+    }
+
+    /// Whether the position `plies` back occurred again earlier inside
+    /// `window`.
+    fn repeats_back(&self, plies: usize, window: usize) -> bool {
+        let key = self.key_back(plies);
+        (plies + 4..=window)
+            .step_by(2)
+            .any(|older| self.key_back(older) == key)
+    }
+
+    /// A repetition draws when the nearest earlier occurrence lies inside the
+    /// search, fewer than `ply` plies back, or had itself occurred before.
+    fn repetition_draw_at(&self, ply: usize) -> bool {
+        let window = self.repetition_window();
+        (4..=window)
+            .step_by(2)
+            .find(|&plies| self.key_back(plies) == self.hash)
+            .is_some_and(|nearest| nearest < ply || self.repeats_back(nearest, window))
+    }
+
+    /// Whether the side to move has a move that repeats a position that
+    /// [`Board::is_draw_at`] would score as a draw: a reversible move joins
+    /// this position to one an odd number of plies back, the opponent's moves
+    /// since then cancel out, nothing stands between the move's squares, and
+    /// the earlier position lies inside the search or had itself occurred
+    /// before.
+    pub fn upcoming_repetition(&self, ply: usize) -> bool {
+        let window = self.repetition_window();
+        if window < 3 {
+            return false;
+        }
+        let side = ZOBRIST.side();
+        // The piece-square change of the opponent's moves since `plies` back.
+        let mut theirs = self.hash ^ self.key_back(1) ^ side;
+        let mut plies = 3;
+        while plies <= window {
+            theirs ^= self.key_back(plies - 1) ^ self.key_back(plies) ^ side;
+            if theirs == 0
+                && let Some((from, to)) = CUCKOO.reversible_move(self.hash ^ self.key_back(plies))
+                && (between(from, to) & self.all_occ).is_empty()
+                && (ply > plies || self.repeats_back(plies, window))
+            {
+                return true;
+            }
+            plies += 2;
+        }
+        false
+    }
+
     /// The arbiter's draws a move can reach at the tablebase root: a
     /// claimable threefold, or with `rule50` a rule-50 draw. The search's
     /// aggressive twofold does not count here, because a root move ranked as
@@ -1788,6 +1891,8 @@ impl Board {
         let old_ep_sq = self.ep_sq;
         let old_halfmove_clock = self.halfmove_clock;
         let old_fullmove = self.fullmove;
+        let old_plies_from_null = self.plies_from_null;
+        self.plies_from_null = self.plies_from_null.saturating_add(1);
         let old_hash = self.hash;
         let old_checkers = self.checkers;
         let mut captured = 255;
@@ -1923,6 +2028,7 @@ impl Board {
             ep_sq: old_ep_sq,
             halfmove_clock: old_halfmove_clock,
             fullmove: old_fullmove,
+            plies_from_null: old_plies_from_null,
             hash: old_hash,
             checkers: old_checkers,
         });
@@ -1952,6 +2058,8 @@ impl Board {
         let old_ep_sq = self.ep_sq;
         let old_halfmove_clock = self.halfmove_clock;
         let old_fullmove = self.fullmove;
+        let old_plies_from_null = self.plies_from_null;
+        self.plies_from_null = 0;
         let old_hash = self.hash;
         let old_checkers = self.checkers;
 
@@ -1978,6 +2086,7 @@ impl Board {
             ep_sq: old_ep_sq,
             halfmove_clock: old_halfmove_clock,
             fullmove: old_fullmove,
+            plies_from_null: old_plies_from_null,
             hash: old_hash,
             checkers: old_checkers,
         });
@@ -1996,6 +2105,7 @@ impl Board {
         self.ep_sq = info.ep_sq;
         self.halfmove_clock = info.halfmove_clock;
         self.fullmove = info.fullmove;
+        self.plies_from_null = info.plies_from_null;
         self.hash = info.hash;
         self.checkers = info.checkers;
     }
@@ -2020,6 +2130,7 @@ impl Board {
         self.ep_sq = info.ep_sq;
         self.halfmove_clock = info.halfmove_clock;
         self.fullmove = info.fullmove;
+        self.plies_from_null = info.plies_from_null;
         self.hash = info.hash;
         self.checkers = info.checkers;
 
@@ -3060,5 +3171,149 @@ mod tests {
             Board::from_placement(rookless, Color::White, CastlingRights(0xF), 0).is_err(),
             "castling rights without the rook"
         );
+    }
+}
+
+#[cfg(test)]
+mod repetition_tests {
+    use super::*;
+
+    fn played(fen: &str, moves: &[&str]) -> Board {
+        let mut board = Board::from_fen(fen).expect("a legal FEN");
+        for mv in moves {
+            assert!(board.play_uci(mv), "{mv} is legal");
+        }
+        board
+    }
+
+    fn start(moves: &[&str]) -> Board {
+        played(STARTING_FEN, moves)
+    }
+
+    #[test]
+    fn a_repetition_one_move_away_counts_inside_the_search_only() {
+        // Black's Ng8 would restore the starting position, three plies back.
+        let board = start(&["g1f3", "g8f6", "f3g1"]);
+        assert!(
+            board.upcoming_repetition(4),
+            "the earlier position is in the search"
+        );
+        assert!(!board.upcoming_repetition(3), "it is the root");
+        assert!(!board.upcoming_repetition(1));
+        // After a first cycle the starting position has occurred twice, so
+        // reaching it again draws wherever the root is.
+        let twice = start(&["g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1"]);
+        assert!(twice.upcoming_repetition(1));
+        // A pawn move cannot be undone.
+        let pawn = start(&["e2e3", "g8f6", "e3e4", "f6g8", "g1f3"]);
+        assert!(!pawn.upcoming_repetition(10));
+    }
+
+    #[test]
+    fn a_null_move_ends_the_window_and_unmaking_restores_it() {
+        let mut board = start(&["g1f3", "g8f6", "f3g1"]);
+        assert_eq!(board.plies_from_null, 3);
+        board.make_null_move();
+        assert_eq!(board.plies_from_null, 0);
+        assert!(!board.upcoming_repetition(10));
+        board.unmake_null_move();
+        assert_eq!(board.plies_from_null, 3);
+        assert!(board.upcoming_repetition(4));
+        let mv = board.parse_move("f6g8").expect("legal");
+        board.make_move(mv);
+        assert_eq!(board.plies_from_null, 4);
+        board.unmake_move(mv);
+        assert_eq!(board.plies_from_null, 3);
+    }
+
+    #[test]
+    fn every_legal_move_that_repeats_is_found() {
+        // Shuffle pieces so that cycles occur, and at every position compare
+        // the cuckoo test with trying each legal move. The cuckoo test does
+        // not check legality, so it may find more, never fewer.
+        let mut board = Board::starting_position();
+        let mut rng = 0x9E37_79B9_7F4A_7C15_u64;
+        let mut found = 0;
+        for _ in 0..4_000 {
+            let window = board.repetition_window();
+            let moves = board.generate_legal_moves();
+            if moves.is_empty() || board.halfmove_clock >= 90 {
+                board = Board::starting_position();
+                continue;
+            }
+            let repeats = moves.iter().any(|&mv| {
+                let mut child = board.clone();
+                child.make_move(mv);
+                (2..=window + 1).step_by(2).any(|plies| {
+                    plies <= child.history.len() && child.key_back(plies) == child.hash
+                })
+            });
+            if repeats {
+                found += 1;
+                assert!(
+                    board.upcoming_repetition(usize::MAX),
+                    "a repeating move is missed in {}",
+                    board.to_fen()
+                );
+            }
+            // Prefer moves that return pieces, so that cycles are common.
+            rng ^= rng << 13;
+            rng ^= rng >> 7;
+            rng ^= rng << 17;
+            let quiet: Vec<Move> = moves
+                .iter()
+                .copied()
+                .filter(|mv| !mv.is_capture() && board.moving_piece(*mv) != Piece::Pawn)
+                .collect();
+            let pool = if quiet.is_empty() { &moves } else { &quiet };
+            let pick = pool[infra::index(rng) % pool.len()];
+            board.make_move(pick);
+        }
+        assert!(found > 100, "only {found} repeating positions were tried");
+    }
+
+    #[test]
+    fn the_kernel_draw_needs_a_repetition_inside_the_search_or_two() {
+        let once = start(&["g1f3", "g8f6", "f3g1", "f6g8"]);
+        assert!(
+            once.is_draw_at(5),
+            "four plies back, inside a search five deep"
+        );
+        assert!(!once.is_draw_at(4), "four plies back is the root");
+        let twice = start(&[
+            "g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1", "f6g8",
+        ]);
+        assert!(twice.is_draw_at(1), "a third occurrence");
+        assert!(!Board::starting_position().is_draw_at(1));
+    }
+
+    #[test]
+    fn dead_material_is_the_kernel_rule() {
+        let dead = |fen: &str| {
+            Board::from_fen(fen)
+                .expect("a legal FEN")
+                .is_dead_material()
+        };
+        assert!(dead("8/8/4k3/8/8/4K3/8/8 w - - 0 1"), "bare kings");
+        assert!(dead("8/8/4k3/8/8/4K3/4N3/8 w - - 0 1"), "a knight");
+        assert!(dead("8/8/4k3/8/8/4K3/4B3/8 b - - 0 1"), "a bishop");
+        assert!(dead("8/4n3/4k3/8/8/4K3/4B3/8 w - - 0 1"), "a minor each");
+        assert!(
+            !dead("k7/4n3/8/8/8/4K3/4B3/8 w - - 0 1"),
+            "a king in a corner"
+        );
+        assert!(
+            !dead("8/8/4k3/8/8/4K3/3BN3/8 w - - 0 1"),
+            "bishop and knight"
+        );
+        assert!(
+            dead("8/8/4k3/8/8/4K3/2B1B3/8 w - - 0 1"),
+            "bishops on one colour"
+        );
+        assert!(
+            !dead("8/8/4k3/8/8/4K3/3BB3/8 w - - 0 1"),
+            "bishops on both colours"
+        );
+        assert!(!dead("8/8/4k3/8/8/4K3/4P3/8 w - - 0 1"), "a pawn");
     }
 }

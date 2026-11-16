@@ -19,7 +19,7 @@ pub struct ZobristKeys {
 pub(super) static ZOBRIST: ZobristKeys = ZobristKeys::init();
 
 impl ZobristKeys {
-    const fn init() -> Self {
+    pub(super) const fn init() -> Self {
         let mut state = 0xDEAD_BEEF_CAFE_BABE_u64;
 
         let mut piece_keys = [[[0u64; 64]; 6]; 2];
@@ -79,6 +79,13 @@ impl ZobristKeys {
     #[inline(always)]
     pub fn ep(&self, file: File) -> u64 {
         self.ep_keys[file as usize]
+    }
+
+    /// The key change of `color`'s `piece` moving between `from` and `to`
+    /// with nothing else changing: both piece-square keys and the side key.
+    pub(super) const fn move_key(&self, color: Color, piece: Piece, from: u8, to: u8) -> u64 {
+        let keys = &self.piece_keys[color as usize][piece as usize];
+        keys[from as usize] ^ keys[to as usize] ^ self.side_key
     }
 }
 
