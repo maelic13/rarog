@@ -151,6 +151,29 @@ impl Searcher {
         saturate(sum / (TABLE_SCALE * WEIGHT_SCALE))
     }
 
+    /// The compact kernel's correction for the position at `ply`, in kernel
+    /// units: the plain sum of the pawn, both non-pawn and two continuation
+    /// readings, over the table scale. Its continuation readings, two and
+    /// four plies back, share one table, and it reads no minor table.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "read by the compact kernel's nodes, not yet wired"
+        )
+    )]
+    pub(super) fn compact_correction(&self, board: &Board, ply: usize) -> i32 {
+        let slots = self.correction_slots(board, ply);
+        let tables = &self.td.corr;
+        let mut sum = i64::from(tables.pawn[slots.pawn])
+            + i64::from(tables.non_pawn[0][slots.non_pawn[0]])
+            + i64::from(tables.non_pawn[1][slots.non_pawn[1]]);
+        for slot in slots.continuation.into_iter().flatten() {
+            sum += i64::from(tables.continuation_2[slot]);
+        }
+        saturate(sum / TABLE_SCALE)
+    }
+
     pub(super) fn raw_eval(&mut self, board: &Board) -> i32 {
         self.td.evaluator.evaluate(board)
     }

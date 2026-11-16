@@ -31,6 +31,31 @@ impl Default for SyzygyOptions {
     }
 }
 
+/// Which search kernel runs: the classic kernel, or the compact kernel, the
+/// search in its donor's form. The classic kernel is the default until the
+/// compact one is adopted; a build with the `compact-kernel` feature starts
+/// with the compact one.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Kernel {
+    Classic,
+    Compact,
+}
+
+impl Kernel {
+    /// This build's kernel.
+    pub const DEFAULT: Self = if cfg!(feature = "compact-kernel") {
+        Self::Compact
+    } else {
+        Self::Classic
+    };
+}
+
+impl Default for Kernel {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
 #[derive(Clone)]
 pub struct EngineOptions {
     pub move_overhead: f64,
@@ -49,6 +74,8 @@ pub struct EngineOptions {
     pub proof_params: ProofParams,
     /// The quiescence cluster's coordinates and switches.
     pub quiet_params: QuietParams,
+    /// The search kernel; the build's default.
+    pub kernel: Kernel,
 }
 
 impl Default for EngineOptions {
@@ -65,6 +92,7 @@ impl Default for EngineOptions {
             core_params: CoreParams::default(),
             proof_params: ProofParams::default(),
             quiet_params: QuietParams::default(),
+            kernel: Kernel::DEFAULT,
         }
     }
 }

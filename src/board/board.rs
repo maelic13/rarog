@@ -1241,7 +1241,8 @@ impl Board {
         // force one repetition it can usually force the claimable second, and
         // pruning the repetition subtree early is worth Elo. A root-aware form
         // (a single *pre-root* twofold no longer draws, as Stockfish's
-        // `repetition < ply`) measured −7.21 ± 6.03 Elo, so this one stays.
+        // `repetition < ply`) was measured only inside a four-part change
+        // that lost, and that loss lay in its other parts.
         self.has_insufficient_material() || (self.halfmove_clock >= 4 && self.is_repetition(2))
     }
 

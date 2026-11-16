@@ -119,6 +119,17 @@ pub(super) struct ThreadData {
     /// The depth of the iteration this thread is searching; positive
     /// extensions stop at twice it. Zero before any root search.
     pub(super) root_depth: i32,
+    /// The compact kernel's optimism, by colour: what its evaluation
+    /// adds toward the root's running score for the side to move; zero
+    /// outside a compact search.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "read by the compact kernel's nodes, not yet wired"
+        )
+    )]
+    pub(super) optimism: [i32; 2],
     /// The root score this thread's previous search in the game ended on,
     /// which the falling eval compares with this search's; none at a new
     /// game, so the first move reads no fall across the pair.
@@ -206,6 +217,7 @@ impl Default for ThreadData {
             root_delta: 1,
             nmp_min_ply: 0,
             root_depth: 0,
+            optimism: [0; 2],
             previous_search_score: None,
             #[cfg(test)]
             null_move_plies: Vec::new(),

@@ -32,6 +32,10 @@ resolver = "3"
 tune = []
 
 default = []
+# The compact search kernel by default: the search in its donor's form, which
+# runs beside the classic kernel until it is gated. A strength arm, never a
+# release build before adoption; tests run both kernels in every build.
+compact-kernel = []
 # Search diagnostics: exact events plus deterministic sampled
 # interaction traces, dumped as `info string diag ...` at search end.
 # Diagnostic-only — never in a shipped or SPRT binary. The feature may observe

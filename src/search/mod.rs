@@ -31,6 +31,7 @@ macro_rules! pricing_off {
     }};
 }
 
+mod compact;
 mod correction;
 mod history;
 mod movepick;
@@ -54,7 +55,7 @@ use crate::board::{Board, Color, GameResult, Move, MoveList};
 use crate::eval::{INF_SCORE, MATE_SCORE};
 use crate::infra;
 use crate::search::options::{
-    EngineOptions, HashRequest, MAX_THREADS, SearchLimits, SearchOptions,
+    EngineOptions, HashRequest, Kernel, MAX_THREADS, SearchLimits, SearchOptions,
 };
 use crate::syzygy::{self, Wdl};
 use crate::tt::{TB_VALUE, TB_WIN_SCORE, TranspositionTable};
@@ -283,6 +284,8 @@ struct SearchConfig {
     core: Param<CoreParams>,
     proof: Param<ProofParams>,
     quiet: Param<QuietParams>,
+    /// The kernel this search runs.
+    kernel: Kernel,
     limits: RuntimeLimits,
     start: Instant,
 }
@@ -294,6 +297,7 @@ impl Default for SearchConfig {
             core: Param::<CoreParams>::default(),
             proof: Param::<ProofParams>::default(),
             quiet: Param::<QuietParams>::default(),
+            kernel: Kernel::DEFAULT,
             limits: RuntimeLimits::default(),
             start: Instant::now(),
         }
@@ -791,7 +795,15 @@ impl Searcher {
             .td
             .evaluator
             .set_lazy_margin(engine_options.search_params.lazy_margin);
-        if lazy_margin_changed && age_tt {
+        // The kernels keep their scores and corrections in different units,
+        // so a change of kernel discards the table, as a change of evaluation
+        // does, and this thread's corrections and histories with it.
+        let kernel_changed = self.cfg.kernel != engine_options.kernel;
+        self.cfg.kernel = engine_options.kernel;
+        if kernel_changed {
+            self.clear_history();
+        }
+        if (lazy_margin_changed || kernel_changed) && age_tt {
             self.shared.tt.clear();
         }
 
