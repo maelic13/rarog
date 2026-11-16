@@ -22,6 +22,9 @@
 //! other, which proves both that the kind's check reads its rule and that
 //! no other kind's check sees a change it should not. Four kinds read no
 //! seed (`estimate`, `nmp_result`, `q_tt_cut`, `gravity`) and have none.
+//!
+//! The picker's two kinds score a move from its recorded components; the
+//! components themselves are table reads.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
@@ -55,6 +58,8 @@ const COVERED: &[&str] = &[
     "nmp_r",
     "nmp_result",
     "optimism",
+    "pick_noisy",
+    "pick_quiet",
     "probcut_depth",
     "probcut_gate",
     "q_lmp",
@@ -556,6 +561,39 @@ fn verdict(s: &Seeds, r: &Record<'_>) -> Option<Verdict> {
             )
         }
         "window" => window_verdict(s, r),
+        "pick_noisy" => Verdict::from(
+            rules::noisy_order(
+                s,
+                &rules::NoisyOrderInput {
+                    victim: r.int("victim"),
+                    history: r.int("history"),
+                    queen_promotion: r.flag("queen_promotion"),
+                    in_check: r.flag("in_check"),
+                    piece: r.int("piece"),
+                },
+            ) == r.int("score"),
+        ),
+        "pick_quiet" => Verdict::from(
+            rules::quiet_order(
+                s,
+                &rules::QuietOrderInput {
+                    quiet: r.int("quiet"),
+                    pawn: r.int("pawn"),
+                    cont: [
+                        r.int("cont1"),
+                        r.int("cont2"),
+                        r.int("cont4"),
+                        r.int("cont6"),
+                    ],
+                    piece: usize::try_from(r.int("piece")).expect("a piece index"),
+                    escape: r.flag("escape"),
+                    check_square: r.flag("check_square"),
+                    threatened_to: r.flag("threatened_to"),
+                    offense: r.flag("offense"),
+                    wall: r.flag("wall"),
+                },
+            ) == r.int("score"),
+        ),
         _ => return None,
     };
     Some(v)
@@ -782,6 +820,14 @@ const PLANTS: &[Plant] = &[
     Plant {
         kind: "q_tail",
         change: |s| s.q_tail_t += 100,
+    },
+    Plant {
+        kind: "pick_noisy",
+        change: |s| s.pick_victim += 1_024,
+    },
+    Plant {
+        kind: "pick_quiet",
+        change: |s| s.pick_quiet += 64,
     },
     Plant {
         kind: "window",

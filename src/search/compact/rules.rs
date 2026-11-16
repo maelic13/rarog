@@ -287,6 +287,27 @@ pub(crate) struct Seeds {
     pub(crate) window_stable: i32,
     pub(crate) optimism_scale: i32,
     pub(crate) optimism_offset: i32,
+
+    // Move ordering: a noisy move by its victim's exchange value, its
+    // history, a queen promotion and, in check, the cheapness of the piece
+    // that moves; a quiet one by its histories and its squares.
+    pub(crate) pick_victim: i32,
+    pub(crate) pick_queen_promotion: i32,
+    pub(crate) pick_check_base: i32,
+    pub(crate) pick_check_piece: i32,
+    pub(crate) pick_quiet: i32,
+    pub(crate) pick_pawn: i32,
+    pub(crate) pick_cont: [i32; 4],
+    pub(crate) pick_escape: [i32; 6],
+    pub(crate) pick_check_square: i32,
+    pub(crate) pick_threatened: i32,
+    pub(crate) pick_offense: i32,
+    pub(crate) pick_wall: i32,
+    // A noisy move is good when its SEE clears `−score/divisor + offset`, or
+    // past this many good ones under a quiet TT move, when it wins material.
+    pub(crate) pick_see_divisor: i32,
+    pub(crate) pick_see_offset: i32,
+    pub(crate) pick_late_good: i32,
 }
 
 impl Seeds {
@@ -526,6 +547,22 @@ impl Seeds {
         window_stable: 12,
         optimism_scale: 113,
         optimism_offset: 201,
+
+        pick_victim: 14_232,
+        pick_queen_promotion: 4_558,
+        pick_check_base: 200_000,
+        pick_check_piece: 20_000,
+        pick_quiet: 1_763,
+        pick_pawn: 1_024,
+        pick_cont: [1_614, 1_066, 1_086, 1_051],
+        pick_escape: [0, 8_854, 8_170, 14_051, 20_357, 0],
+        pick_check_square: 10_723,
+        pick_threatened: 8_875,
+        pick_offense: 3_446,
+        pick_wall: 4_494,
+        pick_see_divisor: 47,
+        pick_see_offset: 116,
+        pick_late_good: 2,
     };
 }
 
@@ -1697,4 +1734,84 @@ pub(crate) fn window_fail_high(s: &Seeds, w: Window, score: i32) -> Window {
 #[inline(always)]
 pub(crate) fn score_held(s: &Seeds, score: i32, average: i32) -> bool {
     (score - average).abs() < s.window_stable
+}
+
+// ---------------------------------------------------------------------------
+// Draws and move ordering
+// ---------------------------------------------------------------------------
+
+/// A draw's score: two either side of zero by the node count, so a line
+/// that can draw is not scored exactly level with every other draw.
+#[inline(always)]
+pub(crate) fn draw_score(nodes: u64) -> i32 {
+    i32::try_from(nodes % 5).unwrap_or_else(|_| unreachable!("below 5")) - 2
+}
+
+/// A noisy move's ordering inputs.
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct NoisyOrderInput {
+    /// The captured piece's exchange value; zero for a push.
+    pub(crate) victim: i32,
+    pub(crate) history: i32,
+    pub(crate) queen_promotion: bool,
+    pub(crate) in_check: bool,
+    /// The moving piece's index, pawn 0 to king 5.
+    pub(crate) piece: i32,
+}
+
+/// A noisy move's ordering score: in check the cheaper evader first.
+#[inline(always)]
+pub(crate) fn noisy_order(s: &Seeds, i: &NoisyOrderInput) -> i32 {
+    s.pick_victim * i.victim / 1024
+        + i.history
+        + s.pick_queen_promotion * i32::from(i.queen_promotion)
+        + (s.pick_check_base - s.pick_check_piece * i.piece) * i32::from(i.in_check)
+}
+
+/// A quiet move's ordering inputs.
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct QuietOrderInput {
+    pub(crate) quiet: i32,
+    pub(crate) pawn: i32,
+    /// The continuation histories one, two, four and six plies back.
+    pub(crate) cont: [i32; 4],
+    /// The moving piece's index, pawn 0 to king 5.
+    pub(crate) piece: usize,
+    /// It leaves a square a cheaper enemy piece attacks.
+    pub(crate) escape: bool,
+    /// It gives direct check.
+    pub(crate) check_square: bool,
+    /// It lands where a cheaper enemy piece attacks.
+    pub(crate) threatened_to: bool,
+    /// It lands safely where it attacks an enemy piece.
+    pub(crate) offense: bool,
+    /// It moves a pawn from the castled king's wall.
+    pub(crate) wall: bool,
+}
+
+/// A quiet move's ordering score.
+#[inline(always)]
+pub(crate) fn quiet_order(s: &Seeds, i: &QuietOrderInput) -> i32 {
+    let mut score = s.pick_quiet * i.quiet / 1024 + s.pick_pawn * i.pawn / 1024;
+    for (weight, value) in s.pick_cont.iter().zip(i.cont) {
+        score += weight * value / 1024;
+    }
+    score
+        + s.pick_escape[i.piece] * i32::from(i.escape)
+        + s.pick_check_square * i32::from(i.check_square)
+        - s.pick_threatened * i32::from(i.threatened_to)
+        + s.pick_offense * i32::from(i.offense)
+        - s.pick_wall * i32::from(i.wall)
+}
+
+/// The SEE a noisy move must reach to be ordered with the good ones: lower
+/// the better its score, or past the first few good ones under a quiet TT
+/// move, a material gain.
+#[inline(always)]
+pub(crate) fn good_noisy_threshold(s: &Seeds, score: i32, tt_quiet: bool, good_so_far: i32) -> i32 {
+    if tt_quiet && good_so_far > s.pick_late_good {
+        1
+    } else {
+        -score / s.pick_see_divisor + s.pick_see_offset
+    }
 }

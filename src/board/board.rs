@@ -857,6 +857,20 @@ impl Board {
         super::movegen::generate_captures_pinned_into(self, Some(threats.all), moves)
     }
 
+    /// [`Board::generate_legal_captures_staged_into`] with the legal
+    /// non-capturing queen promotions after the captures.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "read by the compact kernel, not yet wired")
+    )]
+    pub(crate) fn generate_legal_noisy_staged_into(
+        &mut self,
+        threats: &Threats,
+        moves: &mut MoveList,
+    ) -> Bitboard {
+        super::movegen::generate_noisy_pinned_into(self, Some(threats.all), moves)
+    }
+
     /// [`Board::generate_legal_quiets_pinned_into`] for a caller that holds
     /// this node's [`Board::threats`]: its `all` decides every king move.
     pub(crate) fn generate_legal_quiets_staged_into(

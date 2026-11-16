@@ -167,6 +167,27 @@ fn push_queen_promotions(
     }
 }
 
+/// [`generate_captures_pinned_into`] with the legal non-capturing queen
+/// promotions after the captures: the noisy stage of a picker that keeps the
+/// rook, bishop and knight pushes with the quiets.
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "read by the compact kernel, not yet wired")
+)]
+pub(super) fn generate_noisy_pinned_into(
+    board: &mut Board,
+    king_danger: Option<Bitboard>,
+    moves: &mut MoveList,
+) -> Bitboard {
+    let pinned = generate_captures_pinned_into(board, king_danger, moves);
+    let us = board.side_to_move();
+    let pushes = promotion_push_targets(board, us);
+    if pushes.any() {
+        push_queen_promotions(board, us, board.king_sq(us), pinned, pushes, moves);
+    }
+    pinned
+}
+
 /// [`generate_captures_into`] returning a fresh list.
 pub(super) fn generate_captures(board: &mut Board) -> MoveList {
     let mut moves = MoveList::new();

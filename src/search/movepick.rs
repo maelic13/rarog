@@ -76,7 +76,7 @@ impl ScoredMoveList {
     }
 
     #[inline(always)]
-    fn push(&mut self, mv: Move, score: i32, see: i16, quiet_history: i32) {
+    pub(super) fn push(&mut self, mv: Move, score: i32, see: i16, quiet_history: i32) {
         self.push_quiet(mv, score, see, quiet_history, false);
     }
 
@@ -456,20 +456,20 @@ fn attacks_from(sources: Bitboard, attacks: impl Fn(crate::board::Square) -> Bit
 }
 
 /// Node-invariant inputs of quiet scoring, resolved once per node.
-struct QuietContext {
-    stm: Color,
+pub(super) struct QuietContext {
+    pub(super) stm: Color,
     /// Squares attacked by enemy pieces cheaper than each moving piece type.
-    threatened: [Bitboard; 6],
+    pub(super) threatened: [Bitboard; 6],
     /// Safe squares from which each piece type would attack an enemy piece.
-    offense: [Bitboard; 6],
-    check_squares: [Bitboard; 6],
-    wall_pawns: Bitboard,
-    pawn_row: usize,
-    cont: [Option<usize>; 4],
+    pub(super) offense: [Bitboard; 6],
+    pub(super) check_squares: [Bitboard; 6],
+    pub(super) wall_pawns: Bitboard,
+    pub(super) pawn_row: usize,
+    pub(super) cont: [Option<usize>; 4],
 }
 
 impl Searcher {
-    fn quiet_context(
+    pub(super) fn quiet_context(
         &self,
         board: &Board,
         threats: &Threats,

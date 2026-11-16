@@ -11,17 +11,27 @@
 //! back where it leaves, so the seeds hold the values the donor was fitted
 //! with. The scale is a scaffold: folding the constants into Rarog's units
 //! deletes it.
+#![cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the node body, which calls the kernel, lands in a later commit"
+    )
+)]
 
 #[cfg(test)]
 mod parity;
+mod picker;
+mod quiescence;
 pub(super) mod rules;
 
-use crate::board::{Board, Color, Piece, SeeValues};
+use crate::board::{Board, Color, Move, Piece, SeeValues};
 use crate::eval::VALUE_NONE;
 use crate::infra;
 use crate::tt::TB_WIN_SCORE;
 
 use super::Searcher;
+use super::history::cont_context;
 use rules::{SEEDS, WrapperInput, wrapped_eval};
 
 /// The kernel's evaluation units per 1024 of Rarog's: the ratio of the
@@ -34,13 +44,6 @@ pub(super) const SCALE: i32 = 2536;
 pub(super) const KERNEL_SEE_VALUES: SeeValues = SeeValues::new(109, 403, 435, 679, 1242, 20_000);
 
 /// A raw evaluation in kernel units, kept out of the decisive band.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "read by the compact kernel's nodes, not yet wired"
-    )
-)]
 pub(super) fn raw_to_kernel(raw: i32) -> i32 {
     let scaled = i64::from(raw) * i64::from(SCALE) / 1024;
     let bound = i64::from(TB_WIN_SCORE - 1);
@@ -51,16 +54,20 @@ pub(super) fn raw_to_kernel(raw: i32) -> i32 {
 /// A kernel score in Rarog's units, for everything outside the kernel that
 /// reads one: a decisive score is a distance, not an evaluation, and passes
 /// unchanged, as do the window's infinities and the absent score.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "read by the compact kernel's root, not yet wired")
-)]
 pub(super) fn score_to_rarog(score: i32) -> i32 {
     if score.abs() >= TB_WIN_SCORE || score == VALUE_NONE {
         return score;
     }
     i32::try_from(i64::from(score) * 1024 / i64::from(SCALE))
         .unwrap_or_else(|_| unreachable!("a non-decisive score shrinks"))
+}
+
+/// A quiet move by the kernel's partition: any move but a capture or a
+/// queen promotion, the rook, bishop and knight promotions among them. The
+/// kernel's noisy tables, ordering and pruning read this partition. No move
+/// is not quiet.
+pub(super) fn is_quiet_move(mv: Move) -> bool {
+    !mv.is_null() && !mv.is_capture() && !(mv.is_promo() && mv.promo_piece() == Piece::Queen)
 }
 
 /// The material on the board in the kernel's exchange values, kings at zero.
@@ -82,17 +89,48 @@ fn kernel_material(board: &Board) -> i32 {
 }
 
 impl Searcher {
+    /// Put the move about to be searched at `ply` on the stack: its piece,
+    /// its victim, its continuation context by the kernel's partition, and
+    /// its order index and the line's lateness.
+    #[inline(always)]
+    fn compact_push_move(
+        &mut self,
+        board: &Board,
+        ply: usize,
+        mv: Move,
+        piece: Piece,
+        move_count: i32,
+    ) {
+        let captured = board.captured_piece(mv);
+        let entry = &mut self.td.stack[ply];
+        entry.mv = mv;
+        entry.piece = piece;
+        entry.captured = captured;
+        entry.cont_key = cont_context(
+            board.is_in_check(),
+            !is_quiet_move(mv),
+            board.side_to_move(),
+            piece,
+            mv.to_sq(),
+        );
+        self.record_move_order(ply, move_count);
+    }
+
+    /// `mv` heads the line at `ply`, followed by the child's line.
+    #[inline(always)]
+    fn compact_update_pv(&mut self, ply: usize, mv: Move) {
+        self.td.pv_table[ply][ply] = mv;
+        let child_len = self.td.pv_len[ply + 1].max(ply + 1);
+        for next_ply in ply + 1..child_len {
+            self.td.pv_table[ply][next_ply] = self.td.pv_table[ply + 1][next_ply];
+        }
+        self.td.pv_len[ply] = child_len;
+    }
+
     /// The compact kernel's corrected evaluation from a raw evaluation in
     /// kernel units, and the correction it includes. A draw verdict is a
     /// classification, not an estimate, and passes through as 0, with no
     /// correction and no optimism.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "read by the compact kernel's nodes, not yet wired"
-        )
-    )]
     pub(super) fn compact_eval(&self, board: &Board, raw: i32, ply: usize) -> (i32, i32) {
         if raw == 0 && crate::eval::endgame::is_draw_verdict(board) {
             return (0, 0);
