@@ -145,3 +145,20 @@ The registration's frozen use: (m2) − (m1) is Basilisk's per-position gain ove
 - **Either way.**
   - A plain joint tune of the current search is worth doing only if D.7 does not open (section 5).
   - The clock-use leaf D.6.28 survives every branch.
+
+## 9. Conclusions with RAR-O12 (2026-11-16)
+
+RAR-O12 read the comparison at equal work in Stockfish's count: one node per move made, the null move not counted, in every arm. Basilisk's arm was its head with that count (`d17a62d`), Rarog's head `9d7b42f`.
+
+- **The second branch of section 8 fired.** (m2) − (m1) = −55.2 ± 16.6.
+  - The start was level per move made: +0.5 ± 11.9 for Rarog 2.4.0.
+  - At the programmes' ends Basilisk's head is 54.7 ± 11.6 ahead of Rarog 2.5.0 at equal work.
+  - So Basilisk's tree gained about 55 more per move made than Rarog's. It did not start with the weaker search (explanation 1 is out), and the difference is in its tree: section 2's clusters, where Rarog kept its own forms.
+- **The first lever is real as well.** Speed and clock add 51.6 ± 16.1 at the ends and 18.1 ± 15.6 at the heads in Basilisk's favour.
+  - About 30 of the ends' share arrived with Basilisk's B.8 speed work since 8bfbbff.
+  - Basilisk's head makes 15.8% more moves a second than Rarog's (2.32 M against 2.00 M, 100 ms, one thread), at a median depth of 15 against 13.
+- **Recommendation**, each part following section 8's branches:
+  1. *The tree.* A full rebuild of the kernel in one donor's form, ported whole cluster by cluster and fitted as a unit, with a joint rule-7c tune at the end: Basilisk's process. It also removes the mixed-kernel class of D.6 (section 6). Patching the current kernel or tuning it alone is not expected to close 55 (section 5).
+  2. *The donor.* It stays open between Reckless and Stockfish, and the evidence still points both ways (section 7). The cheapest discriminator is the unfitted cluster read: port the null-move, ProbCut and singular cluster in each donor's form onto the head behind a switch, and read each unfitted over 2,000 games. That is where the clusters' gap was largest (Basilisk +67.5 unfitted against Rarog's +18.4), and it measures both donors on Rarog's own evaluation and kernel.
+  3. *Speed and the clock, beside it.* They survive any kernel: D.12's board and generation work against Basilisk's 15.8%, and D.6.28's clock use (Rarog spends 87 to 89% of its clock). They are cheaper and certain, and can run in parallel with the rebuild's research.
+- Rarog's head leads Basilisk's today: +42.4 ± 10.7 on the clock and +60.5 ± 11.5 at equal work. The lead is its evaluation programme, which Basilisk has not run.

@@ -371,9 +371,7 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.2.3 | RESEARCH | R2 | Added 2026-11-14 (maintainer request); comparison recorded 2026-11-15 (`analysis/d723_search_programmes_2026-11-15.md`): the gap sits in the null-move, ProbCut and singular cluster, quiescence, root and the joint tune, where Rarog kept its own forms; its conclusions are drawn with D.7.2.4's re-read |
-| D.7.2.4 | READY_FOR_IMPLEMENTATION | R2 | RAR-O12 registered 2026-11-15; both count gates read and kept; arms recorded before any game (Basilisk's head `d17a62d`, Rarog's `9d7b42f`, the older builds at ratios in Stockfish's unit); the run delegated to the agent (maintainer, 2026-11-15) |
-| D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); D.7.2.1 read 2026-11-14 (Rarog's evaluation ahead of Basilisk's, Basilisk's moves level within 8% at equal time); D.7.2.2 read 2026-11-15 (Basilisk's search programme about 65 ahead of Rarog's on the clock; its per-node reads withdrawn, unequal node units; Stockfish's shape unfitted worse than Reckless's at equal work); waits for D.7.2.3 and the maintainer's decision on the donor |
+| D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); D.7.2.1 read 2026-11-14 (Rarog's evaluation ahead of Basilisk's, Basilisk's moves level within 8% at equal time); D.7.2.2 read 2026-11-15; D.7.2.3 and D.7.2.4 done 2026-11-16 (Basilisk's tree gained 55 more per move made than Rarog's, speed and clock another 50 at the programmes' ends; Stockfish's shape unfitted worse than Reckless's at equal work); waits for the maintainer's decision on the donor and the cluster read |
 | D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); held with D.7.3; parity before any game |
 | D.7.4.1 | RESEARCH | I2 | After D.7.4's parity: the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted; the maintainer is asked about the exchange table first |
 | D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games |
@@ -1700,7 +1698,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           and stronger. RAR-O10's match (c): Rarog's head +68.4 ± 9.0
           over Basilisk's head. D.7.2.3 is what separates the donor's
           shape as Basilisk built it from its fit and build.
-        - **D.7.2.3 The two search programmes compared from their ledgers — `R2`.**
+        - **D.7.2.3 The two search programmes compared from their ledgers — `R2`, DONE 2026-11-16.**
           Added 2026-11-14 (maintainer request). Research only, read-only
           in Basilisk. For each programme, its accepted clusters in order
           with their gate results, split into what came from porting the
@@ -1730,7 +1728,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           kernel and would go with a full donor form; the clock (D.6.28),
           the quiescence stalemate (D.6.29) and the evaluation leaves
           would not.
-        - **D.7.2.4 RAR-O12: RAR-O11's equal-node reads again, at equal work in one node unit — `R2`.**
+          **Concluded 2026-11-16 with RAR-O12** (section 9 of the analysis):
+          both levers are real. Basilisk's tree gained 55 more per move
+          made, in the clusters where Rarog kept its own forms, and its
+          speed and clock add about 50 at the programmes' ends. The
+          recommendation: a full rebuild in one donor's form, ported whole
+          and fitted as a unit, with the donor decided by the unfitted
+          null-move, ProbCut and singular cluster read in each form; and
+          Rarog's speed (D.12) and clock use (D.6.28) beside it, as they
+          survive any kernel.
+        - **D.7.2.4 RAR-O12: RAR-O11's equal-node reads again, at equal work in one node unit — `R2`, DONE 2026-11-16.**
           Added 2026-11-15 (maintainer request, after RAR-O11's
           correction). RAR-O11 compared engines at equal reported nodes,
           which were not equal work. Each engine's reported nodes over
@@ -1742,6 +1749,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           RAR-O10's positions and three matches (the start pair, the
           search programmes' ends, the heads). Registration, frozen use
           and command: `docs/experiments/RAR-O12.md`.
+          **Read 2026-11-16** (in Stockfish's count, Basilisk's head
+          `d17a62d`, Rarog's `9d7b42f`): at equal work the start was
+          level (+0.5 ± 11.9 for Rarog 2.4.0); Basilisk's search
+          programme gained 55.2 ± 16.6 more per move made (Rarog 2.5.0
+          −54.7 ± 11.6 against Basilisk's head), so the tree question
+          stands; speed and clock add 51.6 ± 16.1 at the ends and
+          18.1 ± 15.6 at the heads for Basilisk (its head makes 15.8% more
+          moves a second). Rarog's head leads +60.5 ± 11.5 at equal work
+          and +42.4 ± 10.7 on the clock, by its evaluation programme.
     - **D.7.3 Parity instrument: Rarog and the hybrid on one position set — `I2`.**
       Nodes to each depth and the rate at which each mechanism fires, on
       the same positions and the same evaluation; a planted difference
