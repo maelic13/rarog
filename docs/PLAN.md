@@ -1476,6 +1476,20 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   disclose and the weight of the licence question. PROCESS's boundary
   governs the implementation: architecture and mechanisms cross, constants
   cross as fitted seeds, the code is Rarog's own.
+  *The threshold is not crossed* (maintainer, 2026-11-16: the compact
+  kernel moves Rarog nearer Reckless's shape, never into copying it).
+  - Each rule is written from the inventory's description and Rarog's
+    own code: read the donor, close the file, design.
+  - No donor code is transcribed except where an algorithm has one
+    natural form, and each such place is named in its commit.
+  - Rarog's structure stays: its node types, its rule functions as pure
+    functions of input structs (D.8's target shape), its own names.
+  - Constants enter as seeds converted by dimension and are refitted
+    (D.7.4.1, D.7.6).
+  - The parity instrument compares decisions on the same inputs, not
+    code, and the donor's trace stays in ignored storage.
+  - D.7.4's commits are checked against this list before D.7.5's games,
+    and D.11's disclosure names the shape.
   **Decisions asked of the maintainer, and when** (2026-11-13). An agent
   stops and asks at each; none is taken by default.
   1. *Before RAR-O09's first game:* the runner (fastchess expected), and
@@ -1797,7 +1811,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       (`analysis/search_shape_inventory_2026-11-13.md` section 7) in two
       layers. A tracing twin of the hybrid writes each decision's inputs
       and outputs, and every rule function of the new kernel must
-      reproduce them exactly. Tree statistics on 500 game positions are
+      reproduce them exactly. Positions visited are now each engine's own
+      count: since D.6.31 Rarog counts as the donor does, once per move
+      made, so section 7's "the twin's nodes plus its null moves" is the
+      twin's nodes. Tree statistics on 500 game positions are
       judged against a noise floor the twin measures on itself, with
       three planted differences that must fail. This leaf builds the
       twin, the trace format, the statistics tool and the floor; the
