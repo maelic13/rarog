@@ -371,14 +371,15 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.3 | RESEARCH | I2 | Designed by D.7.0 (a tracing twin and tree statistics); held (maintainer, 2026-11-14): D.7.2's rule did not fire (+3.5 ± 8.4 at equal work); D.7.2.1 read 2026-11-14 (Rarog's evaluation ahead of Basilisk's, Basilisk's moves level within 8% at equal time); D.7.2.2 read 2026-11-15; D.7.2.3 and D.7.2.4 done 2026-11-16 (Basilisk's tree gained 55 more per move made than Rarog's, speed and clock another 50 at the programmes' ends; Stockfish's shape unfitted worse than Reckless's at equal work); waits for the maintainer's decision on the donor and the cluster read |
-| D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); held with D.7.3; parity before any game |
+| D.7.3 | READY_FOR_IMPLEMENTATION | I2 | Designed by D.7.0 (a tracing twin and tree statistics); the hold lifted 2026-11-16 (maintainer decision on RAR-O12 and D.7.2.3: the rebuild in Reckless's form, compact, gated once as a whole on a gain) |
+| D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); after D.7.3; the kernel compact, Rarog's additions not carried; parity before any game |
 | D.7.4.1 | RESEARCH | I2 | After D.7.4's parity: the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted; the maintainer is asked about the exchange table first |
-| D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games |
-| D.7.6 | RESEARCH | V | The fit as one rule 7c run read at checkpoints; kept only if fitted over unfitted passes the gate PROCESS's SPSA procedure chooses |
-| D.7.7 | RESEARCH | V | The kernel against the head on the loss-permitting bracket; `10+0.1` and 4T reads |
+| D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games, a diagnostic, not a stop |
+| D.7.6 | RESEARCH | V | The fit as one joint rule 7c run over the whole kernel, read at checkpoints; no gate of its own |
+| D.7.7 | RESEARCH | V | The fitted kernel against the head on `[0,3]`, the one gate; `10+0.1` and 4T reads; H0 opens D.7.10 |
 | D.7.8 | RESEARCH | R2 | Each known problem asked "still an issue?" on the new kernel |
-| D.7.9 | RESEARCH | V | Adoption by maintainer decision on D.7.7 and D.7.8; meters; the old kernel deleted |
+| D.7.9 | RESEARCH | V | Adoption by maintainer decision on D.7.7 and D.7.8; meters; the old kernel deleted; the kernel's size against the donor's |
+| D.7.10 | RESEARCH | R3 | Opens only if D.7.7 does not gain: the kernel in Stockfish's form by the same method |
 | D.6.9 | RESEARCH | R2 | Screen before any implementation |
 | D.6.10 | RESEARCH | R2 | Screen before any implementation |
 | D.6.13 | RESEARCH | R2 | After D.7: the donor's aspiration form is part of a rebuilt kernel; re-evaluate first, close if moot |
@@ -1411,11 +1412,41 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   the maintainer decides after that consultation and may open the rebuild
   against the rule; the decision and its reason are recorded here.
 
-  **Acceptance.** Equal strength is accepted (maintainer decision
-  2026-11-13): the rebuilt kernel is gated against the head on the
-  loss-permitting bracket, never adopted ungated, and D.7.8's review is
-  the other half of the judgment. Adoption is the maintainer's decision on
-  both.
+  **Opened 2026-11-16 (maintainer decision, on RAR-O12 and D.7.2.3).**
+  The rebuild goes ahead in Reckless's form, with three conditions that
+  replace the 2026-11-13 acceptance (equal strength on the
+  loss-permitting bracket):
+  1. *Compact.* The kernel is Reckless's search as it is: Rarog's
+     additions on top of that shape (D.7.0's departures, its seventeen
+     Rarog-only forms among them) are not carried into it. An addition
+     is tried again only on the adopted kernel, one at a time, each with
+     its own registration and gate. The aim is measured: the new kernel's
+     search code against the donor's (`search.rs`, 1,488 lines at
+     `0756957`), reported at D.7.9.
+  2. *It must gain.* The fitted kernel is accepted only on a gain over
+     the head (D.7.7, `[0,3]`), not on equal strength.
+  3. *If it does not gain, Stockfish's form is next* (D.7.10), by the
+     same method; the old kernel stays meanwhile.
+
+  **Gated as a whole.** The kernel's parts are expected to pay only
+  together, so no part is gated on Elo alone (rule 3: one
+  dependency-complete cluster, its internal sub-steps no gates of their
+  own). Each part is held instead to correctness: its invariants and
+  tests, and parity of its decisions with the donor's (D.7.3, D.7.4). The
+  whole kernel is then fitted as one unit (D.7.6) and gated once
+  (D.7.7). The unfitted read (D.7.5) is a diagnostic: a loss there does
+  not stop the step unless the diagnosis finds a defect, because an
+  unfitted donor shape on Rarog's evaluation can lose and still gain once
+  fitted (Phase B's core: +65.1 unfitted, then +138.6 from its fit,
+  RAR-S73). The cost of this is that a part which harms the whole is
+  found only by D.7.8's review or after adoption, not by its own gate.
+
+  **Beside it.** Speed (D.12) and clock use (D.6.28) are levers the
+  kernel does not touch (RAR-O12: speed and clock 51.6 ± 16.1 at the
+  programmes' ends). D.12's behaviour-neutral board work can run beside
+  D.7; a behaviour change such as D.6.28's does not land between D.7.6's
+  fit and D.7.7's gate, which would move the baseline under the fit.
+  Adoption is the maintainer's decision on D.7.7 and D.7.8.
 
   **Method.** One cluster (rule 3): the node body, quiescence, the root
   window and the evaluation wrapper move together behind one switch, the
@@ -1433,13 +1464,13 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
 
   **Invariants.** Table bounds and the mate and tablebase bands; the draw,
   repetition and rule-50 identities; no allocation per node; the
-  search-path perft; one count per position (D.6.8); the acceptance tests
-  of D.6.17 and D.6.20.
+  search-path perft; one count per move made, the null move not counted
+  (D.6.31, the donor's own count); the acceptance tests of D.6.17 and
+  D.6.20.
 
-  **Stop rules.** D.7.2 below its bar and no maintainer decision to
-  proceed: D.7.3 to D.7.9 close `NO_CHANGE`. Parity not reached: no games.
-  The gate at H0: the old kernel stays; this is one cluster, so one
-  rejection stops the step.
+  **Stop rules.** Parity not reached: no games. D.7.7 at H0, or at its
+  cap without H1: the old kernel stays and D.7.10 opens; this is one
+  cluster, so its parts are not adopted on their own.
 
   **Independence.** A kernel nearer the donor's raises what D.11 must
   disclose and the weight of the licence question. PROCESS's boundary
@@ -1801,20 +1832,26 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           `analysis/search_shape_inventory_2026-11-13.md` section 5,
           *The fold*.
     - **D.7.5 The unfitted paired run — `V`.**
-      2,000 games against the head (rule 8's screen). Clearly negative with
-      parity passed puts the difference outside the kernel: one diagnosis,
-      then stop.
+      2,000 games against the head (rule 8's screen), a diagnostic, not
+      a stop (maintainer decision 2026-11-16). Clearly negative with
+      parity passed is diagnosed once for a defect: units, scaling, a
+      contract the port broke. A defect is fixed and the run repeated; no
+      defect, and the step goes on to the fit, which is the system's
+      completion.
     - **D.7.6 The fit — `V`.**
       In Rarog's units, on the folded kernel (D.7.4.1), whose seeds are
       right to rounding. Curvature sweep, then one SPSA run under rule 7c, read at
-      checkpoints and stopped when its gradients are gone. The fitted
-      constants are kept only if fitted over unfitted passes the gate
-      PROCESS's SPSA procedure chooses from the tune's own gain read before
-      any gate game: a fixed 6,000 games where the read is +10 Elo or more,
-      otherwise SPRT `[0,3]`.
+      checkpoints and stopped when its gradients are gone. One joint run
+      over every coordinate of the kernel, so the parts are fitted
+      together. No gate of fitted over unfitted (maintainer decision
+      2026-11-16): the tune's own gain read is recorded, and the one gate
+      is D.7.7's.
     - **D.7.7 The gate: the kernel against the head — `V`.**
-      The loss-permitting bracket `[-1.75, 0.25]`, with a `10+0.1` read and
-      a 4T read registered beside it.
+      The fitted kernel against the head on the gain bracket `[0,3]`
+      (maintainer decision 2026-11-16: it must gain), its cap from
+      RAR-M10 at the registration's expected value, with a `10+0.1` read
+      and a 4T read registered beside it. H1 opens D.7.9; H0, or the cap
+      without H1, keeps the old kernel and opens D.7.10.
     - **D.7.8 Problem review on the new kernel — `R2`.**
       Each problem the combined kernel left is asked "is this still an
       issue?", at zero games where a replay, a fixture or a test answers
@@ -1829,7 +1866,20 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       The maintainer's decision on D.7.7 and D.7.8. On adoption: RAR-O08's
       matches (2) and (5) re-read on the new head, pooled NPS, conversion,
       the old kernel and the switch deleted, the fingerprint record
-      updated. An adopted kernel releases as 2.8.0.
+      updated, and the kernel's size reported against the donor's. An
+      adopted kernel releases as 2.8.0. Rarog's additions are then tried
+      again one at a time on it, each with its own registration and gate.
+    - **D.7.10 If the Reckless kernel does not gain: the kernel in Stockfish's form — `R3`.**
+      Added 2026-11-16 (maintainer decision). Opens only on D.7.7's H0 or
+      its cap without H1. The same method from D.7.0's stage:
+      Stockfish's search as the donor (the version Basilisk follows, read
+      in source), an inventory of Rarog's departures from it, the
+      parity instrument, the kernel whole and compact, one joint fit and
+      one gate on the same gain bracket. Its evidence so far: Stockfish
+      dev's search unfitted on Rarog's evaluation is 34.3 ± 12.0 worse
+      than Reckless's at equal work (RAR-O11 (e)), and Basilisk's
+      search, fitted on its own evaluation, gained 55.2 ± 16.6 more per
+      move made than Rarog's (RAR-O12).
 - **D.8 Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — `I1`, `R2` for the root driver.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` §3.7 and §3.8
   (the B.2.0 recipe repeated: `src/` 29,190 lines, in-file tests 23%,
