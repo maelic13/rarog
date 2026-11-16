@@ -10,10 +10,6 @@
 //! A score is valid unless it is `VALUE_NONE`, the evaluation of a node in
 //! check and the score of an absent table entry; a decisive score is a win
 //! or a loss in the tablebase band or beyond.
-#![expect(
-    dead_code,
-    reason = "the kernel's nodes, which call the rules, land in later commits"
-)]
 
 use crate::eval::{INF_SCORE, VALUE_NONE};
 use crate::tt::{Bound, TB_WIN_SCORE};
@@ -1590,14 +1586,6 @@ pub(crate) fn correction_update(s: &Seeds, i: &CorrectionInput) -> Option<i32> {
         i32::try_from(product.clamp(i64::from(s.corr_min), i64::from(s.corr_max)))
             .unwrap_or_else(|_| unreachable!("clamped into i32 bounds")),
     )
-}
-
-/// A history entry after a bonus: the bonus, clamped to the table's limit,
-/// less the part that would carry the entry past it.
-#[inline(always)]
-pub(crate) fn gravity(max: i32, entry: i32, bonus: i32) -> i32 {
-    let bonus = bonus.clamp(-max, max);
-    entry + bonus - bonus.abs() * entry / max
 }
 
 // ---------------------------------------------------------------------------

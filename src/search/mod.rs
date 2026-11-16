@@ -386,6 +386,36 @@ impl Aspiration {
     }
 }
 
+/// The root window of one iteration, in the form of the kernel that runs.
+enum RootWindow {
+    Classic(Aspiration),
+    Compact(compact::window::CompactWindow),
+}
+
+impl RootWindow {
+    /// The window and the depth the next root search runs at.
+    fn bounds(&self, depth: i32) -> (i32, i32, i32) {
+        match self {
+            Self::Classic(window) => (window.alpha, window.beta, depth),
+            Self::Compact(window) => (window.window.alpha, window.window.beta, window.depth(depth)),
+        }
+    }
+
+    fn fail_low(&mut self, params: &SearchParams, score: i32) {
+        match self {
+            Self::Classic(window) => window.fail_low(params, score),
+            Self::Compact(window) => window.fail_low(score, params.asp_max_fails),
+        }
+    }
+
+    fn fail_high(&mut self, params: &SearchParams, score: i32) {
+        match self {
+            Self::Classic(window) => window.fail_high(params, score),
+            Self::Compact(window) => window.fail_high(score, params.asp_max_fails),
+        }
+    }
+}
+
 /// One search thread: what every thread shares, the configuration of the
 /// current search and the state only this thread mutates. The engine owns the
 /// main thread's `Searcher`, which also owns the helper pool; each helper owns
@@ -516,6 +546,7 @@ impl Searcher {
         self.clear_history();
         self.td.evaluator.clear_pawn_table();
         self.td.previous_search_score = None;
+        self.td.compact_previous_score = 0;
         self.worker_pool.finish_new_game();
     }
 
@@ -987,6 +1018,8 @@ impl Searcher {
         // target votes again every iteration and can reach the majority
         // single-handedly — which is the opposite of pooling the decision.
         let mut cast_stop_vote = false;
+        let compact = self.cfg.kernel == Kernel::Compact;
+        let mut iterations = compact::window::Iterations::new(self.td.compact_previous_score);
 
         for depth in 1..=max_depth {
             // Per iteration, as Stockfish resets `selDepth`: carried across a
@@ -1005,25 +1038,35 @@ impl Searcher {
             // when joining the pool's view). Serial searches have no shared
             // state and keep `best_score` bit-for-bit.
             let mut window_center = best_score;
+            let mut pool_average = None;
             if let Some(shared) = self.shared.pool()
                 && let Some((pool_depth, pool_score)) = shared.pool_best_exact()
                 && pool_depth > infra::to_i32(completed_depth)
             {
                 window_center = pool_score;
+                pool_average = Some(pool_score);
             }
-            // Termination by construction: see `Aspiration`.
-            let mut window = Aspiration::new(&self.cfg.params, depth, window_center);
+            let mut window = if compact {
+                let (opening, optimism) = iterations.open(pool_average);
+                let stm = board.side_to_move() as usize;
+                self.td.optimism[stm] = optimism;
+                self.td.optimism[1 - stm] = -optimism;
+                RootWindow::Compact(compact::window::CompactWindow::new(opening))
+            } else {
+                // Termination by construction: see `Aspiration`.
+                RootWindow::Classic(Aspiration::new(&self.cfg.params, depth, window_center))
+            };
 
             loop {
                 #[cfg(feature = "diag")]
                 let window_nodes_before = self.td.nodes;
-                let score = self.search_root_window(
-                    &mut board,
-                    infra::to_i32(depth),
-                    window.alpha,
-                    window.beta,
-                    poll,
-                );
+                let (alpha, beta, search_depth) = window.bounds(infra::to_i32(depth));
+                if compact {
+                    // Each window searches from a clean stack, its cutoff
+                    // counts included.
+                    self.td.stack = PlyArray::new(StackEntry::default());
+                }
+                let score = self.search_root_window(&mut board, search_depth, alpha, beta, poll);
                 #[cfg(feature = "diag")]
                 let window_nodes = self.td.nodes.saturating_sub(window_nodes_before);
                 if self.td.stopped || self.td.quit {
@@ -1047,20 +1090,22 @@ impl Searcher {
                 // failing score" variant measured −4.52 ± 4.80 Elo, because
                 // AspirationDelta and the pruning group were tuned around these
                 // dynamics.
-                if score <= window.alpha {
+                if score <= alpha {
                     crate::diag_count!(asp_fail_low);
                     crate::diag_add!(asp_fail_low_nodes, window_nodes);
                     if emit_info {
-                        self.send_bounded_info_line(depth, score, RootBound::Upper, bestmove);
+                        let shown = self.score_out(score);
+                        self.send_bounded_info_line(depth, shown, RootBound::Upper, bestmove);
                     }
                     window.fail_low(&self.cfg.params, score);
                     continue;
                 }
-                if score >= window.beta {
+                if score >= beta {
                     crate::diag_count!(asp_fail_high);
                     crate::diag_add!(asp_fail_high_nodes, window_nodes);
                     if emit_info {
-                        self.send_bounded_info_line(depth, score, RootBound::Lower, bestmove);
+                        let shown = self.score_out(score);
+                        self.send_bounded_info_line(depth, shown, RootBound::Lower, bestmove);
                     }
                     // Past a multiple of the soft target (twice it by default)
                     // a fail-high ends the search on the move that failed high,
@@ -1096,6 +1141,9 @@ impl Searcher {
                 }
                 best_score = score;
                 completed_depth = depth;
+                if compact {
+                    iterations.record_exact(score);
+                }
                 if self.td.pv_len[0] > 0 {
                     bestmove = self.td.pv_table[0][0];
                     pondermove = if self.td.pv_len[0] > 1 {
@@ -1149,9 +1197,12 @@ impl Searcher {
             if self.td.stopped || self.td.quit || failed_high_past_target {
                 break;
             }
+            if compact {
+                iterations.end_iteration(best_score, bestmove);
+            }
 
             if emit_info {
-                self.send_info(depth, best_score);
+                self.send_info(depth, self.score_out(best_score));
             }
 
             if self.mate_limit_proved(best_score) {
@@ -1204,16 +1255,18 @@ impl Searcher {
             // update would attenuate the signal to two-thirds. On the first
             // iteration there is no prior average, so the baseline is the
             // current score → a neutral (zero) falling signal.
+            // The clock reads scores in Rarog's units.
+            let shown_score = self.score_out(best_score);
             let falling_baseline = if completed_depth <= 1 {
-                best_score as f64
+                f64::from(shown_score)
             } else {
                 prev_avg_score
             };
             // Update the EWMA for the next iteration's baseline.
             prev_avg_score = if completed_depth <= 1 {
-                best_score as f64
+                f64::from(shown_score)
             } else {
-                (prev_avg_score * 2.0 + best_score as f64) / 3.0
+                (prev_avg_score * 2.0 + f64::from(shown_score)) / 3.0
             };
 
             // SF-style between-iteration stop.
@@ -1232,8 +1285,8 @@ impl Searcher {
             }
             if !self.cfg.limits.movetime_mode {
                 let signals = IterationSignals {
-                    score_fall: falling_baseline - f64::from(best_score),
-                    cross_move_fall: self.cross_move_fall(best_score),
+                    score_fall: falling_baseline - f64::from(shown_score),
+                    cross_move_fall: self.cross_move_fall(shown_score),
                     best_move_changes: tot_best_move_changes,
                     stable_iterations,
                     effort_share: self.effort_share(bestmove),
@@ -1324,6 +1377,10 @@ impl Searcher {
             self.pricing_dump();
         }
 
+        if compact && best_score > -INF_SCORE {
+            self.td.compact_previous_score = best_score;
+        }
+        let best_score = self.score_out(best_score);
         self.remember_search_score(best_score);
         let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
         SearchResult {
@@ -1359,6 +1416,16 @@ impl Searcher {
     fn stop_the_pool(&self) {
         if let Some(shared) = self.shared.pool() {
             shared.request_stop();
+        }
+    }
+
+    /// A root score as everything outside the kernel reads it: the compact
+    /// kernel's in Rarog's units.
+    fn score_out(&self, score: i32) -> i32 {
+        if self.cfg.kernel == Kernel::Compact {
+            compact::score_to_rarog(score)
+        } else {
+            score
         }
     }
 
@@ -1630,15 +1697,17 @@ impl Searcher {
             } else {
                 stable_iterations + 1
             };
+            // The clock reads scores in Rarog's units.
+            let shown_score = self.score_out(best_score);
             let falling_baseline = if completed_depth <= 1 {
-                best_score as f64
+                f64::from(shown_score)
             } else {
                 prev_avg_score
             };
             prev_avg_score = if completed_depth <= 1 {
-                best_score as f64
+                f64::from(shown_score)
             } else {
-                (prev_avg_score * 2.0 + best_score as f64) / 3.0
+                (prev_avg_score * 2.0 + f64::from(shown_score)) / 3.0
             };
             let elapsed_ms = self.elapsed_ms();
             if elapsed_ms >= self.cfg.limits.maximum_ms {
@@ -1656,8 +1725,8 @@ impl Searcher {
             }
             if !self.cfg.limits.movetime_mode {
                 let signals = IterationSignals {
-                    score_fall: falling_baseline - f64::from(best_score),
-                    cross_move_fall: self.cross_move_fall(best_score),
+                    score_fall: falling_baseline - f64::from(shown_score),
+                    cross_move_fall: self.cross_move_fall(shown_score),
                     best_move_changes: tot_best_move_changes,
                     stable_iterations,
                     effort_share: self.effort_share(bestmove),
@@ -1695,6 +1764,7 @@ impl Searcher {
             #[cfg(feature = "pricing")]
             self.pricing_dump();
         }
+        let best_score = self.score_out(best_score);
         self.remember_search_score(best_score);
         let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
         SearchResult {
@@ -1736,7 +1806,7 @@ impl Searcher {
         ReportedLine {
             depth,
             seldepth: record.seldepth,
-            score: record.score,
+            score: self.score_out(record.score),
             bound,
             pv: record.pv[..record.pv_len.clamp(1, MAX_PLY)]
                 .iter()

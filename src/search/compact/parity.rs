@@ -33,6 +33,7 @@ use std::path::PathBuf;
 use crate::eval::VALUE_NONE;
 use crate::tt::Bound;
 
+use super::super::history::apply_bonus;
 use super::rules::{self, Seeds};
 
 /// A kind's records must come from at least this many positions, and
@@ -509,9 +510,12 @@ fn verdict(s: &Seeds, r: &Record<'_>) -> Option<Verdict> {
             // when the update fires, and only then compared.
             Verdict::from(fire(update.is_some()) && update.is_none_or(|b| b == r.int("bonus")))
         }
-        "gravity" => Verdict::from(
-            rules::gravity(r.int("max"), r.int("entry"), r.int("bonus")) == r.int("result"),
-        ),
+        "gravity" => {
+            // The history tables' own update, which every kernel shares.
+            let mut entry = i16::try_from(r.int("entry")).expect("a table entry");
+            apply_bonus(&mut entry, r.int("bonus"), r.int("max"));
+            Verdict::from(i32::from(entry) == r.int("result"))
+        }
         "q_tt_cut" => Verdict::from(fire(rules::q_tt_cuts(
             r.flag("pv"),
             r.int("tt_score"),

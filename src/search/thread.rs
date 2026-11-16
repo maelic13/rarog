@@ -127,6 +127,9 @@ pub(super) struct ThreadData {
     /// which the falling eval compares with this search's; none at a new
     /// game, so the first move reads no fall across the pair.
     pub(super) previous_search_score: Option<i32>,
+    /// The compact kernel's root score at the previous search's end, in its
+    /// own units: the next search's running average starts there.
+    pub(super) compact_previous_score: i32,
     /// The plies at which a null move was made, for the tests of its gates.
     #[cfg(test)]
     pub(super) null_move_plies: Vec<usize>,
@@ -212,6 +215,7 @@ impl Default for ThreadData {
             root_depth: 0,
             optimism: [0; 2],
             previous_search_score: None,
+            compact_previous_score: 0,
             #[cfg(test)]
             null_move_plies: Vec::new(),
             #[cfg(test)]

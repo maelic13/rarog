@@ -18,6 +18,7 @@ mod parity;
 mod picker;
 mod quiescence;
 pub(super) mod rules;
+pub(super) mod window;
 
 use crate::board::{Board, Color, Move, Piece, SeeValues};
 use crate::eval::VALUE_NONE;
@@ -45,10 +46,6 @@ pub(super) fn raw_to_kernel(raw: i32) -> i32 {
         .unwrap_or_else(|_| unreachable!("clamped into i32 bounds"))
 }
 
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "read by the root driver's outputs, not yet wired")
-)]
 /// A kernel score in Rarog's units, for everything outside the kernel that
 /// reads one: a decisive score is a distance, not an evaluation, and passes
 /// unchanged, as do the window's infinities and the absent score.
