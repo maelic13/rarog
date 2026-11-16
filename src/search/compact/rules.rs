@@ -31,9 +31,14 @@ pub(crate) struct Seeds {
     pub(crate) wrap_fifty_horizon: i32,
 
     // Table cutoff: a bound that would cut against the node's expected type
-    // needs more than this depth.
+    // needs more than this depth, and no cutoff is taken from this many plies
+    // of the fifty-move clock on.
     pub(crate) tt_cut_typed_depth: i32,
+    pub(crate) tt_cut_fifty: i32,
+    // The cutoff rewards a quiet TT move reached through one of the parent's
+    // first moves, before this one.
     // The cutoff's reward to a quiet TT move: `min(slope·d − offset, cap)`.
+    pub(crate) tt_bonus_parent_moves: i32,
     pub(crate) tt_bonus_quiet_slope: i32,
     pub(crate) tt_bonus_quiet_offset: i32,
     pub(crate) tt_bonus_quiet_cap: i32,
@@ -41,7 +46,9 @@ pub(crate) struct Seeds {
     pub(crate) tt_bonus_cont_offset: i32,
     pub(crate) tt_bonus_cont_cap: i32,
 
-    // The evaluation swing across the parent's quiet move, as its history.
+    // The evaluation swing across the parent's quiet move, as its history,
+    // below this depth or without a stored entry.
+    pub(crate) eval_bonus_depth: i32,
     pub(crate) eval_bonus_scale: i32,
     pub(crate) eval_bonus_min: i32,
     pub(crate) eval_bonus_max: i32,
@@ -319,6 +326,8 @@ impl Seeds {
         wrap_fifty_horizon: 200,
 
         tt_cut_typed_depth: 5,
+        tt_cut_fifty: 90,
+        tt_bonus_parent_moves: 4,
         tt_bonus_quiet_slope: 190,
         tt_bonus_quiet_offset: 81,
         tt_bonus_quiet_cap: 1_691,
@@ -326,6 +335,7 @@ impl Seeds {
         tt_bonus_cont_offset: 73,
         tt_bonus_cont_cap: 1_206,
 
+        eval_bonus_depth: 6,
         eval_bonus_scale: 812,
         eval_bonus_min: -144,
         eval_bonus_max: 324,
@@ -904,6 +914,24 @@ pub(crate) fn nmp_reduction(
         + s.nmp_r_depth * depth
         + s.nmp_r_surplus * (estimate - beta).clamp(0, s.nmp_r_surplus_cap) / 128)
         / 1024
+}
+
+/// The bound the null search must hold: a stored lower bound below beta and
+/// deep enough, which already says the node is worth that much, else beta.
+#[inline(always)]
+pub(crate) fn null_bound(
+    depth: i32,
+    beta: i32,
+    tt_score: i32,
+    bound: Option<Bound>,
+    tt_depth: i32,
+) -> i32 {
+    if is_valid(tt_score) && beta > tt_score && bound == Some(Bound::Lower) && depth - 2 <= tt_depth
+    {
+        tt_score
+    } else {
+        beta
+    }
 }
 
 /// What the null search's score decides.

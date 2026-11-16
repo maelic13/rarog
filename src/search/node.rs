@@ -64,7 +64,7 @@ fn fail_high_toward_beta(score: i32, beta: i32, lerp: i32) -> i32 {
 
 /// What an in-search tablebase result does at a node.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum TbVerdict {
+pub(super) enum TbVerdict {
     /// It decides the window: store it with its bound and return it.
     Return,
     /// A win below beta at a PV node: the moves must beat it.
@@ -78,7 +78,7 @@ enum TbVerdict {
 /// A tablebase result ends the node only where it decides the window: a draw
 /// always, a win (a lower bound) at or above beta, a loss (an upper bound) at
 /// or below alpha. Otherwise only a PV node keeps it, as a floor or a cap.
-fn tb_verdict(score: i32, bound: Bound, alpha: i32, beta: i32, pv: bool) -> TbVerdict {
+pub(super) fn tb_verdict(score: i32, bound: Bound, alpha: i32, beta: i32, pv: bool) -> TbVerdict {
     let decides = match bound {
         Bound::Exact => true,
         Bound::Lower => score >= beta,
@@ -408,6 +408,9 @@ impl Searcher {
         }
         #[cfg(test)]
         self.note_child(ChildSite::Root, false);
+        if self.cfg.kernel == crate::search::options::Kernel::Compact {
+            return self.compact_root(board, depth, alpha, beta, poll);
+        }
         self.negamax::<Root, _>(
             board,
             depth,

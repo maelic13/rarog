@@ -122,13 +122,6 @@ pub(super) struct ThreadData {
     /// The compact kernel's optimism, by colour: what its evaluation
     /// adds toward the root's running score for the side to move; zero
     /// outside a compact search.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "read by the compact kernel's nodes, not yet wired"
-        )
-    )]
     pub(super) optimism: [i32; 2],
     /// The root score this thread's previous search in the game ended on,
     /// which the falling eval compares with this search's; none at a new

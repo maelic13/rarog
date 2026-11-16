@@ -11,14 +11,8 @@
 //! back where it leaves, so the seeds hold the values the donor was fitted
 //! with. The scale is a scaffold: folding the constants into Rarog's units
 //! deletes it.
-#![cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the node body, which calls the kernel, lands in a later commit"
-    )
-)]
 
+mod node;
 #[cfg(test)]
 mod parity;
 mod picker;
@@ -51,6 +45,10 @@ pub(super) fn raw_to_kernel(raw: i32) -> i32 {
         .unwrap_or_else(|_| unreachable!("clamped into i32 bounds"))
 }
 
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "read by the root driver's outputs, not yet wired")
+)]
 /// A kernel score in Rarog's units, for everything outside the kernel that
 /// reads one: a decisive score is a distance, not an evaluation, and passes
 /// unchanged, as do the window's infinities and the absent score.

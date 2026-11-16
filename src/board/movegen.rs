@@ -170,10 +170,6 @@ fn push_queen_promotions(
 /// [`generate_captures_pinned_into`] with the legal non-capturing queen
 /// promotions after the captures: the noisy stage of a picker that keeps the
 /// rook, bishop and knight pushes with the quiets.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "read by the compact kernel, not yet wired")
-)]
 pub(super) fn generate_noisy_pinned_into(
     board: &mut Board,
     king_danger: Option<Bitboard>,

@@ -482,7 +482,14 @@ impl TranspositionTable {
 
     #[inline(always)]
     pub fn store(&mut self, e: TtStore) {
-        self.store_with_bits(e, e.bound as u8);
+        self.store_with_bits(e, e.bound as u8, false);
+    }
+
+    /// [`Self::store`], overwriting a deeper result for the same position:
+    /// a PV node's final result in the compact kernel.
+    #[inline(always)]
+    pub fn store_forced(&mut self, e: TtStore) {
+        self.store_with_bits(e, e.bound as u8, true);
     }
 
     /// Store the raw static eval of a position the probe missed, so a later
@@ -502,17 +509,18 @@ impl TranspositionTable {
                 is_pv,
             },
             0,
+            false,
         );
     }
 
     #[inline(always)]
-    fn store_with_bits(&mut self, e: TtStore, bound_bits: u8) {
+    fn store_with_bits(&mut self, e: TtStore, bound_bits: u8, force: bool) {
         match &mut self.storage {
             TtStorage::Local(table) => {
-                store_local(table, e, bound_bits);
+                store_local(table, e, bound_bits, force);
             }
             TtStorage::Shared(table) => {
-                store_shared(table, e, bound_bits);
+                store_shared(table, e, bound_bits, force);
             }
         }
     }
@@ -835,21 +843,21 @@ fn probe_shared(table: &SharedTable, key: u64) -> Option<TtEntry> {
 }
 
 #[inline(always)]
-fn store_local(table: &mut LocalTable, e: TtStore, bound_bits: u8) {
+fn store_local(table: &mut LocalTable, e: TtStore, bound_bits: u8, force: bool) {
     let key16 = key16_of(e.key);
     let count = table.clusters.len();
     let cluster = &mut table.clusters[cluster_index(e.key, count)];
-    if let Some((index, entry)) = replacement(cluster, table.age, key16, e, bound_bits) {
+    if let Some((index, entry)) = replacement(cluster, table.age, key16, e, bound_bits, force) {
         cluster.entries[index] = entry;
     }
 }
 
 #[inline(always)]
-fn store_shared(table: &SharedTable, e: TtStore, bound_bits: u8) {
+fn store_shared(table: &SharedTable, e: TtStore, bound_bits: u8, force: bool) {
     let age = table.age.load(Ordering::Relaxed);
     let key16 = key16_of(e.key);
     let cluster = &table.clusters[cluster_index(e.key, table.clusters.len())];
-    if let Some((index, entry)) = replacement(cluster, age, key16, e, bound_bits) {
+    if let Some((index, entry)) = replacement(cluster, age, key16, e, bound_bits, force) {
         cluster.store(index, key16, entry);
     }
 }
@@ -861,7 +869,8 @@ fn store_shared(table: &SharedTable, e: TtStore, bound_bits: u8) {
 /// lowest [`entry_quality`] is. A result of any bound does not overwrite a
 /// current-generation entry for the same position at least four plies deeper
 /// (six for a PV store), though a new move still replaces its move; a store
-/// without a move keeps the position's stored move.
+/// without a move keeps the position's stored move. A forced store always
+/// writes its result.
 #[inline(always)]
 fn replacement<C: ClusterSlots>(
     cluster: &C,
@@ -869,6 +878,7 @@ fn replacement<C: ClusterSlots>(
     key16: u16,
     e: TtStore,
     bound_bits: u8,
+    force: bool,
 ) -> Option<(usize, TtEntry)> {
     let mut replace_index = 0usize;
     let mut replace_quality = i32::MAX;
@@ -899,7 +909,8 @@ fn replacement<C: ClusterSlots>(
     // A current-generation entry for the same position that is at least four
     // plies deeper (six on a PV line) keeps its result; a new move still
     // replaces its move.
-    if same_position
+    if !force
+        && same_position
         && e.depth + 4 + 2 * i32::from(e.is_pv) <= i32::from(replace_entry.depth)
         && (replace_entry.flag_age & AGE_MASK) == age
     {

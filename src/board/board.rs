@@ -859,10 +859,6 @@ impl Board {
 
     /// [`Board::generate_legal_captures_staged_into`] with the legal
     /// non-capturing queen promotions after the captures.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "read by the compact kernel, not yet wired")
-    )]
     pub(crate) fn generate_legal_noisy_staged_into(
         &mut self,
         threats: &Threats,

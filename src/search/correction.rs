@@ -155,13 +155,6 @@ impl Searcher {
     /// units: the plain sum of the pawn, both non-pawn and two continuation
     /// readings, over the table scale. Its continuation readings, two and
     /// four plies back, share one table, and it reads no minor table.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "read by the compact kernel's nodes, not yet wired"
-        )
-    )]
     pub(super) fn compact_correction(&self, board: &Board, ply: usize) -> i32 {
         let slots = self.correction_slots(board, ply);
         let tables = &self.td.corr;
@@ -172,6 +165,20 @@ impl Searcher {
             sum += i64::from(tables.continuation_2[slot]);
         }
         saturate(sum / TABLE_SCALE)
+    }
+
+    /// Train the compact kernel's tables for the node at `ply` by `bonus`,
+    /// already scaled and clamped: the pawn and both non-pawn tables, and
+    /// the one continuation table at the contexts two and four plies back.
+    pub(super) fn compact_train_correction(&mut self, board: &Board, ply: usize, bonus: i32) {
+        let slots = self.correction_slots(board, ply);
+        let tables = &mut self.td.corr;
+        apply_bonus(&mut tables.pawn[slots.pawn], bonus, KEYED_MAX);
+        apply_bonus(&mut tables.non_pawn[0][slots.non_pawn[0]], bonus, KEYED_MAX);
+        apply_bonus(&mut tables.non_pawn[1][slots.non_pawn[1]], bonus, KEYED_MAX);
+        for slot in slots.continuation.into_iter().flatten() {
+            apply_bonus(&mut tables.continuation_2[slot], bonus, CONT_MAX);
+        }
     }
 
     pub(super) fn raw_eval(&mut self, board: &Board) -> i32 {

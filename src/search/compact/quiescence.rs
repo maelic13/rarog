@@ -141,6 +141,10 @@ impl Searcher {
             self.compact_push_move(board, ply, mv, piece, move_count);
             board.make_move(mv);
             self.shared.tt.prefetch(board.hash());
+            #[cfg(test)]
+            {
+                self.td.moves_made += 1;
+            }
             self.count_node(poll);
             let score = -self.compact_quiescence::<NODE, _>(board, -beta, -alpha, ply + 1, poll);
             board.unmake_move(mv);
