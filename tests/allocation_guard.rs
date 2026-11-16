@@ -64,6 +64,10 @@ const SHALLOW_DEPTH: u32 = 5;
 /// full one does, except a depth band of the null-move cut and an endgame
 /// census entry with no code path of its own.
 const DEEP_DEPTH: u32 = if cfg!(debug_assertions) { 11 } else { 13 };
+/// The compact kernel's trees are smaller: at depth 11 bench position 0
+/// grows only 7.4-fold (5,622 to 41,604 nodes) and at 12 9.1-fold, so it
+/// searches to 13 in both builds, where every position grows twentyfold.
+const COMPACT_DEEP_DEPTH: u32 = 13;
 
 /// Allocations one iteration may add, per searching thread: the line it
 /// reports. Bench position 0 at one thread adds one allocation over eight
@@ -153,13 +157,17 @@ fn allocations_grow_per_iteration_never_per_node() {
 
             let (shallow_allocations, shallow_nodes) =
                 measured_search(&mut searcher, &options, SHALLOW_DEPTH);
+            let deep_depth = match kernel {
+                Kernel::Classic => DEEP_DEPTH,
+                Kernel::Compact => COMPACT_DEEP_DEPTH,
+            };
             let (deep_allocations, deep_nodes) =
-                measured_search(&mut searcher, &options, DEEP_DEPTH);
+                measured_search(&mut searcher, &options, deep_depth);
             let context = format!(
                 "{kernel:?} kernel, Threads {threads}, bench position {index}: depth \
                  {SHALLOW_DEPTH} made \
                  {shallow_allocations} allocations in {shallow_nodes} nodes, depth \
-                 {DEEP_DEPTH} made {deep_allocations} in {deep_nodes}"
+                 {deep_depth} made {deep_allocations} in {deep_nodes}"
             );
             if threads == 1 {
                 single_thread_shallow_nodes = shallow_nodes;
@@ -168,7 +176,7 @@ fn allocations_grow_per_iteration_never_per_node() {
                 deep_nodes >= MIN_NODE_GROWTH * single_thread_shallow_nodes,
                 "the deep search is too small to expose a per-node allocation; {context}"
             );
-            let extra_iterations = u64::from(DEEP_DEPTH - SHALLOW_DEPTH);
+            let extra_iterations = u64::from(deep_depth - SHALLOW_DEPTH);
             let budget = ALLOCATIONS_PER_ITERATION_PER_THREAD
                 * extra_iterations
                 * u64::try_from(threads).expect("a thread count fits in u64");
