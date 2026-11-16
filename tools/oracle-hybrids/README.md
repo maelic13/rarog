@@ -55,6 +55,31 @@ way. It counts the null moves it makes and prints
 `info string nullmoves <N> nodes <M>` before `bestmove`; it is never
 played, and its `bench` must report the node count of the plain hybrid.
 
+Reckless's tracing twin (D.7.3): the hybrid's tree with
+`reckless-0756957-rarog-hce-trace.patch` on top, built with
+`cargo build --release --no-default-features` (no PGO: at a fixed depth
+the tree does not depend on code generation). With nothing set its
+`bench` is the hybrid's, 4,158,758, and with tracing on as well.
+
+- `RAROG_TRACE=<file>` writes one line per decision of every n-th node
+  (`RAROG_TRACE_STRIDE`, default 64): `<kind> fire=<0|1> <name>=<int>`.
+- `RAROG_SPREAD_SALT=<k>` shifts the node count in the two LMR spread
+  terms and the draw score, for the noise floor.
+- `RAROG_PLANT` is `unreduced`, `lmr_check` or `q5`, a planted difference.
+- Every rule's firings and attempts are printed as
+  `info string rates ...` before `bestmove`.
+
+Its tools:
+
+    python tools/oracle-hybrids/tree_stats.py positions <match.pgn> <positions.jsonl> [count] [seed]
+    python tools/oracle-hybrids/tree_stats.py run <engine.exe> <positions.jsonl> <out.jsonl> [KEY=VALUE ...]
+    python tools/oracle-hybrids/tree_stats.py compare <base.jsonl> <candidate.jsonl> --floor <salted.jsonl> ...
+    python tools/oracle-hybrids/capture_trace.py <engine.exe> <positions.jsonl> <out_dir> [count] [stride]
+
+`run` stops a search past `TREE_STATS_LIMIT_S` seconds (120) and marks it;
+`capture_trace.py` leaves out the ids in `TREE_STATS_EXCLUDE`. The
+calibration is `analysis/d73_parity_instrument_2026-11-16.md`.
+
 ## Reading the limits from a match
 
 `pgn_limits.py` reads a fastchess PGN: games and terminations, each

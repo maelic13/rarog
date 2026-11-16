@@ -1,0 +1,725 @@
+diff --git a/src/evaluation.rs b/src/evaluation.rs
+index 546d289..1eccd66 100644
+--- a/src/evaluation.rs
++++ b/src/evaluation.rs
+@@ -9,5 +9,9 @@ pub fn correct_eval(td: &ThreadData, raw_eval: i32, correction_value: i32) -> i3
+ 
+     eval += correction_value;
+ 
+-    eval.clamp(-Score::TB_WIN_IN_MAX + 1, Score::TB_WIN_IN_MAX - 1)
++    let eval = eval.clamp(-Score::TB_WIN_IN_MAX + 1, Score::TB_WIN_IN_MAX - 1);
++    tr!(crate::trace::sample_call("wrapper"), "wrapper", true, raw = raw_eval, material = td.board.material(),
++        optimism = td.optimism[td.board.side_to_move()], fifty = td.board.fiftymove_clock(),
++        correction = correction_value, eval = eval);
++    eval
+ }
+diff --git a/src/history.rs b/src/history.rs
+index 6d81ecb..c312495 100644
+--- a/src/history.rs
++++ b/src/history.rs
+@@ -75,8 +75,11 @@ impl<T> Drop for HugeBox<T> {
+ }
+ 
+ fn apply_bonus<const MAX: i32>(entry: &mut i16, bonus: i32) {
++    let before = *entry;
+     let bonus = bonus.clamp(-MAX, MAX);
+     *entry += (bonus - bonus.abs() * (*entry) as i32 / MAX) as i16;
++    tr!(crate::trace::sample_call("gravity"), "gravity", true, max = MAX, entry = before, bonus = bonus,
++        result = *entry);
+ }
+ 
+ pub struct QuietHistory {
+diff --git a/src/lib.rs b/src/lib.rs
+index e0acfee..5f0b8fc 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -4,6 +4,8 @@
+ #![warn(clippy::redundant_clone)]
+ #![cfg_attr(target_arch = "wasm32", allow(dead_code, unused_imports))]
+ 
++#[macro_use]
++mod trace;
+ mod board;
+ mod evaluation;
+ mod hce;
+diff --git a/src/movepick.rs b/src/movepick.rs
+index 623f7e1..3c3d9e7 100644
+--- a/src/movepick.rs
++++ b/src/movepick.rs
+@@ -139,6 +139,10 @@ impl MovePicker {
+                 + td.noisy_history.get(threats, td.board.moved_piece(mv), mv.to(), captured)
+                 + 4558 * (mv.is_promotion() && mv.promo_piece_type() == PieceType::Queen) as i32
+                 + (200000 - 20000 * pt as i32) * td.board.in_check() as i32;
++            tr!(crate::trace::sample_call("pick_noisy"), "pick_noisy", true, victim = captured.value(),
++                history = td.noisy_history.get(threats, td.board.moved_piece(mv), mv.to(), captured),
++                queen_promotion = mv.is_promotion() && mv.promo_piece_type() == PieceType::Queen,
++                in_check = td.board.in_check(), piece = pt as i32, score = entry.score);
+         }
+     }
+ 
+@@ -211,6 +215,14 @@ impl MovePicker {
+                 - 8875 * threatened[pt].contains(mv.to()) as i32
+                 + 3446 * offense[pt].contains(mv.to()) as i32
+                 - 4494 * wall_pawns.contains(mv.from()) as i32;
++            tr!(crate::trace::sample_call("pick_quiet"), "pick_quiet", true,
++                quiet = td.quiet_history.get(threats, side, mv),
++                pawn = td.pawn_history.get(pawn_key, td.board.moved_piece(mv), mv.to()),
++                cont1 = td.conthist(ply, 1, mv), cont2 = td.conthist(ply, 2, mv), cont4 = td.conthist(ply, 4, mv),
++                cont6 = td.conthist(ply, 6, mv), piece = pt as i32, escape = threatened[pt].contains(mv.from()),
++                check_square = td.board.checking_squares(pt).contains(mv.to()),
++                threatened_to = threatened[pt].contains(mv.to()), offense = offense[pt].contains(mv.to()),
++                wall = wall_pawns.contains(mv.from()), score = entry.score);
+         }
+     }
+ }
+diff --git a/src/search.rs b/src/search.rs
+index 0deec1d..a127392 100644
+--- a/src/search.rs
++++ b/src/search.rs
+@@ -122,6 +122,11 @@ pub fn start(td: &mut ThreadData, report: Report, thread_count: usize) {
+                 / 2;
+             td.optimism[td.board.side_to_move()] = 113 * best_avg / (best_avg.abs() + 201);
+             td.optimism[!td.board.side_to_move()] = -td.optimism[td.board.side_to_move()];
++            tr!(crate::trace::enabled(), "optimism", true, best_avg = best_avg,
++                optimism = td.optimism[td.board.side_to_move()]);
++            tr!(crate::trace::enabled(), "window", true, phase = 0, average = average[td.pv_index],
++                eval_stability = eval_stability, pv_stability = pv_stability, delta = delta,
++                alpha = alpha, beta = beta);
+ 
+             loop {
+                 td.stack = Stack::new();
+@@ -140,11 +145,15 @@ pub fn start(td: &mut ThreadData, report: Report, thread_count: usize) {
+ 
+                 match score {
+                     s if s <= alpha => {
++                        let (alpha0, beta0, delta0) = (alpha, beta, delta);
+                         alpha = (score - delta).max(-Score::INFINITE);
+                         beta = (alpha + delta).min(beta);
+                         delta += 26 * delta / 128;
++                        tr!(crate::trace::enabled(), "window", true, phase = 1, score = score, alpha_in = alpha0,
++                            beta_in = beta0, delta_in = delta0, alpha = alpha, beta = beta, delta = delta);
+                     }
+                     s if s >= beta => {
++                        let (alpha0, beta0, delta0, reduction0) = (alpha, beta, delta, reduction);
+                         alpha = (beta - delta).max(alpha);
+                         beta = (score + delta).min(Score::INFINITE);
+                         if !is_decisive(score) {
+@@ -153,6 +162,9 @@ pub fn start(td: &mut ThreadData, report: Report, thread_count: usize) {
+                             reduction = reduction.min(1)
+                         }
+                         delta += 60 * delta / 128;
++                        tr!(crate::trace::enabled(), "window", true, phase = 2, score = score, alpha_in = alpha0,
++                            beta_in = beta0, delta_in = delta0, reduction_in = reduction0, alpha = alpha,
++                            beta = beta, delta = delta, reduction = reduction);
+                     }
+                     _ => {
+                         average[td.pv_index] = if average[td.pv_index] == Score::NONE {
+@@ -295,6 +307,10 @@ pub fn start(td: &mut ThreadData, report: Report, thread_count: usize) {
+     }
+ 
+     td.previous_best_score = td.root_moves[0].score;
++
++    if td.id == 0 {
++        crate::trace::finish_search();
++    }
+ }
+ 
+ fn search<NODE: NodeType>(
+@@ -305,6 +321,7 @@ fn search<NODE: NodeType>(
+     debug_assert!(-Score::INFINITE <= alpha && alpha < beta && beta <= Score::INFINITE);
+     debug_assert!(NODE::PV || alpha == beta - 1);
+ 
++    let traced = crate::trace::enter_node();
+     let stm = td.board.side_to_move();
+     let in_check = td.board.in_check();
+     let excluded = td.excluded[ply].is_present();
+@@ -383,6 +400,20 @@ fn search<NODE: NodeType>(
+         tt_pv |= entry.tt_pv;
+         tt_was_pv = entry.tt_pv;
+ 
++        let tt_cut = !NODE::PV
++            && !excluded
++            && tt_depth > depth - (tt_score < beta) as i32
++            && is_valid(tt_score)
++            && match tt_bound {
++                Bound::Upper => tt_score <= alpha && (!cut_node || depth > 5),
++                Bound::Lower => tt_score >= beta && (cut_node || depth > 5),
++                _ => true,
++            };
++        tr!(traced, "tt_cut", tt_cut, pv = NODE::PV, excluded = excluded, tt_depth = tt_depth, depth = depth,
++            tt_score = tt_score, alpha = alpha, beta = beta, bound = tt_bound as i32, cut_node = cut_node,
++            fifty = td.board.fiftymove_clock(), parent_move_count = td.stack[ply - 1].move_count,
++            tt_quiet = tt_move.is_quiet());
++
+         if !NODE::PV
+             && !excluded
+             && tt_depth > depth - (tt_score < beta) as i32
+@@ -481,6 +512,9 @@ fn search<NODE: NodeType>(
+         eval
+     };
+ 
++    tr!(traced, "estimate", estimated_score != eval, in_check = in_check, excluded = excluded,
++        tt_score = tt_score, bound = tt_bound as i32, eval = eval, estimate = estimated_score);
++
+     td.stack[ply].eval = eval;
+     td.stack[ply].tt_move = tt_move;
+     td.stack[ply].tt_pv = tt_pv;
+@@ -498,12 +532,15 @@ fn search<NODE: NodeType>(
+     {
+         let value = 812 * (-(eval + td.stack[ply - 1].eval)) / 128;
+         let bonus = value.clamp(-144, 324);
++        tr!(traced, "eval_bonus", true, eval = eval, parent_eval = td.stack[ply - 1].eval, depth = depth,
++            has_entry = entry.is_some(), bonus = bonus);
+ 
+         td.quiet_history.update(td.board.prior_threats(), !stm, td.stack[ply - 1].mv, bonus);
+     }
+ 
+     // Hindsight reductions
+     if !NODE::ROOT && !in_check && !excluded && is_valid(td.stack[ply - 1].eval) {
++        let depth_in = depth;
+         let eval_delta = eval + td.stack[ply - 1].eval;
+         let reduction = td.stack[ply - 1].reduction;
+ 
+@@ -514,6 +551,8 @@ fn search<NODE: NodeType>(
+         if !tt_pv && depth >= 2 && reduction > 0 && eval_delta > 57 {
+             depth -= 1;
+         }
++        tr!(traced, "hindsight", depth != depth_in, depth_in = depth_in, reduction = reduction,
++            eval_delta = eval_delta, tt_pv = tt_pv, depth = depth);
+     }
+ 
+     let potential_singularity = depth >= 5 + tt_pv as i32
+@@ -533,6 +572,56 @@ fn search<NODE: NodeType>(
+     };
+ 
+     let improving = improvement > 0;
++    tr!(traced, "singular_gate", potential_singularity, depth = depth, tt_pv = tt_pv, tt_depth = tt_depth,
++        bound = tt_bound as i32, tt_score = tt_score, tt_valid = is_valid(tt_score),
++        tt_decisive = is_decisive(tt_score));
++
++    let razor = !NODE::PV
++        && !in_check
++        && estimated_score < alpha - 237 - 254 * depth * depth
++        && alpha < 2048
++        && !tt_move.is_quiet()
++        && tt_bound != Bound::Lower;
++    tr!(traced, "razor", razor, pv = NODE::PV, in_check = in_check, estimate = estimated_score, alpha = alpha,
++        depth = depth, tt_quiet = tt_move.is_quiet(), bound = tt_bound as i32);
++
++    let rfp_margin = (1140 * depth * depth / 128 - 120 * improvement / 1024
++        + 22 * depth
++        + 669 * correction_value.abs() / 1024
++        - 54 * (td.board.all_threats() & td.board.colors(stm)).is_empty() as i32
++        - 19)
++        .max(2);
++    let rfp = !tt_pv
++        && !in_check
++        && !excluded
++        && estimated_score >= beta + rfp_margin
++        && !is_loss(beta)
++        && !is_win(estimated_score);
++    tr!(traced, "rfp", rfp, tt_pv = tt_pv, in_check = in_check, excluded = excluded, estimate = estimated_score,
++        beta = beta, depth = depth, improvement = improvement, correction = correction_value,
++        unthreatened = (td.board.all_threats() & td.board.colors(stm)).is_empty(), margin = rfp_margin,
++        value = lerp(estimated_score, beta, 0.6945));
++
++    let nmp_margin = (-9 * depth + 110 * tt_pv as i32 - 94 * improvement / 1024
++        - 21 * (td.cutoff_count[ply + 1] < 2) as i32
++        + 337)
++        .max(2);
++    let nmp_gate = cut_node
++        && !in_check
++        && !excluded
++        && !potential_singularity
++        && estimated_score >= beta + nmp_margin
++        && ply as i32 >= td.nmp_min_ply
++        && td.board.material() > 491
++        && !is_loss(beta)
++        && !is_win(estimated_score)
++        && !(tt_bound == Bound::Lower
++            && tt_move.is_capture()
++            && td.board.piece_on(tt_move.to()).value() >= PieceType::Knight.value());
++    tr!(traced, "nmp_gate", nmp_gate, cut_node = cut_node, in_check = in_check, excluded = excluded,
++        singular = potential_singularity, estimate = estimated_score, beta = beta, depth = depth, tt_pv = tt_pv,
++        improvement = improvement, child_cutoffs = td.cutoff_count[ply + 1], ply = ply,
++        nmp_min_ply = td.nmp_min_ply, material = td.board.material(), margin = nmp_margin);
+ 
+     // Razoring
+     if !NODE::PV
+@@ -587,6 +676,8 @@ fn search<NODE: NodeType>(
+ 
+         let r =
+             (4407 + 917 * improving as i32 + 265 * depth + 477 * (estimated_score - beta).clamp(0, 1187) / 128) / 1024;
++        tr!(traced, "nmp_r", true, improving = improving, depth = depth, estimate = estimated_score, beta = beta,
++            r = r);
+ 
+         td.stack[ply].conthist = td.stack.sentinel().conthist;
+         td.stack[ply].contcorrhist = td.stack.sentinel().contcorrhist;
+@@ -611,6 +702,9 @@ fn search<NODE: NodeType>(
+             return Score::ZERO;
+         }
+ 
++        tr!(traced, "nmp_result", score >= bound && !is_win(score) && !is_loss(score), score = score,
++            null_beta = bound, beta = beta, depth = depth, r = r, nmp_min_ply = td.nmp_min_ply);
++
+         if score >= bound && !is_win(score) && !is_loss(score) {
+             if (td.nmp_min_ply > 0 || depth < 16) && score >= beta {
+                 return score;
+@@ -634,6 +728,13 @@ fn search<NODE: NodeType>(
+ 
+     // ProbCut
+     let mut probcut_beta = beta + 254 - 85 * improving as i32;
++    let probcut_gate = cut_node
++        && !is_win(beta)
++        && if is_valid(tt_score) { tt_score >= probcut_beta && !is_decisive(tt_score) } else { eval >= beta }
++        && !tt_move.is_quiet();
++    tr!(traced, "probcut_gate", probcut_gate, cut_node = cut_node, beta = beta, improving = improving,
++        probcut_beta = probcut_beta, tt_score = tt_score, tt_valid = is_valid(tt_score), eval = eval,
++        tt_quiet = tt_move.is_quiet());
+ 
+     if cut_node
+         && !is_win(beta)
+@@ -657,6 +758,10 @@ fn search<NODE: NodeType>(
+ 
+             let base_depth = (depth - 4 - improving as i32).max(0);
+             let mut probcut_depth = (base_depth - (score - probcut_beta) / 319).clamp(0, base_depth);
++            tr!(traced, "probcut_depth", score >= probcut_beta && probcut_depth > 0, depth = depth,
++                improving = improving, score = score, probcut_beta = probcut_beta, base_depth = base_depth,
++                probcut_depth = probcut_depth,
++                adjusted_beta = (probcut_beta + 197 * (base_depth - probcut_depth)).min(Score::INFINITE));
+ 
+             if score >= probcut_beta && probcut_depth > 0 {
+                 let adjusted_beta = (probcut_beta + 197 * (base_depth - probcut_depth)).min(Score::INFINITE);
+@@ -707,6 +812,13 @@ fn search<NODE: NodeType>(
+     // Singular Extensions (SE)
+     let mut extension = 0;
+     let mut singular_score = Score::NONE;
++    let ldse = !(!NODE::ROOT && !excluded && potential_singularity)
++        && depth <= 7
++        && !in_check
++        && cut_node
++        && estimated_score <= alpha - 25;
++    tr!(traced, "ldse", ldse, singular_searched = !NODE::ROOT && !excluded && potential_singularity,
++        depth = depth, in_check = in_check, cut_node = cut_node, estimate = estimated_score, alpha = alpha);
+ 
+     if !NODE::ROOT && !excluded && potential_singularity {
+         debug_assert!(is_valid(tt_score));
+@@ -741,6 +853,9 @@ fn search<NODE: NodeType>(
+         }
+         // Multi-Cut
+         else if singular_score >= beta && !is_decisive(singular_score) {
++            tr!(traced, "singular_result", true, outcome = 1, singular_score = singular_score,
++                singular_beta = singular_beta, margin = singular_margin, singular_depth = singular_depth,
++                beta = beta, value = lerp(singular_score, beta, 0.4027));
+             return lerp(singular_score, beta, 0.4027);
+         } else if singular_score > tt_score && td.stack[ply].mv != Move::NULL {
+             tt_move = Move::NULL;
+@@ -749,6 +864,11 @@ fn search<NODE: NodeType>(
+         else if tt_score >= beta || cut_node {
+             extension = -3;
+         }
++        tr!(traced, "singular_result", extension != 0, outcome = 0, singular_score = singular_score,
++            singular_beta = singular_beta, margin = singular_margin, singular_depth = singular_depth,
++            exact = tt_bound == Bound::Exact, depth = depth, tt_pv = tt_pv, pv = NODE::PV, tt_was_pv = tt_was_pv,
++            tt_quiet = td.stack[ply].tt_move.is_quiet(), correction = correction_value, beta = beta,
++            tt_score = tt_score, cut_node = cut_node, extension = extension, tt_cleared = tt_move.is_null());
+     }
+     // Low Depth Singular Extensions (LDSE)
+     else if depth <= 7 && !in_check && cut_node && estimated_score <= alpha - 25 {
+@@ -791,6 +911,11 @@ fn search<NODE: NodeType>(
+         };
+ 
+         if !NODE::ROOT && !is_loss(best_score) {
++            let lmp_limit = (2818 + 78 * improvement / 16 + 1351 * depth * depth + 74 * history / 1024) / 1024;
++            tr!(traced, "lmp", !in_check && !is_direct_check && is_quiet && !is_win(beta) && move_count >= lmp_limit,
++                in_check = in_check, direct_check = is_direct_check, quiet = is_quiet, beta = beta,
++                move_count = move_count, improvement = improvement, depth = depth, history = history,
++                limit = lmp_limit);
+             // Late Move Pruning (LMP)
+             if !in_check
+                 && !is_direct_check
+@@ -810,6 +935,10 @@ fn search<NODE: NodeType>(
+                 + 555 * correction_value.abs() / 1024
+                 - 127;
+ 
++            tr!(traced, "futility", !in_check && !is_direct_check && is_quiet && depth < 14 && futility_value <= alpha,
++                in_check = in_check, direct_check = is_direct_check, quiet = is_quiet, eval = eval, depth = depth,
++                history = history, beta = beta, correction = correction_value, alpha = alpha,
++                value = futility_value);
+             if !in_check && !is_direct_check && is_quiet && depth < 14 && futility_value <= alpha {
+                 if !is_decisive(best_score) && best_score < futility_value {
+                     best_score = futility_value;
+@@ -821,6 +950,12 @@ fn search<NODE: NodeType>(
+             // Bad Noisy Futility Pruning (BNFP)
+             let noisy_futility_value = eval + 84 * depth + 82 * history / 1024 + 24;
+ 
++            tr!(traced, "bad_noisy",
++                !in_check && !is_direct_check && depth < 11 && move_picker.stage() == Stage::BadNoisy
++                    && noisy_futility_value <= alpha,
++                in_check = in_check, direct_check = is_direct_check, depth = depth,
++                bad_stage = move_picker.stage() == Stage::BadNoisy, eval = eval, history = history, alpha = alpha,
++                value = noisy_futility_value);
+             if !in_check
+                 && !is_direct_check
+                 && depth < 11
+@@ -834,6 +969,8 @@ fn search<NODE: NodeType>(
+             }
+ 
+             // History Pruning (HP)
++            tr!(traced, "history_prune", !in_check && is_quiet && depth < 5 && history < -948 * depth,
++                in_check = in_check, quiet = is_quiet, depth = depth, history = history);
+             if !in_check && is_quiet && depth < 5 && history < -948 * depth {
+                 continue;
+             }
+@@ -845,6 +982,8 @@ fn search<NODE: NodeType>(
+                 (-7 * depth * depth - 36 * depth - 39 * history / 1024 + 14).min(0)
+             };
+ 
++            tr!(traced, "see_margin", !in_check && !td.board.see(mv, threshold), in_check = in_check,
++                quiet = is_quiet, depth = depth, history = history, threshold = threshold);
+             if !in_check && !td.board.see(mv, threshold) {
+                 continue;
+             }
+@@ -858,7 +997,7 @@ fn search<NODE: NodeType>(
+         let mut score = Score::ZERO;
+ 
+         // Late Move Reductions (LMR)
+-        if depth >= 2 && move_count >= 2 {
++        if depth >= 2 && move_count >= 2 && !(crate::trace::plant("lmr_check") && in_check) {
+             let mut reduction = 269 * depth.ilog2() as i32;
+ 
+             reduction -= (425 * improvement / 128).clamp(-241, 1155);
+@@ -914,9 +1053,19 @@ fn search<NODE: NodeType>(
+                 reduction += 136;
+             }
+ 
+-            reduction += ((td.nodes() + td.id as u64 * 27) % 128) as i32 - 59;
++            let spread = ((td.nodes() + crate::trace::salt() + td.id as u64 * 27) % 128) as i32;
++            reduction += spread - 59;
+ 
+             let reduced_depth = (new_depth - reduction / 1024).clamp(1, new_depth + 2) + 2 * NODE::PV as i32;
++            tr!(traced, "lmr", true, depth = depth, improvement = improvement, correction = correction_value,
++                exact = bound == Bound::Exact, tt_score = tt_score, tt_valid = is_valid(tt_score), alpha = alpha,
++                beta = beta, tt_depth = tt_depth, quiet = is_quiet, history = history, estimate = estimated_score,
++                since_critical = (ply - last_critical_ply).min(8), pv = NODE::PV, root_delta = td.root_delta,
++                laterality = td.stack[ply].laterality, tt_pv = tt_pv, cut_node = cut_node,
++                tt_null = tt_move.is_null(), gives_check = td.board.in_check(),
++                child_cutoffs = td.cutoff_count[ply + 1], tt_move_score = tt_move_score,
++                singular_score = singular_score, parent_reduction = td.stack[ply - 1].reduction, spread = spread,
++                new_depth = new_depth, reduction = reduction, reduced_depth = reduced_depth);
+ 
+             td.stack[ply].reduction = reduction;
+             score = -search::<NonPV>(td, -alpha - 1, -alpha, reduced_depth, true, ply + 1, ply + 1);
+@@ -924,10 +1073,14 @@ fn search<NODE: NodeType>(
+             current_search_count += 1;
+ 
+             if score > alpha {
++                let new_depth_in = new_depth;
+                 if !NODE::ROOT {
+                     new_depth += (score > best_score + 57) as i32;
+                     new_depth -= (score < best_score + 9) as i32;
+                 }
++                tr!(traced, "research", new_depth > reduced_depth, root = NODE::ROOT, score = score,
++                    best_score = best_score, new_depth_in = new_depth_in, new_depth = new_depth,
++                    reduced_depth = reduced_depth);
+ 
+                 if new_depth > reduced_depth {
+                     score = -search::<NonPV>(td, -alpha - 1, -alpha, new_depth, !cut_node, ply + 1, last_critical_ply);
+@@ -976,9 +1129,21 @@ fn search<NODE: NodeType>(
+                 reduction += 130;
+             }
+ 
+-            reduction += ((td.nodes() + td.id as u64 * 26) % 128) as i32 - 56;
++            let spread = ((td.nodes() + crate::trace::salt() + td.id as u64 * 26) % 128) as i32;
++            reduction += spread - 56;
+ 
+-            let reduced_depth = new_depth - (reduction >= 2621) as i32 - (reduction >= 5579) as i32;
++            let reduced_depth = if crate::trace::plant("unreduced") {
++                new_depth
++            } else {
++                new_depth - (reduction >= 2621) as i32 - (reduction >= 5579) as i32
++            };
++            tr!(traced, "unreduced", reduced_depth < new_depth, depth = depth, improvement = improvement,
++                correction = correction_value, quiet = is_quiet, history = history, tt_pv = tt_pv,
++                tt_valid = is_valid(tt_score), tt_depth = tt_depth, cut_node = cut_node, tt_null = tt_move.is_null(),
++                child_cutoffs = td.cutoff_count[ply + 1], pv = NODE::PV, tt_move_score = tt_move_score,
++                singular_score = singular_score, is_tt_move = mv == tt_move,
++                parent_reduction = td.stack[ply - 1].reduction, spread = spread, new_depth = new_depth,
++                reduction = reduction, reduced_depth = reduced_depth);
+ 
+             score = -search::<NonPV>(
+                 td,
+@@ -1098,6 +1263,11 @@ fn search<NODE: NodeType>(
+ 
+         let cont_bonus = (97 * depth).min(1098) - 74 - 48 * cut_node as i32;
+         let cont_malus = (414 * depth).min(949) - 49 - 17 * quiet_moves.len() as i32;
++        tr!(traced, "updates", true, depth = depth, cut_node = cut_node, noisy = noisy_moves.len(),
++            quiet = quiet_moves.len(), noisy_bonus = noisy_bonus, noisy_malus = noisy_malus,
++            quiet_bonus = quiet_bonus, quiet_malus = quiet_malus, cont_bonus = cont_bonus,
++            cont_malus = cont_malus, parent_malus = (93 * depth - 52).min(935),
++            research_bonus = (233 * depth - 86).min(1550));
+ 
+         if best_move.is_noisy() {
+             td.noisy_history.update(
+@@ -1158,6 +1328,11 @@ fn search<NODE: NodeType>(
+                 + 306 * (is_valid(td.stack[ply - 1].eval) && best_score <= -td.stack[ply - 1].eval - 136) as i32;
+ 
+             let scaled_bonus = factor * (180 * depth - 37).min(2414) / 128;
++            tr!(traced, "fail_low_reward", true, quiet = true,
++                parent_move_count = td.stack[ply - 1].move_count,
++                parent_tt = prior_move == td.stack[ply - 1].tt_move, in_check = in_check, best_score = best_score,
++                eval = eval, parent_eval = td.stack[ply - 1].eval, depth = depth, factor = factor,
++                bonus = scaled_bonus, grandparent = (152 * depth - 47).min(1379));
+ 
+             td.quiet_history.update(td.board.prior_threats(), !stm, prior_move, scaled_bonus);
+ 
+@@ -1169,6 +1344,7 @@ fn search<NODE: NodeType>(
+         } else if prior_move.is_noisy() {
+             let captured_type = td.board.captured_piece().piece_type();
+             let bonus = (50 * depth).min(654);
++            tr!(traced, "fail_low_reward", true, quiet = false, depth = depth, bonus = bonus);
+ 
+             td.noisy_history.update(
+                 td.board.prior_threats(),
+@@ -1191,6 +1367,14 @@ fn search<NODE: NodeType>(
+         td.shared.tt.write(hash, depth, raw_eval, best_score, bound, best_move, ply, tt_pv, NODE::PV);
+     }
+ 
++    tr!(traced, "corr_update",
++        !(in_check
++            || best_move.is_noisy()
++            || (bound == Bound::Upper && best_score >= eval)
++            || (bound == Bound::Lower && best_score <= eval)),
++        in_check = in_check, noisy_best = best_move.is_noisy(), bound = bound as i32, best_score = best_score,
++        eval = eval, depth = depth,
++        bonus = (148 * depth * (best_score - eval) / 128).clamp(-4678, 2496));
+     if !(in_check
+         || best_move.is_noisy()
+         || (bound == Bound::Upper && best_score >= eval)
+@@ -1211,6 +1395,7 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply:
+     debug_assert!(-Score::INFINITE <= alpha && alpha < beta && beta <= Score::INFINITE);
+     debug_assert!(NODE::PV || alpha == beta - 1);
+ 
++    let traced = crate::trace::enter_node();
+     let draw_score = draw(td);
+     if alpha < draw_score && td.board.upcoming_repetition(ply as usize) {
+         alpha = draw_score;
+@@ -1253,6 +1438,15 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply:
+         tt_bound = entry.bound;
+         tt_pv |= entry.tt_pv;
+ 
++        tr!(traced, "q_tt_cut",
++            is_valid(tt_score)
++                && (!NODE::PV || !is_decisive(tt_score))
++                && match tt_bound {
++                    Bound::Upper => tt_score <= alpha,
++                    Bound::Lower => tt_score >= beta,
++                    _ => true,
++                },
++            pv = NODE::PV, tt_score = tt_score, bound = tt_bound as i32, alpha = alpha, beta = beta);
+         if is_valid(tt_score)
+             && (!NODE::PV || !is_decisive(tt_score))
+             && match tt_bound {
+@@ -1297,6 +1491,13 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply:
+     }
+ 
+     // Stand Pat
++    tr!(traced, "q_stand_pat", best_score >= beta, in_check = in_check, eval = eval, tt_score = tt_score,
++        bound = tt_bound as i32, best_score = best_score, beta = beta,
++        value = if best_score >= beta && !is_decisive(best_score) && !is_decisive(beta) {
++            lerp(best_score, beta, 0.8256)
++        } else {
++            best_score
++        });
+     if best_score >= beta {
+         if !is_decisive(best_score) && !is_decisive(beta) {
+             best_score = lerp(best_score, beta, 0.8256);
+@@ -1331,11 +1532,19 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply:
+ 
+         if !is_loss(best_score) {
+             // Late Move Pruning (LMP)
+-            if move_count >= 3 && !td.board.is_direct_check(mv) {
++            let q_limit = if crate::trace::plant("q5") { 5 } else { 3 };
++            tr!(traced, "q_lmp", move_count >= q_limit && !td.board.is_direct_check(mv), move_count = move_count,
++                direct_check = td.board.is_direct_check(mv));
++            if move_count >= q_limit && !td.board.is_direct_check(mv) {
+                 break;
+             }
+ 
+             // Static Exchange Evaluation Pruning (SEE Pruning)
++            tr!(traced, "q_see", is_valid(eval)
++                && !td.board.see(mv, (alpha - eval) / 8 - correction_value.abs().min(68) - 74 - history / 48),
++                eval_valid = is_valid(eval), alpha = alpha, eval = eval, correction = correction_value,
++                history = history,
++                threshold = (alpha - eval) / 8 - correction_value.abs().min(68) - 74 - history / 48);
+             if is_valid(eval)
+                 && !td.board.see(mv, (alpha - eval) / 8 - correction_value.abs().min(68) - 74 - history / 48)
+             {
+@@ -1386,9 +1595,11 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply:
+         );
+     }
+ 
++    let q_tail_in = best_score;
+     if best_score >= beta && !is_decisive(best_score) && !is_decisive(beta) {
+         best_score = lerp(best_score, beta, 0.5072);
+     }
++    tr!(traced, "q_tail", q_tail_in >= beta, best_score = q_tail_in, beta = beta, value = best_score);
+ 
+     let bound = if best_score >= beta { Bound::Lower } else { Bound::Upper };
+ 
+diff --git a/src/trace.rs b/src/trace.rs
+new file mode 100644
+index 0000000..51f8ede
+--- /dev/null
++++ b/src/trace.rs
+@@ -0,0 +1,137 @@
++// RAR-O D.7.3: the parity instrument's twin. Diagnostic only; nothing here
++// changes a search decision, a node count or a table entry.
++//
++//   RAROG_TRACE=<file>        decision records of sampled nodes, one line each:
++//                             `<kind> <name>=<int> ...`
++//   RAROG_TRACE_STRIDE=<n>    every n-th node entry is sampled (default 64);
++//                             the picker, the wrapper and the history gravity,
++//                             which run outside a node's own frame, sample
++//                             every n-th call of their own.
++//   RAROG_SPREAD_SALT=<k>     added to the node count inside the two LMR
++//                             spread terms and the draw score (the noise floor).
++//   RAROG_PLANT=<name>        a planted difference: `unreduced` (the full-depth
++//                             search's reductions removed), `lmr_check` (no LMR
++//                             at a node in check), `q5` (quiescence stops at the
++//                             fifth move, not the third).
++//
++// Every rule's attempts and firings are counted at every node and printed as
++// `info string rates <kind>=<fires>/<attempts> ...` before `bestmove`.
++
++use std::cell::{Cell, RefCell};
++use std::collections::BTreeMap;
++use std::fs::OpenOptions;
++use std::io::{BufWriter, Write};
++use std::sync::OnceLock;
++
++struct Config {
++    path: Option<String>,
++    stride: u64,
++    salt: u64,
++    plant: String,
++}
++
++fn config() -> &'static Config {
++    static CONFIG: OnceLock<Config> = OnceLock::new();
++    CONFIG.get_or_init(|| Config {
++        path: std::env::var("RAROG_TRACE").ok().filter(|p| !p.is_empty()),
++        stride: std::env::var("RAROG_TRACE_STRIDE").ok().and_then(|s| s.parse().ok()).unwrap_or(64).max(1),
++        salt: std::env::var("RAROG_SPREAD_SALT").ok().and_then(|s| s.parse().ok()).unwrap_or(0),
++        plant: std::env::var("RAROG_PLANT").unwrap_or_default(),
++    })
++}
++
++thread_local! {
++    static WRITER: RefCell<Option<BufWriter<std::fs::File>>> = const { RefCell::new(None) };
++    static RATES: RefCell<BTreeMap<&'static str, (u64, u64)>> = const { RefCell::new(BTreeMap::new()) };
++    static ENTRIES: Cell<u64> = const { Cell::new(0) };
++    static CALLS: RefCell<BTreeMap<&'static str, u64>> = const { RefCell::new(BTreeMap::new()) };
++}
++
++/// Whether records are written at all (the root's own decisions are all written).
++pub fn enabled() -> bool {
++    config().path.is_some()
++}
++
++/// The salt added to the node count in the spread terms and the draw score.
++pub fn salt() -> u64 {
++    config().salt
++}
++
++/// Whether the named plant is active.
++pub fn plant(name: &str) -> bool {
++    config().plant == name
++}
++
++/// A node entry: whether this node's decisions are written.
++pub fn enter_node() -> bool {
++    let n = ENTRIES.with(|e| {
++        let n = e.get();
++        e.set(n + 1);
++        n
++    });
++    config().path.is_some() && n % config().stride == 0
++}
++
++/// A call outside a node's frame: whether this call is written.
++pub fn sample_call(kind: &'static str) -> bool {
++    if config().path.is_none() {
++        return false;
++    }
++    CALLS.with(|c| {
++        let mut c = c.borrow_mut();
++        let n = c.entry(kind).or_insert(0);
++        *n += 1;
++        (*n - 1) % config().stride == 0
++    })
++}
++
++/// One decision: counted always, written when `on`.
++pub fn rule(on: bool, kind: &'static str, fire: bool, fields: &[(&'static str, i64)]) {
++    RATES.with(|r| {
++        let mut r = r.borrow_mut();
++        let e = r.entry(kind).or_insert((0, 0));
++        e.0 += fire as u64;
++        e.1 += 1;
++    });
++    if !on {
++        return;
++    }
++    let Some(path) = &config().path else { return };
++    WRITER.with(|w| {
++        let mut w = w.borrow_mut();
++        if w.is_none() {
++            let file = OpenOptions::new().create(true).append(true).open(path).expect("RAROG_TRACE file");
++            *w = Some(BufWriter::new(file));
++        }
++        let out = w.as_mut().unwrap();
++        let _ = write!(out, "{kind} fire={}", fire as i64);
++        for (name, value) in fields {
++            let _ = write!(out, " {name}={value}");
++        }
++        let _ = writeln!(out);
++    });
++}
++
++/// The rates of the search just finished, then cleared; the trace flushed.
++pub fn finish_search() {
++    let line = RATES.with(|r| {
++        let mut r = r.borrow_mut();
++        let body: Vec<String> = r.iter().map(|(k, (f, a))| format!("{k}={f}/{a}")).collect();
++        r.clear();
++        body.join(" ")
++    });
++    println!("info string rates {line}");
++    WRITER.with(|w| {
++        if let Some(out) = w.borrow_mut().as_mut() {
++            let _ = out.flush();
++        }
++    });
++}
++
++/// `rule` with named fields.
++#[macro_export]
++macro_rules! tr {
++    ($on:expr, $kind:literal, $fire:expr $(, $name:ident = $val:expr)* $(,)?) => {
++        crate::trace::rule($on, $kind, $fire, &[$((stringify!($name), ($val) as i64)),*])
++    };
++}
+diff --git a/src/types/score.rs b/src/types/score.rs
+index 18721e8..a8d3021 100644
+--- a/src/types/score.rs
++++ b/src/types/score.rs
+@@ -18,7 +18,7 @@ impl Score {
+ }
+ 
+ pub fn draw(td: &ThreadData) -> i32 {
+-    (td.nodes() % 5) as i32 - 2
++    ((td.nodes() + crate::trace::salt()) % 5) as i32 - 2
+ }
+ 
+ pub const fn mated_in(ply: isize) -> i32 {
