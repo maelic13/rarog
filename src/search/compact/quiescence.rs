@@ -58,8 +58,12 @@ impl Searcher {
         let entry = self.tt_probe(hash);
         let ev = TtProbe::from_entry(entry, ply, board.halfmove_clock());
         let tt_pv = ev.pv_line(NODE::PV);
-        if entry.is_some() && rules::q_tt_cuts(NODE::PV, ev.score, ev.bound, alpha, beta) {
-            return ev.score;
+        if entry.is_some() {
+            let cuts = rules::q_tt_cuts(NODE::PV, ev.score, ev.bound, alpha, beta);
+            probe!(self, QTtCut, cuts);
+            if cuts {
+                return ev.score;
+            }
         }
 
         let (raw, eval, correction) = if in_check {
@@ -74,6 +78,7 @@ impl Searcher {
             (raw, eval, correction)
         };
         let mut best_score = rules::stand_pat(in_check, NODE::PV, eval, ev.score, ev.bound);
+        probe!(self, QStandPat, best_score >= beta);
         if best_score >= beta {
             let value = rules::q_stand_pat_value(SEEDS, best_score, beta);
             if entry.is_none() {
@@ -113,7 +118,9 @@ impl Searcher {
                     .get_or_insert_with(|| board.check_info())
                     .direct_check_squares(piece)
                     .contains(mv.to_sq());
-                if rules::q_stops(SEEDS, move_count, direct_check) {
+                let stops = rules::q_stops(SEEDS, move_count, direct_check);
+                probe!(self, QLmp, stops);
+                if stops {
                     break;
                 }
                 let history = if is_quiet_move(mv) {
@@ -127,13 +134,14 @@ impl Searcher {
                         board.captured_piece(mv),
                     )
                 };
-                if eval != VALUE_NONE
+                let see_prune = eval != VALUE_NONE
                     && !board.see_ge_quiet_aware_with_values(
                         mv,
                         rules::q_see_threshold(SEEDS, alpha, eval, correction, history),
                         KERNEL_SEE_VALUES,
-                    )
-                {
+                    );
+                probe!(self, QSee, see_prune);
+                if see_prune {
                     continue;
                 }
             }
@@ -183,6 +191,7 @@ impl Searcher {
                 SEEDS.q_cutoff_bonus,
             );
         }
+        probe!(self, QTail, best_score >= beta);
         let best_score = rules::q_tail_value(SEEDS, best_score, beta);
         debug_assert!(best_score > -INF_SCORE && best_score < INF_SCORE);
         self.tt_store(TtStore {

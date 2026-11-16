@@ -88,6 +88,9 @@ pub(super) struct HistoryTables {
     /// search finds the tables as it left them.
     #[cfg(feature = "pricing")]
     pub(super) frozen: bool,
+    /// Updates since the search began, for the rates line.
+    #[cfg(feature = "probes")]
+    pub(super) updates: u64,
 }
 
 impl Default for HistoryTables {
@@ -99,6 +102,8 @@ impl Default for HistoryTables {
             cont: zeroed(),
             #[cfg(feature = "pricing")]
             frozen: false,
+            #[cfg(feature = "probes")]
+            updates: 0,
         }
     }
 }
@@ -128,6 +133,10 @@ impl HistoryTables {
             return;
         }
         let (from, to) = (mv.from_sq(), mv.to_sq());
+        #[cfg(feature = "probes")]
+        {
+            self.updates += 1;
+        }
         apply_bonus(
             &mut self.quiet[stm as usize][usize::from(threats.contains(from))]
                 [usize::from(threats.contains(to))][from.index()][to.index()],
@@ -165,6 +174,10 @@ impl HistoryTables {
         if self.frozen {
             return;
         }
+        #[cfg(feature = "probes")]
+        {
+            self.updates += 1;
+        }
         apply_bonus(
             &mut self.noisy[piece_to(color, piece, to)][captured.map_or(6, |p| p as usize)]
                 [usize::from(threats.contains(to))],
@@ -197,6 +210,10 @@ impl HistoryTables {
         if self.frozen {
             return;
         }
+        #[cfg(feature = "probes")]
+        {
+            self.updates += 1;
+        }
         apply_bonus(
             &mut self.pawn[pawn_row + piece_to(color, piece, to)],
             bonus,
@@ -221,6 +238,10 @@ impl HistoryTables {
         #[cfg(feature = "pricing")]
         if self.frozen {
             return;
+        }
+        #[cfg(feature = "probes")]
+        {
+            self.updates += 1;
         }
         apply_bonus(
             &mut self.cont[context + piece_to(color, piece, to)],

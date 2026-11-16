@@ -162,7 +162,7 @@ impl Searcher {
         }
         let tt_quiet = is_quiet_move(tt_move);
 
-        if entry.is_some()
+        let tt_cuts = entry.is_some()
             && rules::tt_cuts(
                 SEEDS,
                 &rules::TtCutInput {
@@ -176,8 +176,11 @@ impl Searcher {
                     bound: tt_bound,
                     cut_node,
                 },
-            )
-        {
+            );
+        if entry.is_some() {
+            probe!(self, TtCut, tt_cuts);
+        }
+        if tt_cuts {
             if tt_quiet
                 && tt_score >= beta
                 && self.td.stack.back(ply, 1).move_count < SEEDS.tt_bonus_parent_moves
@@ -221,6 +224,7 @@ impl Searcher {
             bound: tt_bound,
             eval,
         });
+        probe!(self, Estimate, estimate != eval);
 
         self.td.stack[ply].static_eval = eval;
         self.td.stack[ply].tt_move = tt_move;
@@ -240,11 +244,14 @@ impl Searcher {
             && (depth < SEEDS.eval_bonus_depth || entry.is_none())
         {
             let bonus = rules::eval_difference_bonus(SEEDS, eval, parent.static_eval);
+            probe!(self, EvalBonus, true);
             self.td
                 .hist
                 .update_quiet(parent.threats, !stm, parent.mv, bonus);
         }
         if !NODE::ROOT && !in_check && !has_excluded && parent.static_eval != VALUE_NONE {
+            #[cfg(feature = "probes")]
+            let before = depth;
             depth = rules::hindsight_depth(
                 SEEDS,
                 depth,
@@ -252,6 +259,7 @@ impl Searcher {
                 eval + parent.static_eval,
                 tt_pv,
             );
+            probe!(self, Hindsight, depth != before);
         }
 
         let potential_singularity =
@@ -270,8 +278,11 @@ impl Searcher {
             }
         };
         let improving = improvement > 0;
+        probe!(self, SingularGate, potential_singularity);
 
-        if rules::razors(
+        // The three gates are asked before any acts, so each is counted at
+        // every node that reaches them.
+        let razor = rules::razors(
             SEEDS,
             &rules::RazorInput {
                 pv: NODE::PV,
@@ -282,10 +293,7 @@ impl Searcher {
                 tt_quiet,
                 bound: tt_bound,
             },
-        ) {
-            return self.compact_quiescence::<NonPv, _>(board, alpha, beta, ply, poll);
-        }
-
+        );
         let rfp = rules::RfpInput {
             tt_pv,
             in_check,
@@ -297,10 +305,7 @@ impl Searcher {
             correction,
             unthreatened: (threats.all & board.color_occ(stm)).is_empty(),
         };
-        if rules::rfp_cuts(SEEDS, &rfp) {
-            return rules::rfp_value(SEEDS, estimate, beta);
-        }
-
+        let rfp_cuts = rules::rfp_cuts(SEEDS, &rfp);
         let null_gate = rules::NullGateInput {
             cut_node,
             in_check,
@@ -322,9 +327,20 @@ impl Searcher {
                         >= KERNEL_SEE_VALUES.as_array()[Piece::Knight as usize]
                 }),
         };
-        if rules::nmp_gate(SEEDS, &null_gate) {
+        let null_move = rules::nmp_gate(SEEDS, &null_gate);
+        probe!(self, Razor, razor);
+        probe!(self, Rfp, rfp_cuts);
+        probe!(self, NmpGate, null_move);
+        if razor {
+            return self.compact_quiescence::<NonPv, _>(board, alpha, beta, ply, poll);
+        }
+        if rfp_cuts {
+            return rules::rfp_value(SEEDS, estimate, beta);
+        }
+        if null_move {
             debug_assert!(!parent.mv.is_null(), "a null move after a null move");
             let reduction = rules::nmp_reduction(SEEDS, improving, depth, estimate, beta);
+            probe!(self, NmpR, true);
             let null_beta = rules::null_bound(depth, beta, tt_score, tt_bound, tt_depth);
             self.td.stack[ply].laterality = 0;
             board.make_null_move();
@@ -344,7 +360,7 @@ impl Searcher {
             if self.td.stopped || self.td.quit {
                 return 0;
             }
-            match rules::null_outcome(
+            let outcome = rules::null_outcome(
                 SEEDS,
                 score,
                 null_beta,
@@ -352,7 +368,9 @@ impl Searcher {
                 depth,
                 reduction,
                 self.td.nmp_min_ply,
-            ) {
+            );
+            probe!(self, NmpResult, outcome != rules::NullOutcome::Fail);
+            match outcome {
                 rules::NullOutcome::Fail => {}
                 rules::NullOutcome::Cut => return score,
                 rules::NullOutcome::Verify(verify_depth) => {
@@ -380,14 +398,16 @@ impl Searcher {
         }
 
         let mut probcut_beta = rules::probcut_beta(SEEDS, beta, improving);
-        if rules::probcut_gate(&rules::ProbcutGateInput {
+        let probcut = rules::probcut_gate(&rules::ProbcutGateInput {
             cut_node,
             beta,
             probcut_beta,
             tt_score,
             eval,
             tt_quiet,
-        }) {
+        });
+        probe!(self, ProbcutGate, probcut);
+        if probcut {
             let mut picker = CompactPicker::new(Move::NULL, Some(probcut_beta - eval), ply);
             while let Some(mv) = picker.next(self, board, &threats, true) {
                 if picker.stage() == Stage::BadNoisy {
@@ -414,6 +434,11 @@ impl Searcher {
                 );
                 let verification =
                     rules::probcut_depth(SEEDS, depth, improving, score, probcut_beta);
+                probe!(
+                    self,
+                    ProbcutDepth,
+                    score >= probcut_beta && verification.depth > 0
+                );
                 let mut probcut_depth = verification.depth;
                 if score >= probcut_beta && probcut_depth > 0 {
                     let adjusted = verification.adjusted_beta;
@@ -470,6 +495,16 @@ impl Searcher {
         let mut singular_score = VALUE_NONE;
         let singular_searched =
             !NODE::ROOT && !has_excluded && potential_singularity && !tt_move.is_null();
+        let ldse = rules::ldse_extends(
+            SEEDS,
+            singular_searched,
+            depth,
+            in_check,
+            cut_node,
+            estimate,
+            alpha,
+        );
+        probe!(self, Ldse, ldse);
         if singular_searched {
             let margin = rules::singular_margin(
                 SEEDS,
@@ -494,7 +529,7 @@ impl Searcher {
             if self.td.stopped || self.td.quit {
                 return 0;
             }
-            match rules::singular_outcome(
+            let outcome = rules::singular_outcome(
                 SEEDS,
                 &rules::SingularInput {
                     singular_score,
@@ -508,13 +543,22 @@ impl Searcher {
                     cut_node,
                     searched_a_move: self.td.nodes > nodes_before,
                 },
-            ) {
+            );
+            probe!(
+                self,
+                SingularResult,
+                matches!(
+                    outcome,
+                    rules::SingularOutcome::Extend(_) | rules::SingularOutcome::MultiCut(_)
+                )
+            );
+            match outcome {
                 rules::SingularOutcome::None => {}
                 rules::SingularOutcome::Extend(plies) => extension = plies,
                 rules::SingularOutcome::MultiCut(score) => return score,
                 rules::SingularOutcome::Demote => tt_move = Move::NULL,
             }
-        } else if rules::ldse_extends(SEEDS, false, depth, in_check, cut_node, estimate, alpha) {
+        } else if ldse {
             extension = 1;
         }
 
@@ -586,11 +630,15 @@ impl Searcher {
                     move_count,
                     bad_stage,
                 };
-                if rules::lmp_prunes(SEEDS, &prune) {
+                let lmp = rules::lmp_prunes(SEEDS, &prune);
+                probe!(self, Lmp, lmp);
+                if lmp {
                     skip_quiets = true;
                     continue;
                 }
-                if rules::futility_prunes(SEEDS, &prune) {
+                let futility = rules::futility_prunes(SEEDS, &prune);
+                probe!(self, Futility, futility);
+                if futility {
                     let value = rules::futility_value(SEEDS, &prune);
                     if !is_decisive(best_score) && best_score < value {
                         best_score = value;
@@ -598,23 +646,28 @@ impl Searcher {
                     skip_quiets = true;
                     continue;
                 }
-                if rules::bad_noisy_prunes(SEEDS, &prune) {
+                let bad_noisy = rules::bad_noisy_prunes(SEEDS, &prune);
+                probe!(self, BadNoisy, bad_noisy);
+                if bad_noisy {
                     let value = rules::bad_noisy_value(SEEDS, &prune);
                     if !is_decisive(best_score) && best_score < value {
                         best_score = value;
                     }
                     break;
                 }
-                if rules::history_prunes(SEEDS, &prune) {
+                let history_prune = rules::history_prunes(SEEDS, &prune);
+                probe!(self, HistoryPrune, history_prune);
+                if history_prune {
                     continue;
                 }
-                if !in_check
+                let see_prune = !in_check
                     && !board.see_ge_quiet_aware_with_values(
                         mv,
                         rules::see_threshold(SEEDS, is_quiet, depth, history),
                         KERNEL_SEE_VALUES,
-                    )
-                {
+                    );
+                probe!(self, SeeMargin, see_prune);
+                if see_prune {
                     continue;
                 }
             }
@@ -669,6 +722,7 @@ impl Searcher {
                     ),
                 );
                 let reduced = rules::lmr_depth(new_depth, reduction, NODE::PV);
+                probe!(self, Lmr, true);
                 self.td.stack[ply].reduction = reduction;
                 score = -self.compact_negamax::<NonPv, _>(
                     board,
@@ -686,6 +740,7 @@ impl Searcher {
                 if score > alpha {
                     new_depth =
                         rules::research_depth(SEEDS, NODE::ROOT, score, best_score, new_depth);
+                    probe!(self, Research, new_depth > reduced);
                     if new_depth > reduced {
                         score = -self.compact_negamax::<NonPv, _>(
                             board,
@@ -739,6 +794,7 @@ impl Searcher {
                     ),
                 );
                 let reduced = rules::unreduced_depth(SEEDS, new_depth, reduction);
+                probe!(self, Unreduced, reduced < new_depth);
                 score = -self.compact_negamax::<NonPv, _>(
                     board,
                     -alpha - 1,
@@ -883,7 +939,7 @@ impl Searcher {
                 self.tt_store(store);
             }
         }
-        if let Some(bonus) = rules::correction_update(
+        let correction_update = rules::correction_update(
             SEEDS,
             &rules::CorrectionInput {
                 in_check,
@@ -893,7 +949,9 @@ impl Searcher {
                 eval,
                 depth,
             },
-        ) {
+        );
+        probe!(self, CorrUpdate, correction_update.is_some());
+        if let Some(bonus) = correction_update {
             self.compact_train_correction(board, ply, bonus);
         }
         debug_assert!(best_score > -INF_SCORE && best_score < INF_SCORE);
@@ -972,6 +1030,7 @@ impl Searcher {
     ) {
         let quiets = quiets.as_slice();
         let noisies = noisies.as_slice();
+        probe!(self, Updates, true);
         let amounts = rules::update_amounts(
             SEEDS,
             depth,
@@ -1057,6 +1116,7 @@ impl Searcher {
         let parent = *self.td.stack.back(ply, 1);
         let mover = !board.side_to_move();
         if is_quiet_move(parent.mv) {
+            probe!(self, FailLowReward, true);
             let reward = rules::fail_low_reward(
                 SEEDS,
                 &rules::RewardInput {
@@ -1082,6 +1142,7 @@ impl Searcher {
                 );
             }
         } else if !parent.mv.is_null() {
+            probe!(self, FailLowReward, true);
             let piece = if parent.mv.is_promo() {
                 parent.mv.promo_piece()
             } else {

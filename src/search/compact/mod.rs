@@ -12,10 +12,24 @@
 //! with. The scale is a scaffold: folding the constants into Rarog's units
 //! deletes it.
 
+/// Count one asking of the rule `kind` and whether it fired, in a build with
+/// the `probes` feature; nothing otherwise, where `fired` is not evaluated.
+macro_rules! probe {
+    ($searcher:expr, $kind:ident, $fired:expr) => {
+        #[cfg(feature = "probes")]
+        $searcher
+            .td
+            .rates
+            .record(crate::search::compact::probes::Kind::$kind, $fired);
+    };
+}
+
 mod node;
 #[cfg(test)]
 mod parity;
 mod picker;
+#[cfg(any(test, feature = "probes"))]
+pub(super) mod probes;
 mod quiescence;
 pub(super) mod rules;
 pub(super) mod window;
@@ -127,6 +141,7 @@ impl Searcher {
     /// classification, not an estimate, and passes through as 0, with no
     /// correction and no optimism.
     pub(super) fn compact_eval(&self, board: &Board, raw: i32, ply: usize) -> (i32, i32) {
+        probe!(self, Wrapper, true);
         if raw == 0 && crate::eval::endgame::is_draw_verdict(board) {
             return (0, 0);
         }

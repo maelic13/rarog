@@ -178,6 +178,10 @@ impl Searcher {
         apply_bonus(&mut tables.non_pawn[1][slots.non_pawn[1]], bonus, KEYED_MAX);
         for slot in slots.continuation.into_iter().flatten() {
             apply_bonus(&mut tables.continuation_2[slot], bonus, CONT_MAX);
+            #[cfg(feature = "probes")]
+            self.td
+                .rates
+                .record(super::compact::probes::Kind::Gravity, true);
         }
     }
 

@@ -123,6 +123,9 @@ pub(super) struct ThreadData {
     /// adds toward the root's running score for the side to move; zero
     /// outside a compact search.
     pub(super) optimism: [i32; 2],
+    /// The compact kernel's rule counts for the rates line.
+    #[cfg(feature = "probes")]
+    pub(super) rates: super::compact::probes::Rates,
     /// The root score this thread's previous search in the game ended on,
     /// which the falling eval compares with this search's; none at a new
     /// game, so the first move reads no fall across the pair.
@@ -214,6 +217,8 @@ impl Default for ThreadData {
             nmp_min_ply: 0,
             root_depth: 0,
             optimism: [0; 2],
+            #[cfg(feature = "probes")]
+            rates: super::compact::probes::Rates::default(),
             previous_search_score: None,
             compact_previous_score: 0,
             #[cfg(test)]

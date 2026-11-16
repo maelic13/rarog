@@ -829,6 +829,11 @@ impl Searcher {
         // The kernels keep their scores and corrections in different units,
         // so a change of kernel discards the table, as a change of evaluation
         // does, and this thread's corrections and histories with it.
+        #[cfg(feature = "probes")]
+        {
+            self.td.rates.clear();
+            self.td.hist.updates = 0;
+        }
         let kernel_changed = self.cfg.kernel != engine_options.kernel;
         self.cfg.kernel = engine_options.kernel;
         if kernel_changed {
@@ -1051,6 +1056,11 @@ impl Searcher {
                 let stm = board.side_to_move() as usize;
                 self.td.optimism[stm] = optimism;
                 self.td.optimism[1 - stm] = -optimism;
+                #[cfg(feature = "probes")]
+                {
+                    self.td.rates.record(compact::probes::Kind::Optimism, true);
+                    self.td.rates.record(compact::probes::Kind::Window, true);
+                }
                 RootWindow::Compact(compact::window::CompactWindow::new(opening))
             } else {
                 // Termination by construction: see `Aspiration`.
@@ -1098,6 +1108,10 @@ impl Searcher {
                         self.send_bounded_info_line(depth, shown, RootBound::Upper, bestmove);
                     }
                     window.fail_low(&self.cfg.params, score);
+                    #[cfg(feature = "probes")]
+                    if compact {
+                        self.td.rates.record(compact::probes::Kind::Window, true);
+                    }
                     continue;
                 }
                 if score >= beta {
@@ -1137,6 +1151,10 @@ impl Searcher {
                         break;
                     }
                     window.fail_high(&self.cfg.params, score);
+                    #[cfg(feature = "probes")]
+                    if compact {
+                        self.td.rates.record(compact::probes::Kind::Window, true);
+                    }
                     continue;
                 }
                 best_score = score;
@@ -1379,6 +1397,13 @@ impl Searcher {
 
         if compact && best_score > -INF_SCORE {
             self.td.compact_previous_score = best_score;
+        }
+        #[cfg(feature = "probes")]
+        if compact && emit_info && self.td.thread_id == 0 {
+            self.td
+                .rates
+                .add_fired(compact::probes::Kind::Gravity, self.td.hist.updates);
+            self.notice(format_args!("{}", self.td.rates.line()));
         }
         let best_score = self.score_out(best_score);
         self.remember_search_score(best_score);

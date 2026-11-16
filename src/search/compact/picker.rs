@@ -168,6 +168,7 @@ impl CompactPicker {
 impl Searcher {
     /// A noisy move's ordering score in the compact kernel.
     fn compact_noisy_score(&self, board: &Board, threats: &Threats, mv: Move) -> i32 {
+        probe!(self, PickNoisy, true);
         let piece = board.moving_piece(mv);
         let captured = board.captured_piece(mv);
         noisy_order(
@@ -208,6 +209,7 @@ impl Searcher {
             if mv == tt_move || (mv.is_promo() && mv.promo_piece() == Piece::Queen) {
                 continue;
             }
+            probe!(self, PickQuiet, true);
             out.push(
                 mv,
                 compact_quiet_score(board, threats, &ctx, hist, mv),
@@ -306,5 +308,93 @@ mod tests {
                 .any(|(mv, _)| mv.is_promo() && mv.promo_piece() != Piece::Queen),
             "an under-promotion push is quiet"
         );
+    }
+
+    /// A TT move as the probe hands it over, from the key: none, a legal
+    /// move, or bits a collision returns, through the legality test.
+    fn tt_move(board: &Board) -> Move {
+        let mix = board.hash().wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 32;
+        let legal = board.generate_legal_movelist();
+        let legal = legal.as_slice();
+        let candidate = match mix % 3 {
+            _ if legal.is_empty() => Move::NULL,
+            0 => Move::NULL,
+            1 => legal[usize::try_from(mix >> 2).expect("32 bits") % legal.len()],
+            _ => Move(u16::try_from((mix >> 8) & 0xFFFF).expect("16 bits")),
+        };
+        board.legal_move(candidate).unwrap_or(Move::NULL)
+    }
+
+    /// Perft through the compact picker, with the TT move it is handed, and
+    /// the search's make and unmake, checking the board at every node.
+    fn picker_perft(searcher: &Searcher, board: &mut Board, depth: u32, ply: usize) -> u64 {
+        if depth == 0 {
+            return 1;
+        }
+        let threats = board.threats();
+        let mut picker = CompactPicker::new(tt_move(board), None, ply);
+        let mut seen = Vec::new();
+        let mut leaves = 0;
+        while let Some(mv) = picker.next(searcher, board, &threats, false) {
+            assert_eq!(board.legal_move(mv), Some(mv), "{}: {mv}", board.to_fen());
+            assert!(!seen.contains(&mv), "{}: {mv} twice", board.to_fen());
+            seen.push(mv);
+            board.make_move(mv);
+            board
+                .check_consistency()
+                .expect("consistent after the make");
+            leaves += picker_perft(searcher, board, depth - 1, ply + 1);
+            board.unmake_move(mv);
+        }
+        leaves
+    }
+
+    #[test]
+    fn the_picker_path_perft_matches_the_reference_counts() {
+        let cases: &[(&str, u32, u64)] = if cfg!(debug_assertions) {
+            &[
+                (crate::board::STARTING_FEN, 3, 8_902),
+                (
+                    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+                    2,
+                    2_039,
+                ),
+                ("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 3, 2_812),
+                (
+                    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+                    3,
+                    9_467,
+                ),
+            ]
+        } else {
+            &[
+                (crate::board::STARTING_FEN, 5, 4_865_609),
+                (
+                    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+                    4,
+                    4_085_603,
+                ),
+                ("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 5, 674_624),
+                (
+                    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+                    4,
+                    422_333,
+                ),
+                (
+                    "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+                    4,
+                    2_103_487,
+                ),
+            ]
+        };
+        let searcher = Searcher::default();
+        for &(fen, depth, expected) in cases {
+            let mut board = Board::from_fen(fen).expect("a legal FEN");
+            assert_eq!(
+                picker_perft(&searcher, &mut board, depth, 0),
+                expected,
+                "picker perft({depth}) of {fen}"
+            );
+        }
     }
 }

@@ -16,7 +16,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use rarog::bench::BENCH_FENS;
 use rarog::board::Board;
-use rarog::search::options::SearchOptions;
+use rarog::search::options::{Kernel, SearchOptions};
 use rarog::search::{SearchEvent, Searcher};
 
 static ALLOCATIONS: AtomicU64 = AtomicU64::new(0);
@@ -117,9 +117,18 @@ fn allocations_grow_per_iteration_never_per_node() {
         let allocations = ALLOCATIONS.load(Ordering::Relaxed) - before;
         assert_eq!(result, drawn, "{fen}");
         assert_eq!(allocations, 0, "the rule-50 draw test allocated at {fen}");
+        // The compact kernel's draw rule takes the same path.
+        let before = ALLOCATIONS.load(Ordering::Relaxed);
+        let result = board.is_draw_at(1);
+        let allocations = ALLOCATIONS.load(Ordering::Relaxed) - before;
+        assert_eq!(result, drawn, "{fen}");
+        assert_eq!(allocations, 0, "the compact draw test allocated at {fen}");
     }
 
-    for index in POSITIONS {
+    for (kernel, index) in [Kernel::Classic, Kernel::Compact]
+        .into_iter()
+        .flat_map(|kernel| POSITIONS.map(|index| (kernel, index)))
+    {
         // The single-thread shallow tree is the honest size of a depth-5
         // search of this position. The threaded searches are sized against it
         // below, because a threaded node count is the scheduler's as much as
@@ -134,6 +143,7 @@ fn allocations_grow_per_iteration_never_per_node() {
                 ..SearchOptions::default()
             };
             options.engine.threads = threads;
+            options.engine.kernel = kernel;
 
             let mut searcher = Searcher::default();
             searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
@@ -146,7 +156,8 @@ fn allocations_grow_per_iteration_never_per_node() {
             let (deep_allocations, deep_nodes) =
                 measured_search(&mut searcher, &options, DEEP_DEPTH);
             let context = format!(
-                "Threads {threads}, bench position {index}: depth {SHALLOW_DEPTH} made \
+                "{kernel:?} kernel, Threads {threads}, bench position {index}: depth \
+                 {SHALLOW_DEPTH} made \
                  {shallow_allocations} allocations in {shallow_nodes} nodes, depth \
                  {DEEP_DEPTH} made {deep_allocations} in {deep_nodes}"
             );
