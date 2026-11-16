@@ -371,8 +371,7 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.3 | READY_FOR_IMPLEMENTATION | I2 | Designed by D.7.0 (a tracing twin and tree statistics); the hold lifted 2026-11-16 (maintainer decision on RAR-O12 and D.7.2.3: the rebuild in Reckless's form, compact, gated once as a whole on a gain) |
-| D.7.4 | RESEARCH | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); after D.7.3; the kernel compact, Rarog's additions not carried; parity before any game |
+| D.7.4 | READY_FOR_IMPLEMENTATION | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); D.7.3's instrument built 2026-11-16; the kernel compact, Rarog's additions not carried; parity before any game |
 | D.7.4.1 | RESEARCH | I2 | After D.7.4's parity: the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted; the maintainer is asked about the exchange table first |
 | D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games, a diagnostic, not a stop |
 | D.7.6 | RESEARCH | V | The fit as one joint rule 7c run over the whole kernel, read at checkpoints; no gate of its own |
@@ -1803,7 +1802,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           18.1 ± 15.6 at the heads for Basilisk (its head makes 15.8% more
           moves a second). Rarog's head leads +60.5 ± 11.5 at equal work
           and +42.4 ± 10.7 on the clock, by its evaluation programme.
-    - **D.7.3 Parity instrument: Rarog and the hybrid on one position set — `I2`.**
+    - **D.7.3 Parity instrument: Rarog and the hybrid on one position set — `I2`, DONE 2026-11-16.**
       Nodes to each depth and the rate at which each mechanism fires, on
       the same positions and the same evaluation; a planted difference
       must show.
@@ -1819,6 +1818,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       three planted differences that must fail. This leaf builds the
       twin, the trace format, the statistics tool and the floor; the
       rule tests land with D.7.4.
+      **Done 2026-11-16** (`analysis/d73_parity_instrument_2026-11-16.md`):
+      the twin (`tools/oracle-hybrids/reckless-0756957-rarog-hce-trace.patch`)
+      reproduces the hybrid's `bench`, 4,158,758, with tracing off and
+      on, and its salt and plants move it. On 500 positions of
+      RAR-O08's match (5) (496 after four runaway searches), the floor
+      is 0.021, 0.019 and 0.042 at depths 8, 11 and 14. The salted
+      control passes. The `unreduced` and `q5` plants fail. The
+      `lmr_check` plant passes (+0.084 at depth 14), which sets the
+      instrument's stated limit: a change that size is for layer A.
+      Layer A captured 250 positions with every one of 36 kinds at
+      3,418 records or more from 210 positions or more; the trace stays
+      in ignored storage with its hash.
     - **D.7.4 The kernel in the donor's form, behind one switch — `I2`.**
       Own code in Rarog's structure, written in D.8's target shape (probes,
       not interleaved instrumentation). Parity by D.7.3 before any game;

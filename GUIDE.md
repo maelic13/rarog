@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.7.3** (`I2`): Parity instrument: Rarog and the hybrid on one position set.
+**Now: D.7.4** (`I2`): The kernel in the donor's form, behind one switch.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -72,8 +72,8 @@ field, about 3,475 on CCRL's Blitz scale.
         - [x] **D.7.2.2** RAR-O11: the start points, per-node quality against speed, and evaluation cost — DONE 2026-11-15
         - [x] **D.7.2.3** The two search programmes compared from their ledgers — DONE 2026-11-16
         - [x] **D.7.2.4** RAR-O12: RAR-O11's equal-node reads again, at equal work in one node unit — DONE 2026-11-16
-    - [ ] **D.7.3** Parity instrument: Rarog and the hybrid on one position set — **READY_FOR_IMPLEMENTATION / I2**
-    - [ ] **D.7.4** The kernel in the donor's form, behind one switch — **RESEARCH / I2**
+    - [x] **D.7.3** Parity instrument: Rarog and the hybrid on one position set — DONE 2026-11-16
+    - [ ] **D.7.4** The kernel in the donor's form, behind one switch — **READY_FOR_IMPLEMENTATION / I2**
         - [ ] **D.7.4.1** The constants folded into Rarog's units and the scaffold deleted — **RESEARCH / I2**
     - [ ] **D.7.5** The unfitted paired run — **RESEARCH / V**
     - [ ] **D.7.6** The fit — **RESEARCH / V**
