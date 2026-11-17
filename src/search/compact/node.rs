@@ -855,7 +855,7 @@ impl Searcher {
                     continue;
                 }
                 let see_prune = !in_check
-                    && !board.see_ge_quiet_aware_with_values(
+                    && !board.see_ge_exchange_with_values(
                         mv,
                         rules::see_threshold(self.seeds(), is_quiet, depth, history),
                         KERNEL_SEE_VALUES,

@@ -149,7 +149,7 @@ impl Searcher {
                     )
                 };
                 let see_prune = eval != VALUE_NONE
-                    && !board.see_ge_quiet_aware_with_values(
+                    && !board.see_ge_exchange_with_values(
                         mv,
                         rules::q_see_threshold(self.seeds(), alpha, eval, correction, history),
                         KERNEL_SEE_VALUES,

@@ -134,7 +134,7 @@ impl CompactPicker {
                                 self.good_emitted,
                             )
                         });
-                        if board.see_ge_with_values(picked.mv, bar, KERNEL_SEE_VALUES) {
+                        if board.see_ge_exchange_with_values(picked.mv, bar, KERNEL_SEE_VALUES) {
                             self.noisy_index += 1;
                             self.good_emitted += 1;
                             return Some(picked.mv);

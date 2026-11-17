@@ -62,6 +62,18 @@ impl SeeValues {
 /// never captures a king. It deliberately remains separate from HCE values.
 pub const PRODUCTION_SEE_VALUES: SeeValues = SeeValues::new(100, 320, 330, 500, 900, 20_000);
 
+/// What a threshold exchange test does with a move that captures nothing.
+#[derive(Clone, Copy)]
+enum QuietSee {
+    /// Answered by its immediate gain: nothing, or a promotion's gain.
+    Gain,
+    /// Played through the exchange, the moved piece at risk; a promotion
+    /// push is answered by its gain.
+    ExchangeButPromotions,
+    /// Played through the exchange, a promotion push included.
+    Exchange,
+}
+
 /// Frozen `cross-engine-board-v1` comparison scale.
 pub const CROSS_ENGINE_SEE_VALUES: SeeValues = SeeValues::new(100, 300, 300, 500, 900, 20_000);
 
@@ -1681,12 +1693,12 @@ impl Board {
     #[inline(always)]
     pub fn see_ge(&self, mv: Move, threshold: i32) -> bool {
         crate::diag_count!(board_see_threshold_calls);
-        self.see_ge_impl(mv, threshold, false, PRODUCTION_SEE_VALUES)
+        self.see_ge_impl(mv, threshold, QuietSee::Gain, PRODUCTION_SEE_VALUES)
     }
 
     #[inline(always)]
     pub fn see_ge_with_values(&self, mv: Move, threshold: i32, values: SeeValues) -> bool {
-        self.see_ge_impl(mv, threshold, false, values)
+        self.see_ge_impl(mv, threshold, QuietSee::Gain, values)
     }
 
     /// As [`Board::see_ge`], but a QUIET move is put through the full exchange
@@ -1704,7 +1716,12 @@ impl Board {
     /// right — nothing was won, and the moved piece is now the thing at risk.
     pub fn see_ge_quiet_aware(&self, mv: Move, threshold: i32) -> bool {
         crate::diag_count!(board_see_quiet_threshold_calls);
-        self.see_ge_impl(mv, threshold, true, PRODUCTION_SEE_VALUES)
+        self.see_ge_impl(
+            mv,
+            threshold,
+            QuietSee::ExchangeButPromotions,
+            PRODUCTION_SEE_VALUES,
+        )
     }
 
     pub fn see_ge_quiet_aware_with_values(
@@ -1713,17 +1730,26 @@ impl Board {
         threshold: i32,
         values: SeeValues,
     ) -> bool {
-        self.see_ge_impl(mv, threshold, true, values)
+        self.see_ge_impl(mv, threshold, QuietSee::ExchangeButPromotions, values)
     }
 
-    fn see_ge_impl(
-        &self,
-        mv: Move,
-        threshold: i32,
-        evaluate_quiet: bool,
-        values: SeeValues,
-    ) -> bool {
-        if !mv.is_capture() && !(evaluate_quiet && !mv.is_promo()) {
+    /// The compact kernel's exchange test, as its donor's: every move is
+    /// played through the exchange, a promotion push with the promoted piece
+    /// at risk. A queen pushed onto a defended square is taken, so the push
+    /// loses its pawn, where [`Board::see_ge_quiet_aware_with_values`]
+    /// credits it with the promotion's gain.
+    pub fn see_ge_exchange_with_values(&self, mv: Move, threshold: i32, values: SeeValues) -> bool {
+        self.see_ge_impl(mv, threshold, QuietSee::Exchange, values)
+    }
+
+    fn see_ge_impl(&self, mv: Move, threshold: i32, quiet: QuietSee, values: SeeValues) -> bool {
+        let answered_by_gain = !mv.is_capture()
+            && match quiet {
+                QuietSee::Gain => true,
+                QuietSee::ExchangeButPromotions => mv.is_promo(),
+                QuietSee::Exchange => false,
+            };
+        if answered_by_gain {
             let gain = if mv.is_promo() {
                 values.value(mv.promo_piece()) - values.value(Piece::Pawn)
             } else {
@@ -3188,6 +3214,39 @@ mod tests {
             Board::from_placement(rookless, Color::White, CastlingRights(0xF), 0).is_err(),
             "castling rights without the rook"
         );
+    }
+
+    /// A queen pushed onto a defended square is taken: the compact kernel's
+    /// test plays that exchange, the classic forms credit the promotion's
+    /// gain, and a capture or an undefended push reads the same in all.
+    #[test]
+    fn the_exchange_test_puts_a_promotion_push_at_risk() {
+        let values = PRODUCTION_SEE_VALUES;
+        let pawn = values.value(Piece::Pawn);
+        let gain = values.value(Piece::Queen) - pawn;
+        let defended = Board::from_fen("1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let push = defended.parse_move("a7a8q").unwrap();
+        assert!(push.is_promo() && !push.is_capture());
+        assert!(defended.see_ge_exchange_with_values(push, -pawn, values));
+        assert!(!defended.see_ge_exchange_with_values(push, -pawn + 1, values));
+        assert!(defended.see_ge_quiet_aware_with_values(push, gain, values));
+        assert!(defended.see_ge_with_values(push, gain, values));
+
+        let free = Board::from_fen("4k3/P7/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let push = free.parse_move("a7a8q").unwrap();
+        assert!(free.see_ge_exchange_with_values(push, gain, values));
+        assert!(!free.see_ge_exchange_with_values(push, gain + 1, values));
+
+        let taking = defended.parse_move("a7b8q").unwrap();
+        let rook_and_gain = values.value(Piece::Rook) + gain;
+        for see_ge in [
+            Board::see_ge_exchange_with_values,
+            Board::see_ge_quiet_aware_with_values,
+            Board::see_ge_with_values,
+        ] {
+            assert!(see_ge(&defended, taking, rook_and_gain, values));
+            assert!(!see_ge(&defended, taking, rook_and_gain + 1, values));
+        }
     }
 }
 
