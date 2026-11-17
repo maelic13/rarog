@@ -1188,6 +1188,34 @@ mod tests {
     }
 
     #[test]
+    fn many_queens_stay_inside_the_kernels_range_and_score_in_their_band() {
+        // (FEN, whether the side to move is the one with the queens).
+        for (fen, ahead) in [
+            ("k7/p7/8/8/8/8/8/QQQQQQ1K w - - 0 1", true),
+            ("qqqqqq1k/8/8/8/8/8/P7/K7 w - - 0 1", false),
+            ("3qqqqk/8/8/8/8/8/8/K1QQQQQ1 w - - 0 1", true),
+            ("1k6/1p6/8/8/8/8/8/QQQQQQ1K b - - 0 1", false),
+        ] {
+            let board = Board::from_fen(fen).expect("a legal FEN");
+            let mut searcher = Searcher::default();
+            let raw = searcher.raw_eval(&board);
+            let kernel = raw_to_kernel(raw);
+            assert!(
+                kernel.abs() < TB_WIN_SCORE,
+                "{fen}: raw {raw}, kernel {kernel}"
+            );
+            assert_eq!(kernel > 0, ahead, "{fen}: raw {raw}");
+            let (_, result) = compact_search(fen, 5);
+            let score = result.score;
+            assert_eq!(score > 0, ahead, "{fen}: {score}");
+            assert!(
+                score.abs() < TB_WIN_SCORE || score.abs() >= MATE_SCORE - infra::to_i32(MAX_PLY),
+                "{fen}: {score} is neither an evaluation nor a mate"
+            );
+        }
+    }
+
+    #[test]
     fn the_compact_kernel_searches_the_bench_positions_to_a_legal_move() {
         for fen in crate::bench::BENCH_FENS.iter().step_by(5) {
             let (searcher, result) = compact_search(fen, 6);
