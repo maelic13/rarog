@@ -1075,6 +1075,7 @@ impl Searcher {
                     // Each window searches from a clean stack, its cutoff
                     // counts included.
                     self.td.stack = PlyArray::new(StackEntry::default());
+                    self.td.root_report_depth = infra::to_i32(depth);
                 }
                 let score = self.search_root_window(&mut board, search_depth, alpha, beta, poll);
                 #[cfg(feature = "diag")]
@@ -1612,6 +1613,7 @@ impl Searcher {
                     if compact {
                         // Each window searches from a clean stack.
                         self.td.stack = PlyArray::new(StackEntry::default());
+                        self.td.root_report_depth = infra::to_i32(depth);
                     }
                     let score =
                         self.search_root_window(&mut board, search_depth, alpha, beta, poll);

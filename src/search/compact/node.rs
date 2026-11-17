@@ -1102,7 +1102,8 @@ impl Searcher {
             }
             if NODE::ROOT {
                 let move_nodes = self.td.nodes.saturating_sub(nodes_before);
-                self.record_root_move_search(mv, depth, score, alpha, beta, move_nodes);
+                let report_depth = self.td.root_report_depth.max(depth);
+                self.record_root_move_search(mv, report_depth, score, alpha, beta, move_nodes);
             }
             if mv == tt_move {
                 tt_move_score = score;
@@ -1451,6 +1452,25 @@ mod tests {
         assert_eq!(result.bestmove.to_string(), "d1d8");
         assert!(result.score >= MATE_SCORE - 10, "a mate: {}", result.score);
         assert_eq!(searcher.td.nodes, searcher.td.moves_made);
+    }
+
+    #[test]
+    fn every_root_move_completes_each_iteration_when_the_window_fails_high() {
+        // From the start the kernel's scores climb past a window opened round
+        // the previous score of zero, so iterations fail high and search a
+        // ply shallower; the root driver still completes each one.
+        let (searcher, result) = compact_search(crate::board::STARTING_FEN, 3);
+        assert_eq!(result.depth, 3);
+        let records = &searcher.td.root_move_records;
+        assert_eq!(records.len(), 20);
+        assert!(
+            records.iter().all(|record| record.samples == 3),
+            "{:?}",
+            records
+                .iter()
+                .map(|record| (record.mv.to_string(), record.samples))
+                .collect::<Vec<_>>()
+        );
     }
 
     #[test]

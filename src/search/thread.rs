@@ -119,6 +119,11 @@ pub(super) struct ThreadData {
     /// The depth of the iteration this thread is searching; positive
     /// extensions stop at twice it. Zero before any root search.
     pub(super) root_depth: i32,
+    /// The iteration depth the compact kernel's root records carry. Its
+    /// root window searches a window that failed high a ply shallower, but
+    /// the root driver completes a move's iteration only from a record at
+    /// the iteration's depth. Zero outside the driver.
+    pub(super) root_report_depth: i32,
     /// The compact kernel's optimism, by colour: what its evaluation
     /// adds toward the root's running score for the side to move; zero
     /// outside a compact search.
@@ -216,6 +221,7 @@ impl Default for ThreadData {
             root_delta: 1,
             nmp_min_ply: 0,
             root_depth: 0,
+            root_report_depth: 0,
             optimism: [0; 2],
             #[cfg(feature = "probes")]
             rates: super::compact::probes::Rates::default(),
