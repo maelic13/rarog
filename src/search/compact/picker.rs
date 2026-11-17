@@ -8,10 +8,10 @@ use crate::board::{Bitboard, Board, Move, MoveList, Piece, Threats};
 use super::super::Searcher;
 use super::super::history::HistoryTables;
 use super::super::movepick::{QuietContext, ScoredMoveList, pick_next};
-use super::KERNEL_SEE_VALUES;
 use super::rules::{
     NoisyOrderInput, QuietOrderInput, SEEDS, good_noisy_threshold, noisy_order, quiet_order,
 };
+use super::{KERNEL_SEE_VALUES, is_quiet_move};
 
 /// The picker's stages, visited in this order and never revisited.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -73,6 +73,12 @@ impl CompactPicker {
         self.stage
     }
 
+    /// Whether the table's move is quiet by the kernel's partition, in
+    /// which an under-promotion push is quiet.
+    fn tt_move_quiet(&self) -> bool {
+        is_quiet_move(self.tt_move)
+    }
+
     /// The next move, or `None` when every stage is spent. Once
     /// `skip_quiets` is set, no quiet is handed over again.
     pub(super) fn next(
@@ -103,7 +109,7 @@ impl CompactPicker {
                     self.stage = Stage::GoodNoisy;
                 }
                 Stage::GoodNoisy => {
-                    let tt_quiet = !self.tt_move.is_null() && self.tt_move.is_quiet();
+                    let tt_quiet = self.tt_move_quiet();
                     while self.noisy_index < self.noisy_len {
                         let picked = pick_next(
                             &mut self.moves.as_mut_slice()[..self.noisy_len],
@@ -289,6 +295,22 @@ mod tests {
             seen.sort_unstable_by_key(|mv| mv.0);
             assert_eq!(seen, legal, "{fen}: every legal move once");
         }
+    }
+
+    #[test]
+    fn the_tt_move_is_quiet_by_the_kernels_partition() {
+        let board = Board::from_fen("1n2k3/2P5/8/8/8/8/8/4K2R w K - 0 1").expect("legal");
+        let quiet = |uci: &str| {
+            let mv = board.parse_move(uci).expect("legal");
+            CompactPicker::new(mv, None, 0).tt_move_quiet()
+        };
+        assert!(quiet("c7c8n"), "an under-promotion push is quiet");
+        assert!(quiet("c7c8r"));
+        assert!(!quiet("c7c8q"), "a queen push is noisy");
+        assert!(!quiet("c7b8n"), "a capturing promotion is noisy");
+        assert!(quiet("h1h7"));
+        assert!(quiet("e1g1"), "castling is quiet");
+        assert!(!CompactPicker::new(Move::NULL, None, 0).tt_move_quiet());
     }
 
     #[test]
