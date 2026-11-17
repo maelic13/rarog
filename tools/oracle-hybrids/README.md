@@ -68,9 +68,10 @@ the tree does not depend on code generation). With nothing set its
 - `RAROG_PLANT` is `unreduced`, `lmr_check` or `q5`, a planted difference.
 - Every rule's firings and attempts are printed as
   `info string rates ...` before `bestmove`.
-- Since D.7.4 the trace also carries the inputs three records lacked
-  (`nmp_gate`'s capture refutation, `singular_result`'s searched move,
-  `q_stand_pat`'s node type) and eleven more kinds, one for each rule and
+- Since D.7.4 the trace also carries what four records lacked
+  (`nmp_gate`'s capture refutation, `nmp_result`'s outcome, cut or
+  verified, `singular_result`'s searched move, `q_stand_pat`'s node type)
+  and eleven more kinds, one for each rule and
   seed the 36 did not reach: `tt_cut_bonus`, `tt_cut_return`,
   `eval_bonus_gate`, `null_bound`, `probcut_value`, `spread`, `malus_fade`,
   `q_cutoff_bonus`, `score_held`, `pick_threshold` and `draw_score`. They
