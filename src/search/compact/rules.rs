@@ -14,6 +14,8 @@
 use crate::eval::{INF_SCORE, VALUE_NONE};
 use crate::tt::{Bound, TB_WIN_SCORE};
 
+use super::quiescence::Q_DEPTH;
+
 /// Every constant the kernel's rules read, in kernel units. A fraction
 /// written `*_t` is in ten-thousandths.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -914,6 +916,8 @@ pub(crate) fn nmp_reduction(
 
 /// The bound the null search must hold: a stored lower bound below beta and
 /// deep enough, which already says the node is worth that much, else beta.
+/// A quiescence result counts one ply below the main search's shallowest
+/// store, as in the donor's table: it serves a depth-1 node and no deeper.
 #[inline(always)]
 pub(crate) fn null_bound(
     depth: i32,
@@ -922,6 +926,7 @@ pub(crate) fn null_bound(
     bound: Option<Bound>,
     tt_depth: i32,
 ) -> i32 {
+    let tt_depth = if tt_depth == Q_DEPTH { -1 } else { tt_depth };
     if is_valid(tt_score) && beta > tt_score && bound == Some(Bound::Lower) && depth - 2 <= tt_depth
     {
         tt_score
@@ -1829,5 +1834,34 @@ pub(crate) fn good_noisy_threshold(s: &Seeds, score: i32, tt_quiet: bool, good_s
         1
     } else {
         -score / s.pick_see_divisor + s.pick_see_offset
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_quiescence_entry_bounds_the_null_search_at_depth_one_only() {
+        let (beta, stored) = (100, 40);
+        let bound = |depth, tt_depth| null_bound(depth, beta, stored, Some(Bound::Lower), tt_depth);
+        assert_eq!(Q_DEPTH, 0, "the cases below read depth 0 as quiescence");
+        for (depth, tt_depth, expected) in [
+            (1, 0, stored),
+            (2, 0, beta),
+            (3, 0, beta),
+            (2, 1, stored),
+            (3, 1, stored),
+            (4, 1, beta),
+        ] {
+            assert_eq!(
+                bound(depth, tt_depth),
+                expected,
+                "depth {depth}, stored at {tt_depth}"
+            );
+        }
+        // The donor's own depth for a quiescence entry reads the same way.
+        assert_eq!(bound(1, -1), stored);
+        assert_eq!(bound(2, -1), beta);
     }
 }
