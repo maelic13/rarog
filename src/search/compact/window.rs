@@ -8,8 +8,9 @@ use super::rules::{self, SEEDS, Window};
 
 /// What the root carries from one iteration to the next.
 pub(in crate::search) struct Iterations {
-    /// The running average of the iterations' exact root scores.
-    average: i32,
+    /// Each line's running average of its exact root scores; line 1's
+    /// decides whether the score held.
+    averages: Vec<i32>,
     /// Iterations in a row whose score held near the average.
     eval_stability: i32,
     /// Iterations in a row with the same best move.
@@ -18,40 +19,41 @@ pub(in crate::search) struct Iterations {
 }
 
 impl Iterations {
-    /// The state at a search's start: the average is the previous search's
-    /// score.
-    pub(in crate::search) fn new(previous_score: i32) -> Self {
+    /// The state at a search of `lines` lines' start: every line's average
+    /// is the previous search's score.
+    pub(in crate::search) fn new(previous_score: i32, lines: usize) -> Self {
         Self {
-            average: previous_score,
+            averages: vec![previous_score; lines.max(1)],
             eval_stability: 0,
             pv_stability: 0,
             last_best: Move::NULL,
         }
     }
 
-    /// The window an iteration opens with, and the side to move's optimism:
-    /// the average of this thread's running average and `pool_average`, the
-    /// pool's deeper one when there is one.
-    pub(in crate::search) fn open(&self, pool_average: Option<i32>) -> (Window, i32) {
-        let delta =
-            rules::window_delta(SEEDS, self.eval_stability, self.pv_stability, self.average);
-        let best_average = pool_average.map_or(self.average, |pool| (pool + self.average) / 2);
+    /// The window `line` opens with this iteration, and the side to move's
+    /// optimism: the average of the line's running average and
+    /// `pool_average`, the pool's deeper one when there is one. Every line
+    /// opens afresh, its width from line 1's stability and its own average.
+    pub(in crate::search) fn open(&self, line: usize, pool_average: Option<i32>) -> (Window, i32) {
+        let average = self.averages[line];
+        let delta = rules::window_delta(SEEDS, self.eval_stability, self.pv_stability, average);
+        let best_average = pool_average.map_or(average, |pool| (pool + average) / 2);
         (
-            rules::open_window(self.average, delta),
+            rules::open_window(average, delta),
             rules::optimism(SEEDS, best_average),
         )
     }
 
-    /// A window closed on `score`: fold it into the average, which starts
-    /// from the previous search's score and so always holds one.
-    pub(in crate::search) fn record_exact(&mut self, score: i32) {
-        self.average = (self.average + score) / 2;
+    /// `line`'s window closed on `score`: fold it into the line's average,
+    /// which starts from the previous search's score and so always holds one.
+    pub(in crate::search) fn record_exact(&mut self, line: usize, score: i32) {
+        self.averages[line] = (self.averages[line] + score) / 2;
     }
 
     /// An iteration ended with `best_score` on `best_move`: count how long
     /// the score and the move have held.
     pub(in crate::search) fn end_iteration(&mut self, best_score: i32, best_move: Move) {
-        self.eval_stability = if rules::score_held(SEEDS, best_score, self.average) {
+        self.eval_stability = if rules::score_held(SEEDS, best_score, self.averages[0]) {
             self.eval_stability + 1
         } else {
             0
@@ -109,16 +111,16 @@ mod tests {
 
     #[test]
     fn the_window_narrows_as_the_score_and_move_hold_and_widens_on_failures() {
-        let mut iterations = Iterations::new(0);
-        let (opening, optimism) = iterations.open(None);
+        let mut iterations = Iterations::new(0, 1);
+        let (opening, optimism) = iterations.open(0, None);
         assert_eq!((opening.alpha, opening.beta, opening.delta), (-23, 23, 23));
         assert_eq!(optimism, 0);
         let mv = Move::from_uci("e2e4").expect("a move");
         for _ in 0..3 {
-            iterations.record_exact(5);
+            iterations.record_exact(0, 5);
             iterations.end_iteration(5, mv);
         }
-        let (narrower, optimism) = iterations.open(None);
+        let (narrower, optimism) = iterations.open(0, None);
         assert_eq!(narrower.delta, 23 - 2, "held twice since the first");
         assert_eq!(optimism, 113 * 4 / (4 + 201));
 
@@ -135,5 +137,27 @@ mod tests {
             -crate::eval::INF_SCORE,
             "the guard opens it"
         );
+    }
+
+    #[test]
+    fn each_line_opens_round_its_own_average_with_line_ones_stability() {
+        let mut iterations = Iterations::new(0, 3);
+        let mv = Move::from_uci("e2e4").expect("a move");
+        for _ in 0..4 {
+            iterations.record_exact(0, 5);
+            iterations.record_exact(2, -400);
+            iterations.end_iteration(5, mv);
+        }
+        let (first, _) = iterations.open(0, None);
+        let (second, _) = iterations.open(1, None);
+        let (third, optimism) = iterations.open(2, None);
+        assert_eq!(first.delta, second.delta, "line 2 still averages 0");
+        assert_eq!((second.alpha + second.beta) / 2, 0);
+        assert!(third.delta > first.delta, "a far average widens its line");
+        assert!((third.alpha + third.beta) / 2 < -300);
+        assert!(optimism < 0, "a line's optimism follows its own average");
+        // A line's average never sets the stability: line 3's scores are
+        // far from line 1's, yet the window narrowed as line 1 held.
+        assert_eq!(first.delta, 23 - 3);
     }
 }

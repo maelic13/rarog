@@ -1024,7 +1024,7 @@ impl Searcher {
         // single-handedly — which is the opposite of pooling the decision.
         let mut cast_stop_vote = false;
         let compact = self.cfg.kernel == Kernel::Compact;
-        let mut iterations = compact::window::Iterations::new(self.td.compact_previous_score);
+        let mut iterations = compact::window::Iterations::new(self.td.compact_previous_score, 1);
 
         for depth in 1..=max_depth {
             // Per iteration, as Stockfish resets `selDepth`: carried across a
@@ -1052,7 +1052,7 @@ impl Searcher {
                 pool_average = Some(pool_score);
             }
             let mut window = if compact {
-                let (opening, optimism) = iterations.open(pool_average);
+                let (opening, optimism) = iterations.open(0, pool_average);
                 let stm = board.side_to_move() as usize;
                 self.td.optimism[stm] = optimism;
                 self.td.optimism[1 - stm] = -optimism;
@@ -1160,7 +1160,7 @@ impl Searcher {
                 best_score = score;
                 completed_depth = depth;
                 if compact {
-                    iterations.record_exact(score);
+                    iterations.record_exact(0, score);
                 }
                 if self.td.pv_len[0] > 0 {
                     bestmove = self.td.pv_table[0][0];
@@ -1550,6 +1550,9 @@ impl Searcher {
         // A record's score alone is not a line: a move that never raised alpha
         // keeps the bound of its last attempt.
         let mut settled: Vec<ReportedLine> = Vec::new();
+        let compact = self.cfg.kernel == Kernel::Compact;
+        let mut iterations =
+            compact::window::Iterations::new(self.td.compact_previous_score, lines);
 
         for depth in 1..=max_depth {
             // Per iteration, as in the single-line path above.
@@ -1581,23 +1584,41 @@ impl Searcher {
                 self.td.root_moves.clear();
                 self.td.root_moves.extend_from_slice(&order[line..]);
                 self.td.multipv_line = line;
-                let center = self
-                    .root_record(order[line])
-                    .map_or(-INF_SCORE, |rm| rm.previous_score);
-                let mut window = Aspiration::new(&self.cfg.params, depth, center);
+                let mut window = if compact {
+                    // Line 1 joins the pool's deeper average, as the one-line
+                    // search does.
+                    let pool_average = self
+                        .shared
+                        .pool()
+                        .and_then(|shared| shared.pool_best_exact())
+                        .filter(|&(pool_depth, _)| {
+                            line == 0 && pool_depth > infra::to_i32(completed_depth)
+                        })
+                        .map(|(_, pool_score)| pool_score);
+                    let (opening, optimism) = iterations.open(line, pool_average);
+                    let stm = board.side_to_move() as usize;
+                    self.td.optimism[stm] = optimism;
+                    self.td.optimism[1 - stm] = -optimism;
+                    RootWindow::Compact(compact::window::CompactWindow::new(opening))
+                } else {
+                    let center = self
+                        .root_record(order[line])
+                        .map_or(-INF_SCORE, |rm| rm.previous_score);
+                    RootWindow::Classic(Aspiration::new(&self.cfg.params, depth, center))
+                };
                 let mut attempt: Option<ReportedLine> = None;
                 let completed = loop {
-                    let score = self.search_root_window(
-                        &mut board,
-                        infra::to_i32(depth),
-                        window.alpha,
-                        window.beta,
-                        poll,
-                    );
+                    let (alpha, beta, search_depth) = window.bounds(infra::to_i32(depth));
+                    if compact {
+                        // Each window searches from a clean stack.
+                        self.td.stack = PlyArray::new(StackEntry::default());
+                    }
+                    let score =
+                        self.search_root_window(&mut board, search_depth, alpha, beta, poll);
                     if self.td.stopped || self.td.quit {
                         break false;
                     }
-                    if score <= window.alpha {
+                    if score <= alpha {
                         crate::diag_count!(asp_fail_low);
                         // No move raised alpha: the line's bound is the best
                         // upper bound among the moves this attempt searched.
@@ -1615,7 +1636,7 @@ impl Searcher {
                         window.fail_low(&self.cfg.params, score);
                         continue;
                     }
-                    if score >= window.beta {
+                    if score >= beta {
                         crate::diag_count!(asp_fail_high);
                         let fail_high_move = if self.td.pv_len[0] > 0 {
                             self.td.pv_table[0][0]
@@ -1625,6 +1646,9 @@ impl Searcher {
                         attempt = Some(self.reported_line(fail_high_move, depth, RootBound::Lower));
                         window.fail_high(&self.cfg.params, score);
                         continue;
+                    }
+                    if compact {
+                        iterations.record_exact(line, score);
                     }
                     break true;
                 };
@@ -1700,6 +1724,9 @@ impl Searcher {
             }
             if stopped {
                 break;
+            }
+            if compact {
+                iterations.end_iteration(best_score, bestmove);
             }
             settled = order[..ranked]
                 .iter()
@@ -1788,6 +1815,9 @@ impl Searcher {
             crate::diag::dump();
             #[cfg(feature = "pricing")]
             self.pricing_dump();
+        }
+        if compact && best_score > -INF_SCORE {
+            self.td.compact_previous_score = best_score;
         }
         let best_score = self.score_out(best_score);
         self.remember_search_score(best_score);

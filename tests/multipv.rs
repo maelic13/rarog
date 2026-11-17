@@ -4,7 +4,7 @@
 use std::sync::{Arc, Mutex};
 
 use rarog::board::{Board, Move, UciMove};
-use rarog::search::options::SearchOptions;
+use rarog::search::options::{Kernel, SearchOptions};
 use rarog::search::{InfoReport, InfoSink, SearchEvent, Searcher};
 
 struct Recorder(Arc<Mutex<Vec<String>>>);
@@ -247,4 +247,59 @@ fn four_threads_with_three_lines_report_distinct_legal_lines() {
     });
     assert_well_formed(MIDDLEGAME, &lines, 3);
     assert_eq!(bestmove.to_string(), lines[0].pv[0]);
+}
+
+/// The compact kernel opens each line's window round that line's own
+/// average; its lines must be what the classic driver's are.
+#[test]
+fn the_compact_kernel_reports_distinct_exact_lines_in_rarogs_units() {
+    for fen in [
+        MIDDLEGAME,
+        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+        "6k1/p3q2p/1nr3p1/8/3Q4/7P/PP4P1/4R1K1 b - - 0 1",
+    ] {
+        let (lines, bestmove, _) = search_lines(fen, 8, |options| {
+            options.engine.multi_pv = 3;
+            options.engine.kernel = Kernel::Compact;
+        });
+        assert_well_formed(fen, &lines, 3);
+        assert_eq!(bestmove.to_string(), lines[0].pv[0], "{fen}");
+    }
+    // A queen up reads about a queen in Rarog's units; in the kernel's own
+    // units, 2536/1024 of them, it would read over two thousand.
+    let queen_up = "rnb1kbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3";
+    let (lines, _, _) = search_lines(queen_up, 8, |options| {
+        options.engine.multi_pv = 3;
+        options.engine.kernel = Kernel::Compact;
+    });
+    assert_well_formed(queen_up, &lines, 3);
+    assert!(
+        (500..1_800).contains(&lines[0].score),
+        "a queen up: {lines:#?}"
+    );
+}
+
+/// The classic window round a kernel-unit score ran the compact kernel away
+/// on bench position 11 (35.5 million nodes at depth 13 with one line).
+#[test]
+fn the_compact_kernels_lines_do_not_run_away() {
+    let fen = rarog::bench::BENCH_FENS[10];
+    let mut searcher = Searcher::default();
+    let board = Board::from_fen(fen).expect("valid FEN");
+    let mut options = SearchOptions {
+        board: board.clone(),
+        ..SearchOptions::default()
+    };
+    options.limits.depth = Some(13);
+    options.engine.multi_pv = 2;
+    options.engine.kernel = Kernel::Compact;
+    searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
+    let result = searcher.search(board, &options, false, || SearchEvent::None);
+    assert_eq!(result.depth, 13);
+    assert!(
+        result.nodes < 5_000_000,
+        "MultiPV 2 at depth 13 took {} nodes",
+        result.nodes
+    );
 }
