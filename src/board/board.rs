@@ -1528,6 +1528,13 @@ impl Board {
         self.non_pawn_hash[color as usize]
     }
 
+    /// `color`'s non-pawn key with its king's square keyed in: the key over
+    /// that colour's knights, bishops, rooks, queens and king.
+    #[inline(always)]
+    pub fn non_pawn_key_with_king(&self, color: Color) -> u64 {
+        self.non_pawn_hash[color as usize] ^ ZOBRIST.piece(color, Piece::King, self.king_sq(color))
+    }
+
     #[inline(always)]
     pub fn attackers_to_color(&self, sq: Square, occ: Bitboard, color: Color) -> Bitboard {
         let atk = &ATTACKS;
@@ -3217,6 +3224,55 @@ mod repetition_tests {
         // A pawn move cannot be undone.
         let pawn = start(&["e2e3", "g8f6", "e3e4", "f6g8", "g1f3"]);
         assert!(!pawn.upcoming_repetition(10));
+    }
+
+    #[test]
+    fn the_non_pawn_key_with_king_is_its_pieces_keys_xored() {
+        fn from_scratch(board: &Board, color: Color) -> u64 {
+            let mut key = 0;
+            for piece in [
+                Piece::Knight,
+                Piece::Bishop,
+                Piece::Rook,
+                Piece::Queen,
+                Piece::King,
+            ] {
+                for sq in board.pieces(color, piece) {
+                    key ^= ZOBRIST.piece(color, piece, sq);
+                }
+            }
+            key
+        }
+        fn check(board: &Board) {
+            for color in [Color::White, Color::Black] {
+                assert_eq!(
+                    board.non_pawn_key_with_king(color),
+                    from_scratch(board, color),
+                    "{color:?} in {}",
+                    board.to_fen()
+                );
+            }
+        }
+        for fen in [
+            STARTING_FEN,
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+            "r1bq1rk1/pP3ppp/2n2n2/2b5/8/2N2N2/PPP2PPP/R1BQKB1R w KQ - 0 9",
+            "4k3/8/8/8/8/8/8/4K3 b - - 0 1",
+        ] {
+            let mut board = Board::from_fen(fen).expect("a legal FEN");
+            check(&board);
+            // Every move, its key after it and after unmaking it: captures,
+            // castling, promotions and king moves change the key.
+            for mv in board.generate_legal_moves() {
+                let before = [Color::White, Color::Black].map(|c| board.non_pawn_key_with_king(c));
+                board.make_move(mv);
+                check(&board);
+                board.unmake_move(mv);
+                let after = [Color::White, Color::Black].map(|c| board.non_pawn_key_with_king(c));
+                assert_eq!(before, after, "{mv:?} in {fen}");
+            }
+        }
     }
 
     #[test]

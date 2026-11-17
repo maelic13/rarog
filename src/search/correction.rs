@@ -108,6 +108,23 @@ struct CorrectionSlots {
 
 impl Searcher {
     fn correction_slots(&self, board: &Board, ply: usize) -> CorrectionSlots {
+        let non_pawn = [Color::White, Color::Black].map(|color| board.non_pawn_key(color));
+        self.correction_slots_keyed(board, ply, non_pawn)
+    }
+
+    /// The compact kernel's slots: its non-pawn keys include each side's king.
+    fn compact_correction_slots(&self, board: &Board, ply: usize) -> CorrectionSlots {
+        let non_pawn =
+            [Color::White, Color::Black].map(|color| board.non_pawn_key_with_king(color));
+        self.correction_slots_keyed(board, ply, non_pawn)
+    }
+
+    fn correction_slots_keyed(
+        &self,
+        board: &Board,
+        ply: usize,
+        non_pawn: [u64; 2],
+    ) -> CorrectionSlots {
         let stm = board.side_to_move();
         let bucket = rule50_bucket(board);
         let previous = self.td.stack.back(ply, 1);
@@ -121,10 +138,7 @@ impl Searcher {
         CorrectionSlots {
             pawn: keyed_index(bucket, stm, board.pawn_key()),
             minor: keyed_index(bucket, stm, board.minor_key()),
-            non_pawn: [
-                keyed_index(bucket, stm, board.non_pawn_key(Color::White)),
-                keyed_index(bucket, stm, board.non_pawn_key(Color::Black)),
-            ],
+            non_pawn: non_pawn.map(|key| keyed_index(bucket, stm, key)),
             continuation,
         }
     }
@@ -153,10 +167,11 @@ impl Searcher {
 
     /// The compact kernel's correction for the position at `ply`, in kernel
     /// units: the plain sum of the pawn, both non-pawn and two continuation
-    /// readings, over the table scale. Its continuation readings, two and
-    /// four plies back, share one table, and it reads no minor table.
+    /// readings, over the table scale. Its non-pawn keys include the kings,
+    /// its continuation readings, two and four plies back, share one table,
+    /// and it reads no minor table.
     pub(super) fn compact_correction(&self, board: &Board, ply: usize) -> i32 {
-        let slots = self.correction_slots(board, ply);
+        let slots = self.compact_correction_slots(board, ply);
         let tables = &self.td.corr;
         let mut sum = i64::from(tables.pawn[slots.pawn])
             + i64::from(tables.non_pawn[0][slots.non_pawn[0]])
@@ -171,7 +186,7 @@ impl Searcher {
     /// already scaled and clamped: the pawn and both non-pawn tables, and
     /// the one continuation table at the contexts two and four plies back.
     pub(super) fn compact_train_correction(&mut self, board: &Board, ply: usize, bonus: i32) {
-        let slots = self.correction_slots(board, ply);
+        let slots = self.compact_correction_slots(board, ply);
         let tables = &mut self.td.corr;
         apply_bonus(&mut tables.pawn[slots.pawn], bonus, KEYED_MAX);
         apply_bonus(&mut tables.non_pawn[0][slots.non_pawn[0]], bonus, KEYED_MAX);
