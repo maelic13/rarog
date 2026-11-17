@@ -954,6 +954,24 @@ const PLANTS: &[Plant] = &[
 /// Seeds no record can detect, each with its reason.
 const UNDETECTABLE: &[(&str, &str)] = &[
     (
+        "double_new_pv",
+        "read only at a PV node whose singular search failed low, which the \
+         trace samples sparsely (47 records in the 2026-11-17 capture, 11 at a new PV \
+         node), none of them within a step of the margin",
+    ),
+    (
+        "triple_pv",
+        "read only at a PV node whose singular search failed low, which the \
+         trace samples sparsely (47 records in the 2026-11-17 capture, 11 at a new PV \
+         node), none of them within a step of the margin",
+    ),
+    (
+        "triple_new_pv",
+        "read only at a PV node whose singular search failed low, which the \
+         trace samples sparsely (47 records in the 2026-11-17 capture, 11 at a new PV \
+         node), none of them within a step of the margin",
+    ),
+    (
         "lmr_spread_thread",
         "a per-thread offset, times thread 0 in a one-thread trace",
     ),
