@@ -3,7 +3,6 @@
 //! move have held, and the optimism that average gives the evaluation.
 
 use crate::board::Move;
-use crate::eval::VALUE_NONE;
 
 use super::rules::{self, SEEDS, Window};
 
@@ -43,13 +42,10 @@ impl Iterations {
         )
     }
 
-    /// A window closed on `score`: fold it into the average.
+    /// A window closed on `score`: fold it into the average, which starts
+    /// from the previous search's score and so always holds one.
     pub(in crate::search) fn record_exact(&mut self, score: i32) {
-        self.average = if self.average == VALUE_NONE {
-            score
-        } else {
-            (self.average + score) / 2
-        };
+        self.average = (self.average + score) / 2;
     }
 
     /// An iteration ended with `best_score` on `best_move`: count how long
