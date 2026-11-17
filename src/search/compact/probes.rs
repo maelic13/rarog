@@ -3,6 +3,13 @@
 //! its donor. A build with the `probes` feature prints them before `bestmove`
 //! as `info string rates <kind>=<fires>/<attempts> ...`, in the donor
 //! twin's kinds and format; without the feature the probes are compiled out.
+#![cfg_attr(
+    not(feature = "probes"),
+    expect(
+        dead_code,
+        reason = "without the feature only this module's own test builds it"
+    )
+)]
 
 use std::cell::Cell;
 use std::fmt::Write as _;
