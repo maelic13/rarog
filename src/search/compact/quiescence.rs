@@ -10,7 +10,7 @@ use super::super::node::NodeType;
 use super::super::{MAX_PLY, SearchEvent, Searcher};
 use super::picker::CompactPicker;
 use super::rules::{self, SEEDS};
-use super::{KERNEL_SEE_VALUES, is_quiet_move, raw_to_kernel};
+use super::{KERNEL_SEE_VALUES, is_quiet_move, kernel_material, raw_to_kernel};
 
 /// The depth a quiescence result is stored at.
 pub(super) const Q_DEPTH: i32 = 0;
@@ -74,7 +74,7 @@ impl Searcher {
             } else {
                 ev.raw_static_eval
             };
-            let (eval, correction) = self.compact_eval(board, raw, ply);
+            let (eval, correction) = self.compact_eval(board, raw, kernel_material(board), ply);
             (raw, eval, correction)
         };
         let mut best_score = rules::stand_pat(in_check, NODE::PV, eval, ev.score, ev.bound);
@@ -231,7 +231,7 @@ mod tests {
         let fen = "4k3/8/8/3q4/8/8/3R4/4K3 w - - 0 1";
         let (mut searcher, board, score) = search::<Pv>(fen, -INF_SCORE, INF_SCORE);
         let raw = raw_to_kernel(searcher.raw_eval(&board));
-        let (stand_pat, _) = searcher.compact_eval(&board, raw, 1);
+        let (stand_pat, _) = searcher.compact_eval(&board, raw, kernel_material(&board), 1);
         assert!(
             score > stand_pat + 1_000,
             "{score} after Rxd5 from {stand_pat}"
@@ -253,7 +253,7 @@ mod tests {
         let fen = "k7/8/8/8/8/8/2QQ4/4K3 w - - 0 1";
         let (mut searcher, board, score) = search::<NonPv>(fen, -101, -100);
         let raw = raw_to_kernel(searcher.raw_eval(&board));
-        let (stand_pat, _) = searcher.compact_eval(&board, raw, 1);
+        let (stand_pat, _) = searcher.compact_eval(&board, raw, kernel_material(&board), 1);
         assert_eq!(score, rules::q_stand_pat_value(SEEDS, stand_pat, -100));
         assert!(
             score > -100 && score < stand_pat,

@@ -199,6 +199,8 @@ impl Searcher {
 
         let threats = board.threats();
         self.td.stack[ply].threats = threats.all;
+        // Read by the evaluation and the null-move gate.
+        let material = kernel_material(board);
         let (raw, eval, correction) = if in_check {
             (VALUE_NONE, VALUE_NONE, self.compact_correction(board, ply))
         } else if has_excluded {
@@ -214,7 +216,7 @@ impl Searcher {
             } else {
                 ev.raw_static_eval
             };
-            let (eval, correction) = self.compact_eval(board, raw, ply);
+            let (eval, correction) = self.compact_eval(board, raw, material, ply);
             (raw, eval, correction)
         };
         let estimate = rules::estimated_score(&rules::EstimateInput {
@@ -319,7 +321,7 @@ impl Searcher {
             child_cutoffs: self.td.stack[ply + 1].cutoff_count,
             ply: infra::to_i32(ply),
             nmp_min_ply: self.td.nmp_min_ply,
-            material: kernel_material(board),
+            material,
             tt_capture_refutes: tt_bound == Some(Bound::Lower)
                 && tt_move.is_capture()
                 && board.captured_piece(tt_move).is_some_and(|piece| {

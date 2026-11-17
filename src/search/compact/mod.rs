@@ -137,10 +137,16 @@ impl Searcher {
     }
 
     /// The compact kernel's corrected evaluation from a raw evaluation in
-    /// kernel units, and the correction it includes. A draw verdict is a
-    /// classification, not an estimate, and passes through as 0, with no
-    /// correction and no optimism.
-    pub(super) fn compact_eval(&self, board: &Board, raw: i32, ply: usize) -> (i32, i32) {
+    /// kernel units and the board's `material` in exchange values, and the
+    /// correction it includes. A draw verdict is a classification, not an
+    /// estimate, and passes through as 0, with no correction and no optimism.
+    pub(super) fn compact_eval(
+        &self,
+        board: &Board,
+        raw: i32,
+        material: i32,
+        ply: usize,
+    ) -> (i32, i32) {
         probe!(self, Wrapper, true);
         if raw == 0 && crate::eval::endgame::is_draw_verdict(board) {
             return (0, 0);
@@ -150,7 +156,7 @@ impl Searcher {
             SEEDS,
             &WrapperInput {
                 raw,
-                material: kernel_material(board),
+                material,
                 optimism: self.td.optimism[board.side_to_move() as usize],
                 fifty: i32::from(board.halfmove_clock()),
                 correction,
@@ -195,12 +201,13 @@ mod tests {
         let mut searcher = Searcher::default();
         let board = Board::starting_position();
         // 200 * (21032 + 10296) / 27015, no correction trained.
-        assert_eq!(searcher.compact_eval(&board, 200, 0), (231, 0));
+        let material = kernel_material(&board);
+        assert_eq!(searcher.compact_eval(&board, 200, material, 0), (231, 0));
         searcher.td.optimism = [10, -10];
         // (200 * 31328 + 10 * (1548 + 10296)) / 27015.
-        assert_eq!(searcher.compact_eval(&board, 200, 0), (236, 0));
+        assert_eq!(searcher.compact_eval(&board, 200, material, 0), (236, 0));
         let bare_kings = Board::from_fen("8/8/8/4k3/8/8/8/4K3 w - - 0 1").expect("a legal FEN");
-        assert_eq!(searcher.compact_eval(&bare_kings, 0, 0), (0, 0));
+        assert_eq!(searcher.compact_eval(&bare_kings, 0, 0, 0), (0, 0));
     }
 
     #[test]
