@@ -179,17 +179,13 @@ impl Searcher {
         if in_check && move_count == 0 {
             return -MATE_SCORE + infra::to_i32(ply);
         }
-        if best_score >= beta && !best_move.is_null() && !is_quiet_move(best_move) {
+        let noisy_best = !best_move.is_null() && !is_quiet_move(best_move);
+        if let Some(bonus) = rules::q_cutoff_reward(SEEDS, best_score, beta, noisy_best) {
             let piece = board.moving_piece(best_move);
             let captured = board.captured_piece(best_move);
-            self.td.hist.update_noisy(
-                threats.all,
-                stm,
-                piece,
-                best_move.to_sq(),
-                captured,
-                SEEDS.q_cutoff_bonus,
-            );
+            self.td
+                .hist
+                .update_noisy(threats.all, stm, piece, best_move.to_sq(), captured, bonus);
         }
         probe!(self, QTail, best_score >= beta);
         let best_score = rules::q_tail_value(SEEDS, best_score, beta);

@@ -689,6 +689,34 @@ pub(crate) fn estimated_score(i: &EstimateInput) -> i32 {
     }
 }
 
+/// What the eval-difference bonus asks of the node and its parent.
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct EvalBonusGate {
+    pub(crate) root: bool,
+    pub(crate) in_check: bool,
+    pub(crate) excluded: bool,
+    /// The parent's move was quiet.
+    pub(crate) parent_quiet: bool,
+    /// The parent has a static evaluation.
+    pub(crate) parent_eval_valid: bool,
+    pub(crate) depth: i32,
+    /// The table holds an entry for this node.
+    pub(crate) has_entry: bool,
+}
+
+/// Whether the parent's quiet move is rewarded by how the evaluation moved
+/// across it: off the root and out of check and exclusion, shallow or new
+/// to the table.
+#[inline(always)]
+pub(crate) fn eval_bonus_applies(s: &Seeds, g: &EvalBonusGate) -> bool {
+    !g.root
+        && !g.in_check
+        && !g.excluded
+        && g.parent_quiet
+        && g.parent_eval_valid
+        && (g.depth < s.eval_bonus_depth || !g.has_entry)
+}
+
 /// The parent's quiet move's history reward from the evaluation swing across
 /// it: the side that moved gains what the side to move lost.
 #[inline(always)]
@@ -731,24 +759,47 @@ pub(crate) fn tt_cuts(s: &Seeds, i: &TtCutInput) -> bool {
         }
 }
 
-/// The history rewards of a quiet TT move whose cutoff ends the node: its
-/// quiet history's and its continuations'.
+/// A table cutoff's TT move and the parent's progress.
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct TtCutRewardInput {
+    pub(crate) tt_quiet: bool,
+    pub(crate) tt_score: i32,
+    pub(crate) beta: i32,
+    /// Moves the parent had tried before the one that led here.
+    pub(crate) parent_move_count: i32,
+    pub(crate) depth: i32,
+}
+
+/// The history rewards of a quiet TT move whose cutoff holds beta, when the
+/// parent reached this node early: its quiet history's and its
+/// continuations'.
 #[inline(always)]
-pub(crate) fn tt_cut_bonus(s: &Seeds, depth: i32) -> (i32, i32) {
-    (
-        capped(
-            s.tt_bonus_quiet_slope,
-            depth,
-            s.tt_bonus_quiet_offset,
-            s.tt_bonus_quiet_cap,
-        ),
-        capped(
-            s.tt_bonus_cont_slope,
-            depth,
-            s.tt_bonus_cont_offset,
-            s.tt_bonus_cont_cap,
-        ),
+pub(crate) fn tt_cut_rewards(s: &Seeds, i: &TtCutRewardInput) -> Option<(i32, i32)> {
+    (i.tt_quiet && i.tt_score >= i.beta && i.parent_move_count < s.tt_bonus_parent_moves).then(
+        || {
+            (
+                capped(
+                    s.tt_bonus_quiet_slope,
+                    i.depth,
+                    s.tt_bonus_quiet_offset,
+                    s.tt_bonus_quiet_cap,
+                ),
+                capped(
+                    s.tt_bonus_cont_slope,
+                    i.depth,
+                    s.tt_bonus_cont_offset,
+                    s.tt_bonus_cont_cap,
+                ),
+            )
+        },
     )
+}
+
+/// Whether a table cutoff returns its score: not this close to the
+/// fifty-move limit, where the stored score may no longer hold.
+#[inline(always)]
+pub(crate) fn tt_cut_returns(s: &Seeds, fifty: i32) -> bool {
+    fifty < s.tt_cut_fifty
 }
 
 /// The node's depth after hindsight: one ply more when the parent reduced
@@ -1301,12 +1352,25 @@ pub(crate) struct ReductionInput {
     pub(crate) is_tt_move: bool,
 }
 
-/// The node count's phase for a reduction's spread: a per-thread offset
-/// keeps threads from reducing in step.
+/// Which reduction a spread term feeds.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum SpreadTerm {
+    /// The late-move reduction.
+    Lmr,
+    /// The full-depth search's reduction.
+    Unreduced,
+}
+
+/// The node count's phase for a reduction's spread: a per-thread offset,
+/// one for each term, keeps threads from reducing in step.
 #[inline(always)]
-pub(crate) fn spread(nodes: u64, thread: u64, per_thread: i32) -> i32 {
+pub(crate) fn spread(s: &Seeds, term: SpreadTerm, nodes: u64, thread: u64) -> i32 {
+    let per_thread = match term {
+        SpreadTerm::Lmr => s.lmr_spread_thread,
+        SpreadTerm::Unreduced => s.fds_spread_thread,
+    };
     let per_thread = u64::try_from(per_thread).unwrap_or(0);
-    i32::try_from(nodes.wrapping_add(thread * per_thread) % 128)
+    i32::try_from(nodes.wrapping_add(thread.wrapping_mul(per_thread)) % 128)
         .unwrap_or_else(|_| unreachable!("below 128"))
 }
 
@@ -1504,6 +1568,17 @@ pub(crate) fn update_amounts(
 pub(crate) fn malus_fade(s: &Seeds, index: i32) -> i32 {
     let denominator = 1024 + s.malus_fade * index;
     1024 * 1024 / (denominator * denominator / 1024)
+}
+
+/// Quiescence's reward to the noisy move that cut: a fixed bonus.
+#[inline(always)]
+pub(crate) fn q_cutoff_reward(
+    s: &Seeds,
+    best_score: i32,
+    beta: i32,
+    noisy_best: bool,
+) -> Option<i32> {
+    (best_score >= beta && noisy_best).then_some(s.q_cutoff_bonus)
 }
 
 /// The parent's quiet move after this node failed low.
@@ -1863,5 +1938,31 @@ mod tests {
         // The donor's own depth for a quiescence entry reads the same way.
         assert_eq!(bound(1, -1), stored);
         assert_eq!(bound(2, -1), beta);
+    }
+
+    #[test]
+    fn each_spread_term_offsets_a_thread_by_its_own_seed() {
+        // A one-thread trace cannot see the per-thread offsets; this can.
+        let s = &Seeds::DONOR;
+        for (term, per_thread) in [
+            (SpreadTerm::Lmr, s.lmr_spread_thread),
+            (SpreadTerm::Unreduced, s.fds_spread_thread),
+        ] {
+            assert_eq!(spread(s, term, 1_000, 0), 1_000 % 128);
+            for thread in 1..4_u64 {
+                let offset = u64::try_from(per_thread).expect("a positive offset") * thread;
+                let expected = i32::try_from((1_000 + offset) % 128).expect("below 128");
+                assert_eq!(
+                    spread(s, term, 1_000, thread),
+                    expected,
+                    "{term:?} {thread}"
+                );
+            }
+        }
+        assert_ne!(
+            spread(s, SpreadTerm::Lmr, 0, 1),
+            spread(s, SpreadTerm::Unreduced, 0, 1),
+            "the terms differ by thread"
+        );
     }
 }

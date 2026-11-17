@@ -181,18 +181,24 @@ impl Searcher {
             probe!(self, TtCut, tt_cuts);
         }
         if tt_cuts {
-            if tt_quiet
-                && tt_score >= beta
-                && self.td.stack.back(ply, 1).move_count < SEEDS.tt_bonus_parent_moves
-            {
-                let (quiet_bonus, cont_bonus) = rules::tt_cut_bonus(SEEDS, depth);
+            let rewards = rules::tt_cut_rewards(
+                SEEDS,
+                &rules::TtCutRewardInput {
+                    tt_quiet,
+                    tt_score,
+                    beta,
+                    parent_move_count: self.td.stack.back(ply, 1).move_count,
+                    depth,
+                },
+            );
+            if let Some((quiet_bonus, cont_bonus)) = rewards {
                 let piece = board.moving_piece(tt_move);
                 self.td
                     .hist
                     .update_quiet(board.threats().all, stm, tt_move, quiet_bonus);
                 self.update_continuations(ply, stm, piece, tt_move.to_sq(), cont_bonus);
             }
-            if i32::from(board.halfmove_clock()) < SEEDS.tt_cut_fifty {
+            if rules::tt_cut_returns(SEEDS, i32::from(board.halfmove_clock())) {
                 return tt_score;
             }
         }
@@ -238,13 +244,19 @@ impl Searcher {
         }
 
         let parent = *self.td.stack.back(ply, 1);
-        if !NODE::ROOT
-            && !in_check
-            && !has_excluded
-            && is_quiet_move(parent.mv)
-            && parent.static_eval != VALUE_NONE
-            && (depth < SEEDS.eval_bonus_depth || entry.is_none())
-        {
+        let eval_bonus = rules::eval_bonus_applies(
+            SEEDS,
+            &rules::EvalBonusGate {
+                root: NODE::ROOT,
+                in_check,
+                excluded: has_excluded,
+                parent_quiet: is_quiet_move(parent.mv),
+                parent_eval_valid: parent.static_eval != VALUE_NONE,
+                depth,
+                has_entry: entry.is_some(),
+            },
+        );
+        if eval_bonus {
             let bonus = rules::eval_difference_bonus(SEEDS, eval, parent.static_eval);
             probe!(self, EvalBonus, true);
             self.td
@@ -720,7 +732,7 @@ impl Searcher {
                             spread: 0,
                             is_tt_move: mv == tt_move,
                         },
-                        SEEDS.lmr_spread_thread,
+                        rules::SpreadTerm::Lmr,
                     ),
                 );
                 let reduced = rules::lmr_depth(new_depth, reduction, NODE::PV);
@@ -792,7 +804,7 @@ impl Searcher {
                             spread: 0,
                             is_tt_move: mv == tt_move,
                         },
-                        SEEDS.fds_spread_thread,
+                        rules::SpreadTerm::Unreduced,
                     ),
                 );
                 let reduced = rules::unreduced_depth(SEEDS, new_depth, reduction);
@@ -1005,14 +1017,14 @@ impl Searcher {
         ply: usize,
         last_critical_ply: usize,
         input: rules::ReductionInput,
-        per_thread: i32,
+        term: rules::SpreadTerm,
     ) -> rules::ReductionInput {
         let thread = u64::try_from(self.td.thread_id).unwrap_or(0);
         rules::ReductionInput {
             since_critical: infra::to_i32(ply - last_critical_ply).min(8),
             laterality: self.td.stack[ply].laterality,
             gives_check: board.is_in_check(),
-            spread: rules::spread(self.td.nodes, thread, per_thread),
+            spread: rules::spread(SEEDS, term, self.td.nodes, thread),
             ..input
         }
     }

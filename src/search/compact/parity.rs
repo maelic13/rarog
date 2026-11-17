@@ -9,19 +9,24 @@
 //! donor's behaviour as numbers, so it stays in ignored storage and this
 //! test is a local check, not CI's.
 //!
-//! Three kinds do not record one input their rule reads: `nmp_gate` the
-//! stored capture refutation, `singular_result` whether the exclusion
-//! search reached a move, `q_stand_pat` the node type. There the input
-//! takes its usual value (no refutation, a move searched, off the PV), and
-//! a record only the other value reproduces is counted as inferred.
+//! Every input a rule reads is recorded; the trace of 2026-11-16 lacked
+//! three (`nmp_gate`'s capture refutation, `singular_result`'s searched
+//! move, `q_stand_pat`'s node type), so this test needs the extended twin's
+//! trace of 2026-11-17.
 //!
 //! Two outputs are the board's, not a rule's: whether a move passes its SEE
 //! threshold (`see_margin`, `q_see`). Their thresholds are checked.
 //!
 //! Each plant changes one seed; it must fail the kind that reads it and no
 //! other, which proves both that the kind's check reads its rule and that
-//! no other kind's check sees a change it should not. Four kinds read no
-//! seed (`estimate`, `nmp_result`, `q_tt_cut`, `gravity`) and have none.
+//! no other kind's check sees a change it should not. Six kinds read no
+//! seed (`estimate`, `nmp_result`, `q_tt_cut`, `gravity`, `null_bound`,
+//! `draw_score`) and have none; `spread` reads only the per-thread offsets,
+//! which a one-thread trace multiplies by zero.
+//!
+//! The seed-coverage pass changes every seed in turn by a quarter of its
+//! value, at least one, and lists each seed no record detects; the list
+//! must hold only the seeds named with their reason.
 //!
 //! The picker's two kinds score a move from its recorded components; the
 //! components themselves are table reads.
@@ -40,13 +45,20 @@ use super::rules::{self, Seeds};
 /// number at least this many, for its zero mismatches to count.
 const MIN_POSITIONS: usize = 200;
 const MIN_RECORDS: usize = 2_000;
+/// The floor for a kind written only when a rare event happens, declared
+/// before the extended trace was captured: a ProbCut cutoff, a null
+/// search, a completed iteration.
+const MIN_RARE_RECORDS: usize = 200;
+const RARE: &[&str] = &["null_bound", "probcut_value", "score_held"];
 
 /// The kinds the rules cover, each held to zero mismatches.
 const COVERED: &[&str] = &[
     "bad_noisy",
     "corr_update",
+    "draw_score",
     "estimate",
     "eval_bonus",
+    "eval_bonus_gate",
     "fail_low_reward",
     "futility",
     "gravity",
@@ -55,14 +67,19 @@ const COVERED: &[&str] = &[
     "ldse",
     "lmp",
     "lmr",
+    "malus_fade",
     "nmp_gate",
     "nmp_r",
     "nmp_result",
+    "null_bound",
     "optimism",
     "pick_noisy",
     "pick_quiet",
+    "pick_threshold",
     "probcut_depth",
     "probcut_gate",
+    "probcut_value",
+    "q_cutoff_bonus",
     "q_lmp",
     "q_see",
     "q_stand_pat",
@@ -71,10 +88,14 @@ const COVERED: &[&str] = &[
     "razor",
     "research",
     "rfp",
+    "score_held",
     "see_margin",
     "singular_gate",
     "singular_result",
+    "spread",
     "tt_cut",
+    "tt_cut_bonus",
+    "tt_cut_return",
     "unreduced",
     "updates",
     "window",
@@ -114,6 +135,17 @@ impl Record<'_> {
         i32::try_from(value).unwrap_or_else(|_| panic!("{name}={value} is out of range"))
     }
 
+    /// A field wider than a score: a node count.
+    fn count(&self, name: &str) -> u64 {
+        let value = self
+            .fields
+            .iter()
+            .find(|(field, _)| *field == name)
+            .map(|&(_, value)| value)
+            .unwrap_or_else(|| panic!("a {} record has no {name}", self.kind));
+        u64::try_from(value).unwrap_or_else(|_| panic!("{name}={value} is negative"))
+    }
+
     /// A field this kind may not record, as zero.
     fn int_or_zero(&self, name: &str) -> i32 {
         if self.has(name) { self.int(name) } else { 0 }
@@ -139,26 +171,12 @@ impl Record<'_> {
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum Verdict {
     Match,
-    /// Matched by one value of an input the record does not carry.
-    Inferred,
     Mismatch,
 }
 
 impl From<bool> for Verdict {
     fn from(matched: bool) -> Self {
         if matched { Self::Match } else { Self::Mismatch }
-    }
-}
-
-/// The verdict for an input the record does not carry: its usual value,
-/// else the other.
-fn either(usual: bool, check: impl Fn(bool) -> bool) -> Verdict {
-    if check(usual) {
-        Verdict::Match
-    } else if check(!usual) {
-        Verdict::Inferred
-    } else {
-        Verdict::Mismatch
     }
 }
 
@@ -314,21 +332,11 @@ fn verdict(s: &Seeds, r: &Record<'_>) -> Option<Verdict> {
                 ply: r.int("ply"),
                 nmp_min_ply: r.int("nmp_min_ply"),
                 material: r.int("material"),
-                tt_capture_refutes: false,
+                tt_capture_refutes: r.flag("tt_capture_refutes"),
             };
-            if rules::nmp_margin(s, &input) == r.int("margin") {
-                either(false, |refutes| {
-                    fire(rules::nmp_gate(
-                        s,
-                        &rules::NullGateInput {
-                            tt_capture_refutes: refutes,
-                            ..input
-                        },
-                    ))
-                })
-            } else {
-                Verdict::Mismatch
-            }
+            Verdict::from(
+                rules::nmp_margin(s, &input) == r.int("margin") && fire(rules::nmp_gate(s, &input)),
+            )
         }
         "nmp_r" => Verdict::from(
             rules::nmp_reduction(
@@ -349,7 +357,13 @@ fn verdict(s: &Seeds, r: &Record<'_>) -> Option<Verdict> {
                 r.int("r"),
                 r.int("nmp_min_ply"),
             );
-            Verdict::from(fire(outcome != rules::NullOutcome::Fail))
+            let recorded = match r.int("outcome") {
+                0 => rules::NullOutcome::Fail,
+                1 => rules::NullOutcome::Cut,
+                2 => rules::NullOutcome::Verify(r.int("verify_depth")),
+                outcome => panic!("null outcome {outcome}"),
+            };
+            Verdict::from(outcome == recorded && fire(outcome != rules::NullOutcome::Fail))
         }
         "probcut_gate" => {
             let probcut_beta = rules::probcut_beta(s, r.int("beta"), r.flag("improving"));
@@ -526,21 +540,17 @@ fn verdict(s: &Seeds, r: &Record<'_>) -> Option<Verdict> {
         "q_stand_pat" => {
             let best_score = r.int("best_score");
             let beta = r.int("beta");
-            let tail = rules::q_stand_pat_value(s, best_score, beta) == r.int("value")
-                && fire(best_score >= beta);
-            if tail {
-                either(false, |pv| {
-                    rules::stand_pat(
+            Verdict::from(
+                rules::q_stand_pat_value(s, best_score, beta) == r.int("value")
+                    && fire(best_score >= beta)
+                    && rules::stand_pat(
                         r.flag("in_check"),
-                        pv,
+                        r.flag("pv"),
                         r.int("eval"),
                         r.int("tt_score"),
                         r.bound("bound"),
-                    ) == best_score
-                })
-            } else {
-                Verdict::Mismatch
-            }
+                    ) == best_score,
+            )
         }
         "q_lmp" => Verdict::from(fire(rules::q_stops(
             s,
@@ -598,6 +608,81 @@ fn verdict(s: &Seeds, r: &Record<'_>) -> Option<Verdict> {
                 },
             ) == r.int("score"),
         ),
+        "tt_cut_bonus" => {
+            let rewards = rules::tt_cut_rewards(
+                s,
+                &rules::TtCutRewardInput {
+                    tt_quiet: r.flag("tt_quiet"),
+                    tt_score: r.int("tt_score"),
+                    beta: r.int("beta"),
+                    parent_move_count: r.int("parent_move_count"),
+                    depth: r.int("depth"),
+                },
+            );
+            // The donor writes the amounts at every cutoff; they are
+            // formed only when the reward fires, and only then compared.
+            Verdict::from(
+                fire(rewards.is_some())
+                    && rewards.is_none_or(|(quiet, cont)| {
+                        quiet == r.int("quiet_bonus") && cont == r.int("cont_bonus")
+                    }),
+            )
+        }
+        "tt_cut_return" => Verdict::from(fire(rules::tt_cut_returns(s, r.int("fifty")))),
+        "eval_bonus_gate" => Verdict::from(fire(rules::eval_bonus_applies(
+            s,
+            &rules::EvalBonusGate {
+                // The donor writes this record off the root only.
+                root: false,
+                in_check: r.flag("in_check"),
+                excluded: r.flag("excluded"),
+                parent_quiet: r.flag("parent_quiet"),
+                parent_eval_valid: r.flag("parent_eval_valid"),
+                depth: r.int("depth"),
+                has_entry: r.flag("has_entry"),
+            },
+        ))),
+        "null_bound" => {
+            let bound = rules::null_bound(
+                r.int("depth"),
+                r.int("beta"),
+                r.int("tt_score"),
+                r.bound("bound"),
+                r.int("tt_depth"),
+            );
+            Verdict::from(bound == r.int("null_beta") && fire(bound != r.int("beta")))
+        }
+        "probcut_value" => {
+            Verdict::from(rules::probcut_value(s, r.int("score"), r.int("beta")) == r.int("value"))
+        }
+        "spread" => {
+            let term = match r.int("term") {
+                0 => rules::SpreadTerm::Lmr,
+                1 => rules::SpreadTerm::Unreduced,
+                term => panic!("spread term {term}"),
+            };
+            Verdict::from(
+                rules::spread(s, term, r.count("nodes"), r.count("thread")) == r.int("spread"),
+            )
+        }
+        "malus_fade" => Verdict::from(rules::malus_fade(s, r.int("index")) == r.int("scale")),
+        "q_cutoff_bonus" => {
+            let reward =
+                rules::q_cutoff_reward(s, r.int("best_score"), r.int("beta"), r.flag("noisy_best"));
+            Verdict::from(
+                fire(reward.is_some()) && reward.is_none_or(|bonus| bonus == r.int("bonus")),
+            )
+        }
+        "score_held" => Verdict::from(fire(rules::score_held(s, r.int("score"), r.int("average")))),
+        "pick_threshold" => Verdict::from(
+            rules::good_noisy_threshold(
+                s,
+                r.int("score"),
+                r.flag("tt_quiet"),
+                r.int("good_so_far"),
+            ) == r.int("threshold"),
+        ),
+        "draw_score" => Verdict::from(rules::draw_score(r.count("nodes")) == r.int("value")),
         _ => return None,
     };
     Some(v)
@@ -645,25 +730,19 @@ fn singular_verdict(s: &Seeds, r: &Record<'_>) -> Verdict {
         tt_quiet: r.flag("tt_quiet"),
         correction: r.int("correction"),
         cut_node: r.flag("cut_node"),
-        searched_a_move: false,
+        searched_a_move: r.flag("searched"),
     };
-    either(true, |searched| {
-        let (extension, cleared) = match rules::singular_outcome(
-            s,
-            &rules::SingularInput {
-                searched_a_move: searched,
-                ..input
-            },
-        ) {
-            rules::SingularOutcome::None => (0, false),
-            rules::SingularOutcome::Extend(plies) => (plies, false),
-            rules::SingularOutcome::Demote => (0, true),
-            rules::SingularOutcome::MultiCut(_) => return false,
-        };
+    let (extension, cleared) = match rules::singular_outcome(s, &input) {
+        rules::SingularOutcome::None => (0, false),
+        rules::SingularOutcome::Extend(plies) => (plies, false),
+        rules::SingularOutcome::Demote => (0, true),
+        rules::SingularOutcome::MultiCut(_) => return Verdict::Mismatch,
+    };
+    Verdict::from(
         extension == r.int("extension")
             && cleared == r.flag("tt_cleared")
-            && (extension != 0) == r.flag("fire")
-    })
+            && (extension != 0) == r.flag("fire"),
+    )
 }
 
 fn window_verdict(s: &Seeds, r: &Record<'_>) -> Verdict {
@@ -837,13 +916,324 @@ const PLANTS: &[Plant] = &[
         kind: "window",
         change: |s| s.window_base += 1,
     },
+    Plant {
+        kind: "tt_cut_bonus",
+        change: |s| s.tt_bonus_quiet_slope += 16,
+    },
+    Plant {
+        kind: "tt_cut_return",
+        change: |s| s.tt_cut_fifty -= 85,
+    },
+    Plant {
+        kind: "eval_bonus_gate",
+        change: |s| s.eval_bonus_depth += 1,
+    },
+    Plant {
+        kind: "probcut_value",
+        change: |s| s.probcut_t += 100,
+    },
+    Plant {
+        kind: "malus_fade",
+        change: |s| s.malus_fade += 1,
+    },
+    Plant {
+        kind: "q_cutoff_bonus",
+        change: |s| s.q_cutoff_bonus += 1,
+    },
+    Plant {
+        kind: "score_held",
+        change: |s| s.window_stable += 20,
+    },
+    Plant {
+        kind: "pick_threshold",
+        change: |s| s.pick_see_offset += 1,
+    },
+];
+
+/// Every seed scalar, for the coverage pass: `(name, change)`, the change a
+/// quarter of the value and at least one.
+macro_rules! seed_scalars {
+    ($($field:ident $([$index:literal])?,)*) => {
+        &[$((
+            concat!(stringify!($field) $(, "[", stringify!($index), "]")?),
+            |s: &mut Seeds| bump(&mut s.$field $([$index])?),
+        ),)*]
+    };
+}
+
+fn bump(seed: &mut i32) {
+    *seed += (seed.abs() / 4).max(1);
+}
+
+/// A seed scalar's name and the change the coverage pass makes to it.
+type SeedChange = (&'static str, fn(&mut Seeds));
+
+const SEED_SCALARS: &[SeedChange] = seed_scalars!(
+    wrap_raw_base,
+    wrap_optimism_base,
+    wrap_divisor,
+    wrap_fifty_horizon,
+    tt_cut_typed_depth,
+    tt_cut_fifty,
+    tt_bonus_parent_moves,
+    tt_bonus_quiet_slope,
+    tt_bonus_quiet_offset,
+    tt_bonus_quiet_cap,
+    tt_bonus_cont_slope,
+    tt_bonus_cont_offset,
+    tt_bonus_cont_cap,
+    eval_bonus_depth,
+    eval_bonus_scale,
+    eval_bonus_min,
+    eval_bonus_max,
+    hindsight_reduction,
+    hindsight_rise,
+    razor_base,
+    razor_square,
+    razor_alpha_limit,
+    rfp_square,
+    rfp_improvement,
+    rfp_linear,
+    rfp_correction,
+    rfp_unthreatened,
+    rfp_constant,
+    rfp_t,
+    nmp_depth,
+    nmp_tt_pv,
+    nmp_improvement,
+    nmp_cutoffs,
+    nmp_base,
+    nmp_material,
+    nmp_r_base,
+    nmp_r_improving,
+    nmp_r_depth,
+    nmp_r_surplus,
+    nmp_r_surplus_cap,
+    nmp_verify_depth,
+    probcut_margin,
+    probcut_improving,
+    probcut_depth_base,
+    probcut_depth_per,
+    probcut_raise,
+    probcut_t,
+    singular_depth,
+    singular_tt_depth,
+    singular_exact_div,
+    double_pv,
+    double_new_pv,
+    double_quiet,
+    double_correction,
+    triple_pv,
+    triple_new_pv,
+    triple_quiet,
+    triple_correction,
+    triple_base,
+    multicut_t,
+    negative_extension,
+    ldse_depth,
+    ldse_margin,
+    lmp_base,
+    lmp_improvement,
+    lmp_square,
+    lmp_history,
+    fp_linear,
+    fp_history,
+    fp_above_beta,
+    fp_correction,
+    fp_constant,
+    fp_depth,
+    bnfp_linear,
+    bnfp_history,
+    bnfp_constant,
+    bnfp_depth,
+    hp_slope,
+    hp_depth,
+    see_quiet_square,
+    see_quiet_linear,
+    see_quiet_history,
+    see_quiet_constant,
+    see_noisy_square,
+    see_noisy_linear,
+    see_noisy_history,
+    see_noisy_constant,
+    lmr_log,
+    lmr_improvement,
+    lmr_improvement_min,
+    lmr_improvement_max,
+    lmr_correction,
+    lmr_exact,
+    lmr_tt_below,
+    lmr_tt_shallow,
+    lmr_win_beta,
+    lmr_quiet,
+    lmr_quiet_history,
+    lmr_alpha_gap,
+    lmr_alpha_gap_min,
+    lmr_alpha_gap_max,
+    lmr_noisy,
+    lmr_noisy_history,
+    lmr_critical,
+    lmr_pv,
+    lmr_pv_window,
+    lmr_non_pv,
+    lmr_laterality,
+    lmr_tt_pv,
+    lmr_tt_pv_above,
+    lmr_tt_pv_deep,
+    lmr_cut,
+    lmr_cut_no_tt_move,
+    lmr_check,
+    lmr_cutoffs,
+    lmr_cutoffs_all,
+    lmr_singular,
+    lmr_singular_offset,
+    lmr_singular_cap,
+    lmr_parent_gap,
+    lmr_parent,
+    lmr_spread_thread,
+    lmr_spread_centre,
+    research_deeper,
+    research_shallower,
+    fds_log,
+    fds_improvement,
+    fds_improvement_min,
+    fds_improvement_max,
+    fds_correction,
+    fds_quiet,
+    fds_quiet_history,
+    fds_noisy,
+    fds_noisy_history,
+    fds_tt_pv,
+    fds_tt_pv_deep,
+    fds_cut,
+    fds_cut_no_tt_move,
+    fds_cutoffs,
+    fds_cutoffs_all,
+    fds_singular,
+    fds_singular_offset,
+    fds_singular_cap,
+    fds_tt_move,
+    fds_parent_gap,
+    fds_parent,
+    fds_spread_thread,
+    fds_spread_centre,
+    fds_one_ply,
+    fds_two_plies,
+    noisy_bonus_slope,
+    noisy_bonus_cap,
+    noisy_bonus_offset,
+    noisy_bonus_cut,
+    noisy_malus_slope,
+    noisy_malus_cap,
+    noisy_malus_offset,
+    noisy_malus_per,
+    quiet_bonus_slope,
+    quiet_bonus_cap,
+    quiet_bonus_offset,
+    quiet_bonus_cut,
+    quiet_malus_slope,
+    quiet_malus_cap,
+    quiet_malus_offset,
+    quiet_malus_per,
+    cont_bonus_slope,
+    cont_bonus_cap,
+    cont_bonus_offset,
+    cont_bonus_cut,
+    cont_malus_slope,
+    cont_malus_cap,
+    cont_malus_offset,
+    cont_malus_per,
+    malus_fade,
+    parent_malus_slope,
+    parent_malus_offset,
+    parent_malus_cap,
+    research_bonus_slope,
+    research_bonus_offset,
+    research_bonus_cap,
+    reward_base,
+    reward_count,
+    reward_count_cap,
+    reward_tt_move,
+    reward_below_eval,
+    reward_below_eval_margin,
+    reward_below_parent,
+    reward_below_parent_margin,
+    reward_slope,
+    reward_offset,
+    reward_cap,
+    reward_grand_slope,
+    reward_grand_offset,
+    reward_grand_cap,
+    reward_noisy_slope,
+    reward_noisy_cap,
+    corr_slope,
+    corr_min,
+    corr_max,
+    q_stand_pat_t,
+    q_move_limit,
+    q_see_divisor,
+    q_see_correction_cap,
+    q_see_constant,
+    q_see_history,
+    q_cutoff_bonus,
+    q_tail_t,
+    window_base,
+    window_stability_cap,
+    window_square,
+    window_low_growth,
+    window_high_growth,
+    window_stable,
+    optimism_scale,
+    optimism_offset,
+    pick_victim,
+    pick_queen_promotion,
+    pick_check_base,
+    pick_check_piece,
+    pick_quiet,
+    pick_pawn,
+    pick_cont[0],
+    pick_cont[1],
+    pick_cont[2],
+    pick_cont[3],
+    pick_escape[0],
+    pick_escape[1],
+    pick_escape[2],
+    pick_escape[3],
+    pick_escape[4],
+    pick_escape[5],
+    pick_check_square,
+    pick_threatened,
+    pick_offense,
+    pick_wall,
+    pick_see_divisor,
+    pick_see_offset,
+    pick_late_good,
+);
+
+/// Seeds no record can detect, each with its reason.
+const UNDETECTABLE: &[(&str, &str)] = &[
+    (
+        "lmr_spread_thread",
+        "a per-thread offset, times thread 0 in a one-thread trace",
+    ),
+    (
+        "fds_spread_thread",
+        "a per-thread offset, times thread 0 in a one-thread trace",
+    ),
+    (
+        "pick_escape[0]",
+        "a pawn escapes nothing: the donor maps no threat to pawns",
+    ),
+    (
+        "pick_escape[5]",
+        "a king escapes nothing: the donor maps no threat to kings",
+    ),
 ];
 
 #[derive(Default)]
 struct Tally {
     records: usize,
     positions: usize,
-    inferred: usize,
     mismatches: usize,
     /// The first few records the rule did not reproduce.
     examples: Vec<String>,
@@ -886,6 +1276,22 @@ fn the_rules_reproduce_the_donors_decisions() {
             seeds
         })
         .collect();
+    assert_eq!(
+        std::mem::size_of::<Seeds>(),
+        std::mem::size_of::<i32>() * SEED_SCALARS.len(),
+        "the coverage list names every seed scalar"
+    );
+    let perturbed: Vec<Seeds> = SEED_SCALARS
+        .iter()
+        .map(|(name, change)| {
+            let mut seeds = Seeds::DONOR;
+            change(&mut seeds);
+            assert_ne!(seeds, Seeds::DONOR, "{name} changes");
+            seeds
+        })
+        .collect();
+    // The seeds no record has detected yet.
+    let mut undetected: Vec<usize> = (0..SEED_SCALARS.len()).collect();
     let mut tallies: BTreeMap<String, Tally> = BTreeMap::new();
     // Mismatches under each plant, by kind.
     let mut plant_tallies: Vec<BTreeMap<String, usize>> = vec![BTreeMap::new(); PLANTS.len()];
@@ -911,7 +1317,6 @@ fn the_rules_reproduce_the_donors_decisions() {
             }
             match v {
                 Verdict::Match => {}
-                Verdict::Inferred => tally.inferred += 1,
                 Verdict::Mismatch => {
                     tally.mismatches += 1;
                     if tally.examples.len() < 5 {
@@ -924,6 +1329,9 @@ fn the_rules_reproduce_the_donors_decisions() {
                     *counts.entry(record.kind.to_string()).or_default() += 1;
                 }
             }
+            if v == Verdict::Match {
+                undetected.retain(|&index| verdict(&perturbed[index], &record) == Some(v));
+            }
         }
     }
 
@@ -932,8 +1340,8 @@ fn the_rules_reproduce_the_donors_decisions() {
     for (kind, tally) in &tallies {
         let _ = writeln!(
             report,
-            "{kind:16} records {:>8} positions {:>4} inferred {:>6} mismatches {}",
-            tally.records, tally.positions, tally.inferred, tally.mismatches
+            "{kind:16} records {:>8} positions {:>4} mismatches {}",
+            tally.records, tally.positions, tally.mismatches
         );
         for example in &tally.examples {
             let _ = writeln!(report, "    {example}");
@@ -943,6 +1351,16 @@ fn the_rules_reproduce_the_donors_decisions() {
     for (plant, counts) in PLANTS.iter().zip(&plant_tallies) {
         let _ = writeln!(report, "plant {:16} fails {counts:?}", plant.kind);
     }
+    let undetected: Vec<&str> = undetected
+        .iter()
+        .map(|&index| SEED_SCALARS[index].0)
+        .collect();
+    let _ = writeln!(
+        report,
+        "seeds no record detects ({} of {}): {undetected:?}",
+        undetected.len(),
+        SEED_SCALARS.len()
+    );
     println!("{report}");
 
     assert_eq!(unparsed, 0, "every trace line parses\n{report}");
@@ -950,8 +1368,13 @@ fn the_rules_reproduce_the_donors_decisions() {
         let tally = tallies
             .get(*kind)
             .unwrap_or_else(|| panic!("no {kind} records\n{report}"));
+        let floor = if RARE.contains(kind) {
+            MIN_RARE_RECORDS
+        } else {
+            MIN_RECORDS
+        };
         assert!(
-            tally.records >= MIN_RECORDS && tally.positions >= MIN_POSITIONS,
+            tally.records >= floor && tally.positions >= MIN_POSITIONS,
             "{kind}: {} records from {} positions is below the floor\n{report}",
             tally.records,
             tally.positions
@@ -976,4 +1399,9 @@ fn the_rules_reproduce_the_donors_decisions() {
             plant.kind
         );
     }
+    let expected: Vec<&str> = UNDETECTABLE.iter().map(|&(name, _)| name).collect();
+    assert_eq!(
+        undetected, expected,
+        "every seed but the named ones is detected\n{report}"
+    );
 }
