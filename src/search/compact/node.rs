@@ -882,10 +882,12 @@ impl Searcher {
             if has_excluded {
                 return -TB_WIN_SCORE + 1;
             }
+            // Stalemate: the draw score read now, after the searches before
+            // the moves have moved the node count.
             return if in_check {
                 -MATE_SCORE + infra::to_i32(ply)
             } else {
-                draw
+                rules::draw_score(self.td.nodes)
             };
         }
 
