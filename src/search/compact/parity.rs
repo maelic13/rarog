@@ -39,7 +39,7 @@ use crate::eval::VALUE_NONE;
 use crate::tt::Bound;
 
 use super::super::history::apply_bonus;
-use super::rules::{self, Seeds};
+use super::rules::{self, SEED_FIELDS, Seeds};
 
 /// A kind's records must come from at least this many positions, and
 /// number at least this many, for its zero mismatches to count.
@@ -950,266 +950,6 @@ const PLANTS: &[Plant] = &[
     },
 ];
 
-/// Every seed scalar, for the coverage pass: `(name, change)`, the change a
-/// quarter of the value and at least one.
-macro_rules! seed_scalars {
-    ($($field:ident $([$index:literal])?,)*) => {
-        &[$((
-            concat!(stringify!($field) $(, "[", stringify!($index), "]")?),
-            |s: &mut Seeds| bump(&mut s.$field $([$index])?),
-        ),)*]
-    };
-}
-
-fn bump(seed: &mut i32) {
-    *seed += (seed.abs() / 4).max(1);
-}
-
-/// A seed scalar's name and the change the coverage pass makes to it.
-type SeedChange = (&'static str, fn(&mut Seeds));
-
-const SEED_SCALARS: &[SeedChange] = seed_scalars!(
-    wrap_raw_base,
-    wrap_optimism_base,
-    wrap_divisor,
-    wrap_fifty_horizon,
-    tt_cut_typed_depth,
-    tt_cut_fifty,
-    tt_bonus_parent_moves,
-    tt_bonus_quiet_slope,
-    tt_bonus_quiet_offset,
-    tt_bonus_quiet_cap,
-    tt_bonus_cont_slope,
-    tt_bonus_cont_offset,
-    tt_bonus_cont_cap,
-    eval_bonus_depth,
-    eval_bonus_scale,
-    eval_bonus_min,
-    eval_bonus_max,
-    hindsight_reduction,
-    hindsight_rise,
-    razor_base,
-    razor_square,
-    razor_alpha_limit,
-    rfp_square,
-    rfp_improvement,
-    rfp_linear,
-    rfp_correction,
-    rfp_unthreatened,
-    rfp_constant,
-    rfp_t,
-    nmp_depth,
-    nmp_tt_pv,
-    nmp_improvement,
-    nmp_cutoffs,
-    nmp_base,
-    nmp_material,
-    nmp_r_base,
-    nmp_r_improving,
-    nmp_r_depth,
-    nmp_r_surplus,
-    nmp_r_surplus_cap,
-    nmp_verify_depth,
-    probcut_margin,
-    probcut_improving,
-    probcut_depth_base,
-    probcut_depth_per,
-    probcut_raise,
-    probcut_t,
-    singular_depth,
-    singular_tt_depth,
-    singular_exact_div,
-    double_pv,
-    double_new_pv,
-    double_quiet,
-    double_correction,
-    triple_pv,
-    triple_new_pv,
-    triple_quiet,
-    triple_correction,
-    triple_base,
-    multicut_t,
-    negative_extension,
-    ldse_depth,
-    ldse_margin,
-    lmp_base,
-    lmp_improvement,
-    lmp_square,
-    lmp_history,
-    fp_linear,
-    fp_history,
-    fp_above_beta,
-    fp_correction,
-    fp_constant,
-    fp_depth,
-    bnfp_linear,
-    bnfp_history,
-    bnfp_constant,
-    bnfp_depth,
-    hp_slope,
-    hp_depth,
-    see_quiet_square,
-    see_quiet_linear,
-    see_quiet_history,
-    see_quiet_constant,
-    see_noisy_square,
-    see_noisy_linear,
-    see_noisy_history,
-    see_noisy_constant,
-    lmr_log,
-    lmr_improvement,
-    lmr_improvement_min,
-    lmr_improvement_max,
-    lmr_correction,
-    lmr_exact,
-    lmr_tt_below,
-    lmr_tt_shallow,
-    lmr_win_beta,
-    lmr_quiet,
-    lmr_quiet_history,
-    lmr_alpha_gap,
-    lmr_alpha_gap_min,
-    lmr_alpha_gap_max,
-    lmr_noisy,
-    lmr_noisy_history,
-    lmr_critical,
-    lmr_pv,
-    lmr_pv_window,
-    lmr_non_pv,
-    lmr_laterality,
-    lmr_tt_pv,
-    lmr_tt_pv_above,
-    lmr_tt_pv_deep,
-    lmr_cut,
-    lmr_cut_no_tt_move,
-    lmr_check,
-    lmr_cutoffs,
-    lmr_cutoffs_all,
-    lmr_singular,
-    lmr_singular_offset,
-    lmr_singular_cap,
-    lmr_parent_gap,
-    lmr_parent,
-    lmr_spread_thread,
-    lmr_spread_centre,
-    research_deeper,
-    research_shallower,
-    fds_log,
-    fds_improvement,
-    fds_improvement_min,
-    fds_improvement_max,
-    fds_correction,
-    fds_quiet,
-    fds_quiet_history,
-    fds_noisy,
-    fds_noisy_history,
-    fds_tt_pv,
-    fds_tt_pv_deep,
-    fds_cut,
-    fds_cut_no_tt_move,
-    fds_cutoffs,
-    fds_cutoffs_all,
-    fds_singular,
-    fds_singular_offset,
-    fds_singular_cap,
-    fds_tt_move,
-    fds_parent_gap,
-    fds_parent,
-    fds_spread_thread,
-    fds_spread_centre,
-    fds_one_ply,
-    fds_two_plies,
-    noisy_bonus_slope,
-    noisy_bonus_cap,
-    noisy_bonus_offset,
-    noisy_bonus_cut,
-    noisy_malus_slope,
-    noisy_malus_cap,
-    noisy_malus_offset,
-    noisy_malus_per,
-    quiet_bonus_slope,
-    quiet_bonus_cap,
-    quiet_bonus_offset,
-    quiet_bonus_cut,
-    quiet_malus_slope,
-    quiet_malus_cap,
-    quiet_malus_offset,
-    quiet_malus_per,
-    cont_bonus_slope,
-    cont_bonus_cap,
-    cont_bonus_offset,
-    cont_bonus_cut,
-    cont_malus_slope,
-    cont_malus_cap,
-    cont_malus_offset,
-    cont_malus_per,
-    malus_fade,
-    parent_malus_slope,
-    parent_malus_offset,
-    parent_malus_cap,
-    research_bonus_slope,
-    research_bonus_offset,
-    research_bonus_cap,
-    reward_base,
-    reward_count,
-    reward_count_cap,
-    reward_tt_move,
-    reward_below_eval,
-    reward_below_eval_margin,
-    reward_below_parent,
-    reward_below_parent_margin,
-    reward_slope,
-    reward_offset,
-    reward_cap,
-    reward_grand_slope,
-    reward_grand_offset,
-    reward_grand_cap,
-    reward_noisy_slope,
-    reward_noisy_cap,
-    corr_slope,
-    corr_min,
-    corr_max,
-    q_stand_pat_t,
-    q_move_limit,
-    q_see_divisor,
-    q_see_correction_cap,
-    q_see_constant,
-    q_see_history,
-    q_cutoff_bonus,
-    q_tail_t,
-    window_base,
-    window_stability_cap,
-    window_square,
-    window_low_growth,
-    window_high_growth,
-    window_stable,
-    optimism_scale,
-    optimism_offset,
-    pick_victim,
-    pick_queen_promotion,
-    pick_check_base,
-    pick_check_piece,
-    pick_quiet,
-    pick_pawn,
-    pick_cont[0],
-    pick_cont[1],
-    pick_cont[2],
-    pick_cont[3],
-    pick_escape[0],
-    pick_escape[1],
-    pick_escape[2],
-    pick_escape[3],
-    pick_escape[4],
-    pick_escape[5],
-    pick_check_square,
-    pick_threatened,
-    pick_offense,
-    pick_wall,
-    pick_see_divisor,
-    pick_see_offset,
-    pick_late_good,
-);
-
 /// Seeds no record can detect, each with its reason.
 const UNDETECTABLE: &[(&str, &str)] = &[
     (
@@ -1278,20 +1018,22 @@ fn the_rules_reproduce_the_donors_decisions() {
         .collect();
     assert_eq!(
         std::mem::size_of::<Seeds>(),
-        std::mem::size_of::<i32>() * SEED_SCALARS.len(),
-        "the coverage list names every seed scalar"
+        std::mem::size_of::<i32>() * SEED_FIELDS.len(),
+        "the seed list names every seed scalar"
     );
-    let perturbed: Vec<Seeds> = SEED_SCALARS
+    // Each seed changed by a quarter of its value, at least one.
+    let perturbed: Vec<Seeds> = SEED_FIELDS
         .iter()
-        .map(|(name, change)| {
+        .map(|(name, field)| {
             let mut seeds = Seeds::DONOR;
-            change(&mut seeds);
+            let seed = field(&mut seeds);
+            *seed += (seed.abs() / 4).max(1);
             assert_ne!(seeds, Seeds::DONOR, "{name} changes");
             seeds
         })
         .collect();
     // The seeds no record has detected yet.
-    let mut undetected: Vec<usize> = (0..SEED_SCALARS.len()).collect();
+    let mut undetected: Vec<usize> = (0..SEED_FIELDS.len()).collect();
     let mut tallies: BTreeMap<String, Tally> = BTreeMap::new();
     // Mismatches under each plant, by kind.
     let mut plant_tallies: Vec<BTreeMap<String, usize>> = vec![BTreeMap::new(); PLANTS.len()];
@@ -1353,13 +1095,13 @@ fn the_rules_reproduce_the_donors_decisions() {
     }
     let undetected: Vec<&str> = undetected
         .iter()
-        .map(|&index| SEED_SCALARS[index].0)
+        .map(|&index| SEED_FIELDS[index].0)
         .collect();
     let _ = writeln!(
         report,
         "seeds no record detects ({} of {}): {undetected:?}",
         undetected.len(),
-        SEED_SCALARS.len()
+        SEED_FIELDS.len()
     );
     println!("{report}");
 

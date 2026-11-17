@@ -186,6 +186,11 @@ impl Searcher {
     /// already scaled and clamped: the pawn and both non-pawn tables, and
     /// the one continuation table at the contexts two and four plies back.
     pub(super) fn compact_train_correction(&mut self, board: &Board, ply: usize, bonus: i32) {
+        // A pricing probe leaves the corrections as the measured search had them.
+        #[cfg(feature = "pricing")]
+        if self.td.pricing.probing {
+            return;
+        }
         let slots = self.compact_correction_slots(board, ply);
         let tables = &mut self.td.corr;
         apply_bonus(&mut tables.pawn[slots.pawn], bonus, KEYED_MAX);

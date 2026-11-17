@@ -7,9 +7,11 @@ use crate::infra;
 use crate::tt::{Bound, TtProbe, TtStore};
 
 use super::super::node::NodeType;
+#[cfg(feature = "pricing")]
+use super::super::pricing::Rule;
 use super::super::{MAX_PLY, SearchEvent, Searcher};
 use super::picker::CompactPicker;
-use super::rules::{self, SEEDS};
+use super::rules;
 use super::{KERNEL_SEE_VALUES, is_quiet_move, kernel_material, raw_to_kernel};
 
 /// The depth a quiescence result is stored at.
@@ -80,7 +82,7 @@ impl Searcher {
         let mut best_score = rules::stand_pat(in_check, NODE::PV, eval, ev.score, ev.bound);
         probe!(self, QStandPat, best_score >= beta);
         if best_score >= beta {
-            let value = rules::q_stand_pat_value(SEEDS, best_score, beta);
+            let value = rules::q_stand_pat_value(self.seeds(), best_score, beta);
             if entry.is_none() {
                 self.tt_store(TtStore {
                     key: hash,
@@ -118,9 +120,21 @@ impl Searcher {
                     .get_or_insert_with(|| board.check_info())
                     .direct_check_squares(piece)
                     .contains(mv.to_sq());
-                let stops = rules::q_stops(SEEDS, move_count, direct_check);
+                let stops = rules::q_stops(self.seeds(), move_count, direct_check);
                 probe!(self, QLmp, stops);
                 if stops {
+                    #[cfg(feature = "pricing")]
+                    self.compact_price_q::<NODE, _>(
+                        board,
+                        Rule::QCount,
+                        hash,
+                        mv,
+                        ply,
+                        move_count,
+                        alpha,
+                        beta,
+                        poll,
+                    );
                     break;
                 }
                 let history = if is_quiet_move(mv) {
@@ -137,11 +151,23 @@ impl Searcher {
                 let see_prune = eval != VALUE_NONE
                     && !board.see_ge_quiet_aware_with_values(
                         mv,
-                        rules::q_see_threshold(SEEDS, alpha, eval, correction, history),
+                        rules::q_see_threshold(self.seeds(), alpha, eval, correction, history),
                         KERNEL_SEE_VALUES,
                     );
                 probe!(self, QSee, see_prune);
                 if see_prune {
+                    #[cfg(feature = "pricing")]
+                    self.compact_price_q::<NODE, _>(
+                        board,
+                        Rule::QSee,
+                        hash,
+                        mv,
+                        ply,
+                        move_count,
+                        alpha,
+                        beta,
+                        poll,
+                    );
                     continue;
                 }
             }
@@ -180,7 +206,7 @@ impl Searcher {
             return -MATE_SCORE + infra::to_i32(ply);
         }
         let noisy_best = !best_move.is_null() && !is_quiet_move(best_move);
-        if let Some(bonus) = rules::q_cutoff_reward(SEEDS, best_score, beta, noisy_best) {
+        if let Some(bonus) = rules::q_cutoff_reward(self.seeds(), best_score, beta, noisy_best) {
             let piece = board.moving_piece(best_move);
             let captured = board.captured_piece(best_move);
             self.td
@@ -188,7 +214,7 @@ impl Searcher {
                 .update_noisy(threats.all, stm, piece, best_move.to_sq(), captured, bonus);
         }
         probe!(self, QTail, best_score >= beta);
-        let best_score = rules::q_tail_value(SEEDS, best_score, beta);
+        let best_score = rules::q_tail_value(self.seeds(), best_score, beta);
         debug_assert!(best_score > -INF_SCORE && best_score < INF_SCORE);
         self.tt_store(TtStore {
             key: hash,
@@ -250,7 +276,10 @@ mod tests {
         let (mut searcher, board, score) = search::<NonPv>(fen, -101, -100);
         let raw = raw_to_kernel(searcher.raw_eval(&board));
         let (stand_pat, _) = searcher.compact_eval(&board, raw, kernel_material(&board), 1);
-        assert_eq!(score, rules::q_stand_pat_value(SEEDS, stand_pat, -100));
+        assert_eq!(
+            score,
+            rules::q_stand_pat_value(rules::SEEDS, stand_pat, -100)
+        );
         assert!(
             score > -100 && score < stand_pat,
             "{score} between beta and {stand_pat}"

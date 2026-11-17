@@ -10,9 +10,11 @@ use crate::tt::{Bound, TB_WIN_SCORE, TtProbe, TtStore};
 use super::super::history::{HistoryTables, SearchedMoves};
 use super::super::movepick::{MovePicker, ScoredMoveList, diversify_root_scores};
 use super::super::node::{NodeType, NonPv, Pv, TbVerdict, tb_verdict};
+#[cfg(feature = "pricing")]
+use super::super::pricing::{ReSearch, Rule, Verdict};
 use super::super::{MAX_PLY, SearchEvent, Searcher};
 use super::picker::{CompactPicker, Stage};
-use super::rules::{self, SEEDS, is_decisive};
+use super::rules::{self, is_decisive};
 use super::{KERNEL_SEE_VALUES, is_quiet_move, kernel_material, raw_to_kernel};
 
 /// A score at or beyond the tablebase loss band.
@@ -24,6 +26,17 @@ const fn is_loss(score: i32) -> bool {
 enum Moves {
     Root(MovePicker),
     Staged(CompactPicker),
+}
+
+#[cfg(feature = "pricing")]
+impl Moves {
+    /// The moves a stage-ending decision skips with the one it prices.
+    fn left_behind(&self) -> usize {
+        match self {
+            Self::Root(_) => 0,
+            Self::Staged(picker) => picker.moves_left_behind(),
+        }
+    }
 }
 
 impl Searcher {
@@ -69,6 +82,21 @@ impl Searcher {
             "ply {ply} entered with a move left in its frame"
         );
         let has_excluded = !excluded.is_null();
+        #[cfg(feature = "pricing")]
+        let pricing_entry = super::pricing::CompactEntry {
+            depth,
+            alpha,
+            beta,
+            cut_node,
+            last_critical_ply,
+            // The last ply returns below before it reads a child's frame.
+            child_cutoffs: if ply + 1 < MAX_PLY {
+                self.td.stack[ply + 1].cutoff_count
+            } else {
+                0
+            },
+            nodes: self.td.nodes,
+        };
         let in_check = board.is_in_check();
         if NODE::PV {
             self.td.pv_len[ply] = ply;
@@ -164,7 +192,7 @@ impl Searcher {
 
         let tt_cuts = entry.is_some()
             && rules::tt_cuts(
-                SEEDS,
+                self.seeds(),
                 &rules::TtCutInput {
                     pv: NODE::PV,
                     excluded: has_excluded,
@@ -182,7 +210,7 @@ impl Searcher {
         }
         if tt_cuts {
             let rewards = rules::tt_cut_rewards(
-                SEEDS,
+                self.seeds(),
                 &rules::TtCutRewardInput {
                     tt_quiet,
                     tt_score,
@@ -198,7 +226,7 @@ impl Searcher {
                     .update_quiet(board.threats().all, stm, tt_move, quiet_bonus);
                 self.update_continuations(ply, stm, piece, tt_move.to_sq(), cont_bonus);
             }
-            if rules::tt_cut_returns(SEEDS, i32::from(board.halfmove_clock())) {
+            if rules::tt_cut_returns(self.seeds(), i32::from(board.halfmove_clock())) {
                 return tt_score;
             }
         }
@@ -245,7 +273,7 @@ impl Searcher {
 
         let parent = *self.td.stack.back(ply, 1);
         let eval_bonus = rules::eval_bonus_applies(
-            SEEDS,
+            self.seeds(),
             &rules::EvalBonusGate {
                 root: NODE::ROOT,
                 in_check,
@@ -257,7 +285,7 @@ impl Searcher {
             },
         );
         if eval_bonus {
-            let bonus = rules::eval_difference_bonus(SEEDS, eval, parent.static_eval);
+            let bonus = rules::eval_difference_bonus(self.seeds(), eval, parent.static_eval);
             probe!(self, EvalBonus, true);
             self.td
                 .hist
@@ -267,7 +295,7 @@ impl Searcher {
             #[cfg(feature = "probes")]
             let before = depth;
             depth = rules::hindsight_depth(
-                SEEDS,
+                self.seeds(),
                 depth,
                 parent.reduction,
                 eval + parent.static_eval,
@@ -277,7 +305,7 @@ impl Searcher {
         }
 
         let potential_singularity =
-            rules::singular_candidate(SEEDS, depth, tt_pv, tt_depth, tt_bound, tt_score);
+            rules::singular_candidate(self.seeds(), depth, tt_pv, tt_depth, tt_bound, tt_score);
         let improvement = if in_check {
             0
         } else {
@@ -297,7 +325,7 @@ impl Searcher {
         // The three gates are asked before any acts, so each is counted at
         // every node that reaches them.
         let razor = rules::razors(
-            SEEDS,
+            self.seeds(),
             &rules::RazorInput {
                 pv: NODE::PV,
                 in_check,
@@ -319,7 +347,7 @@ impl Searcher {
             correction,
             unthreatened: (threats.all & board.color_occ(stm)).is_empty(),
         };
-        let rfp_cuts = rules::rfp_cuts(SEEDS, &rfp);
+        let rfp_cuts = rules::rfp_cuts(self.seeds(), &rfp);
         let null_gate = rules::NullGateInput {
             cut_node,
             in_check,
@@ -341,19 +369,48 @@ impl Searcher {
                         >= KERNEL_SEE_VALUES.as_array()[Piece::Knight as usize]
                 }),
         };
-        let null_move = rules::nmp_gate(SEEDS, &null_gate);
+        let null_move = rules::nmp_gate(self.seeds(), &null_gate);
         probe!(self, Razor, razor);
         probe!(self, Rfp, rfp_cuts);
         probe!(self, NmpGate, null_move);
-        if razor {
-            return self.compact_quiescence::<NonPv, _>(board, alpha, beta, ply, poll);
+        if razor && !pricing_off!(self, ply, Razor) {
+            let score = self.compact_quiescence::<NonPv, _>(board, alpha, beta, ply, poll);
+            #[cfg(feature = "pricing")]
+            self.compact_price_cut::<NODE, _>(
+                board,
+                Rule::Razor,
+                hash,
+                depth,
+                ply,
+                has_excluded,
+                &pricing_entry,
+                Verdict::Shortcut {
+                    returned: score,
+                    alpha,
+                },
+                poll,
+            );
+            return score;
         }
-        if rfp_cuts {
-            return rules::rfp_value(SEEDS, estimate, beta);
+        if rfp_cuts && !pricing_off!(self, ply, ReverseFutility) {
+            let value = rules::rfp_value(self.seeds(), estimate, beta);
+            #[cfg(feature = "pricing")]
+            self.compact_price_cut::<NODE, _>(
+                board,
+                Rule::ReverseFutility,
+                hash,
+                depth,
+                ply,
+                has_excluded,
+                &pricing_entry,
+                Verdict::Cut { beta },
+                poll,
+            );
+            return value;
         }
-        if null_move {
+        if null_move && !pricing_off!(self, ply, NullMove) {
             debug_assert!(!parent.mv.is_null(), "a null move after a null move");
-            let reduction = rules::nmp_reduction(SEEDS, improving, depth, estimate, beta);
+            let reduction = rules::nmp_reduction(self.seeds(), improving, depth, estimate, beta);
             probe!(self, NmpR, true);
             let null_beta = rules::null_bound(depth, beta, tt_score, tt_bound, tt_depth);
             self.td.stack[ply].laterality = 0;
@@ -375,7 +432,7 @@ impl Searcher {
                 return 0;
             }
             let outcome = rules::null_outcome(
-                SEEDS,
+                self.seeds(),
                 score,
                 null_beta,
                 beta,
@@ -386,7 +443,21 @@ impl Searcher {
             probe!(self, NmpResult, outcome != rules::NullOutcome::Fail);
             match outcome {
                 rules::NullOutcome::Fail => {}
-                rules::NullOutcome::Cut => return score,
+                rules::NullOutcome::Cut => {
+                    #[cfg(feature = "pricing")]
+                    self.compact_price_cut::<NODE, _>(
+                        board,
+                        Rule::NullMove,
+                        hash,
+                        depth,
+                        ply,
+                        has_excluded,
+                        &pricing_entry,
+                        Verdict::Cut { beta },
+                        poll,
+                    );
+                    return score;
+                }
                 rules::NullOutcome::Verify(verify_depth) => {
                     self.td.nmp_min_ply = infra::to_i32(ply) + 3 * verify_depth / 4;
                     let verified = self.compact_negamax::<NonPv, _>(
@@ -405,13 +476,25 @@ impl Searcher {
                         return 0;
                     }
                     if verified >= beta {
+                        #[cfg(feature = "pricing")]
+                        self.compact_price_cut::<NODE, _>(
+                            board,
+                            Rule::NullMove,
+                            hash,
+                            depth,
+                            ply,
+                            has_excluded,
+                            &pricing_entry,
+                            Verdict::Cut { beta },
+                            poll,
+                        );
                         return score;
                     }
                 }
             }
         }
 
-        let mut probcut_beta = rules::probcut_beta(SEEDS, beta, improving);
+        let mut probcut_beta = rules::probcut_beta(self.seeds(), beta, improving);
         let probcut = rules::probcut_gate(&rules::ProbcutGateInput {
             cut_node,
             beta,
@@ -421,7 +504,7 @@ impl Searcher {
             tt_quiet,
         });
         probe!(self, ProbcutGate, probcut);
-        if probcut {
+        if probcut && !pricing_off!(self, ply, ProbCut) {
             let mut picker = CompactPicker::new(Move::NULL, Some(probcut_beta - eval), ply);
             while let Some(mv) = picker.next(self, board, &threats, true) {
                 if picker.stage() == Stage::BadNoisy {
@@ -447,7 +530,7 @@ impl Searcher {
                     poll,
                 );
                 let verification =
-                    rules::probcut_depth(SEEDS, depth, improving, score, probcut_beta);
+                    rules::probcut_depth(self.seeds(), depth, improving, score, probcut_beta);
                 probe!(
                     self,
                     ProbcutDepth,
@@ -500,7 +583,20 @@ impl Searcher {
                         static_eval: raw,
                         is_pv: tt_pv,
                     });
-                    return rules::probcut_value(SEEDS, score, beta);
+                    let value = rules::probcut_value(self.seeds(), score, beta);
+                    #[cfg(feature = "pricing")]
+                    self.compact_price_cut::<NODE, _>(
+                        board,
+                        Rule::ProbCut,
+                        hash,
+                        depth,
+                        ply,
+                        has_excluded,
+                        &pricing_entry,
+                        Verdict::Cut { beta },
+                        poll,
+                    );
+                    return value;
                 }
             }
         }
@@ -510,7 +606,7 @@ impl Searcher {
         let singular_searched =
             !NODE::ROOT && !has_excluded && potential_singularity && !tt_move.is_null();
         let ldse = rules::ldse_extends(
-            SEEDS,
+            self.seeds(),
             singular_searched,
             depth,
             in_check,
@@ -521,7 +617,7 @@ impl Searcher {
         probe!(self, Ldse, ldse);
         if singular_searched {
             let margin = rules::singular_margin(
-                SEEDS,
+                self.seeds(),
                 depth,
                 tt_bound == Some(Bound::Exact),
                 tt_pv && !NODE::PV,
@@ -544,7 +640,7 @@ impl Searcher {
                 return 0;
             }
             let outcome = rules::singular_outcome(
-                SEEDS,
+                self.seeds(),
                 &rules::SingularInput {
                     singular_score,
                     singular_beta,
@@ -569,7 +665,23 @@ impl Searcher {
             match outcome {
                 rules::SingularOutcome::None => {}
                 rules::SingularOutcome::Extend(plies) => extension = plies,
-                rules::SingularOutcome::MultiCut(score) => return score,
+                rules::SingularOutcome::MultiCut(score) if !pricing_off!(self, ply, MultiCut) => {
+                    #[cfg(feature = "pricing")]
+                    self.compact_price_cut::<NODE, _>(
+                        board,
+                        Rule::MultiCut,
+                        hash,
+                        depth,
+                        ply,
+                        has_excluded,
+                        &pricing_entry,
+                        Verdict::Cut { beta },
+                        poll,
+                    );
+                    return score;
+                }
+                // Switched off by a pricing probe at this ply.
+                rules::SingularOutcome::MultiCut(_) => {}
                 rules::SingularOutcome::Demote => tt_move = Move::NULL,
             }
         } else if ldse {
@@ -644,44 +756,133 @@ impl Searcher {
                     move_count,
                     bad_stage,
                 };
-                let lmp = rules::lmp_prunes(SEEDS, &prune);
+                let lmp = rules::lmp_prunes(self.seeds(), &prune);
                 probe!(self, Lmp, lmp);
                 if lmp {
+                    #[cfg(feature = "pricing")]
+                    self.compact_price_prune::<NODE, _>(
+                        board,
+                        Rule::LateMovePruning,
+                        hash,
+                        mv,
+                        piece,
+                        depth,
+                        ply,
+                        cut_node,
+                        has_excluded,
+                        move_count,
+                        moves.left_behind(),
+                        alpha,
+                        last_critical_ply,
+                        poll,
+                    );
                     skip_quiets = true;
                     continue;
                 }
-                let futility = rules::futility_prunes(SEEDS, &prune);
+                let futility = rules::futility_prunes(self.seeds(), &prune);
                 probe!(self, Futility, futility);
                 if futility {
-                    let value = rules::futility_value(SEEDS, &prune);
+                    #[cfg(feature = "pricing")]
+                    self.compact_price_prune::<NODE, _>(
+                        board,
+                        Rule::QuietFutility,
+                        hash,
+                        mv,
+                        piece,
+                        depth,
+                        ply,
+                        cut_node,
+                        has_excluded,
+                        move_count,
+                        moves.left_behind(),
+                        alpha,
+                        last_critical_ply,
+                        poll,
+                    );
+                    let value = rules::futility_value(self.seeds(), &prune);
                     if !is_decisive(best_score) && best_score < value {
                         best_score = value;
                     }
                     skip_quiets = true;
                     continue;
                 }
-                let bad_noisy = rules::bad_noisy_prunes(SEEDS, &prune);
+                let bad_noisy = rules::bad_noisy_prunes(self.seeds(), &prune);
                 probe!(self, BadNoisy, bad_noisy);
                 if bad_noisy {
-                    let value = rules::bad_noisy_value(SEEDS, &prune);
+                    #[cfg(feature = "pricing")]
+                    self.compact_price_prune::<NODE, _>(
+                        board,
+                        Rule::BadNoisyFutility,
+                        hash,
+                        mv,
+                        piece,
+                        depth,
+                        ply,
+                        cut_node,
+                        has_excluded,
+                        move_count,
+                        moves.left_behind(),
+                        alpha,
+                        last_critical_ply,
+                        poll,
+                    );
+                    let value = rules::bad_noisy_value(self.seeds(), &prune);
                     if !is_decisive(best_score) && best_score < value {
                         best_score = value;
                     }
                     break;
                 }
-                let history_prune = rules::history_prunes(SEEDS, &prune);
+                let history_prune = rules::history_prunes(self.seeds(), &prune);
                 probe!(self, HistoryPrune, history_prune);
                 if history_prune {
+                    #[cfg(feature = "pricing")]
+                    self.compact_price_prune::<NODE, _>(
+                        board,
+                        Rule::HistoryPruning,
+                        hash,
+                        mv,
+                        piece,
+                        depth,
+                        ply,
+                        cut_node,
+                        has_excluded,
+                        move_count,
+                        0,
+                        alpha,
+                        last_critical_ply,
+                        poll,
+                    );
                     continue;
                 }
                 let see_prune = !in_check
                     && !board.see_ge_quiet_aware_with_values(
                         mv,
-                        rules::see_threshold(SEEDS, is_quiet, depth, history),
+                        rules::see_threshold(self.seeds(), is_quiet, depth, history),
                         KERNEL_SEE_VALUES,
                     );
                 probe!(self, SeeMargin, see_prune);
                 if see_prune {
+                    #[cfg(feature = "pricing")]
+                    self.compact_price_prune::<NODE, _>(
+                        board,
+                        if is_quiet {
+                            Rule::QuietSee
+                        } else {
+                            Rule::NoisySee
+                        },
+                        hash,
+                        mv,
+                        piece,
+                        depth,
+                        ply,
+                        cut_node,
+                        has_excluded,
+                        move_count,
+                        0,
+                        alpha,
+                        last_critical_ply,
+                        poll,
+                    );
                     continue;
                 }
             }
@@ -700,7 +901,7 @@ impl Searcher {
             let mut score = 0;
             if depth >= 2 && move_count >= 2 {
                 let reduction = rules::late_move_reduction(
-                    SEEDS,
+                    self.seeds(),
                     &self.compact_reduction_input(
                         board,
                         ply,
@@ -751,9 +952,35 @@ impl Searcher {
                 );
                 self.td.stack[ply].reduction = 0;
                 search_count += 1;
+                #[cfg(feature = "pricing")]
+                if score <= alpha && reduced < new_depth {
+                    self.compact_price_reduction::<NODE, _>(
+                        board,
+                        Rule::LmrFailLow,
+                        hash,
+                        mv,
+                        depth,
+                        ply,
+                        cut_node,
+                        has_excluded,
+                        move_count,
+                        &ReSearch {
+                            new_depth,
+                            alpha,
+                            cut_node: !cut_node,
+                            last_critical_ply,
+                        },
+                        poll,
+                    );
+                }
                 if score > alpha {
-                    new_depth =
-                        rules::research_depth(SEEDS, NODE::ROOT, score, best_score, new_depth);
+                    new_depth = rules::research_depth(
+                        self.seeds(),
+                        NODE::ROOT,
+                        score,
+                        best_score,
+                        new_depth,
+                    );
                     probe!(self, Research, new_depth > reduced);
                     if new_depth > reduced {
                         score = -self.compact_negamax::<NonPv, _>(
@@ -772,7 +999,7 @@ impl Searcher {
                 }
             } else if !NODE::PV || move_count >= 2 {
                 let reduction = rules::unreduced_reduction(
-                    SEEDS,
+                    self.seeds(),
                     &self.compact_reduction_input(
                         board,
                         ply,
@@ -807,7 +1034,7 @@ impl Searcher {
                         rules::SpreadTerm::Unreduced,
                     ),
                 );
-                let reduced = rules::unreduced_depth(SEEDS, new_depth, reduction);
+                let reduced = rules::unreduced_depth(self.seeds(), new_depth, reduction);
                 probe!(self, Unreduced, reduced < new_depth);
                 score = -self.compact_negamax::<NonPv, _>(
                     board,
@@ -825,6 +1052,31 @@ impl Searcher {
                     poll,
                 );
                 search_count += 1;
+                #[cfg(feature = "pricing")]
+                if score <= alpha && reduced < new_depth {
+                    self.compact_price_reduction::<NODE, _>(
+                        board,
+                        Rule::FdsFailLow,
+                        hash,
+                        mv,
+                        depth,
+                        ply,
+                        cut_node,
+                        has_excluded,
+                        move_count,
+                        &ReSearch {
+                            new_depth,
+                            alpha,
+                            cut_node: !cut_node,
+                            last_critical_ply: if move_count == 1 {
+                                last_critical_ply
+                            } else {
+                                ply + 1
+                            },
+                        },
+                        poll,
+                    );
+                }
             }
             if NODE::PV && (move_count == 1 || score > alpha) {
                 if mv == tt_move && tt_depth > 1 {
@@ -950,13 +1202,13 @@ impl Searcher {
                 is_pv: tt_pv,
             };
             if NODE::PV {
-                self.shared.tt.store_forced(store);
+                self.tt_store_forced(store);
             } else {
                 self.tt_store(store);
             }
         }
         let correction_update = rules::correction_update(
-            SEEDS,
+            self.seeds(),
             &rules::CorrectionInput {
                 in_check,
                 noisy_best: !best_move.is_null() && !is_quiet_move(best_move),
@@ -971,6 +1223,8 @@ impl Searcher {
             self.compact_train_correction(board, ply, bonus);
         }
         debug_assert!(best_score > -INF_SCORE && best_score < INF_SCORE);
+        #[cfg(feature = "pricing")]
+        self.pricing_close(ply, bound == Bound::Upper);
         best_score
     }
 
@@ -1024,7 +1278,7 @@ impl Searcher {
             since_critical: infra::to_i32(ply - last_critical_ply).min(8),
             laterality: self.td.stack[ply].laterality,
             gives_check: board.is_in_check(),
-            spread: rules::spread(SEEDS, term, self.td.nodes, thread),
+            spread: rules::spread(self.seeds(), term, self.td.nodes, thread),
             ..input
         }
     }
@@ -1048,7 +1302,7 @@ impl Searcher {
         let noisies = noisies.as_slice();
         probe!(self, Updates, true);
         let amounts = rules::update_amounts(
-            SEEDS,
+            self.seeds(),
             depth,
             cut_node,
             infra::to_i32(noisies.len()),
@@ -1067,7 +1321,7 @@ impl Searcher {
                 .update_pawn(pawn_row, stm, best_piece, best.to_sq(), amounts.quiet_bonus);
             self.update_continuations(ply, stm, best_piece, best.to_sq(), amounts.cont_bonus);
             for (index, &mv) in quiets.iter().enumerate() {
-                let fade = rules::malus_fade(SEEDS, infra::to_i32(index));
+                let fade = rules::malus_fade(self.seeds(), infra::to_i32(index));
                 let piece = board.moving_piece(mv);
                 let malus = -amounts.quiet_malus * fade / 1024;
                 self.td.hist.update_quiet(threats, stm, mv, malus);
@@ -1134,7 +1388,7 @@ impl Searcher {
         if is_quiet_move(parent.mv) {
             probe!(self, FailLowReward, true);
             let reward = rules::fail_low_reward(
-                SEEDS,
+                self.seeds(),
                 &rules::RewardInput {
                     parent_move_count: parent.move_count,
                     parent_tt: parent.mv == parent.tt_move,
@@ -1170,7 +1424,7 @@ impl Searcher {
                 piece,
                 parent.mv.to_sq(),
                 parent.captured,
-                rules::noisy_fail_low_reward(SEEDS, depth),
+                rules::noisy_fail_low_reward(self.seeds(), depth),
             );
         }
     }

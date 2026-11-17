@@ -55,6 +55,11 @@ pub(super) enum Rule {
     QCount,
     QSee,
     QBadFloor,
+    /// The compact kernel's singular multi-cut: a node cut by the exclusion
+    /// search's score.
+    MultiCut,
+    /// The compact kernel's full-depth search, reduced, that failed low.
+    FdsFailLow,
 }
 
 impl Rule {
@@ -73,7 +78,7 @@ impl Rule {
             | Self::QSee
             | Self::QBadFloor => 4,
             Self::Razor | Self::NullMove | Self::ProbCut => 3,
-            Self::QDelta => 0,
+            Self::QDelta | Self::MultiCut | Self::FdsFailLow => 0,
         }
     }
 
@@ -95,6 +100,8 @@ impl Rule {
             Self::QCount => "q_count",
             Self::QSee => "q_see",
             Self::QBadFloor => "q_bad_floor",
+            Self::MultiCut => "multicut",
+            Self::FdsFailLow => "fds",
         }
     }
 }
@@ -130,7 +137,7 @@ impl NodeKind {
 /// For a hidden move that raised alpha: whether its node then failed low,
 /// so the move would have changed the node's result.
 #[derive(Copy, Clone, PartialEq, Eq)]
-enum Changed {
+pub(in crate::search) enum Changed {
     /// Not a raising move-level label.
     NotRead,
     /// Its node has not exited yet.
@@ -221,7 +228,7 @@ struct Record {
 
 /// What a probe is for.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum ProbeKind {
+pub(in crate::search) enum ProbeKind {
     /// The decision reversed: the rule off at its ply, or the hidden move
     /// searched.
     Priced,
@@ -254,15 +261,20 @@ struct HeldParameters {
 }
 
 /// The thread state a probe saves and restores, beyond its buffers.
-struct Saved {
+pub(in crate::search) struct Saved {
     nodes: u64,
     seldepth: usize,
     nmp_min_ply: i32,
+    #[cfg(test)]
+    moves_made: u64,
+    /// The compact kernel's rule counts, which a probe's nodes would add to.
+    #[cfg(feature = "probes")]
+    rates: super::compact::probes::Rates,
 }
 
 /// One thread's instrument: the switches a probe reads, its scratch table,
 /// the save buffers and the records of the current search.
-pub(super) struct Pricing {
+pub(in crate::search) struct Pricing {
     /// A probe is running: no table write reaches the main table, no
     /// history moves, and no further decision is sampled.
     pub(super) probing: bool,
@@ -290,6 +302,19 @@ pub(super) struct Pricing {
     pv_table: Option<Box<PlyArray<[Move; MAX_PLY]>>>,
     pv_len: Option<Box<PlyArray<usize>>>,
     probe_nodes: u64,
+}
+
+impl Pricing {
+    /// Whether a probe is running with the compiled-in parameters, so a
+    /// plant acts only in the measured search.
+    pub(in crate::search) fn confined_probe(&self) -> bool {
+        self.probing && self.confine
+    }
+
+    /// Whether node-level decisions also get an identity probe.
+    pub(in crate::search) fn identity(&self) -> bool {
+        self.identity
+    }
 }
 
 impl Default for Pricing {
@@ -369,6 +394,19 @@ impl Searcher {
     /// Whether this decision is in the sample: the decision hashed with its
     /// rule and depth, so the draw does not depend on node order.
     pub(super) fn pricing_sampled(&self, rule: Rule, key: u64, mv: Move, depth: i32) -> bool {
+        self.pricing_draw(rule, rule.shift(), key, mv, depth)
+    }
+
+    /// The sample's draw at a stride of `2^shift` decisions, before the
+    /// extra shift `RAROG_PRICING` adds.
+    pub(in crate::search) fn pricing_draw(
+        &self,
+        rule: Rule,
+        shift: u32,
+        key: u64,
+        mv: Move,
+        depth: i32,
+    ) -> bool {
         let Some(extra) = extra_shift() else {
             return false;
         };
@@ -377,7 +415,7 @@ impl Searcher {
         }
         let depth_bits = u64::from(depth.clamp(0, 255).cast_unsigned());
         let drawn = mix(key ^ (u64::from(mv.0) << 16) ^ ((rule as u64) << 32) ^ (depth_bits << 40));
-        let stride = (1u64 << (rule.shift() + extra)) - 1;
+        let stride = (1u64 << (shift + extra)) - 1;
         drawn & stride == 0
     }
 
@@ -413,7 +451,7 @@ impl Searcher {
         )
     }
 
-    fn probe_begin(&mut self) -> Saved {
+    pub(in crate::search) fn probe_begin(&mut self) -> Saved {
         let td = &mut self.td;
         let pricing = &mut td.pricing;
         match &mut pricing.stack {
@@ -442,6 +480,10 @@ impl Searcher {
             nodes: td.nodes,
             seldepth: td.seldepth,
             nmp_min_ply: td.nmp_min_ply,
+            #[cfg(test)]
+            moves_made: td.moves_made,
+            #[cfg(feature = "probes")]
+            rates: td.rates.clone(),
         };
         if self.td.pricing.confine {
             self.swap_parameters();
@@ -460,7 +502,7 @@ impl Searcher {
     }
 
     /// Restore what the probe changed; returns the probe's nodes.
-    fn probe_end(&mut self, saved: &Saved) -> u64 {
+    pub(in crate::search) fn probe_end(&mut self, saved: &Saved) -> u64 {
         if self.td.pricing.confine {
             self.swap_parameters();
         }
@@ -480,11 +522,17 @@ impl Searcher {
         td.nodes = saved.nodes;
         td.seldepth = saved.seldepth;
         td.nmp_min_ply = saved.nmp_min_ply;
+        #[cfg(test)]
+        {
+            td.moves_made = saved.moves_made;
+        }
+        #[cfg(feature = "probes")]
+        td.rates.clone_from(&saved.rates);
         pricing.probe_nodes += nodes;
         nodes
     }
 
-    fn push_record(
+    pub(in crate::search) fn push_record(
         &mut self,
         decision: &Decision,
         nodes: u64,
@@ -524,6 +572,7 @@ impl Searcher {
         hidden: &HiddenMove,
         poll: &mut P,
     ) {
+        debug_assert_eq!(self.cfg.kernel, super::options::Kernel::Classic);
         let saved = self.probe_begin();
         let ply = decision.ply;
         self.push_move(board, ply, hidden.mv, hidden.piece);
@@ -559,6 +608,7 @@ impl Searcher {
         search: &ReSearch,
         poll: &mut P,
     ) -> i32 {
+        debug_assert_eq!(self.cfg.kernel, super::options::Kernel::Classic);
         -self.negamax::<NonPv, _>(
             board,
             search.new_depth,
@@ -573,7 +623,12 @@ impl Searcher {
         )
     }
 
-    fn record_raise(&mut self, decision: &Decision, nodes: u64, raises: bool) {
+    pub(in crate::search) fn record_raise(
+        &mut self,
+        decision: &Decision,
+        nodes: u64,
+        raises: bool,
+    ) {
         let changed = if raises {
             Changed::Pending
         } else {
@@ -609,6 +664,7 @@ impl Searcher {
         kind: ProbeKind,
         poll: &mut P,
     ) {
+        debug_assert_eq!(self.cfg.kernel, super::options::Kernel::Classic);
         let saved = self.probe_begin();
         self.probe_switches(decision, kind);
         let score = self.negamax::<NODE, _>(
@@ -635,7 +691,7 @@ impl Searcher {
 
     /// A priced probe switches the rule off at its ply; an identity probe
     /// switches nothing and reads the main table alone.
-    fn probe_switches(&mut self, decision: &Decision, kind: ProbeKind) {
+    pub(in crate::search) fn probe_switches(&mut self, decision: &Decision, kind: ProbeKind) {
         match kind {
             ProbeKind::Priced => self.td.pricing.off = Some((decision.ply, decision.rule)),
             ProbeKind::Identity => self.td.pricing.tables = ProbeTables::Identity,
@@ -667,6 +723,7 @@ impl Searcher {
         kind: ProbeKind,
         poll: &mut P,
     ) {
+        debug_assert_eq!(self.cfg.kernel, super::options::Kernel::Classic);
         let saved = self.probe_begin();
         self.probe_switches(decision, kind);
         let score = self.quiescence(
@@ -696,6 +753,7 @@ impl Searcher {
         capture: &QCapture,
         poll: &mut P,
     ) {
+        debug_assert_eq!(self.cfg.kernel, super::options::Kernel::Classic);
         let saved = self.probe_begin();
         let ply = decision.ply;
         self.push_move(board, ply, capture.mv, capture.piece);
@@ -764,7 +822,7 @@ impl Searcher {
 }
 
 impl Verdict {
-    const fn wrong(self, probe: i32) -> bool {
+    pub(in crate::search) const fn wrong(self, probe: i32) -> bool {
         match self {
             Self::Cut { beta } => probe < beta,
             Self::Shortcut { returned, alpha } => (probe > alpha) != (returned > alpha),

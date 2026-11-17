@@ -28,6 +28,8 @@ mod node;
 #[cfg(test)]
 mod parity;
 mod picker;
+#[cfg(feature = "pricing")]
+mod pricing;
 #[cfg(any(test, feature = "probes"))]
 pub(super) mod probes;
 mod quiescence;
@@ -41,7 +43,7 @@ use crate::tt::TB_WIN_SCORE;
 
 use super::Searcher;
 use super::history::cont_context;
-use rules::{SEEDS, WrapperInput, wrapped_eval};
+use rules::{Seeds, WrapperInput, wrapped_eval};
 
 /// The kernel's evaluation units per 1024 of Rarog's: the ratio of the
 /// donor's mean raw evaluation to Rarog's on a common corpus.
@@ -136,6 +138,17 @@ impl Searcher {
         self.td.pv_len[ply] = child_len;
     }
 
+    /// The seed table the kernel reads: the donor's, and in the pricing
+    /// build a planted one in the measured search.
+    #[inline(always)]
+    pub(super) fn seeds(&self) -> &'static Seeds {
+        #[cfg(feature = "pricing")]
+        let seeds = self.pricing_seeds();
+        #[cfg(not(feature = "pricing"))]
+        let seeds = rules::SEEDS;
+        seeds
+    }
+
     /// The compact kernel's corrected evaluation from a raw evaluation in
     /// kernel units and the board's `material` in exchange values, and the
     /// correction it includes. A draw verdict is a classification, not an
@@ -153,7 +166,7 @@ impl Searcher {
         }
         let correction = self.compact_correction(board, ply);
         let eval = wrapped_eval(
-            SEEDS,
+            self.seeds(),
             &WrapperInput {
                 raw,
                 material,

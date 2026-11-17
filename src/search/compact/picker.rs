@@ -9,7 +9,7 @@ use super::super::Searcher;
 use super::super::history::HistoryTables;
 use super::super::movepick::{QuietContext, ScoredMoveList, pick_next};
 use super::rules::{
-    NoisyOrderInput, QuietOrderInput, SEEDS, good_noisy_threshold, noisy_order, quiet_order,
+    NoisyOrderInput, QuietOrderInput, Seeds, good_noisy_threshold, noisy_order, quiet_order,
 };
 use super::{KERNEL_SEE_VALUES, is_quiet_move};
 
@@ -73,6 +73,17 @@ impl CompactPicker {
         self.stage
     }
 
+    /// The moves a stage-ending decision skips with the one it prices: the
+    /// quiets not yet handed over, or the bad noisy moves.
+    #[cfg(feature = "pricing")]
+    pub(super) fn moves_left_behind(&self) -> usize {
+        match self.stage {
+            Stage::Quiets => (self.moves.len() - self.noisy_len).saturating_sub(self.quiet_index),
+            Stage::BadNoisy => self.bad_len - self.bad_index,
+            _ => 0,
+        }
+    }
+
     /// Whether the table's move is quiet by the kernel's partition, in
     /// which an under-promotion push is quiet.
     fn tt_move_quiet(&self) -> bool {
@@ -116,7 +127,12 @@ impl CompactPicker {
                             self.noisy_index,
                         );
                         let bar = self.threshold.unwrap_or_else(|| {
-                            good_noisy_threshold(SEEDS, picked.score, tt_quiet, self.good_emitted)
+                            good_noisy_threshold(
+                                searcher.seeds(),
+                                picked.score,
+                                tt_quiet,
+                                self.good_emitted,
+                            )
                         });
                         if board.see_ge_with_values(picked.mv, bar, KERNEL_SEE_VALUES) {
                             self.noisy_index += 1;
@@ -178,7 +194,7 @@ impl Searcher {
         let piece = board.moving_piece(mv);
         let captured = board.captured_piece(mv);
         noisy_order(
-            SEEDS,
+            self.seeds(),
             &NoisyOrderInput {
                 victim: captured.map_or(0, |p| KERNEL_SEE_VALUES.as_array()[p as usize]),
                 history: self.td.hist.noisy(
@@ -218,7 +234,7 @@ impl Searcher {
             probe!(self, PickQuiet, true);
             out.push(
                 mv,
-                compact_quiet_score(board, threats, &ctx, hist, mv),
+                compact_quiet_score(self.seeds(), board, threats, &ctx, hist, mv),
                 0,
                 0,
             );
@@ -228,6 +244,7 @@ impl Searcher {
 
 /// A quiet move's ordering score in the compact kernel.
 fn compact_quiet_score(
+    seeds: &Seeds,
     board: &Board,
     threats: &Threats,
     ctx: &QuietContext,
@@ -244,7 +261,7 @@ fn compact_quiet_score(
         }
     }
     quiet_order(
-        SEEDS,
+        seeds,
         &QuietOrderInput {
             quiet: hist.quiet(threats.all, ctx.stm, mv),
             pawn: hist.pawn(ctx.pawn_row, ctx.stm, piece, to),

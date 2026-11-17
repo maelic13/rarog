@@ -98,6 +98,7 @@ const NAMES: [&str; KINDS] = [
 
 /// One search's counts. The cells let a rule asked through a shared borrow
 /// (the picker's scoring) be counted too; a thread owns its counts.
+#[derive(Clone)]
 pub(in crate::search) struct Rates {
     fires: [Cell<u64>; KINDS],
     attempts: [Cell<u64>; KINDS],

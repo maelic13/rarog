@@ -541,6 +541,20 @@ impl Searcher {
         self.shared.tt.store(store);
     }
 
+    /// Store a search result over any entry the replacement rule would keep,
+    /// with the same redirection as `tt_store`.
+    #[inline(always)]
+    pub(super) fn tt_store_forced(&mut self, store: TtStore) {
+        #[cfg(feature = "pricing")]
+        if self.td.pricing.probing {
+            if let Some(table) = self.pricing_scratch() {
+                table.store_forced(store);
+            }
+            return;
+        }
+        self.shared.tt.store_forced(store);
+    }
+
     /// Store a static evaluation alone; a pricing probe's goes to its
     /// scratch table.
     #[inline(always)]
