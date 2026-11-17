@@ -1536,7 +1536,11 @@ fn build_with_pgo(config: &Config, purpose: Purpose) -> Result<PathBuf> {
 
     let profdata = pgo_dir.join("rarog.profdata");
     merge_profiles(&llvm_profdata, &raw_dir, &profdata, &config.target)?;
-    check_kernel_trained(&llvm_profdata, &profdata)?;
+    check_kernel_trained(
+        &llvm_profdata,
+        &profdata,
+        kernel_functions(&config.features),
+    )?;
 
     let mut use_flags = vec![
         "-C".to_string(),
@@ -1790,6 +1794,21 @@ fn kill_child(child: &mut Child) {
 /// instantiation of each must have run in the training bench.
 const KERNEL_FUNCTIONS: [&str; 2] = ["Searcher7negamax", "Searcher10quiescence"];
 
+/// The compact kernel's, which a `compact-kernel` build plays. That build
+/// still compiles the classic kernel, but only tests select it there, so
+/// its copies never run and are not asked for.
+const COMPACT_KERNEL_FUNCTIONS: [&str; 2] =
+    ["Searcher15compact_negamax", "Searcher18compact_quiescence"];
+
+/// The kernel functions a build with these features plays.
+fn kernel_functions(features: &[String]) -> [&'static str; 2] {
+    if features.iter().any(|feature| feature == "compact-kernel") {
+        COMPACT_KERNEL_FUNCTIONS
+    } else {
+        KERNEL_FUNCTIONS
+    }
+}
+
 /// Fail when a copy of the search kernel has a profile that never ran.
 ///
 /// A copy the training bench never reaches still has a profile record, with
@@ -1797,7 +1816,7 @@ const KERNEL_FUNCTIONS: [&str; 2] = ["Searcher7negamax", "Searcher10quiescence"]
 /// missing-profile warning fires only for functions with no record at all.
 /// A kernel instantiated per caller once left every multi-thread search
 /// running untrained copies this way. The merged profile says which ran.
-fn check_kernel_trained(llvm_profdata: &Path, profdata: &Path) -> Result<()> {
+fn check_kernel_trained(llvm_profdata: &Path, profdata: &Path, functions: [&str; 2]) -> Result<()> {
     let output = Command::new(llvm_profdata)
         .args(["show", "--all-functions", "--counts"])
         .arg(profdata)
@@ -1809,7 +1828,7 @@ fn check_kernel_trained(llvm_profdata: &Path, profdata: &Path) -> Result<()> {
             output.status
         ));
     }
-    for line in kernel_verdict(&String::from_utf8_lossy(&output.stdout))? {
+    for line in kernel_verdict(&String::from_utf8_lossy(&output.stdout), functions)? {
         println_flush(format_args!("{line}"));
     }
     Ok(())
@@ -1817,10 +1836,10 @@ fn check_kernel_trained(llvm_profdata: &Path, profdata: &Path) -> Result<()> {
 
 /// The check's verdict on a dump: a line per kernel function when every copy
 /// ran, else the copies that did not.
-fn kernel_verdict(dump: &str) -> Result<Vec<String>> {
-    let copies = kernel_entry_counts(dump);
+fn kernel_verdict(dump: &str, functions: [&str; 2]) -> Result<Vec<String>> {
+    let copies = kernel_entry_counts(dump, functions);
     let mut lines = Vec::new();
-    for kernel in KERNEL_FUNCTIONS {
+    for kernel in functions {
         let trained = copies.iter().filter(|(name, _)| name.contains(kernel));
         let (mut seen, mut cold) = (0, Vec::new());
         for (name, entries) in trained {
@@ -1846,7 +1865,7 @@ fn kernel_verdict(dump: &str) -> Result<Vec<String>> {
 
 /// Each record of an `llvm-profdata show --all-functions --counts` dump
 /// naming a kernel function, with its entry count (its first block's).
-fn kernel_entry_counts(dump: &str) -> Vec<(String, u64)> {
+fn kernel_entry_counts(dump: &str, functions: [&str; 2]) -> Vec<(String, u64)> {
     let mut records = Vec::new();
     let mut name: Option<&str> = None;
     for line in dump.lines() {
@@ -1854,7 +1873,7 @@ fn kernel_entry_counts(dump: &str) -> Vec<(String, u64)> {
         if let Some(record) = line.strip_suffix(':')
             && !record.contains(' ')
         {
-            name = KERNEL_FUNCTIONS
+            name = functions
                 .iter()
                 .any(|kernel| record.contains(kernel))
                 .then_some(record);
@@ -2233,7 +2252,7 @@ Instrumentation level: IR
 
     #[test]
     fn kernel_records_are_read_with_their_entry_counts() {
-        let records = super::kernel_entry_counts(PROFILE_DUMP);
+        let records = super::kernel_entry_counts(PROFILE_DUMP, super::KERNEL_FUNCTIONS);
         let counts: Vec<u64> = records.iter().map(|(_, entries)| *entries).collect();
         assert_eq!(counts, [12_443_005, 0, 5], "{records:?}");
         assert!(records[1].0.contains("Searcher7negamaxNtB6_2Pv"));
@@ -2246,17 +2265,78 @@ Instrumentation level: IR
 
     #[test]
     fn an_untrained_kernel_copy_fails_the_build() {
-        let verdict = super::kernel_verdict(PROFILE_DUMP).expect_err("a copy never ran");
+        let verdict = super::kernel_verdict(PROFILE_DUMP, super::KERNEL_FUNCTIONS)
+            .expect_err("a copy never ran");
         assert!(
             verdict.starts_with("1 of 2 `Searcher7negamax` copies never ran"),
             "{verdict}"
         );
         let trained =
             PROFILE_DUMP.replace("Block counts: [0, 0, 10022]", "Block counts: [7, 0, 10022]");
-        let lines = super::kernel_verdict(&trained).expect("every copy ran");
+        let lines =
+            super::kernel_verdict(&trained, super::KERNEL_FUNCTIONS).expect("every copy ran");
         assert_eq!(lines.len(), 2, "{lines:?}");
         let missing = PROFILE_DUMP.replace("Searcher10quiescence", "Searcher10other_name");
-        assert!(super::kernel_verdict(&missing.replace("[0, 0, 10022]", "[1]")).is_err());
+        assert!(
+            super::kernel_verdict(
+                &missing.replace("[0, 0, 10022]", "[1]"),
+                super::KERNEL_FUNCTIONS
+            )
+            .is_err()
+        );
+    }
+
+    /// A `compact-kernel` build's profile: its compact copies ran, the
+    /// classic copies it compiles but never selects did not.
+    const COMPACT_DUMP: &str = "Counters:
+  rarog.cgu.0;_RINvMNtNtNtCs4_5rarog6search7compact4nodeNtB7_8Searcher15compact_negamaxNtNtB7_4node2PvE:
+    Hash: 0x0a1b2c3d4e5f6071
+    Counters: 310
+    Block counts: [90, 4]
+  rarog.cgu.0;_RINvMs1_NtNtCs4_5rarog6search4nodeNtB8_8Searcher7negamaxNtB6_2PvE:
+    Hash: 0x0e9dd448b466f90b
+    Counters: 342
+    Block counts: [0, 0]
+  rarog.cgu.0;_RINvMNtNtNtCs4_5rarog6search7compact10quiescenceNtB7_8Searcher18compact_quiescenceNtNtB7_4node5NonPvE:
+    Hash: 0x1b2c3d4e5f607182
+    Counters: 120
+    Block counts: [7920, 1]
+  rarog.cgu.0;_RINvMs1_NtNtCs4_5rarog6search4nodeNtB8_8Searcher10quiescenceE:
+    Hash: 0x0bcf9b0838dc3c7a
+    Counters: 203
+    Block counts: [0, 0]
+Instrumentation level: IR
+";
+
+    #[test]
+    fn a_compact_kernel_build_checks_the_compact_kernel() {
+        let features = |list: &[&str]| list.iter().map(|f| (*f).to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            super::kernel_functions(&features(&[])),
+            super::KERNEL_FUNCTIONS
+        );
+        assert_eq!(
+            super::kernel_functions(&features(&["tune"])),
+            super::KERNEL_FUNCTIONS
+        );
+        let compact = super::kernel_functions(&features(&["tune", "compact-kernel"]));
+        assert_eq!(compact, super::COMPACT_KERNEL_FUNCTIONS);
+        let lines = super::kernel_verdict(COMPACT_DUMP, compact).expect("the compact copies ran");
+        assert_eq!(
+            lines,
+            [
+                "profile: all 1 `Searcher15compact_negamax` copies trained",
+                "profile: all 1 `Searcher18compact_quiescence` copies trained",
+            ]
+        );
+        // The same profile fails a classic build: its kernel never ran.
+        assert!(super::kernel_verdict(COMPACT_DUMP, super::KERNEL_FUNCTIONS).is_err());
+        let cold = COMPACT_DUMP.replace("[7920, 1]", "[0, 1]");
+        let verdict = super::kernel_verdict(&cold, compact).expect_err("a copy never ran");
+        assert!(
+            verdict.starts_with("1 of 1 `Searcher18compact_quiescence` copies never ran"),
+            "{verdict}"
+        );
     }
 
     use super::*;
