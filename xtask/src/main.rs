@@ -461,23 +461,25 @@ fn parse_tier(value: &str) -> Result<cpu_tier::Tier> {
         .ok_or_else(|| format!("unknown tier `{value}`; expected base, sse42, avx2 or pext"))
 }
 
-/// The features of a build, each one a kind its name carries. A name word is
-/// lower-case letters, digits and `_`; cargo itself refuses an unknown one.
+/// The features of a build, each one a kind its name carries. A feature is
+/// lower-case letters, digits, `_` and `-`, which the kind writes as `_`
+/// (`compact-kernel` is named `compact_kernel`, as the engine's start-up line
+/// names it); cargo itself refuses an unknown one.
 fn parse_features(value: &str) -> Result<Vec<String>> {
     value
         .split(',')
         .map(str::trim)
         .filter(|feature| !feature.is_empty())
         .map(|feature| {
-            let plain = feature
-                .bytes()
-                .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_');
+            let plain = feature.bytes().all(|byte| {
+                byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'_' | b'-')
+            });
             if plain && feature != "default" {
                 Ok(feature.to_string())
             } else {
                 Err(format!(
                     "feature `{feature}` cannot be named in a file: a build's features \
-                     are lower-case letters, digits and `_`, and not `default`"
+                     are lower-case letters, digits, `_` and `-`, and not `default`"
                 ))
             }
         })
@@ -2619,6 +2621,16 @@ Instrumentation level: IR
         // A candidate arm's own feature is named after the engine's kinds.
         assert_eq!(parse_features("b2core").unwrap(), ["b2core"]);
         assert!(parse_features("B2-core").is_err());
+        assert!(parse_features("b2.core").is_err());
+        // A hyphen passes to cargo as written and is named with `_`.
+        assert_eq!(
+            parse_features("compact-kernel").unwrap(),
+            ["compact-kernel"]
+        );
+        assert_eq!(
+            build_name::kinds(true, false, &["compact-kernel"]),
+            ["compact_kernel"]
+        );
         assert!(parse_features("default").is_err());
     }
 
