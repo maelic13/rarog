@@ -25,8 +25,9 @@
 //! which a one-thread trace multiplies by zero.
 //!
 //! The seed-coverage pass changes every seed in turn by a quarter of its
-//! value, at least one, and lists each seed no record detects; the list
-//! must hold only the seeds named with their reason.
+//! value, at least one, up and then down, and lists each seed that no
+//! record detects either way; the list must hold only the seeds named with
+//! their reason.
 //!
 //! The picker's two kinds score a move from its recorded components; the
 //! components themselves are table reads.
@@ -957,6 +958,20 @@ const UNDETECTABLE: &[(&str, &str)] = &[
         "a per-thread offset, times thread 0 in a one-thread trace",
     ),
     (
+        "fds_singular",
+        "the full-depth search reads it only with the TT move's score and a singular score, \
+         but a singular search needs depth 5 and from depth 2 every move after the first is \
+         reduced, so the full-depth search runs only for the first move, before its score exists",
+    ),
+    (
+        "fds_singular_offset",
+        "read only inside the full-depth search's singular term, which never runs (fds_singular)",
+    ),
+    (
+        "fds_singular_cap",
+        "read only inside the full-depth search's singular term, which never runs (fds_singular)",
+    ),
+    (
         "fds_spread_thread",
         "a per-thread offset, times thread 0 in a one-thread trace",
     ),
@@ -1021,15 +1036,17 @@ fn the_rules_reproduce_the_donors_decisions() {
         std::mem::size_of::<i32>() * SEED_FIELDS.len(),
         "the seed list names every seed scalar"
     );
-    // Each seed changed by a quarter of its value, at least one.
-    let perturbed: Vec<Seeds> = SEED_FIELDS
+    // Each seed changed by a quarter of its value, at least one, up and down.
+    let perturbed: Vec<[Seeds; 2]> = SEED_FIELDS
         .iter()
         .map(|(name, field)| {
-            let mut seeds = Seeds::DONOR;
-            let seed = field(&mut seeds);
-            *seed += (seed.abs() / 4).max(1);
-            assert_ne!(seeds, Seeds::DONOR, "{name} changes");
-            seeds
+            [1, -1].map(|sign| {
+                let mut seeds = Seeds::DONOR;
+                let seed = field(&mut seeds);
+                *seed += sign * (seed.abs() / 4).max(1);
+                assert_ne!(seeds, Seeds::DONOR, "{name} changes");
+                seeds
+            })
         })
         .collect();
     // The seeds no record has detected yet.
@@ -1072,7 +1089,11 @@ fn the_rules_reproduce_the_donors_decisions() {
                 }
             }
             if v == Verdict::Match {
-                undetected.retain(|&index| verdict(&perturbed[index], &record) == Some(v));
+                undetected.retain(|&index| {
+                    perturbed[index]
+                        .iter()
+                        .all(|seeds| verdict(seeds, &record) == Some(v))
+                });
             }
         }
     }
