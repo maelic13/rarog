@@ -2330,7 +2330,9 @@ mod tests {
         };
         let tree = |searcher: &mut Searcher, options: &SearchOptions| {
             let board = Board::from_fen(FEN).expect("valid FEN");
-            searcher.search(board, options, false, || SearchEvent::None).nodes
+            searcher
+                .search(board, options, false, || SearchEvent::None)
+                .nodes
         };
         let mut donor = SearchOptions::default();
         donor.limits.depth = Some(8);
@@ -2338,7 +2340,10 @@ mod tests {
         let base = tree(&mut Searcher::default(), &donor);
         assert_eq!(tree(&mut Searcher::default(), &options("269")), base);
         let moved = tree(&mut Searcher::default(), &options("400"));
-        assert_ne!(moved, base, "a longer reduction table searches another tree");
+        assert_ne!(
+            moved, base,
+            "a longer reduction table searches another tree"
+        );
         let mut reused = Searcher::default();
         assert_eq!(tree(&mut reused, &options("400")), moved);
         reused.new_game();

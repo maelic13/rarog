@@ -104,6 +104,11 @@ impl Searcher {
         if self.td.stopped {
             return 0;
         }
+        let depth = if NODE::ROOT {
+            depth
+        } else {
+            self.compact_line_room(depth, ply)
+        };
         if depth <= 0 {
             return if NODE::PV {
                 self.compact_quiescence::<Pv, _>(board, alpha, beta, ply, poll)
@@ -1431,10 +1436,50 @@ impl Searcher {
     }
 }
 
+/// A line searches at most this many times its iteration's depth before
+/// quiescence. In a won ending with a mate in view the donor's extensions and
+/// re-searches can carry lines to the ply cap: a fifth of a fit's
+/// perturbations turned one bench position from 43 thousand nodes into a
+/// billion. Eight times the depth makes every such case finish and binds no
+/// ordinary tree (the bench is unchanged); four times moved the bench by 2%
+/// and lost a minor in the KBNK anchor.
+const LINE_BOUND: i32 = 8;
+
+impl Searcher {
+    /// A node's depth held to its line's room under the line bound.
+    #[inline(always)]
+    fn compact_line_room(&self, depth: i32, ply: usize) -> i32 {
+        depth.min(LINE_BOUND * self.td.root_depth.max(1) - infra::to_i32(ply))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::search::options::{Kernel, SearchOptions};
+
+    #[test]
+    fn a_line_keeps_eight_times_its_iteration_depth_before_quiescence() {
+        let mut searcher = Searcher::default();
+        searcher.td.root_depth = 10;
+        assert_eq!(
+            searcher.compact_line_room(5, 70),
+            5,
+            "room left: depth kept"
+        );
+        assert_eq!(searcher.compact_line_room(20, 75), 5, "held to the room");
+        assert_eq!(
+            searcher.compact_line_room(20, 85),
+            -5,
+            "past it: quiescence"
+        );
+        searcher.td.root_depth = 0;
+        assert_eq!(
+            searcher.compact_line_room(9, 4),
+            4,
+            "a first iteration counts one ply"
+        );
+    }
 
     fn compact_search(fen: &str, depth: u32) -> (Searcher, super::super::super::SearchResult) {
         let mut options = SearchOptions::default();
