@@ -113,7 +113,8 @@ mod tests {
     fn the_window_narrows_as_the_score_and_move_hold_and_widens_on_failures() {
         let mut iterations = Iterations::new(0, 1);
         let (opening, optimism) = iterations.open(0, None);
-        assert_eq!((opening.alpha, opening.beta, opening.delta), (-23, 23, 23));
+        // The base half-width, 9510 1024ths, to the unit below.
+        assert_eq!((opening.alpha, opening.beta, opening.delta), (-9, 9, 9));
         assert_eq!(optimism, 0);
         let mv = Move::from_uci("e2e4").expect("a move");
         for _ in 0..3 {
@@ -121,8 +122,12 @@ mod tests {
             iterations.end_iteration(5, mv);
         }
         let (narrower, optimism) = iterations.open(0, None);
-        assert_eq!(narrower.delta, 23 - 2, "held twice since the first");
-        assert_eq!(optimism, 113 * 4 / (4 + 201));
+        assert_eq!(
+            narrower.delta,
+            (9_510 - 2 * 413 + 1024 * 4 * 4 / 10_658) / 1024,
+            "held twice since the first"
+        );
+        assert_eq!(optimism, 46 * 4 / (4 + 81));
 
         let mut window = CompactWindow::new(narrower);
         window.fail_high(200, 20);
@@ -158,6 +163,9 @@ mod tests {
         assert!(optimism < 0, "a line's optimism follows its own average");
         // A line's average never sets the stability: line 3's scores are
         // far from line 1's, yet the window narrowed as line 1 held.
-        assert_eq!(first.delta, 23 - 3);
+        assert_eq!(
+            first.delta,
+            (9_510 - 3 * 413 + 1024 * 4 * 4 / 10_658) / 1024
+        );
     }
 }

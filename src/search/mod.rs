@@ -1105,7 +1105,7 @@ impl Searcher {
                     crate::diag_count!(asp_fail_low);
                     crate::diag_add!(asp_fail_low_nodes, window_nodes);
                     if emit_info {
-                        let shown = self.score_out(score);
+                        let shown = score;
                         self.send_bounded_info_line(depth, shown, RootBound::Upper, bestmove);
                     }
                     window.fail_low(&self.cfg.params, score);
@@ -1119,7 +1119,7 @@ impl Searcher {
                     crate::diag_count!(asp_fail_high);
                     crate::diag_add!(asp_fail_high_nodes, window_nodes);
                     if emit_info {
-                        let shown = self.score_out(score);
+                        let shown = score;
                         self.send_bounded_info_line(depth, shown, RootBound::Lower, bestmove);
                     }
                     // Past a multiple of the soft target (twice it by default)
@@ -1221,7 +1221,7 @@ impl Searcher {
             }
 
             if emit_info {
-                self.send_info(depth, self.score_out(best_score));
+                self.send_info(depth, best_score);
             }
 
             if self.mate_limit_proved(best_score) {
@@ -1275,7 +1275,7 @@ impl Searcher {
             // iteration there is no prior average, so the baseline is the
             // current score → a neutral (zero) falling signal.
             // The clock reads scores in Rarog's units.
-            let shown_score = self.score_out(best_score);
+            let shown_score = best_score;
             let falling_baseline = if completed_depth <= 1 {
                 f64::from(shown_score)
             } else {
@@ -1406,7 +1406,7 @@ impl Searcher {
                 .add_fired(compact::probes::Kind::Gravity, self.td.hist.updates);
             self.notice(format_args!("{}", self.td.rates.line()));
         }
-        let best_score = self.score_out(best_score);
+        let best_score = best_score;
         self.remember_search_score(best_score);
         let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
         SearchResult {
@@ -1442,16 +1442,6 @@ impl Searcher {
     fn stop_the_pool(&self) {
         if let Some(shared) = self.shared.pool() {
             shared.request_stop();
-        }
-    }
-
-    /// A root score as everything outside the kernel reads it: the compact
-    /// kernel's in Rarog's units.
-    fn score_out(&self, score: i32) -> i32 {
-        if self.cfg.kernel == Kernel::Compact {
-            compact::score_to_rarog(score)
-        } else {
-            score
         }
     }
 
@@ -1752,7 +1742,7 @@ impl Searcher {
                 stable_iterations + 1
             };
             // The clock reads scores in Rarog's units.
-            let shown_score = self.score_out(best_score);
+            let shown_score = best_score;
             let falling_baseline = if completed_depth <= 1 {
                 f64::from(shown_score)
             } else {
@@ -1821,7 +1811,7 @@ impl Searcher {
         if compact && best_score > -INF_SCORE {
             self.td.compact_previous_score = best_score;
         }
-        let best_score = self.score_out(best_score);
+        let best_score = best_score;
         self.remember_search_score(best_score);
         let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
         SearchResult {
@@ -1863,7 +1853,7 @@ impl Searcher {
         ReportedLine {
             depth,
             seldepth: record.seldepth,
-            score: self.score_out(record.score),
+            score: record.score,
             bound,
             pv: record.pv[..record.pv_len.clamp(1, MAX_PLY)]
                 .iter()

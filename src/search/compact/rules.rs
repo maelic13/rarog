@@ -4,8 +4,10 @@
 //! A rule reads nothing but its arguments, so the parity instrument can call
 //! it on the donor's recorded inputs and compare its output with the donor's
 //! recorded decision, and a probe can count its firings without sitting
-//! inside the node. The seeds are the donor's fitted values in its units;
-//! the fold into Rarog's units rewrites this table.
+//! inside the node. The seeds are the donor's fitted values converted into
+//! Rarog's units by their dimension: a value in evaluation units scaled by
+//! the ratio of the two evaluations' units, a coefficient per evaluation unit
+//! divided by it, ratios, plies, counts and history amounts unchanged.
 //!
 //! A score is valid unless it is `VALUE_NONE`, the evaluation of a node in
 //! check and the score of an absent table entry; a decisive score is a win
@@ -16,8 +18,10 @@ use crate::tt::{Bound, TB_WIN_SCORE};
 
 use super::quiescence::Q_DEPTH;
 
-/// Every constant the kernel's rules read, in kernel units. A fraction
-/// written `*_t` is in ten-thousandths.
+/// Every constant the kernel's rules read, in Rarog's units. A fraction
+/// written `*_t` is in ten-thousandths; a name ending `_16` is in sixteenths
+/// of a unit and one ending `_1024` in 1024ths, where a whole unit would move
+/// the donor's value by more than 1%.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Seeds {
     // Evaluation wrapper: `(raw·(raw_base + material) + optimism·
@@ -56,28 +60,31 @@ pub(crate) struct Seeds {
     pub(crate) hindsight_reduction: i32,
     pub(crate) hindsight_rise: i32,
 
-    // Razoring below `alpha − base − square·d²`, while alpha is below the
-    // limit.
-    pub(crate) razor_base: i32,
-    pub(crate) razor_square: i32,
+    // Razoring below `alpha − base − square·d²`, in sixteenths, while alpha
+    // is below the limit.
+    pub(crate) razor_base_16: i32,
+    pub(crate) razor_square_16: i32,
     pub(crate) razor_alpha_limit: i32,
 
-    // Reverse futility's margin and the fraction of the way to beta it
-    // returns.
-    pub(crate) rfp_square: i32,
+    // Reverse futility's margin, in sixteenths, and the fraction of the way
+    // to beta it returns.
+    pub(crate) rfp_square_16: i32,
     pub(crate) rfp_improvement: i32,
-    pub(crate) rfp_linear: i32,
+    pub(crate) rfp_linear_16: i32,
     pub(crate) rfp_correction: i32,
-    pub(crate) rfp_unthreatened: i32,
-    pub(crate) rfp_constant: i32,
+    pub(crate) rfp_unthreatened_16: i32,
+    pub(crate) rfp_constant_16: i32,
+    pub(crate) rfp_min_16: i32,
     pub(crate) rfp_t: i32,
 
-    // The null move's margin, material floor, reduction and verification.
-    pub(crate) nmp_depth: i32,
-    pub(crate) nmp_tt_pv: i32,
+    // The null move's margin in sixteenths, its material floor, reduction
+    // and verification.
+    pub(crate) nmp_depth_16: i32,
+    pub(crate) nmp_tt_pv_16: i32,
     pub(crate) nmp_improvement: i32,
-    pub(crate) nmp_cutoffs: i32,
-    pub(crate) nmp_base: i32,
+    pub(crate) nmp_cutoffs_16: i32,
+    pub(crate) nmp_base_16: i32,
+    pub(crate) nmp_min_16: i32,
     pub(crate) nmp_material: i32,
     pub(crate) nmp_r_base: i32,
     pub(crate) nmp_r_improving: i32,
@@ -91,23 +98,24 @@ pub(crate) struct Seeds {
     pub(crate) probcut_improving: i32,
     pub(crate) probcut_depth_base: i32,
     pub(crate) probcut_depth_per: i32,
-    pub(crate) probcut_raise: i32,
+    pub(crate) probcut_raise_16: i32,
     pub(crate) probcut_t: i32,
 
-    // Singular search: the candidate, the margin, the extension bars and the
-    // multi-cut's return.
+    // Singular search: the candidate, the margin per ply of its span, the
+    // extension bars in sixteenths and the multi-cut's return.
     pub(crate) singular_depth: i32,
     pub(crate) singular_tt_depth: i32,
     pub(crate) singular_exact_div: i32,
-    pub(crate) double_pv: i32,
-    pub(crate) double_new_pv: i32,
-    pub(crate) double_quiet: i32,
+    pub(crate) singular_per_ply_1024: i32,
+    pub(crate) double_pv_16: i32,
+    pub(crate) double_new_pv_16: i32,
+    pub(crate) double_quiet_16: i32,
     pub(crate) double_correction: i32,
-    pub(crate) triple_pv: i32,
-    pub(crate) triple_new_pv: i32,
-    pub(crate) triple_quiet: i32,
+    pub(crate) triple_pv_16: i32,
+    pub(crate) triple_new_pv_16: i32,
+    pub(crate) triple_quiet_16: i32,
     pub(crate) triple_correction: i32,
-    pub(crate) triple_base: i32,
+    pub(crate) triple_base_16: i32,
     pub(crate) multicut_t: i32,
     pub(crate) negative_extension: i32,
     pub(crate) ldse_depth: i32,
@@ -119,18 +127,18 @@ pub(crate) struct Seeds {
     pub(crate) lmp_square: i32,
     pub(crate) lmp_history: i32,
 
-    // Quiet futility.
-    pub(crate) fp_linear: i32,
-    pub(crate) fp_history: i32,
-    pub(crate) fp_above_beta: i32,
+    // Quiet futility, in sixteenths.
+    pub(crate) fp_linear_16: i32,
+    pub(crate) fp_history_16: i32,
+    pub(crate) fp_above_beta_16: i32,
     pub(crate) fp_correction: i32,
-    pub(crate) fp_constant: i32,
+    pub(crate) fp_constant_16: i32,
     pub(crate) fp_depth: i32,
 
-    // Bad-noisy futility.
-    pub(crate) bnfp_linear: i32,
-    pub(crate) bnfp_history: i32,
-    pub(crate) bnfp_constant: i32,
+    // Bad-noisy futility, in sixteenths.
+    pub(crate) bnfp_linear_16: i32,
+    pub(crate) bnfp_history_16: i32,
+    pub(crate) bnfp_constant_16: i32,
     pub(crate) bnfp_depth: i32,
 
     // History pruning.
@@ -185,9 +193,9 @@ pub(crate) struct Seeds {
     pub(crate) lmr_spread_thread: i32,
     pub(crate) lmr_spread_centre: i32,
 
-    // The re-search after a reduced move beat alpha.
-    pub(crate) research_deeper: i32,
-    pub(crate) research_shallower: i32,
+    // The re-search after a reduced move beat alpha, in sixteenths.
+    pub(crate) research_deeper_16: i32,
+    pub(crate) research_shallower_16: i32,
 
     // The reduction of a search that LMR did not reduce, in 1024ths.
     pub(crate) fds_log: i32,
@@ -268,28 +276,36 @@ pub(crate) struct Seeds {
     pub(crate) reward_noisy_slope: i32,
     pub(crate) reward_noisy_cap: i32,
 
-    // The correction's update.
+    // The correction's update and the tables' saturation: the keyed tables'
+    // and the continuation table's.
     pub(crate) corr_slope: i32,
     pub(crate) corr_min: i32,
     pub(crate) corr_max: i32,
+    pub(crate) corr_keyed_max: i32,
+    pub(crate) corr_cont_max: i32,
 
     // Quiescence.
     pub(crate) q_stand_pat_t: i32,
     pub(crate) q_move_limit: i32,
-    pub(crate) q_see_divisor: i32,
+    // The SEE bar per unit of alpha's distance and per unit of correction, in
+    // 1024ths of an exchange unit.
+    pub(crate) q_see_scale: i32,
+    pub(crate) q_see_correction_scale: i32,
     pub(crate) q_see_correction_cap: i32,
     pub(crate) q_see_constant: i32,
     pub(crate) q_see_history: i32,
     pub(crate) q_cutoff_bonus: i32,
     pub(crate) q_tail_t: i32,
 
-    // The root window.
-    pub(crate) window_base: i32,
+    // The root window: its half-width in 1024ths, narrower by a step for each
+    // iteration the score and move held; a score held within a sixteenths bar.
+    pub(crate) window_base_1024: i32,
+    pub(crate) window_stability_1024: i32,
     pub(crate) window_stability_cap: i32,
     pub(crate) window_square: i32,
     pub(crate) window_low_growth: i32,
     pub(crate) window_high_growth: i32,
-    pub(crate) window_stable: i32,
+    pub(crate) window_stable_16: i32,
     pub(crate) optimism_scale: i32,
     pub(crate) optimism_offset: i32,
 
@@ -316,7 +332,7 @@ pub(crate) struct Seeds {
 }
 
 impl Seeds {
-    /// The donor's values.
+    /// The donor's values, converted into Rarog's units.
     pub(crate) const DONOR: Self = Self {
         wrap_raw_base: 21_032,
         wrap_optimism_base: 1_548,
@@ -334,77 +350,80 @@ impl Seeds {
         tt_bonus_cont_cap: 1_206,
 
         eval_bonus_depth: 6,
-        eval_bonus_scale: 812,
+        eval_bonus_scale: 2_011,
         eval_bonus_min: -144,
         eval_bonus_max: 324,
 
         hindsight_reduction: 2_249,
-        hindsight_rise: 57,
+        hindsight_rise: 23,
 
-        razor_base: 237,
-        razor_square: 254,
-        razor_alpha_limit: 2_048,
+        razor_base_16: 1_531,
+        razor_square_16: 1_641,
+        razor_alpha_limit: 827,
 
-        rfp_square: 1_140,
+        rfp_square_16: 7_365,
         rfp_improvement: 120,
-        rfp_linear: 22,
+        rfp_linear_16: 142,
         rfp_correction: 669,
-        rfp_unthreatened: 54,
-        rfp_constant: 19,
+        rfp_unthreatened_16: 349,
+        rfp_constant_16: 123,
+        rfp_min_16: 13,
         rfp_t: 6_945,
 
-        nmp_depth: 9,
-        nmp_tt_pv: 110,
+        nmp_depth_16: 58,
+        nmp_tt_pv_16: 711,
         nmp_improvement: 94,
-        nmp_cutoffs: 21,
-        nmp_base: 337,
+        nmp_cutoffs_16: 136,
+        nmp_base_16: 2_177,
+        nmp_min_16: 13,
         nmp_material: 491,
         nmp_r_base: 4_407,
         nmp_r_improving: 917,
         nmp_r_depth: 265,
-        nmp_r_surplus: 477,
-        nmp_r_surplus_cap: 1_187,
+        nmp_r_surplus: 1_181,
+        nmp_r_surplus_cap: 479,
         nmp_verify_depth: 16,
 
-        probcut_margin: 254,
-        probcut_improving: 85,
+        probcut_margin: 103,
+        probcut_improving: 34,
         probcut_depth_base: 4,
-        probcut_depth_per: 319,
-        probcut_raise: 197,
+        probcut_depth_per: 129,
+        probcut_raise_16: 1_273,
         probcut_t: 2_695,
 
         singular_depth: 5,
         singular_tt_depth: 3,
         singular_exact_div: 4,
-        double_pv: 195,
-        double_new_pv: 48,
-        double_quiet: 16,
+        singular_per_ply_1024: 413,
+        double_pv_16: 1_260,
+        double_new_pv_16: 310,
+        double_quiet_16: 103,
         double_correction: 16,
-        triple_pv: 230,
-        triple_new_pv: 56,
-        triple_quiet: 19,
+        triple_pv_16: 1_486,
+        triple_new_pv_16: 362,
+        triple_quiet_16: 123,
         triple_correction: 15,
-        triple_base: 36,
+        triple_base_16: 233,
         multicut_t: 4_027,
         negative_extension: -3,
         ldse_depth: 7,
-        ldse_margin: 25,
+        ldse_margin: 10,
 
         lmp_base: 2_818,
-        lmp_improvement: 78,
+        lmp_improvement: 193,
         lmp_square: 1_351,
         lmp_history: 74,
 
-        fp_linear: 79,
-        fp_history: 55,
-        fp_above_beta: 77,
+        fp_linear_16: 510,
+        fp_history_16: 355,
+        fp_above_beta_16: 497,
         fp_correction: 555,
-        fp_constant: 127,
+        fp_constant_16: 820,
         fp_depth: 14,
 
-        bnfp_linear: 84,
-        bnfp_history: 82,
-        bnfp_constant: 24,
+        bnfp_linear_16: 543,
+        bnfp_history_16: 530,
+        bnfp_constant_16: 155,
         bnfp_depth: 11,
 
         hp_slope: 948,
@@ -420,19 +439,19 @@ impl Seeds {
         see_noisy_constant: 14,
 
         lmr_log: 269,
-        lmr_improvement: 425,
+        lmr_improvement: 1_053,
         lmr_improvement_min: -241,
         lmr_improvement_max: 1_155,
-        lmr_correction: 3_417,
+        lmr_correction: 8_462,
         lmr_exact: 1_412,
         lmr_tt_below: 464,
         lmr_tt_shallow: 326,
         lmr_win_beta: 1_024,
         lmr_quiet: 2_432,
         lmr_quiet_history: 179,
-        lmr_alpha_gap: 418,
-        lmr_alpha_gap_min: -65,
-        lmr_alpha_gap_max: 91,
+        lmr_alpha_gap: 1_035,
+        lmr_alpha_gap_min: -26,
+        lmr_alpha_gap_max: 37,
         lmr_noisy: 1_687,
         lmr_noisy_history: 130,
         lmr_critical: 128,
@@ -448,22 +467,22 @@ impl Seeds {
         lmr_check: 955,
         lmr_cutoffs: 1_151,
         lmr_cutoffs_all: 400,
-        lmr_singular: 496,
-        lmr_singular_offset: 185,
+        lmr_singular: 1_228,
+        lmr_singular_offset: 75,
         lmr_singular_cap: 2_021,
         lmr_parent_gap: 414,
         lmr_parent: 136,
         lmr_spread_thread: 27,
         lmr_spread_centre: 59,
 
-        research_deeper: 57,
-        research_shallower: 9,
+        research_deeper_16: 368,
+        research_shallower_16: 58,
 
         fds_log: 207,
-        fds_improvement: 366,
+        fds_improvement: 906,
         fds_improvement_min: -206,
         fds_improvement_max: 1_370,
-        fds_correction: 2_255,
+        fds_correction: 5_585,
         fds_quiet: 1_468,
         fds_quiet_history: 118,
         fds_noisy: 940,
@@ -474,8 +493,8 @@ impl Seeds {
         fds_cut_no_tt_move: 2_168,
         fds_cutoffs: 1_394,
         fds_cutoffs_all: 258,
-        fds_singular: 351,
-        fds_singular_offset: 188,
+        fds_singular: 869,
+        fds_singular_offset: 76,
         fds_singular_cap: 2_167,
         fds_tt_move: 3_002,
         fds_parent_gap: 590,
@@ -522,9 +541,9 @@ impl Seeds {
         reward_count_cap: 229,
         reward_tt_move: 110,
         reward_below_eval: 144,
-        reward_below_eval_margin: 97,
+        reward_below_eval_margin: 39,
         reward_below_parent: 306,
-        reward_below_parent_margin: 136,
+        reward_below_parent_margin: 55,
         reward_slope: 180,
         reward_offset: 37,
         reward_cap: 2_414,
@@ -535,26 +554,30 @@ impl Seeds {
         reward_noisy_cap: 654,
 
         corr_slope: 148,
-        corr_min: -4_678,
-        corr_max: 2_496,
+        corr_min: -1_889,
+        corr_max: 1_008,
+        corr_keyed_max: 5_897,
+        corr_cont_max: 6_629,
 
         q_stand_pat_t: 8_256,
         q_move_limit: 3,
-        q_see_divisor: 8,
+        q_see_scale: 317,
+        q_see_correction_scale: 2_536,
         q_see_correction_cap: 68,
         q_see_constant: 74,
         q_see_history: 48,
         q_cutoff_bonus: 100,
         q_tail_t: 5_072,
 
-        window_base: 23,
+        window_base_1024: 9_510,
+        window_stability_1024: 413,
         window_stability_cap: 7,
-        window_square: 26_394,
+        window_square: 10_658,
         window_low_growth: 26,
         window_high_growth: 60,
-        window_stable: 12,
-        optimism_scale: 113,
-        optimism_offset: 201,
+        window_stable_16: 78,
+        optimism_scale: 46,
+        optimism_offset: 81,
 
         pick_victim: 14_232,
         pick_queen_promotion: 4_558,
@@ -614,21 +637,23 @@ pub(crate) const SEED_FIELDS: &[SeedField] = seed_fields!(
     eval_bonus_max,
     hindsight_reduction,
     hindsight_rise,
-    razor_base,
-    razor_square,
+    razor_base_16,
+    razor_square_16,
     razor_alpha_limit,
-    rfp_square,
+    rfp_square_16,
     rfp_improvement,
-    rfp_linear,
+    rfp_linear_16,
     rfp_correction,
-    rfp_unthreatened,
-    rfp_constant,
+    rfp_unthreatened_16,
+    rfp_constant_16,
+    rfp_min_16,
     rfp_t,
-    nmp_depth,
-    nmp_tt_pv,
+    nmp_depth_16,
+    nmp_tt_pv_16,
     nmp_improvement,
-    nmp_cutoffs,
-    nmp_base,
+    nmp_cutoffs_16,
+    nmp_base_16,
+    nmp_min_16,
     nmp_material,
     nmp_r_base,
     nmp_r_improving,
@@ -640,20 +665,21 @@ pub(crate) const SEED_FIELDS: &[SeedField] = seed_fields!(
     probcut_improving,
     probcut_depth_base,
     probcut_depth_per,
-    probcut_raise,
+    probcut_raise_16,
     probcut_t,
     singular_depth,
     singular_tt_depth,
     singular_exact_div,
-    double_pv,
-    double_new_pv,
-    double_quiet,
+    singular_per_ply_1024,
+    double_pv_16,
+    double_new_pv_16,
+    double_quiet_16,
     double_correction,
-    triple_pv,
-    triple_new_pv,
-    triple_quiet,
+    triple_pv_16,
+    triple_new_pv_16,
+    triple_quiet_16,
     triple_correction,
-    triple_base,
+    triple_base_16,
     multicut_t,
     negative_extension,
     ldse_depth,
@@ -662,15 +688,15 @@ pub(crate) const SEED_FIELDS: &[SeedField] = seed_fields!(
     lmp_improvement,
     lmp_square,
     lmp_history,
-    fp_linear,
-    fp_history,
-    fp_above_beta,
+    fp_linear_16,
+    fp_history_16,
+    fp_above_beta_16,
     fp_correction,
-    fp_constant,
+    fp_constant_16,
     fp_depth,
-    bnfp_linear,
-    bnfp_history,
-    bnfp_constant,
+    bnfp_linear_16,
+    bnfp_history_16,
+    bnfp_constant_16,
     bnfp_depth,
     hp_slope,
     hp_depth,
@@ -718,8 +744,8 @@ pub(crate) const SEED_FIELDS: &[SeedField] = seed_fields!(
     lmr_parent,
     lmr_spread_thread,
     lmr_spread_centre,
-    research_deeper,
-    research_shallower,
+    research_deeper_16,
+    research_shallower_16,
     fds_log,
     fds_improvement,
     fds_improvement_min,
@@ -795,20 +821,24 @@ pub(crate) const SEED_FIELDS: &[SeedField] = seed_fields!(
     corr_slope,
     corr_min,
     corr_max,
+    corr_keyed_max,
+    corr_cont_max,
     q_stand_pat_t,
     q_move_limit,
-    q_see_divisor,
+    q_see_scale,
+    q_see_correction_scale,
     q_see_correction_cap,
     q_see_constant,
     q_see_history,
     q_cutoff_bonus,
     q_tail_t,
-    window_base,
+    window_base_1024,
+    window_stability_1024,
     window_stability_cap,
     window_square,
     window_low_growth,
     window_high_growth,
-    window_stable,
+    window_stable_16,
     optimism_scale,
     optimism_offset,
     pick_victim,
@@ -890,7 +920,7 @@ fn log2(depth: i32) -> i32 {
 /// The evaluation wrapper's inputs.
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct WrapperInput {
-    /// The raw evaluation in kernel units.
+    /// The raw evaluation.
     pub(crate) raw: i32,
     /// Material on the board in the kernel's exchange values.
     pub(crate) material: i32,
@@ -1105,7 +1135,7 @@ pub(crate) struct RazorInput {
 pub(crate) fn razors(s: &Seeds, i: &RazorInput) -> bool {
     !i.pv
         && !i.in_check
-        && i.estimate < i.alpha - s.razor_base - s.razor_square * i.depth * i.depth
+        && 16 * i.estimate < 16 * i.alpha - s.razor_base_16 - s.razor_square_16 * i.depth * i.depth
         && i.alpha < s.razor_alpha_limit
         && !i.tt_quiet
         && i.bound != Some(Bound::Lower)
@@ -1126,15 +1156,16 @@ pub(crate) struct RfpInput {
     pub(crate) unthreatened: bool,
 }
 
-/// How far above beta the estimate must stand, never below 2.
+/// How far above beta the estimate must stand, in sixteenths, never below
+/// the floor.
 #[inline(always)]
 pub(crate) fn rfp_margin(s: &Seeds, i: &RfpInput) -> i32 {
-    (s.rfp_square * i.depth * i.depth / 128 - s.rfp_improvement * i.improvement / 1024
-        + s.rfp_linear * i.depth
-        + s.rfp_correction * i.correction.abs() / 1024
-        - s.rfp_unthreatened * i32::from(i.unthreatened)
-        - s.rfp_constant)
-        .max(2)
+    (s.rfp_square_16 * i.depth * i.depth / 128 - 16 * s.rfp_improvement * i.improvement / 1024
+        + s.rfp_linear_16 * i.depth
+        + 16 * s.rfp_correction * i.correction.abs() / 1024
+        - s.rfp_unthreatened_16 * i32::from(i.unthreatened)
+        - s.rfp_constant_16)
+        .max(s.rfp_min_16)
 }
 
 /// What reverse futility returns: the estimate moved part of the way to beta.
@@ -1151,7 +1182,7 @@ pub(crate) fn rfp_cuts(s: &Seeds, i: &RfpInput) -> bool {
     !i.tt_pv
         && !i.in_check
         && !i.excluded
-        && i.estimate >= i.beta + rfp_margin(s, i)
+        && 16 * i.estimate >= 16 * i.beta + rfp_margin(s, i)
         && !is_loss(i.beta)
         && !is_win(i.estimate)
 }
@@ -1180,15 +1211,16 @@ pub(crate) struct NullGateInput {
     pub(crate) tt_capture_refutes: bool,
 }
 
-/// How far above beta the estimate must stand for a null move, never below
-/// 2: less with depth, improvement and few child cutoffs, more on a PV line.
+/// How far above beta the estimate must stand for a null move, in
+/// sixteenths, never below the floor: less with depth, improvement and few
+/// child cutoffs, more on a PV line.
 #[inline(always)]
 pub(crate) fn nmp_margin(s: &Seeds, i: &NullGateInput) -> i32 {
-    (-s.nmp_depth * i.depth + s.nmp_tt_pv * i32::from(i.tt_pv)
-        - s.nmp_improvement * i.improvement / 1024
-        - s.nmp_cutoffs * i32::from(i.child_cutoffs < 2)
-        + s.nmp_base)
-        .max(2)
+    (-s.nmp_depth_16 * i.depth + s.nmp_tt_pv_16 * i32::from(i.tt_pv)
+        - 16 * s.nmp_improvement * i.improvement / 1024
+        - s.nmp_cutoffs_16 * i32::from(i.child_cutoffs < 2)
+        + s.nmp_base_16)
+        .max(s.nmp_min_16)
 }
 
 /// Whether the node passes: at an expected cut node out of check, outside a
@@ -1200,7 +1232,7 @@ pub(crate) fn nmp_gate(s: &Seeds, i: &NullGateInput) -> bool {
         && !i.in_check
         && !i.excluded
         && !i.singular
-        && i.estimate >= i.beta + nmp_margin(s, i)
+        && 16 * i.estimate >= 16 * i.beta + nmp_margin(s, i)
         && i.ply >= i.nmp_min_ply
         && i.material > s.nmp_material
         && !is_loss(i.beta)
@@ -1338,7 +1370,7 @@ pub(crate) fn probcut_depth(
     ProbcutDepth {
         base,
         depth: shallower,
-        adjusted_beta: (probcut_beta + s.probcut_raise * (base - shallower)).min(INF_SCORE),
+        adjusted_beta: (probcut_beta + s.probcut_raise_16 * (base - shallower) / 16).min(INF_SCORE),
     }
 }
 
@@ -1375,9 +1407,9 @@ pub(crate) fn singular_candidate(
         && !is_decisive(tt_score)
 }
 
-/// How far below the stored score the exclusion search's beta sits: the
-/// depth (a quarter of it, rounded up, when exact), and the depth again at a
-/// PV-line node searched with a null window.
+/// How far below the stored score the exclusion search's beta sits: a step
+/// per ply of the depth (a quarter of it, rounded up, when exact), and per ply
+/// again at a PV-line node searched with a null window, rounded to a unit.
 #[inline(always)]
 pub(crate) fn singular_margin(s: &Seeds, depth: i32, exact: bool, tt_pv_off_pv: bool) -> i32 {
     let span = if exact {
@@ -1385,7 +1417,7 @@ pub(crate) fn singular_margin(s: &Seeds, depth: i32, exact: bool, tt_pv_off_pv: 
     } else {
         depth
     };
-    span + depth * i32::from(tt_pv_off_pv)
+    ((span + depth * i32::from(tt_pv_off_pv)) * s.singular_per_ply_1024 + 512) / 1024
 }
 
 /// The exclusion search's result and the node it was asked at.
@@ -1428,17 +1460,16 @@ pub(crate) fn singular_outcome(s: &Seeds, i: &SingularInput) -> SingularOutcome 
         let pv = i32::from(i.pv);
         let quiet = i32::from(i.tt_quiet);
         let correction = i.correction.abs();
-        let double = s.double_pv * pv + s.double_new_pv * new_pv
-            - s.double_quiet * quiet
-            - s.double_correction * correction / 128;
-        let triple = s.triple_pv * pv + s.triple_new_pv * new_pv
-            - s.triple_quiet * quiet
-            - s.triple_correction * correction / 128
-            + s.triple_base;
-        return SingularOutcome::Extend(
-            1 + i32::from(i.singular_score < i.singular_beta - double)
-                + i32::from(i.singular_score < i.singular_beta - triple),
-        );
+        // Both bars in sixteenths.
+        let double = s.double_pv_16 * pv + s.double_new_pv_16 * new_pv
+            - s.double_quiet_16 * quiet
+            - 16 * s.double_correction * correction / 128;
+        let triple = s.triple_pv_16 * pv + s.triple_new_pv_16 * new_pv
+            - s.triple_quiet_16 * quiet
+            - 16 * s.triple_correction * correction / 128
+            + s.triple_base_16;
+        let below = |bar: i32| 16 * i.singular_score < 16 * i.singular_beta - bar;
+        return SingularOutcome::Extend(1 + i32::from(below(double)) + i32::from(below(triple)));
     }
     if i.singular_score >= i.beta && !is_decisive(i.singular_score) {
         return SingularOutcome::MultiCut(lerp(i.singular_score, i.beta, s.multicut_t));
@@ -1510,15 +1541,27 @@ pub(crate) fn lmp_prunes(s: &Seeds, i: &MovePruneInput) -> bool {
     !i.in_check && !i.direct_check && i.quiet && !is_win(i.beta) && i.move_count >= lmp_limit(s, i)
 }
 
+/// Sixteenths to the nearest whole unit.
+#[inline(always)]
+fn whole(sixteenths: i32) -> i32 {
+    (sixteenths + 8).div_euclid(16)
+}
+
 /// Quiet futility's value: what the move might lift the evaluation to.
 #[inline(always)]
 pub(crate) fn futility_value(s: &Seeds, i: &MovePruneInput) -> i32 {
-    i.eval
-        + s.fp_linear * i.depth
-        + s.fp_history * i.history / 1024
-        + s.fp_above_beta * i32::from(i.eval >= i.beta)
-        + s.fp_correction * i.correction.abs() / 1024
-        - s.fp_constant
+    whole(futility_sixteenths(s, i))
+}
+
+/// Quiet futility's value in sixteenths, which its gate compares.
+#[inline(always)]
+fn futility_sixteenths(s: &Seeds, i: &MovePruneInput) -> i32 {
+    16 * i.eval
+        + s.fp_linear_16 * i.depth
+        + s.fp_history_16 * i.history / 1024
+        + s.fp_above_beta_16 * i32::from(i.eval >= i.beta)
+        + 16 * s.fp_correction * i.correction.abs() / 1024
+        - s.fp_constant_16
 }
 
 /// Whether quiet futility skips the remaining quiets.
@@ -1528,13 +1571,22 @@ pub(crate) fn futility_prunes(s: &Seeds, i: &MovePruneInput) -> bool {
         && !i.direct_check
         && i.quiet
         && i.depth < s.fp_depth
-        && futility_value(s, i) <= i.alpha
+        && futility_sixteenths(s, i) <= 16 * i.alpha
 }
 
-/// Bad-noisy futility's value.
+/// Bad-noisy futility's value: what the move might lift the evaluation to.
 #[inline(always)]
 pub(crate) fn bad_noisy_value(s: &Seeds, i: &MovePruneInput) -> i32 {
-    i.eval + s.bnfp_linear * i.depth + s.bnfp_history * i.history / 1024 + s.bnfp_constant
+    whole(bad_noisy_sixteenths(s, i))
+}
+
+/// Bad-noisy futility's value in sixteenths, which its gate compares.
+#[inline(always)]
+fn bad_noisy_sixteenths(s: &Seeds, i: &MovePruneInput) -> i32 {
+    16 * i.eval
+        + s.bnfp_linear_16 * i.depth
+        + s.bnfp_history_16 * i.history / 1024
+        + s.bnfp_constant_16
 }
 
 /// Whether bad-noisy futility ends the move loop.
@@ -1544,7 +1596,7 @@ pub(crate) fn bad_noisy_prunes(s: &Seeds, i: &MovePruneInput) -> bool {
         && !i.direct_check
         && i.depth < s.bnfp_depth
         && i.bad_stage
-        && bad_noisy_value(s, i) <= i.alpha
+        && bad_noisy_sixteenths(s, i) <= 16 * i.alpha
 }
 
 /// Whether history pruning skips a quiet.
@@ -1707,8 +1759,8 @@ pub(crate) fn research_depth(
     if root {
         return new_depth;
     }
-    new_depth + i32::from(score > best_score + s.research_deeper)
-        - i32::from(score < best_score + s.research_shallower)
+    new_depth + i32::from(16 * score > 16 * best_score + s.research_deeper_16)
+        - i32::from(16 * score < 16 * best_score + s.research_shallower_16)
 }
 
 /// The reduction, in 1024ths, of a move LMR does not reduce.
@@ -2005,9 +2057,9 @@ pub(crate) fn q_stops(s: &Seeds, move_count: i32, direct_check: bool) -> bool {
     move_count >= s.q_move_limit && !direct_check
 }
 
-/// The SEE a quiescence move must reach: an eighth of alpha's distance above
-/// the evaluation, less the correction's size up to a cap, a constant and
-/// the move's history.
+/// The SEE a quiescence move must reach, in exchange units: a share of
+/// alpha's distance above the evaluation, less the correction's size up to a
+/// cap, a constant and the move's history.
 #[inline(always)]
 pub(crate) fn q_see_threshold(
     s: &Seeds,
@@ -2016,8 +2068,8 @@ pub(crate) fn q_see_threshold(
     correction: i32,
     history: i32,
 ) -> i32 {
-    (alpha - eval) / s.q_see_divisor
-        - correction.abs().min(s.q_see_correction_cap)
+    (alpha - eval) * s.q_see_scale / 1024
+        - (correction.abs() * s.q_see_correction_scale / 1024).min(s.q_see_correction_cap)
         - s.q_see_constant
         - history / s.q_see_history
 }
@@ -2030,8 +2082,12 @@ pub(crate) fn q_see_threshold(
 /// longer the score and the best move have held, wider for a large score.
 #[inline(always)]
 pub(crate) fn window_delta(s: &Seeds, eval_stability: i32, pv_stability: i32, average: i32) -> i32 {
-    s.window_base - eval_stability.min(pv_stability).min(s.window_stability_cap)
-        + average * average / s.window_square
+    let held = eval_stability.min(pv_stability).min(s.window_stability_cap);
+    let average = i64::from(average);
+    let delta = i64::from(s.window_base_1024 - s.window_stability_1024 * held)
+        + 1024 * average * average / i64::from(s.window_square);
+    i32::try_from(delta / 1024)
+        .unwrap_or_else(|_| unreachable!("a score's square over the divisor fits"))
 }
 
 /// The root window and its widening state.
@@ -2088,18 +2144,20 @@ pub(crate) fn window_fail_high(s: &Seeds, w: Window, score: i32) -> Window {
 /// Whether the iteration's score held near the running average.
 #[inline(always)]
 pub(crate) fn score_held(s: &Seeds, score: i32, average: i32) -> bool {
-    (score - average).abs() < s.window_stable
+    16 * (score - average).abs() < s.window_stable_16
 }
 
 // ---------------------------------------------------------------------------
 // Draws and move ordering
 // ---------------------------------------------------------------------------
 
-/// A draw's score: two either side of zero by the node count, so a line
-/// that can draw is not scored exactly level with every other draw.
+/// A draw's score: a unit either side of zero by the node count, so a line
+/// that can draw is not scored exactly level with every other draw. The
+/// donor's two units either side round to one in Rarog's, the middle three
+/// steps to zero.
 #[inline(always)]
 pub(crate) fn draw_score(nodes: u64) -> i32 {
-    i32::try_from(nodes % 5).unwrap_or_else(|_| unreachable!("below 5")) - 2
+    (i32::try_from(nodes % 5).unwrap_or_else(|_| unreachable!("below 5")) - 2) / 2
 }
 
 /// A noisy move's ordering inputs.

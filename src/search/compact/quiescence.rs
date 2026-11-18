@@ -12,7 +12,7 @@ use super::super::pricing::Rule;
 use super::super::{MAX_PLY, SearchEvent, Searcher};
 use super::picker::CompactPicker;
 use super::rules;
-use super::{KERNEL_SEE_VALUES, is_quiet_move, kernel_material, raw_to_kernel};
+use super::{KERNEL_SEE_VALUES, bounded_raw, is_quiet_move, kernel_material};
 
 /// The depth a quiescence result is stored at.
 pub(super) const Q_DEPTH: i32 = 0;
@@ -52,7 +52,7 @@ impl Searcher {
             return if in_check {
                 draw
             } else {
-                raw_to_kernel(self.raw_eval(board))
+                bounded_raw(self.raw_eval(board))
             };
         }
 
@@ -72,7 +72,7 @@ impl Searcher {
             (VALUE_NONE, VALUE_NONE, self.compact_correction(board, ply))
         } else {
             let raw = if ev.raw_static_eval == VALUE_NONE {
-                raw_to_kernel(self.raw_eval(board))
+                bounded_raw(self.raw_eval(board))
             } else {
                 ev.raw_static_eval
             };
@@ -252,10 +252,11 @@ mod tests {
         // White to move takes the queen on d5.
         let fen = "4k3/8/8/3q4/8/8/3R4/4K3 w - - 0 1";
         let (mut searcher, board, score) = search::<Pv>(fen, -INF_SCORE, INF_SCORE);
-        let raw = raw_to_kernel(searcher.raw_eval(&board));
+        let raw = bounded_raw(searcher.raw_eval(&board));
         let (stand_pat, _) = searcher.compact_eval(&board, raw, kernel_material(&board), 1);
+        // Most of a queen, which is worth about 900.
         assert!(
-            score > stand_pat + 1_000,
+            score > stand_pat + 800,
             "{score} after Rxd5 from {stand_pat}"
         );
         assert_eq!(searcher.td.pv_table[1][1].to_string(), "d2d5");
@@ -274,7 +275,7 @@ mod tests {
         // White, two queens up, stands far above a beta of -100.
         let fen = "k7/8/8/8/8/8/2QQ4/4K3 w - - 0 1";
         let (mut searcher, board, score) = search::<NonPv>(fen, -101, -100);
-        let raw = raw_to_kernel(searcher.raw_eval(&board));
+        let raw = bounded_raw(searcher.raw_eval(&board));
         let (stand_pat, _) = searcher.compact_eval(&board, raw, kernel_material(&board), 1);
         assert_eq!(
             score,

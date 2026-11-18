@@ -165,8 +165,8 @@ impl Searcher {
         saturate(sum / (TABLE_SCALE * WEIGHT_SCALE))
     }
 
-    /// The compact kernel's correction for the position at `ply`, in kernel
-    /// units: the plain sum of the pawn, both non-pawn and two continuation
+    /// The compact kernel's correction for the position at `ply`: the plain
+    /// sum of the pawn, both non-pawn and two continuation
     /// readings, over the table scale. Its non-pawn keys include the kings,
     /// its continuation readings, two and four plies back, share one table,
     /// and it reads no minor table.
@@ -192,12 +192,14 @@ impl Searcher {
             return;
         }
         let slots = self.compact_correction_slots(board, ply);
+        let seeds = self.seeds();
+        let (keyed_max, cont_max) = (seeds.corr_keyed_max, seeds.corr_cont_max);
         let tables = &mut self.td.corr;
-        apply_bonus(&mut tables.pawn[slots.pawn], bonus, KEYED_MAX);
-        apply_bonus(&mut tables.non_pawn[0][slots.non_pawn[0]], bonus, KEYED_MAX);
-        apply_bonus(&mut tables.non_pawn[1][slots.non_pawn[1]], bonus, KEYED_MAX);
+        apply_bonus(&mut tables.pawn[slots.pawn], bonus, keyed_max);
+        apply_bonus(&mut tables.non_pawn[0][slots.non_pawn[0]], bonus, keyed_max);
+        apply_bonus(&mut tables.non_pawn[1][slots.non_pawn[1]], bonus, keyed_max);
         for slot in slots.continuation.into_iter().flatten() {
-            apply_bonus(&mut tables.continuation_2[slot], bonus, CONT_MAX);
+            apply_bonus(&mut tables.continuation_2[slot], bonus, cont_max);
             #[cfg(feature = "probes")]
             self.td
                 .rates

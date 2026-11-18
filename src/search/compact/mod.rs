@@ -6,11 +6,9 @@
 //! decision on the same inputs, and instrumentation reads the decisions
 //! instead of sitting between them.
 //!
-//! The kernel works in its donor's evaluation units. Rarog's raw evaluation
-//! is multiplied by [`SCALE`]/1024 where it enters, and a score is divided
-//! back where it leaves, so the seeds hold the values the donor was fitted
-//! with. The scale is a scaffold: folding the constants into Rarog's units
-//! deletes it.
+//! The kernel works in Rarog's evaluation units: its seeds are the donor's
+//! fitted values converted by their dimension ([`rules::Seeds`]). Its
+//! exchange values stay the donor's.
 
 /// Count one asking of the rule `kind` and whether it fired, in a build with
 /// the `probes` feature; nothing otherwise, where `fired` is not evaluated.
@@ -37,7 +35,6 @@ pub(super) mod rules;
 pub(super) mod window;
 
 use crate::board::{Board, Color, Move, Piece, SeeValues};
-use crate::eval::VALUE_NONE;
 use crate::infra;
 use crate::tt::TB_WIN_SCORE;
 
@@ -45,32 +42,14 @@ use super::Searcher;
 use super::history::cont_context;
 use rules::{Seeds, WrapperInput, wrapped_eval};
 
-/// The kernel's evaluation units per 1024 of Rarog's: the ratio of the
-/// donor's mean raw evaluation to Rarog's on a common corpus.
-pub(super) const SCALE: i32 = 2536;
-
 /// The kernel's exchange values, the donor's: every SEE threshold and victim
 /// term the seeds hold was fitted with them, and the material its evaluation
 /// wrapper reads is counted in them. The exchange algorithm stays Rarog's.
 pub(super) const KERNEL_SEE_VALUES: SeeValues = SeeValues::new(109, 403, 435, 679, 1242, 20_000);
 
-/// A raw evaluation in kernel units, kept out of the decisive band.
-pub(super) fn raw_to_kernel(raw: i32) -> i32 {
-    let scaled = i64::from(raw) * i64::from(SCALE) / 1024;
-    let bound = i64::from(TB_WIN_SCORE - 1);
-    i32::try_from(scaled.clamp(-bound, bound))
-        .unwrap_or_else(|_| unreachable!("clamped into i32 bounds"))
-}
-
-/// A kernel score in Rarog's units, for everything outside the kernel that
-/// reads one: a decisive score is a distance, not an evaluation, and passes
-/// unchanged, as do the window's infinities and the absent score.
-pub(super) fn score_to_rarog(score: i32) -> i32 {
-    if score.abs() >= TB_WIN_SCORE || score == VALUE_NONE {
-        return score;
-    }
-    i32::try_from(i64::from(score) * 1024 / i64::from(SCALE))
-        .unwrap_or_else(|_| unreachable!("a non-decisive score shrinks"))
+/// A raw evaluation kept out of the decisive band.
+pub(super) fn bounded_raw(raw: i32) -> i32 {
+    raw.clamp(-(TB_WIN_SCORE - 1), TB_WIN_SCORE - 1)
 }
 
 /// A quiet move by the kernel's partition: any move but a capture or a
@@ -149,8 +128,8 @@ impl Searcher {
         seeds
     }
 
-    /// The compact kernel's corrected evaluation from a raw evaluation in
-    /// kernel units and the board's `material` in exchange values, and the
+    /// The compact kernel's corrected evaluation from a raw evaluation and
+    /// the board's `material` in exchange values, and the
     /// correction it includes. A draw verdict is a classification, not an
     /// estimate, and passes through as 0, with no correction and no optimism.
     pub(super) fn compact_eval(
@@ -185,28 +164,15 @@ mod tests {
     use crate::board::Board;
 
     #[test]
-    fn the_unit_boundary_scales_evaluations_and_keeps_distances() {
-        assert_eq!(raw_to_kernel(100), 247, "100 * 2536 / 1024, truncated");
-        assert_eq!(raw_to_kernel(-100), -247, "truncated toward zero");
+    fn a_raw_evaluation_enters_unscaled_and_below_the_decisive_band() {
+        assert_eq!(bounded_raw(100), 100);
+        assert_eq!(bounded_raw(-100), -100);
         assert_eq!(
-            raw_to_kernel(20_000),
+            bounded_raw(TB_WIN_SCORE + 100),
             TB_WIN_SCORE - 1,
             "held below the band"
         );
-        assert_eq!(raw_to_kernel(-20_000), -TB_WIN_SCORE + 1);
-        assert_eq!(score_to_rarog(247), 99);
-        assert_eq!(score_to_rarog(-2536), -1024);
-        for distance in [
-            TB_WIN_SCORE,
-            31_990,
-            -31_990,
-            -TB_WIN_SCORE,
-            32_001,
-            -32_001,
-        ] {
-            assert_eq!(score_to_rarog(distance), distance);
-        }
-        assert_eq!(score_to_rarog(VALUE_NONE), VALUE_NONE);
+        assert_eq!(bounded_raw(-TB_WIN_SCORE - 100), -TB_WIN_SCORE + 1);
     }
 
     #[test]

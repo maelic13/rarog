@@ -15,7 +15,7 @@ use super::super::pricing::{ReSearch, Rule, Verdict};
 use super::super::{MAX_PLY, SearchEvent, Searcher};
 use super::picker::{CompactPicker, Stage};
 use super::rules::{self, is_decisive};
-use super::{KERNEL_SEE_VALUES, is_quiet_move, kernel_material, raw_to_kernel};
+use super::{KERNEL_SEE_VALUES, bounded_raw, is_quiet_move, kernel_material};
 
 /// A score at or beyond the tablebase loss band.
 const fn is_loss(score: i32) -> bool {
@@ -127,7 +127,7 @@ impl Searcher {
                 return if in_check {
                     draw
                 } else {
-                    raw_to_kernel(self.raw_eval(board))
+                    bounded_raw(self.raw_eval(board))
                 };
             }
             alpha = alpha.max(-MATE_SCORE + infra::to_i32(ply));
@@ -242,7 +242,7 @@ impl Searcher {
             (VALUE_NONE, eval, self.compact_correction(board, ply))
         } else {
             let raw = if ev.raw_static_eval == VALUE_NONE {
-                let raw = raw_to_kernel(self.raw_eval(board));
+                let raw = bounded_raw(self.raw_eval(board));
                 if entry.is_none() {
                     self.tt_store_eval(hash, raw, tt_pv);
                 }
@@ -1485,7 +1485,7 @@ mod tests {
             let board = Board::from_fen(fen).expect("a legal FEN");
             let mut searcher = Searcher::default();
             let raw = searcher.raw_eval(&board);
-            let kernel = raw_to_kernel(raw);
+            let kernel = bounded_raw(raw);
             assert!(
                 kernel.abs() < TB_WIN_SCORE,
                 "{fen}: raw {raw}, kernel {kernel}"
