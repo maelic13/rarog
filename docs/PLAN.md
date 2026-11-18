@@ -380,7 +380,8 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.6 | RESEARCH | V | The fit as one joint rule 7c run over the whole kernel, read at checkpoints; no gate of its own. Next: its registration (surface, horizon, checkpoints), which the maintainer starts (D.7 decision 6); RAR-S126's unfitted read −11.1 ± 15.2 nElo is its starting point |
+| D.7.6.1 | READY_FOR_IMPLEMENTATION | I1 | The compact kernel's seeds settable in the `tune` build, by RAR-S128's names and ranges; default and compact fingerprints unchanged; then the activation read and the sweep |
+| D.7.6 | READY_FOR_IMPLEMENTATION | V | RAR-S128 registered 2026-11-18: 241 candidates by one range rule, an activation read, a five-coordinate curvature sweep, then one rule 7c run to a 6,000-iteration ceiling, which the maintainer starts; waits on D.7.6.1 |
 | D.7.7 | RESEARCH | V | The fitted kernel against the head on `[0,3]`, the one gate; `10+0.1` and 4T reads; H0 opens D.7.10 |
 | D.7.8 | RESEARCH | R2 | Each known problem asked "still an issue?" on the new kernel |
 | D.7.9 | RESEARCH | V | Adoption by maintainer decision on D.7.7 and D.7.8; meters; the old kernel deleted; the kernel's size against the donor's |
@@ -1999,6 +2000,24 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       together. No gate of fitted over unfitted (maintainer decision
       2026-11-16): the tune's own gain read is recorded, and the one gate
       is D.7.7's.
+      *Registered 2026-11-18 as RAR-S128* (surface
+      `analysis/d76_surface_2026-11-18.md`): 246 seeds, 5 excluded by
+      construction, 241 candidates by one range rule; an activation read
+      on `bench 13` drops a candidate whose perturbations change nothing;
+      the sweep on `lmr_log`, `rfp_square_16`, `nmp_r_base`,
+      `fp_linear_16` and `singular_per_ply_1024`; then rule 7c's run to a
+      ceiling of 6,000 iterations, seed 20261118. Time management stays
+      carried over unchanged, as D.7 states.
+        - **D.7.6.1 The compact kernel's seeds exposed to a tune build — `I1`.**
+          Added 2026-11-18 (RAR-S128's prerequisite): the seeds are a
+          compile-time constant, so no build can change them. In the
+          `tune` build only, each candidate becomes a UCI option by the
+          surface's name and range, read by reference from the search's
+          configuration (no lock, `Arc` or copy a node); the default and
+          `compact-kernel` builds reproduce 9,067,595 and 7,543,485, the
+          tune build at its defaults 7,543,485; the parity test keeps
+          `Seeds::DONOR`. Then the activation read, the config files and
+          the sweep, before any game.
     - **D.7.7 The gate: the kernel against the head — `V`.**
       The fitted kernel against the head on the gain bracket `[0,3]`
       (maintainer decision 2026-11-16: it must gain), its cap from
