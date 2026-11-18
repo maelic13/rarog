@@ -380,8 +380,7 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.6.1 | READY_FOR_IMPLEMENTATION | I1 | The compact kernel's seeds settable in the `tune` build, by RAR-S128's names and ranges; default and compact fingerprints unchanged; then the activation read and the sweep |
-| D.7.6 | READY_FOR_IMPLEMENTATION | V | RAR-S128 registered 2026-11-18: 241 candidates by one range rule, an activation read, a five-coordinate curvature sweep, then one rule 7c run to a 6,000-iteration ceiling, which the maintainer starts; waits on D.7.6.1 |
+| D.7.6 | GAME_GATE | V | RAR-S128: the seeds exposed and the compact lines bounded at eight times the depth (D.7.6.1 done 2026-11-18), a surface of 230 coordinates, the sweep read; the maintainer's pilot (3,840 games), then the rule 7c run to 6,000 iterations |
 | D.7.7 | RESEARCH | V | The fitted kernel against the head on `[0,3]`, the one gate; `10+0.1` and 4T reads; H0 opens D.7.10 |
 | D.7.8 | RESEARCH | R2 | Each known problem asked "still an issue?" on the new kernel |
 | D.7.9 | RESEARCH | V | Adoption by maintainer decision on D.7.7 and D.7.8; meters; the old kernel deleted; the kernel's size against the donor's |
@@ -1521,6 +1520,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   goal, and identical behaviour is not sought (the donor's forms, Rarog's
   own code); both parity layers are kept; the donor's trace stays in
   ignored storage; no unit translation stays in the engine.
+  *Compactness relaxed (maintainer decision 2026-11-18):* the kernel stays
+  as compact as it can, but more code is acceptable where a need is shown;
+  the requirement was there to prevent another overengineered kernel and
+  has served that purpose.
     - **D.7.0 Investigation: the inventory of departures, the seeds and the registration of the reads — `R3`, DONE 2026-11-13.**
       Every place Rarog's kernel departs from Reckless `0756957`, with file
       and line on both sides, its unit, the record that chose it and
@@ -2008,7 +2011,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `fp_linear_16` and `singular_per_ply_1024`; then rule 7c's run to a
       ceiling of 6,000 iterations, seed 20261118. Time management stays
       carried over unchanged, as D.7 states.
-        - **D.7.6.1 The compact kernel's seeds exposed to a tune build — `I1`.**
+        - **D.7.6.1 The compact kernel's seeds exposed to a tune build — `I1`, DONE 2026-11-18.**
           Added 2026-11-18 (RAR-S128's prerequisite): the seeds are a
           compile-time constant, so no build can change them. In the
           `tune` build only, each candidate becomes a UCI option by the
@@ -2018,6 +2021,20 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           tune build at its defaults 7,543,485; the parity test keeps
           `Seeds::DONOR`. Then the activation read, the config files and
           the sweep, before any game.
+          *Done 2026-11-18:* `a389c80` (engine: the options, the static
+          table swapped at a search start when the options change, the root
+          window given the search's seeds), `f7c89fb` (engine: a compact line
+          held to eight times its iteration's depth, maintainer decision
+          before any game), `89eeb41` (tooling: the coverage audit's
+          `-TuneEngine`, class 6 read from a group's tune file), `2ca1ca1`
+          (the surface files), `cff92ef` and `5671cd8` (tooling: the
+          wrapper's dead-perturbation guard at rule 7c's graded
+          perturbation, its suite's case moved to a surface that guard
+          cannot resolve). Every fingerprint reproduces; the activation read
+          keeps 231 of 241, and the surface is 230 with `KPickLateGood`
+          dropped (`docs/experiments/RAR-S128.md`). RAR-S128 is amended
+          before any game with PROCESS's pilot, which it had omitted, the
+          line bound and the drop.
     - **D.7.7 The gate: the kernel against the head — `V`.**
       The fitted kernel against the head on the gain bracket `[0,3]`
       (maintainer decision 2026-11-16: it must gain), its cap from
@@ -2061,6 +2078,13 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the kernel, so it is not carried before the fit; it is the line
       bound this item already names, read here with that evidence, and
       tried again in D.7.9 with Rarog's other additions.
+      *Corrected 2026-11-18 (RAR-S128's activation read):* a fifth of the
+      fit's perturbations made bench 16, a won pawn ending, run to about a
+      billion nodes, so the compact kernel now carries a line bound of eight
+      times the iteration's depth (`f7c89fb`, maintainer decision before
+      any game; it binds no bench tree, so the compact fingerprint stays
+      7,543,485; four times failed the KBNK anchor).
+      Rarog's bound of twice the depth stays D.7.9's question.
     - **D.7.9 Adoption and checkpoint — `V`, then `I1`.**
       The maintainer's decision on D.7.7 and D.7.8. On adoption: RAR-O08's
       matches (2) and (5) re-read on the new head, pooled NPS, conversion,

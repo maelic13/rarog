@@ -105,3 +105,16 @@ D.7.9 retry of Rarog's additions.
 
 **Evidence layer:** node counts and line lengths on two positions and 100
 parity positions; not Elo.
+
+## Correction, 2026-11-18 (RAR-S128's activation read)
+
+The reading above took the class to be confined to won endings and costless
+in games, and so changed nothing before the fit. RAR-S128's activation read
+found it far more fragile: a perturbation of two steps of almost any seed,
+up or down, made bench 16, a won pawn ending, run from 43 thousand nodes to
+about a billion, in 106 of 482 readings. The diagnosis above stands (the
+donor's line shape, no port defect); its use does not. A bound of four
+times the iteration's depth stops every case tried and binds no tree of the
+bench (four times failed the KBNK anchor), and the maintainer decided to
+carry a bound before the fit (`f7c89fb`). Rarog's own bound of twice the
+depth stays D.7.9's question.
