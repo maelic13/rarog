@@ -10,12 +10,15 @@
       twin's `info string rates` (each rule's firings and attempts). KEY=VALUE
       pairs are set in the engine's environment (RAROG_SPREAD_SALT, RAROG_PLANT).
   tree_stats.py compare <base.jsonl> <candidate.jsonl> --floor <salt1.jsonl> ... [--json out]
+          [--allowance A] [--floor-base <salt_base.jsonl>] [--nodes-only]
       The frozen read (search_shape_inventory_2026-11-13.md section 7): at each
       depth the mean log ratio of positions visited must lie within three
-      standard errors of the noise floor plus 0.03; each kind's firings per
-      1,000 positions within three standard errors or 10%, whichever is larger.
-      The floor at a depth is the largest |mean log ratio| of a salted run
-      against the base.
+      standard errors of the noise floor plus the allowance (0.03); each kind's
+      firings per 1,000 positions within three standard errors or 10%,
+      whichever is larger. The floor at a depth is the largest |mean log ratio|
+      of a salted run against the base, or against --floor-base when the salted
+      runs belong to another base. --nodes-only decides on positions visited
+      alone and prints the rates without deciding on them.
 """
 import json
 import math
@@ -141,14 +144,16 @@ def rate_stats(base, cand, kind):
     return 1000 * base_mean, 1000 * (sum(fc) / n), 1000 * md, 1000 * sd / math.sqrt(n)
 
 
-def compare(base_path, cand_path, floor_paths, json_out=None):
+def compare(base_path, cand_path, floor_paths, json_out=None, allowance=ALLOWANCE,
+            floor_base_path=None, nodes_only=False):
     base, cand = load(base_path), load(cand_path)
+    floor_base = load(floor_base_path) if floor_base_path else base
     floors = [load(p) for p in floor_paths]
-    out = {"depths": {}, "rates": {}, "pass": True}
+    out = {"depths": {}, "rates": {}, "allowance": allowance, "nodes_only": nodes_only, "pass": True}
     for d in map(str, DEPTHS):
-        floor = max(abs(log_ratio_stats(base, f, d)[0]) for f in floors) if floors else 0.0
+        floor = max(abs(log_ratio_stats(floor_base, f, d)[0]) for f in floors) if floors else 0.0
         m, se, n = log_ratio_stats(base, cand, d)
-        ok = abs(m) <= floor + ALLOWANCE + 3 * se
+        ok = abs(m) <= floor + allowance + 3 * se
         out["depths"][d] = {"mean_log_ratio": m, "se": se, "n": n, "floor": floor, "pass": ok}
         out["pass"] &= ok
     kinds = sorted(set().union(*(r["rates"].keys() for r in base.values())))
@@ -156,12 +161,14 @@ def compare(base_path, cand_path, floor_paths, json_out=None):
         bm, cm, md, se = rate_stats(base, cand, k)
         ok = abs(md) <= max(3 * se, 0.10 * abs(bm))
         out["rates"][k] = {"base_per_1000": bm, "cand_per_1000": cm, "diff": md, "se": se, "pass": ok}
-        out["pass"] &= ok
+        if not nodes_only:
+            out["pass"] &= ok
     for d, v in out["depths"].items():
-        print(f"depth {d}: mean log ratio {v['mean_log_ratio']:+.4f} ± {v['se']:.4f} (floor {v['floor']:.4f}) "
-              f"{'pass' if v['pass'] else 'FAIL'}")
+        print(f"depth {d}: mean log ratio {v['mean_log_ratio']:+.4f} ± {v['se']:.4f} (floor {v['floor']:.4f}, "
+              f"allowance {allowance:.4f}) {'pass' if v['pass'] else 'FAIL'}")
     failed = [k for k, v in out["rates"].items() if not v["pass"]]
-    print(f"rates: {len(kinds) - len(failed)} of {len(kinds)} kinds pass" + (f"; failed: {', '.join(failed)}" if failed else ""))
+    print(f"rates{' (not decided on)' if nodes_only else ''}: {len(kinds) - len(failed)} of {len(kinds)} kinds pass"
+          + (f"; failed: {', '.join(failed)}" if failed else ""))
     print("PASS" if out["pass"] else "FAIL")
     if json_out:
         with open(json_out, "w", newline="\n") as f:
@@ -178,8 +185,21 @@ if __name__ == "__main__":
     elif cmd == "compare":
         args = sys.argv[2:]
         floor_paths, json_out, rest = [], None, []
+        allowance, floor_base_path, nodes_only = ALLOWANCE, None, False
         i = 0
         while i < len(args):
+            if args[i] == "--allowance":
+                allowance = float(args[i + 1])
+                i += 2
+                continue
+            if args[i] == "--floor-base":
+                floor_base_path = args[i + 1]
+                i += 2
+                continue
+            if args[i] == "--nodes-only":
+                nodes_only = True
+                i += 1
+                continue
             if args[i] == "--floor":
                 i += 1
                 while i < len(args) and not args[i].startswith("--"):
@@ -192,4 +212,7 @@ if __name__ == "__main__":
                 continue
             rest.append(args[i])
             i += 1
-        sys.exit(0 if compare(rest[0], rest[1], floor_paths, json_out)["pass"] else 1)
+        if len(rest) != 2:
+            sys.exit("compare takes a base and a candidate")
+        sys.exit(0 if compare(rest[0], rest[1], floor_paths, json_out, allowance, floor_base_path,
+                              nodes_only)["pass"] else 1)
