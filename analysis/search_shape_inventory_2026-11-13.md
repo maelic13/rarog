@@ -419,7 +419,7 @@ One mechanical step after parity, checked against the scaffold.
   with, not a translation. My proposal is to keep them as the search's
   exchange table; the other way is to convert the SEE-unit thresholds to
   100/320/330/500/900 at ×0.75. The maintainer is asked when D.7.4.1
-  starts.
+  starts. *Decided 2026-11-18: the donor's values are kept.*
 - **Checks, at zero games, scaffold against folded in one test build:**
   1. Every decision record of layer A is reproduced by the folded rules,
      except where the deciding quantity lies within one Rarog unit of its
@@ -436,6 +436,19 @@ One mechanical step after parity, checked against the scaffold.
   starts at the measured configuration and needs no large movement. The
   curvature sweep (PLAN rule 4) still comes first, and a coordinate that
   runs to its bound is widened and registered again, not left there.
+- **As applied (D.7.4.1, 2026-11-18; `analysis/d741_fold_2026-11-18.md`).**
+  Two premises above were false. The correction's update slope turns an
+  evaluation difference into a table value, which is itself in evaluation
+  units, so it is a ratio and stays; its clamp [−4678, 2496] is folded to
+  [−1889, 1008]. The correction tables' saturation (14,605 and 16,418,
+  shared with the classic kernel) is in evaluation units, so the compact
+  kernel takes its own folded limits, 5,897 and 6,629. The resolution rule
+  was applied as: a value a whole unit would move by more than 1% held in
+  sixteenths, two per-unit steps in 1024ths, and the depth- and
+  history-multiplied slopes of razoring, futility and ProbCut's raise in
+  sixteenths, whose rounding grows with depth. Check 1's "within one unit
+  of its threshold" became a decision bracketed by moving the converted
+  inputs one unit either way.
 
 ## 6. RAR-O09
 

@@ -380,8 +380,7 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.4.1 | READY_FOR_IMPLEMENTATION | I2 | D.7.4's parity reached 2026-11-18 (compact fingerprint 7,606,256 / EBF 2.433); the donor's exchange table kept (maintainer decision 2026-11-18); the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted |
-| D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games, a diagnostic, not a stop |
+| D.7.5 | GAME_GATE | V | RAR-S126 registered 2026-11-18: the folded kernel (`2820eaa`, compact fingerprint 7,543,485 / EBF 2.422) against the classic kernel at the same commit, 2,000 games at `3+0.03`, a diagnostic, not a stop; arms built, the maintainer's command |
 | D.7.6 | RESEARCH | V | The fit as one joint rule 7c run over the whole kernel, read at checkpoints; no gate of its own |
 | D.7.7 | RESEARCH | V | The fitted kernel against the head on `[0,3]`, the one gate; `10+0.1` and 4T reads; H0 opens D.7.10 |
 | D.7.8 | RESEARCH | R2 | Each known problem asked "still an issue?" on the new kernel |
@@ -1924,7 +1923,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       searches of its move loop and its tail, quiescence, and
       `Board::is_dead_material` follow the donor's statement order. The
       constants are the donor's, as seeds to be folded and refitted."
-        - **D.7.4.1 The constants folded into Rarog's units and the scaffold deleted — `I2`.**
+        - **D.7.4.1 The constants folded into Rarog's units and the scaffold deleted — `I2`, DONE 2026-11-18.**
           Added 2026-11-13 (maintainer decision: no unit translation
           stays in the engine, and the conversion is done properly this
           time). D.7.4 builds the kernel in the donor's units so parity
@@ -1947,6 +1946,34 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           435, 679, 1,242), so a threshold in exchange units is not
           converted; a term in evaluation units inside a SEE threshold is
           folded by its dimension like any other.
+          *Done 2026-11-18* (`analysis/d741_fold_2026-11-18.md`): the
+          fold `8489e46`, the guard's depth `7d476d3`, the compare's
+          options `d7ca873`, MultiPV and the draw spread `5c33721`, the
+          anchors and seldepth `2820eaa`. Layer A: 47 kinds without a
+          mismatch, exceptions at most 1.44% of a kind, every plant and
+          the three wrong-dimension plants fail theirs, 15 seeds that no
+          record detects each with a checked reason. Check 2, registered
+          before any result: positions visited pass at depths 8, 11 and
+          14 (−0.0121, +0.0020, +0.0001); position 202 timed out. Compact
+          fingerprint **7,543,485 / EBF 2.422** (was 7,606,256 / 2.433);
+          the classic kernel's 9,067,595 / 2.479 unchanged.
+          *Deviations:* the depth- and history-multiplied slopes are held
+          in sixteenths and two per-unit steps in 1024ths; two premises of
+          the inventory were false (the correction's update slope is a
+          ratio, and its tables' saturation is in evaluation units, so the
+          compact kernel has its own limits); check 1's "within one unit"
+          is a bracket of the inputs moved one unit either way, and a
+          record on a decisive score is a distance; futility's and
+          bad-noisy futility's values had been returned in sixteenths, a
+          defect the bench caught and the check did not. Four tests
+          changed, each for a recorded reason: MultiPV lines search at the
+          iteration's depth (an engine change; a line settled shallower
+          outranked one settled at the depth), the three draw anchors
+          accept the kernel's draw spread of one unit (maintainer decision
+          2026-11-18), the seldepth test holds completed lines only (its
+          premise was false: the failing line was a bound printed
+          mid-iteration), and the allocation guard searches to depth 15
+          (its precondition, its own commit).
     - **D.7.5 The unfitted paired run — `V`.**
       2,000 games against the head (rule 8's screen), a diagnostic, not
       a stop (maintainer decision 2026-11-16). Clearly negative with
@@ -1954,6 +1981,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       contract the port broke. A defect is fixed and the run repeated; no
       defect, and the step goes on to the fit, which is the system's
       completion.
+      *Registered 2026-11-18 as RAR-S126:* both arms from `2820eaa`,
+      the compact kernel against the classic, so the switch is the only
+      difference; Colosseum, seed 20261118, the driver
+      `analysis/artifacts/d75-unfitted-2026-11-18/run_s126.ps1`.
     - **D.7.6 The fit — `V`.**
       In Rarog's units, on the folded kernel (D.7.4.1), whose seeds are
       right to rounding. Curvature sweep, then one SPSA run under rule 7c, read at
@@ -1983,6 +2014,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the pricing identity's null-move and razoring misses (0.70% and
       0.42%, cause unknown), which are found before any pricing read on
       the new kernel.
+      From D.7.4.1: the downgraded-mate band, position 202's class. A
+      mate the fifty-move clock could falsify reads back from the table
+      as the highest ordinary score, as in the donor and Stockfish, but
+      the compact kernel, before and after the fold, then grows trees one
+      to two orders of magnitude past the twin's (202 at depth 14 did not
+      finish in 590 s; the classic kernel reports the mates). The donor's
+      band sits elsewhere (`MAX_PLY` 240, decisive from 31,519) and it
+      also downgrades tablebase scores. Whether it is diagnosed before
+      D.7.6's fit, so the fit is not tuned around it, is the maintainer's
+      decision (asked 2026-11-18).
     - **D.7.9 Adoption and checkpoint — `V`, then `I1`.**
       The maintainer's decision on D.7.7 and D.7.8. On adoption: RAR-O08's
       matches (2) and (5) re-read on the new head, pooled NPS, conversion,
