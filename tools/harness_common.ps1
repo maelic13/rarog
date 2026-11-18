@@ -792,14 +792,17 @@ function Assert-TuneSurface {
     # every coordinate must exist, be a spin, start at the engine's own default,
     # stay inside the engine's range, and still perturb by at least half a unit
     # at the registered horizon — a step-1 integer knob goes dead after ~894
-    # iterations and tunes nothing while looking healthy.
+    # iterations and tunes nothing while looking healthy. A rule 7c tune plays
+    # the converter's graded perturbation (two steps where the seed has the
+    # room, never under one), so -Rule7c checks that; otherwise one step.
     param(
         [Parameter(Mandatory)][object[]]$Advertised,
         [Parameter(Mandatory)][object]$Surface,
         [Parameter(Mandatory)][int]$Iterations,
         [Parameter(Mandatory)][string]$Label,
         [object]$Fixed = $null,
-        [double]$Gamma = 0.102
+        [double]$Gamma = 0.102,
+        [switch]$Rule7c
     )
 
     $normalize = { param($value) ($value -replace '\s+', ' ').Trim().ToLowerInvariant() }
@@ -831,7 +834,12 @@ function Assert-TuneSurface {
                    "range=[$minimum,$maximum] step=$step; engine default=$($declaration.Default) " +
                    "range=[$($declaration.Min),$($declaration.Max)].")
         }
-        $endPerturbation = $step / [Math]::Pow($Iterations, $Gamma)
+        $steps = 1.0
+        if ($Rule7c) {
+            $room = [Math]::Min($value - $minimum, $maximum - $value) / $step
+            $steps = [Math]::Min(2.0, [Math]::Max(1.0, $room))
+        }
+        $endPerturbation = $steps * $step / [Math]::Pow($Iterations, $Gamma)
         if ($endPerturbation -lt 0.5) {
             throw "$($parameter.Name) perturbation rounds to zero before iteration $Iterations (end=$endPerturbation)."
         }

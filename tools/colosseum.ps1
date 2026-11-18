@@ -496,7 +496,7 @@ if ($Mode -eq "spsa") {
     if ($fixed) { $names += @($fixed.PSObject.Properties.Name) }
     Assert-CoreSurfaceArm -Names $names -Advertised $advertised["tune"] -Flavor $manifests["tune"].flavor -ConfigGroup $ConfigGroup
 
-    $tuned = @(Assert-TuneSurface -Advertised $advertised["tune"] -Surface $surface `
+    $tuned = @(Assert-TuneSurface -Advertised $advertised["tune"] -Surface $surface -Rule7c `
         -Iterations $Ceiling -Label (Split-Path $engines[0].Path -Leaf) -Fixed $fixed)
     Write-Host "  Tune surface verified: $($tuned.Count) coordinates at the ceiling N = $Ceiling"
 

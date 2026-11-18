@@ -395,6 +395,7 @@ try {
     } -Remove @("RunFile")
     Invoke-Case -Name "tune ceiling the surface cannot resolve" -Expect "rounds to zero" `
         -Arguments (Merge-Arguments $compactTune @{ Ceiling = 100000000 })
+    Invoke-Case -Name "control: the compact surface resolves" -Expect "" -Arguments $compactTune
 
     Invoke-Case -Name "control: the registered tune resolves" -Expect "" -Arguments $tune
 
