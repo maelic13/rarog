@@ -852,7 +852,10 @@ fn the_empty_syzygy_path_placeholder_says_nothing() {
 /// `seldepth` is the deepest ply reached in the CURRENT iteration, counted as
 /// Stockfish counts it (`ss->ply + 1`), not a high-water mark for the whole
 /// search. Carried across a search it only ever rises, which is not what a GUI
-/// plots against depth. One thread at fixed depth is deterministic.
+/// plots against depth. One thread at fixed depth is deterministic. A bound
+/// line reports an iteration still searching, whose deepest ply so far can lie
+/// short of its depth when a stored score ends the first moves early, so only
+/// an iteration's completed line is held to its depth.
 #[test]
 fn seldepth_resets_each_iteration_and_counts_plies_from_one() {
     let mut session = UciSession::ready();
@@ -871,7 +874,17 @@ fn seldepth_resets_each_iteration_and_counts_plies_from_one() {
         })
         .collect();
     assert!(reported.len() >= 10, "a depth-12 search reports: {lines:?}");
-    for (depth, seldepth) in &reported {
+    let completed = lines
+        .iter()
+        .filter(|line| line.starts_with("info depth") && line.contains(" pv "))
+        .filter(|line| !line.contains("lowerbound") && !line.contains("upperbound"))
+        .filter_map(|line| {
+            Some((
+                parse_uci_u64_field(line, "depth")?,
+                parse_uci_u64_field(line, "seldepth")?,
+            ))
+        });
+    for (depth, seldepth) in completed {
         assert!(
             seldepth >= depth,
             "an iteration reaches at least its own depth: depth {depth}, seldepth {seldepth}"

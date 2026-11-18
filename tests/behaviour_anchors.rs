@@ -12,7 +12,7 @@ use std::sync::{Mutex, MutexGuard};
 use rarog::bench::BENCH_FENS;
 use rarog::board::{Board, CastlingRights, Color, Move, Piece, Square, UciMove};
 use rarog::eval::{Evaluator, MATE_SCORE};
-use rarog::search::options::SearchOptions;
+use rarog::search::options::{Kernel, SearchOptions};
 use rarog::search::{SearchEvent, SearchResult, Searcher};
 use rarog::syzygy::{self, Wdl};
 use rarog::wac::wac_positions;
@@ -218,7 +218,11 @@ fn saavedra_rook_promotion_wins() {
     let s = summary(&r);
     assert_eq!(r.bestmove.to_string(), "c7c8r", "{s}");
     assert!(r.score >= MATE_SCORE - 40, "{s}");
-    assert_eq!(alone(fen, "c7c8q", r.depth), 0, "the queen is drawn");
+    let queen = alone(fen, "c7c8q", r.depth);
+    assert!(
+        queen.abs() <= Kernel::DEFAULT.draw_spread(),
+        "the queen is drawn: {queen}"
+    );
 }
 
 /// `tournament_infraction_positions`: legal best moves in two final positions
