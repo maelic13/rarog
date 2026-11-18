@@ -380,8 +380,7 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.5 | GAME_GATE | V | RAR-S126 registered 2026-11-18: the folded kernel (`2820eaa`, compact fingerprint 7,543,485 / EBF 2.422) against the classic kernel at the same commit, 2,000 games at `3+0.03`, a diagnostic, not a stop; arms built, the maintainer's command |
-| D.7.6 | RESEARCH | V | The fit as one joint rule 7c run over the whole kernel, read at checkpoints; no gate of its own |
+| D.7.6 | RESEARCH | V | The fit as one joint rule 7c run over the whole kernel, read at checkpoints; no gate of its own. Next: its registration (surface, horizon, checkpoints), which the maintainer starts (D.7 decision 6); RAR-S126's unfitted read −11.1 ± 15.2 nElo is its starting point |
 | D.7.7 | RESEARCH | V | The fitted kernel against the head on `[0,3]`, the one gate; `10+0.1` and 4T reads; H0 opens D.7.10 |
 | D.7.8 | RESEARCH | R2 | Each known problem asked "still an issue?" on the new kernel |
 | D.7.9 | RESEARCH | V | Adoption by maintainer decision on D.7.7 and D.7.8; meters; the old kernel deleted; the kernel's size against the donor's |
@@ -1974,7 +1973,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           premise was false: the failing line was a bound printed
           mid-iteration), and the allocation guard searches to depth 15
           (its precondition, its own commit).
-    - **D.7.5 The unfitted paired run — `V`.**
+    - **D.7.5 The unfitted paired run — `V`, DONE 2026-11-18.**
       2,000 games against the head (rule 8's screen), a diagnostic, not
       a stop (maintainer decision 2026-11-16). Clearly negative with
       parity passed is diagnosed once for a defect: units, scaling, a
@@ -1985,6 +1984,13 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the compact kernel against the classic, so the switch is the only
       difference; Colosseum, seed 20261118, the driver
       `analysis/artifacts/d75-unfitted-2026-11-18/run_s126.ps1`.
+      *Read 2026-11-18:* nElo −11.1 ± 15.2 (Elo −6.9 ± 9.5), not clearly
+      negative, so no diagnosis and the fit is next. The compact arm
+      searched 1.2 plies deeper at the same time a move and converted
+      winning scores better (98.1% against 96.2%); the classic arm reached
+      a winning score in 52 more games. The prediction (+25) missed: the
+      donor's lead at equal time (RAR-O08) was carried by its own clock,
+      which this arm does not have.
     - **D.7.6 The fit — `V`.**
       In Rarog's units, on the folded kernel (D.7.4.1), whose seeds are
       right to rounding. Curvature sweep, then one SPSA run under rule 7c, read at
@@ -2023,7 +2029,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       band sits elsewhere (`MAX_PLY` 240, decisive from 31,519) and it
       also downgrades tablebase scores. Whether it is diagnosed before
       D.7.6's fit, so the fit is not tuned around it, is the maintainer's
-      decision (asked 2026-11-18).
+      decision (asked 2026-11-18). RAR-S126's games show no conversion
+      cost: the band appears in 301 of the compact arm's games, 300 won.
     - **D.7.9 Adoption and checkpoint — `V`, then `I1`.**
       The maintainer's decision on D.7.7 and D.7.8. On adoption: RAR-O08's
       matches (2) and (5) re-read on the new head, pooled NPS, conversion,
