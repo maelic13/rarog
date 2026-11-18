@@ -74,7 +74,7 @@ field, about 3,475 on CCRL's Blitz scale.
         - [x] **D.7.2.4** RAR-O12: RAR-O11's equal-node reads again, at equal work in one node unit — DONE 2026-11-16
     - [x] **D.7.3** Parity instrument: Rarog and the hybrid on one position set — DONE 2026-11-16
     - [x] **D.7.4** The kernel in the donor's form, behind one switch — DONE 2026-11-18
-        - [ ] **D.7.4.1** The constants folded into Rarog's units and the scaffold deleted — **RESEARCH / I2**
+        - [ ] **D.7.4.1** The constants folded into Rarog's units and the scaffold deleted — **READY_FOR_IMPLEMENTATION / I2**
     - [ ] **D.7.5** The unfitted paired run — **RESEARCH / V**
     - [ ] **D.7.6** The fit — **RESEARCH / V**
     - [ ] **D.7.7** The gate: the kernel against the head — **RESEARCH / V**

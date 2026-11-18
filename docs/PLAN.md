@@ -380,7 +380,7 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.4.1 | RESEARCH | I2 | D.7.4's parity reached 2026-11-18 (compact fingerprint 7,606,256 / EBF 2.433); waits for the maintainer's decision on the exchange table; then the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted |
+| D.7.4.1 | READY_FOR_IMPLEMENTATION | I2 | D.7.4's parity reached 2026-11-18 (compact fingerprint 7,606,256 / EBF 2.433); the donor's exchange table kept (maintainer decision 2026-11-18); the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted |
 | D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games, a diagnostic, not a stop |
 | D.7.6 | RESEARCH | V | The fit as one joint rule 7c run over the whole kernel, read at checkpoints; no gate of its own |
 | D.7.7 | RESEARCH | V | The fitted kernel against the head on `[0,3]`, the one gate; `10+0.1` and 4T reads; H0 opens D.7.10 |
@@ -1509,7 +1509,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      an invariant, and any form the inventory marks kept or dropped that
      the implementer would treat otherwise.
   4. *When D.7.4.1 starts:* the exchange table, the donor's piece values
-     kept or the SEE thresholds converted to Rarog's.
+     kept or the SEE thresholds converted to Rarog's. *Answered
+     2026-11-18:* the donor's values are kept.
   5. *After D.7.5:* a clearly negative unfitted run, before any diagnosis
      beyond the one PLAN allows.
   6. *Before D.7.6:* the tune's registration (surface, horizon,
@@ -1941,6 +1942,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           fingerprint. Rule:
           `analysis/search_shape_inventory_2026-11-13.md` section 5,
           *The fold*.
+          *Exchange table (maintainer decision 2026-11-18):* the donor's
+          piece values stay the compact kernel's exchange table (109, 403,
+          435, 679, 1,242), so a threshold in exchange units is not
+          converted; a term in evaluation units inside a SEE threshold is
+          folded by its dimension like any other.
     - **D.7.5 The unfitted paired run — `V`.**
       2,000 games against the head (rule 8's screen), a diagnostic, not
       a stop (maintainer decision 2026-11-16). Clearly negative with
@@ -1972,11 +1978,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the combined kernel, and Rarog's own accepted forms from D.7.0's
       list. The result is a table: gone, still there, or new. It feeds the
       adoption decision and says which D.6 leaves close, stay or re-open.
+      From D.7.4: position 305's second divergence from its donor (from
+      depth 3, SEE-2 and SEE-3 the first candidates, both kept forms), and
+      the pricing identity's null-move and razoring misses (0.70% and
+      0.42%, cause unknown), which are found before any pricing read on
+      the new kernel.
     - **D.7.9 Adoption and checkpoint — `V`, then `I1`.**
       The maintainer's decision on D.7.7 and D.7.8. On adoption: RAR-O08's
       matches (2) and (5) re-read on the new head, pooled NPS, conversion,
       the old kernel and the switch deleted, the fingerprint record
-      updated, and the kernel's size reported against the donor's. An
+      updated, and the kernel's size reported against the donor's. The
+      eighteen tests that pin the classic kernel's forms (D.7.4's record)
+      are retired or rewritten with it. An
       adopted kernel releases as 2.8.0. Rarog's additions are then tried
       again one at a time on it, each with its own registration and gate.
     - **D.7.10 If the Reckless kernel does not gain: the kernel in Stockfish's form — `R3`.**
@@ -1990,6 +2003,13 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       than Reckless's at equal work (RAR-O11 (e)), and Basilisk's
       search, fitted on its own evaluation, gained 55.2 ± 16.6 more per
       move made than Rarog's (RAR-O12).
+      Two items from D.7.4 wait here. The parity instrument's rate rule
+      bounds its tail before it judges another kernel: its 3·SE limit has
+      no ceiling, and one runaway tree widened its bands to 13 times a
+      rate (`cb7c79b`). And the old kernel, which stays on this branch,
+      answers a promotion push in SEE by its gain without the exchange,
+      where the donor and the compact kernel play the exchange: a repair
+      card for it, with its measured exposure, before D.7.10's own work.
 - **D.8 Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — `I1`, `R2` for the root driver.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` §3.7 and §3.8
   (the B.2.0 recipe repeated: `src/` 29,190 lines, in-file tests 23%,

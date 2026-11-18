@@ -309,6 +309,8 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   2026-10-09). The tags kept are the releases (`v*`) and the oracle's three
   (`oracle/*`, a vendored Stockfish tree too large for a patch), which
   retire by the conditions their records state; an agent creates no tag.
+- `dragon_nnue` is kept, locally and on GitHub: never delete it, whatever a
+  review finds (maintainer decision 2026-11-18).
 - No mess: a throwaway work branch is deleted once its information is
   recorded, and at each phase close tags and branches are reviewed and any
   whose retirement condition fired are removed. Before

@@ -530,7 +530,8 @@ wrong order of statements, which neither A nor B names.
 ## 8. The kernel (D.7.4)
 
 **Contract.** One switch. With it off the old kernel's fingerprint is exact
-(8,935,848) and a pooled NPS read shows no cost. The new code is Rarog's own,
+(8,935,848 when this was written; 9,067,595 since D.6.31) and a pooled NPS
+read shows no cost. The new code is Rarog's own,
 written from this record and the donor's mechanisms, in D.8's target shape:
 rules as pure functions, instrumentation as probes.
 
