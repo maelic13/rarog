@@ -312,6 +312,11 @@ fn tune_option_lines() -> Vec<String> {
     lines.extend(CoreParams::uci_option_strings());
     lines.extend(ProofParams::uci_option_strings());
     lines.extend(QuietParams::uci_option_strings());
+    // The compact kernel's seeds, listed only where that kernel searches, so
+    // a classic tune's surface audit sees only the classic sets.
+    if cfg!(feature = "compact-kernel") {
+        lines.extend(EngineOptions::compact_seed_option_lines());
+    }
     lines.extend(
         [MaskedFamily::KingDanger, MaskedFamily::KingShelter].map(|family| {
             format!(
@@ -342,6 +347,7 @@ fn apply_tunable(engine: &mut EngineOptions, name: &str, value: &str) -> OptionU
         || engine.core_params.set_uci_option(&lower, value)
         || engine.proof_params.set_uci_option(&lower, value)
         || engine.quiet_params.set_uci_option(&lower, value)
+        || (cfg!(feature = "compact-kernel") && engine.set_compact_seed(&lower, value))
     {
         return OptionUpdate::Applied;
     }

@@ -286,6 +286,9 @@ struct SearchConfig {
     quiet: Param<QuietParams>,
     /// The kernel this search runs.
     kernel: Kernel,
+    /// The compact kernel's seeds as the tuning options set them.
+    #[cfg(feature = "tune")]
+    compact_seeds: &'static compact::rules::Seeds,
     limits: RuntimeLimits,
     start: Instant,
 }
@@ -298,6 +301,8 @@ impl Default for SearchConfig {
             proof: Param::<ProofParams>::default(),
             quiet: Param::<QuietParams>::default(),
             kernel: Kernel::DEFAULT,
+            #[cfg(feature = "tune")]
+            compact_seeds: compact::rules::SEEDS,
             limits: RuntimeLimits::default(),
             start: Instant::now(),
         }
@@ -868,6 +873,14 @@ impl Searcher {
             self.cfg.proof = engine_options.proof_params.clone();
             self.cfg.quiet = engine_options.quiet_params.clone();
         }
+        // The kernel reads its seeds by a static reference, as it reads the
+        // donor's in every other build, so a node borrows nothing from the
+        // searcher. A table is allocated only when the options change it,
+        // about a kilobyte for each tuning iteration a process plays.
+        #[cfg(feature = "tune")]
+        if *self.cfg.compact_seeds != engine_options.compact_seeds {
+            self.cfg.compact_seeds = Box::leak(Box::new(engine_options.compact_seeds.clone()));
+        }
         // Without `tune` no option reaches these sets, so the compiled-in
         // handles are what the options hold. A caller outside the crate that
         // sets one (an integration test) needs a `tune` build.
@@ -1024,7 +1037,8 @@ impl Searcher {
         // single-handedly — which is the opposite of pooling the decision.
         let mut cast_stop_vote = false;
         let compact = self.cfg.kernel == Kernel::Compact;
-        let mut iterations = compact::window::Iterations::new(self.td.compact_previous_score, 1);
+        let mut iterations =
+            compact::window::Iterations::new(self.td.compact_previous_score, 1, self.seeds());
 
         for depth in 1..=max_depth {
             // Per iteration, as Stockfish resets `selDepth`: carried across a
@@ -1061,7 +1075,7 @@ impl Searcher {
                     self.td.rates.record(compact::probes::Kind::Optimism, true);
                     self.td.rates.record(compact::probes::Kind::Window, true);
                 }
-                RootWindow::Compact(compact::window::CompactWindow::new(opening))
+                RootWindow::Compact(compact::window::CompactWindow::new(opening, self.seeds()))
             } else {
                 // Termination by construction: see `Aspiration`.
                 RootWindow::Classic(Aspiration::new(&self.cfg.params, depth, window_center))
@@ -1543,7 +1557,7 @@ impl Searcher {
         let mut settled: Vec<ReportedLine> = Vec::new();
         let compact = self.cfg.kernel == Kernel::Compact;
         let mut iterations =
-            compact::window::Iterations::new(self.td.compact_previous_score, lines);
+            compact::window::Iterations::new(self.td.compact_previous_score, lines, self.seeds());
 
         for depth in 1..=max_depth {
             // Per iteration, as in the single-line path above.
@@ -1590,7 +1604,10 @@ impl Searcher {
                     let stm = board.side_to_move() as usize;
                     self.td.optimism[stm] = optimism;
                     self.td.optimism[1 - stm] = -optimism;
-                    RootWindow::Compact(compact::window::CompactWindow::at_iteration_depth(opening))
+                    RootWindow::Compact(compact::window::CompactWindow::at_iteration_depth(
+                        opening,
+                        self.seeds(),
+                    ))
                 } else {
                     let center = self
                         .root_record(order[line])
@@ -2296,6 +2313,38 @@ mod tests {
     /// so a parameter the search no longer consults, or consults only where no
     /// named position reaches, fails here by name. Release only: the sweep is
     /// about 300 searches.
+    /// A tuning build's compact seeds reach the compact search: a seed set
+    /// through the options changes its tree, its own value leaves the tree
+    /// alone, and a searcher given new values and then the old ones searches
+    /// the old tree again.
+    #[cfg(feature = "tune")]
+    #[test]
+    fn a_compact_seed_set_in_the_options_reaches_the_compact_search() {
+        const FEN: &str = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
+        let options = |value: &str| {
+            let mut options = SearchOptions::default();
+            options.limits.depth = Some(8);
+            options.engine.kernel = Kernel::Compact;
+            assert!(options.engine.set_compact_seed("KLmrLog", value));
+            options
+        };
+        let tree = |searcher: &mut Searcher, options: &SearchOptions| {
+            let board = Board::from_fen(FEN).expect("valid FEN");
+            searcher.search(board, options, false, || SearchEvent::None).nodes
+        };
+        let mut donor = SearchOptions::default();
+        donor.limits.depth = Some(8);
+        donor.engine.kernel = Kernel::Compact;
+        let base = tree(&mut Searcher::default(), &donor);
+        assert_eq!(tree(&mut Searcher::default(), &options("269")), base);
+        let moved = tree(&mut Searcher::default(), &options("400"));
+        assert_ne!(moved, base, "a longer reduction table searches another tree");
+        let mut reused = Searcher::default();
+        assert_eq!(tree(&mut reused, &options("400")), moved);
+        reused.new_game();
+        assert_eq!(tree(&mut reused, &donor), base);
+    }
+
     #[test]
     #[cfg_attr(
         debug_assertions,

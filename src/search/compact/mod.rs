@@ -32,6 +32,8 @@ mod pricing;
 pub(super) mod probes;
 mod quiescence;
 pub(super) mod rules;
+#[cfg(any(test, feature = "tune"))]
+pub(super) mod tune;
 pub(super) mod window;
 
 use crate::board::{Board, Color, Move, Piece, SeeValues};
@@ -117,13 +119,16 @@ impl Searcher {
         self.td.pv_len[ply] = child_len;
     }
 
-    /// The seed table the kernel reads: the donor's, and in the pricing
-    /// build a planted one in the measured search.
+    /// The seed table the kernel reads: the donor's; in the tuning build the
+    /// options' values; in the pricing build a planted one in the measured
+    /// search.
     #[inline(always)]
     pub(super) fn seeds(&self) -> &'static Seeds {
         #[cfg(feature = "pricing")]
         let seeds = self.pricing_seeds();
-        #[cfg(not(feature = "pricing"))]
+        #[cfg(all(feature = "tune", not(feature = "pricing")))]
+        let seeds = self.cfg.compact_seeds;
+        #[cfg(not(any(feature = "pricing", feature = "tune")))]
         let seeds = rules::SEEDS;
         seeds
     }

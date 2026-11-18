@@ -87,6 +87,24 @@ pub struct EngineOptions {
     pub quiet_params: QuietParams,
     /// The search kernel; the build's default.
     pub kernel: Kernel,
+    /// The compact kernel's seeds, which only a tuning build can set.
+    #[cfg(feature = "tune")]
+    pub(crate) compact_seeds: super::compact::rules::Seeds,
+}
+
+#[cfg(feature = "tune")]
+impl EngineOptions {
+    /// The compact kernel's seeds as tuning options, the donor's values as
+    /// defaults.
+    pub(crate) fn compact_seed_option_lines() -> Vec<String> {
+        super::compact::tune::uci_option_strings()
+    }
+
+    /// Sets a compact kernel seed by its option name; false when the name is
+    /// no tunable seed.
+    pub(crate) fn set_compact_seed(&mut self, name: &str, value: &str) -> bool {
+        super::compact::tune::set_uci_option(&mut self.compact_seeds, name, value)
+    }
 }
 
 impl Default for EngineOptions {
@@ -104,6 +122,8 @@ impl Default for EngineOptions {
             proof_params: ProofParams::default(),
             quiet_params: QuietParams::default(),
             kernel: Kernel::DEFAULT,
+            #[cfg(feature = "tune")]
+            compact_seeds: super::compact::rules::Seeds::DONOR,
         }
     }
 }

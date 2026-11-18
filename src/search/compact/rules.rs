@@ -601,8 +601,9 @@ impl Seeds {
 pub(crate) const SEEDS: &Seeds = &Seeds::DONOR;
 
 /// Every seed scalar by name, with access to it: for the parity test's
-/// coverage pass and the pricing build's plants.
-#[cfg(any(test, feature = "pricing"))]
+/// coverage pass, the pricing build's plants and the tuning build's
+/// options.
+#[cfg(any(test, feature = "pricing", feature = "tune"))]
 macro_rules! seed_fields {
     ($($field:ident $([$index:literal])?,)*) => {
         &[$((
@@ -613,10 +614,10 @@ macro_rules! seed_fields {
 }
 
 /// A seed scalar's name and its place in the table.
-#[cfg(any(test, feature = "pricing"))]
+#[cfg(any(test, feature = "pricing", feature = "tune"))]
 pub(crate) type SeedField = (&'static str, fn(&mut Seeds) -> &mut i32);
 
-#[cfg(any(test, feature = "pricing"))]
+#[cfg(any(test, feature = "pricing", feature = "tune"))]
 pub(crate) const SEED_FIELDS: &[SeedField] = seed_fields!(
     wrap_raw_base,
     wrap_optimism_base,
