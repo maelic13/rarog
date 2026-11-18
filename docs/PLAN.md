@@ -26,6 +26,15 @@ with any retired number cited in the ledger, the analyses or source comments.
 2. **NNUE stage.** Train networks on Rarog's own data only, then reach the
    **CCRL top 100**, and later the top 50.
 
+**The pre-NNUE goal (maintainer decision 2026-11-18).** Before the NNUE
+stage, the target is **Stockfish 16 with `Use NNUE=false`**, its last
+hand-crafted evaluation: get as close to it as possible, and beat it if it
+can be done. The meter is Rarog's gap to it, read head to head and in a
+rated field. On 2026-11-18 Rarog 2.7.0 is **160 below** it in a 13-engine
+field and **−164.8** [−187.1, −143.6] head to head at `3+0.03` 1T (RAR-M89).
+The maintainer may change the target later. It sets the direction; E.2's
+gate below is unchanged until the maintainer replaces it.
+
 **The classical target gate (E.2).** Colosseum rating tournament, the
 maintainer's fixed pool with Houdini 3 added, `3+0.03`, UHO book, no
 adjudication, at least 400 games per pair, measured **both at 1 thread and at
