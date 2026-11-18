@@ -3,8 +3,9 @@
 This directory holds the SPSA surface of a **registered** tune, one
 `config_<group>.json` per group, read by `tools/spsa.ps1` and checked by
 `tools/audit_spsa_coverage.ps1`. An optional `fixed_<group>.json` holds UCI
-options applied to both sides at fixed values. **One group is prepared:
-`d14block1`** (PLAN D.1.4's clock fit, registered by RAR-R15).
+options applied to both sides at fixed values. **Prepared:
+`d76fit`** (PLAN D.7.6, the compact kernel's fit, registered by RAR-S128)
+and `d14block1` (PLAN D.1.4's clock fit, registered by RAR-R15).
 `c2margin` (PLAN C.2, RAR-E24) and `c3margin` (PLAN C.3, RAR-E25) were baked
 after their gates accepted them. `b23core`, `b27all`, `b27core`, `b33`, `b43`, `c2margin`, `c3margin`, `c10pilot`, `c10block1` and `c10long` are historical: their
 thetas are baked or were never baked, their seeds are kept as evidence, and `historical.txt`
@@ -21,6 +22,24 @@ tools/results/<run>` plays it to each checkpoint and reads it there with
 `tools/spsa_read.py`. The groups below were registered and run as blocks;
 their `-Iterations`, `-TotalGames` and `-SeedFrom` lines are history, and
 their committed files still `--check` in the block form (`--iterations`).
+
+## `d76fit` — D.7.6's fit of the compact kernel, registered by RAR-S128
+
+- **Surface:** 230 compact-kernel seeds, the active candidates of
+  `analysis/d76_surface_2026-11-18.md` (246 seeds, 5 excluded by
+  construction, 10 dropped by the activation read, and `KPickLateGood`,
+  whose one step of room dies at iteration 894 of 6,000). `value` is the
+  donor's seed, `min_value` and `max_value` the record's range rule, `step`
+  range/16. The options are the `tune compact-kernel` build's (`K` and the
+  seed's name in Pascal case); audit with `./tools/audit_spsa_coverage.ps1
+  -TuneEngine tools/test_engines/rarog-d76fit-tune.exe`.
+- **`fixed_d76fit.json`:** Hash 64, Threads 1, MultiPV 1.
+- **`d76pilot`:** the same surface, converted for the pilot's ceiling of
+  128 iterations (RAR-S128's amendment).
+- **Run:** the pilot first, then rule 7c's one run to 6,000 iterations:
+  `./tools/colosseum.ps1 -Mode spsa -Engine
+  tools/test_engines/rarog-d76fit-tune.exe -ConfigGroup d76fit -Ceiling 6000
+  -Seed 20261118 -Dir tools/results/d76-fit`.
 
 ## `d16fix` — D.1.6.3's fit of the cascade cluster, registered by RAR-R21
 

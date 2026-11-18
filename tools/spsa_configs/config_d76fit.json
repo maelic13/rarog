@@ -1,0 +1,1382 @@
+{
+  "KWrapRawBase": {
+    "value": 21032,
+    "min_value": 10516,
+    "max_value": 42064,
+    "step": 1971.75
+  },
+  "KWrapOptimismBase": {
+    "value": 1548,
+    "min_value": 774,
+    "max_value": 3096,
+    "step": 145.125
+  },
+  "KWrapDivisor": {
+    "value": 27015,
+    "min_value": 13507,
+    "max_value": 54030,
+    "step": 2532.6875
+  },
+  "KWrapFiftyHorizon": {
+    "value": 200,
+    "min_value": 100,
+    "max_value": 400,
+    "step": 18.75
+  },
+  "KTtCutTypedDepth": {
+    "value": 5,
+    "min_value": 1,
+    "max_value": 9,
+    "step": 1.0
+  },
+  "KTtBonusParentMoves": {
+    "value": 4,
+    "min_value": 1,
+    "max_value": 8,
+    "step": 1.0
+  },
+  "KTtBonusQuietSlope": {
+    "value": 190,
+    "min_value": 95,
+    "max_value": 380,
+    "step": 17.8125
+  },
+  "KTtBonusQuietOffset": {
+    "value": 81,
+    "min_value": 40,
+    "max_value": 162,
+    "step": 7.625
+  },
+  "KTtBonusQuietCap": {
+    "value": 1691,
+    "min_value": 845,
+    "max_value": 3382,
+    "step": 158.5625
+  },
+  "KTtBonusContSlope": {
+    "value": 96,
+    "min_value": 48,
+    "max_value": 192,
+    "step": 9.0
+  },
+  "KTtBonusContOffset": {
+    "value": 73,
+    "min_value": 36,
+    "max_value": 146,
+    "step": 6.875
+  },
+  "KTtBonusContCap": {
+    "value": 1206,
+    "min_value": 603,
+    "max_value": 2412,
+    "step": 113.0625
+  },
+  "KEvalBonusDepth": {
+    "value": 6,
+    "min_value": 2,
+    "max_value": 10,
+    "step": 1.0
+  },
+  "KEvalBonusScale": {
+    "value": 2011,
+    "min_value": 1005,
+    "max_value": 4022,
+    "step": 188.5625
+  },
+  "KEvalBonusMin": {
+    "value": -144,
+    "min_value": -288,
+    "max_value": -72,
+    "step": 13.5
+  },
+  "KEvalBonusMax": {
+    "value": 324,
+    "min_value": 162,
+    "max_value": 648,
+    "step": 30.375
+  },
+  "KHindsightReduction": {
+    "value": 2249,
+    "min_value": 1124,
+    "max_value": 4498,
+    "step": 210.875
+  },
+  "KHindsightRise": {
+    "value": 23,
+    "min_value": 11,
+    "max_value": 46,
+    "step": 2.1875
+  },
+  "KRazorBase16": {
+    "value": 1531,
+    "min_value": 765,
+    "max_value": 3062,
+    "step": 143.5625
+  },
+  "KRazorSquare16": {
+    "value": 1641,
+    "min_value": 820,
+    "max_value": 3282,
+    "step": 153.875
+  },
+  "KRazorAlphaLimit": {
+    "value": 827,
+    "min_value": 413,
+    "max_value": 1654,
+    "step": 77.5625
+  },
+  "KRfpSquare16": {
+    "value": 7365,
+    "min_value": 3682,
+    "max_value": 14730,
+    "step": 690.5
+  },
+  "KRfpImprovement": {
+    "value": 120,
+    "min_value": 60,
+    "max_value": 240,
+    "step": 11.25
+  },
+  "KRfpLinear16": {
+    "value": 142,
+    "min_value": 71,
+    "max_value": 284,
+    "step": 13.3125
+  },
+  "KRfpCorrection": {
+    "value": 669,
+    "min_value": 334,
+    "max_value": 1338,
+    "step": 62.75
+  },
+  "KRfpUnthreatened16": {
+    "value": 349,
+    "min_value": 174,
+    "max_value": 698,
+    "step": 32.75
+  },
+  "KRfpConstant16": {
+    "value": 123,
+    "min_value": 61,
+    "max_value": 246,
+    "step": 11.5625
+  },
+  "KRfpT": {
+    "value": 6945,
+    "min_value": 3472,
+    "max_value": 13890,
+    "step": 651.125
+  },
+  "KNmpDepth16": {
+    "value": 58,
+    "min_value": 29,
+    "max_value": 116,
+    "step": 5.4375
+  },
+  "KNmpTtPv16": {
+    "value": 711,
+    "min_value": 355,
+    "max_value": 1422,
+    "step": 66.6875
+  },
+  "KNmpImprovement": {
+    "value": 94,
+    "min_value": 47,
+    "max_value": 188,
+    "step": 8.8125
+  },
+  "KNmpCutoffs16": {
+    "value": 136,
+    "min_value": 68,
+    "max_value": 272,
+    "step": 12.75
+  },
+  "KNmpBase16": {
+    "value": 2177,
+    "min_value": 1088,
+    "max_value": 4354,
+    "step": 204.125
+  },
+  "KNmpMaterial": {
+    "value": 491,
+    "min_value": 245,
+    "max_value": 982,
+    "step": 46.0625
+  },
+  "KNmpRBase": {
+    "value": 4407,
+    "min_value": 2203,
+    "max_value": 8814,
+    "step": 413.1875
+  },
+  "KNmpRImproving": {
+    "value": 917,
+    "min_value": 458,
+    "max_value": 1834,
+    "step": 86.0
+  },
+  "KNmpRDepth": {
+    "value": 265,
+    "min_value": 132,
+    "max_value": 530,
+    "step": 24.875
+  },
+  "KNmpRSurplus": {
+    "value": 1181,
+    "min_value": 590,
+    "max_value": 2362,
+    "step": 110.75
+  },
+  "KNmpRSurplusCap": {
+    "value": 479,
+    "min_value": 239,
+    "max_value": 958,
+    "step": 44.9375
+  },
+  "KNmpVerifyDepth": {
+    "value": 16,
+    "min_value": 8,
+    "max_value": 32,
+    "step": 1.5
+  },
+  "KProbcutMargin": {
+    "value": 103,
+    "min_value": 51,
+    "max_value": 206,
+    "step": 9.6875
+  },
+  "KProbcutImproving": {
+    "value": 34,
+    "min_value": 17,
+    "max_value": 68,
+    "step": 3.1875
+  },
+  "KProbcutDepthBase": {
+    "value": 4,
+    "min_value": 1,
+    "max_value": 8,
+    "step": 1.0
+  },
+  "KProbcutDepthPer": {
+    "value": 129,
+    "min_value": 64,
+    "max_value": 258,
+    "step": 12.125
+  },
+  "KProbcutRaise16": {
+    "value": 1273,
+    "min_value": 636,
+    "max_value": 2546,
+    "step": 119.375
+  },
+  "KProbcutT": {
+    "value": 2695,
+    "min_value": 1347,
+    "max_value": 5390,
+    "step": 252.6875
+  },
+  "KSingularDepth": {
+    "value": 5,
+    "min_value": 1,
+    "max_value": 9,
+    "step": 1.0
+  },
+  "KSingularTtDepth": {
+    "value": 3,
+    "min_value": 1,
+    "max_value": 7,
+    "step": 1.0
+  },
+  "KSingularExactDiv": {
+    "value": 4,
+    "min_value": 1,
+    "max_value": 8,
+    "step": 1.0
+  },
+  "KSingularPerPly1024": {
+    "value": 413,
+    "min_value": 206,
+    "max_value": 826,
+    "step": 38.75
+  },
+  "KDoublePv16": {
+    "value": 1260,
+    "min_value": 630,
+    "max_value": 2520,
+    "step": 118.125
+  },
+  "KDoubleNewPv16": {
+    "value": 310,
+    "min_value": 155,
+    "max_value": 620,
+    "step": 29.0625
+  },
+  "KDoubleQuiet16": {
+    "value": 103,
+    "min_value": 51,
+    "max_value": 206,
+    "step": 9.6875
+  },
+  "KDoubleCorrection": {
+    "value": 16,
+    "min_value": 8,
+    "max_value": 32,
+    "step": 1.5
+  },
+  "KTriplePv16": {
+    "value": 1486,
+    "min_value": 743,
+    "max_value": 2972,
+    "step": 139.3125
+  },
+  "KTripleNewPv16": {
+    "value": 362,
+    "min_value": 181,
+    "max_value": 724,
+    "step": 33.9375
+  },
+  "KTripleQuiet16": {
+    "value": 123,
+    "min_value": 61,
+    "max_value": 246,
+    "step": 11.5625
+  },
+  "KTripleCorrection": {
+    "value": 15,
+    "min_value": 7,
+    "max_value": 30,
+    "step": 1.4375
+  },
+  "KTripleBase16": {
+    "value": 233,
+    "min_value": 116,
+    "max_value": 466,
+    "step": 21.875
+  },
+  "KMulticutT": {
+    "value": 4027,
+    "min_value": 2013,
+    "max_value": 8054,
+    "step": 377.5625
+  },
+  "KNegativeExtension": {
+    "value": -3,
+    "min_value": -7,
+    "max_value": -1,
+    "step": 1.0
+  },
+  "KLdseDepth": {
+    "value": 7,
+    "min_value": 3,
+    "max_value": 11,
+    "step": 1.0
+  },
+  "KLdseMargin": {
+    "value": 10,
+    "min_value": 5,
+    "max_value": 20,
+    "step": 1.0
+  },
+  "KLmpBase": {
+    "value": 2818,
+    "min_value": 1409,
+    "max_value": 5636,
+    "step": 264.1875
+  },
+  "KLmpImprovement": {
+    "value": 193,
+    "min_value": 96,
+    "max_value": 386,
+    "step": 18.125
+  },
+  "KLmpSquare": {
+    "value": 1351,
+    "min_value": 675,
+    "max_value": 2702,
+    "step": 126.6875
+  },
+  "KLmpHistory": {
+    "value": 74,
+    "min_value": 37,
+    "max_value": 148,
+    "step": 6.9375
+  },
+  "KFpLinear16": {
+    "value": 510,
+    "min_value": 255,
+    "max_value": 1020,
+    "step": 47.8125
+  },
+  "KFpHistory16": {
+    "value": 355,
+    "min_value": 177,
+    "max_value": 710,
+    "step": 33.3125
+  },
+  "KFpAboveBeta16": {
+    "value": 497,
+    "min_value": 248,
+    "max_value": 994,
+    "step": 46.625
+  },
+  "KFpCorrection": {
+    "value": 555,
+    "min_value": 277,
+    "max_value": 1110,
+    "step": 52.0625
+  },
+  "KFpConstant16": {
+    "value": 820,
+    "min_value": 410,
+    "max_value": 1640,
+    "step": 76.875
+  },
+  "KFpDepth": {
+    "value": 14,
+    "min_value": 7,
+    "max_value": 28,
+    "step": 1.3125
+  },
+  "KBnfpLinear16": {
+    "value": 543,
+    "min_value": 271,
+    "max_value": 1086,
+    "step": 50.9375
+  },
+  "KBnfpHistory16": {
+    "value": 530,
+    "min_value": 265,
+    "max_value": 1060,
+    "step": 49.6875
+  },
+  "KBnfpConstant16": {
+    "value": 155,
+    "min_value": 77,
+    "max_value": 310,
+    "step": 14.5625
+  },
+  "KBnfpDepth": {
+    "value": 11,
+    "min_value": 5,
+    "max_value": 22,
+    "step": 1.0625
+  },
+  "KHpSlope": {
+    "value": 948,
+    "min_value": 474,
+    "max_value": 1896,
+    "step": 88.875
+  },
+  "KHpDepth": {
+    "value": 5,
+    "min_value": 1,
+    "max_value": 9,
+    "step": 1.0
+  },
+  "KSeeQuietSquare": {
+    "value": 12,
+    "min_value": 6,
+    "max_value": 24,
+    "step": 1.125
+  },
+  "KSeeQuietLinear": {
+    "value": 56,
+    "min_value": 28,
+    "max_value": 112,
+    "step": 5.25
+  },
+  "KSeeQuietHistory": {
+    "value": 27,
+    "min_value": 13,
+    "max_value": 54,
+    "step": 2.5625
+  },
+  "KSeeQuietConstant": {
+    "value": 27,
+    "min_value": 13,
+    "max_value": 54,
+    "step": 2.5625
+  },
+  "KSeeNoisySquare": {
+    "value": 7,
+    "min_value": 3,
+    "max_value": 11,
+    "step": 1.0
+  },
+  "KSeeNoisyLinear": {
+    "value": 36,
+    "min_value": 18,
+    "max_value": 72,
+    "step": 3.375
+  },
+  "KSeeNoisyHistory": {
+    "value": 39,
+    "min_value": 19,
+    "max_value": 78,
+    "step": 3.6875
+  },
+  "KSeeNoisyConstant": {
+    "value": 14,
+    "min_value": 7,
+    "max_value": 28,
+    "step": 1.3125
+  },
+  "KLmrLog": {
+    "value": 269,
+    "min_value": 134,
+    "max_value": 538,
+    "step": 25.25
+  },
+  "KLmrImprovement": {
+    "value": 1053,
+    "min_value": 526,
+    "max_value": 2106,
+    "step": 98.75
+  },
+  "KLmrImprovementMin": {
+    "value": -241,
+    "min_value": -482,
+    "max_value": -120,
+    "step": 22.625
+  },
+  "KLmrImprovementMax": {
+    "value": 1155,
+    "min_value": 577,
+    "max_value": 2310,
+    "step": 108.3125
+  },
+  "KLmrCorrection": {
+    "value": 8462,
+    "min_value": 4231,
+    "max_value": 16924,
+    "step": 793.3125
+  },
+  "KLmrExact": {
+    "value": 1412,
+    "min_value": 706,
+    "max_value": 2824,
+    "step": 132.375
+  },
+  "KLmrTtBelow": {
+    "value": 464,
+    "min_value": 232,
+    "max_value": 928,
+    "step": 43.5
+  },
+  "KLmrTtShallow": {
+    "value": 326,
+    "min_value": 163,
+    "max_value": 652,
+    "step": 30.5625
+  },
+  "KLmrWinBeta": {
+    "value": 1024,
+    "min_value": 512,
+    "max_value": 2048,
+    "step": 96.0
+  },
+  "KLmrQuiet": {
+    "value": 2432,
+    "min_value": 1216,
+    "max_value": 4864,
+    "step": 228.0
+  },
+  "KLmrQuietHistory": {
+    "value": 179,
+    "min_value": 89,
+    "max_value": 358,
+    "step": 16.8125
+  },
+  "KLmrAlphaGap": {
+    "value": 1035,
+    "min_value": 517,
+    "max_value": 2070,
+    "step": 97.0625
+  },
+  "KLmrAlphaGapMin": {
+    "value": -26,
+    "min_value": -52,
+    "max_value": -13,
+    "step": 2.4375
+  },
+  "KLmrAlphaGapMax": {
+    "value": 37,
+    "min_value": 18,
+    "max_value": 74,
+    "step": 3.5
+  },
+  "KLmrNoisy": {
+    "value": 1687,
+    "min_value": 843,
+    "max_value": 3374,
+    "step": 158.1875
+  },
+  "KLmrNoisyHistory": {
+    "value": 130,
+    "min_value": 65,
+    "max_value": 260,
+    "step": 12.1875
+  },
+  "KLmrCritical": {
+    "value": 128,
+    "min_value": 64,
+    "max_value": 256,
+    "step": 12.0
+  },
+  "KLmrPv": {
+    "value": 519,
+    "min_value": 259,
+    "max_value": 1038,
+    "step": 48.6875
+  },
+  "KLmrPvWindow": {
+    "value": 437,
+    "min_value": 218,
+    "max_value": 874,
+    "step": 41.0
+  },
+  "KLmrNonPv": {
+    "value": 96,
+    "min_value": 48,
+    "max_value": 192,
+    "step": 9.0
+  },
+  "KLmrLaterality": {
+    "value": 32,
+    "min_value": 16,
+    "max_value": 64,
+    "step": 3.0
+  },
+  "KLmrTtPv": {
+    "value": 333,
+    "min_value": 166,
+    "max_value": 666,
+    "step": 31.25
+  },
+  "KLmrTtPvAbove": {
+    "value": 611,
+    "min_value": 305,
+    "max_value": 1222,
+    "step": 57.3125
+  },
+  "KLmrTtPvDeep": {
+    "value": 685,
+    "min_value": 342,
+    "max_value": 1370,
+    "step": 64.25
+  },
+  "KLmrCut": {
+    "value": 1852,
+    "min_value": 926,
+    "max_value": 3704,
+    "step": 173.625
+  },
+  "KLmrCutNoTtMove": {
+    "value": 2204,
+    "min_value": 1102,
+    "max_value": 4408,
+    "step": 206.625
+  },
+  "KLmrCheck": {
+    "value": 955,
+    "min_value": 477,
+    "max_value": 1910,
+    "step": 89.5625
+  },
+  "KLmrCutoffs": {
+    "value": 1151,
+    "min_value": 575,
+    "max_value": 2302,
+    "step": 107.9375
+  },
+  "KLmrCutoffsAll": {
+    "value": 400,
+    "min_value": 200,
+    "max_value": 800,
+    "step": 37.5
+  },
+  "KLmrSingular": {
+    "value": 1228,
+    "min_value": 614,
+    "max_value": 2456,
+    "step": 115.125
+  },
+  "KLmrSingularOffset": {
+    "value": 75,
+    "min_value": 37,
+    "max_value": 150,
+    "step": 7.0625
+  },
+  "KLmrSingularCap": {
+    "value": 2021,
+    "min_value": 1010,
+    "max_value": 4042,
+    "step": 189.5
+  },
+  "KLmrParentGap": {
+    "value": 414,
+    "min_value": 207,
+    "max_value": 828,
+    "step": 38.8125
+  },
+  "KLmrParent": {
+    "value": 136,
+    "min_value": 68,
+    "max_value": 272,
+    "step": 12.75
+  },
+  "KLmrSpreadCentre": {
+    "value": 59,
+    "min_value": 29,
+    "max_value": 118,
+    "step": 5.5625
+  },
+  "KResearchDeeper16": {
+    "value": 368,
+    "min_value": 184,
+    "max_value": 736,
+    "step": 34.5
+  },
+  "KResearchShallower16": {
+    "value": 58,
+    "min_value": 29,
+    "max_value": 116,
+    "step": 5.4375
+  },
+  "KFdsLog": {
+    "value": 207,
+    "min_value": 103,
+    "max_value": 414,
+    "step": 19.4375
+  },
+  "KFdsImprovement": {
+    "value": 906,
+    "min_value": 453,
+    "max_value": 1812,
+    "step": 84.9375
+  },
+  "KFdsImprovementMin": {
+    "value": -206,
+    "min_value": -412,
+    "max_value": -103,
+    "step": 19.3125
+  },
+  "KFdsImprovementMax": {
+    "value": 1370,
+    "min_value": 685,
+    "max_value": 2740,
+    "step": 128.4375
+  },
+  "KFdsCorrection": {
+    "value": 5585,
+    "min_value": 2792,
+    "max_value": 11170,
+    "step": 523.625
+  },
+  "KFdsQuiet": {
+    "value": 1468,
+    "min_value": 734,
+    "max_value": 2936,
+    "step": 137.625
+  },
+  "KFdsQuietHistory": {
+    "value": 118,
+    "min_value": 59,
+    "max_value": 236,
+    "step": 11.0625
+  },
+  "KFdsNoisy": {
+    "value": 940,
+    "min_value": 470,
+    "max_value": 1880,
+    "step": 88.125
+  },
+  "KFdsNoisyHistory": {
+    "value": 63,
+    "min_value": 31,
+    "max_value": 126,
+    "step": 5.9375
+  },
+  "KFdsTtPv": {
+    "value": 844,
+    "min_value": 422,
+    "max_value": 1688,
+    "step": 79.125
+  },
+  "KFdsCut": {
+    "value": 1260,
+    "min_value": 630,
+    "max_value": 2520,
+    "step": 118.125
+  },
+  "KFdsCutNoTtMove": {
+    "value": 2168,
+    "min_value": 1084,
+    "max_value": 4336,
+    "step": 203.25
+  },
+  "KFdsCutoffs": {
+    "value": 1394,
+    "min_value": 697,
+    "max_value": 2788,
+    "step": 130.6875
+  },
+  "KFdsCutoffsAll": {
+    "value": 258,
+    "min_value": 129,
+    "max_value": 516,
+    "step": 24.1875
+  },
+  "KFdsTtMove": {
+    "value": 3002,
+    "min_value": 1501,
+    "max_value": 6004,
+    "step": 281.4375
+  },
+  "KFdsParentGap": {
+    "value": 590,
+    "min_value": 295,
+    "max_value": 1180,
+    "step": 55.3125
+  },
+  "KFdsParent": {
+    "value": 130,
+    "min_value": 65,
+    "max_value": 260,
+    "step": 12.1875
+  },
+  "KFdsSpreadCentre": {
+    "value": 56,
+    "min_value": 28,
+    "max_value": 112,
+    "step": 5.25
+  },
+  "KFdsOnePly": {
+    "value": 2621,
+    "min_value": 1310,
+    "max_value": 5242,
+    "step": 245.75
+  },
+  "KFdsTwoPlies": {
+    "value": 5579,
+    "min_value": 2789,
+    "max_value": 11158,
+    "step": 523.0625
+  },
+  "KNoisyBonusSlope": {
+    "value": 96,
+    "min_value": 48,
+    "max_value": 192,
+    "step": 9.0
+  },
+  "KNoisyBonusCap": {
+    "value": 885,
+    "min_value": 442,
+    "max_value": 1770,
+    "step": 83.0
+  },
+  "KNoisyBonusOffset": {
+    "value": 43,
+    "min_value": 21,
+    "max_value": 86,
+    "step": 4.0625
+  },
+  "KNoisyBonusCut": {
+    "value": 87,
+    "min_value": 43,
+    "max_value": 174,
+    "step": 8.1875
+  },
+  "KNoisyMalusSlope": {
+    "value": 175,
+    "min_value": 87,
+    "max_value": 350,
+    "step": 16.4375
+  },
+  "KNoisyMalusCap": {
+    "value": 1252,
+    "min_value": 626,
+    "max_value": 2504,
+    "step": 117.375
+  },
+  "KNoisyMalusOffset": {
+    "value": 58,
+    "min_value": 29,
+    "max_value": 116,
+    "step": 5.4375
+  },
+  "KNoisyMalusPer": {
+    "value": 16,
+    "min_value": 8,
+    "max_value": 32,
+    "step": 1.5
+  },
+  "KQuietBonusSlope": {
+    "value": 184,
+    "min_value": 92,
+    "max_value": 368,
+    "step": 17.25
+  },
+  "KQuietBonusCap": {
+    "value": 1742,
+    "min_value": 871,
+    "max_value": 3484,
+    "step": 163.3125
+  },
+  "KQuietBonusOffset": {
+    "value": 72,
+    "min_value": 36,
+    "max_value": 144,
+    "step": 6.75
+  },
+  "KQuietBonusCut": {
+    "value": 42,
+    "min_value": 21,
+    "max_value": 84,
+    "step": 3.9375
+  },
+  "KQuietMalusSlope": {
+    "value": 171,
+    "min_value": 85,
+    "max_value": 342,
+    "step": 16.0625
+  },
+  "KQuietMalusCap": {
+    "value": 1099,
+    "min_value": 549,
+    "max_value": 2198,
+    "step": 103.0625
+  },
+  "KQuietMalusOffset": {
+    "value": 46,
+    "min_value": 23,
+    "max_value": 92,
+    "step": 4.3125
+  },
+  "KQuietMalusPer": {
+    "value": 31,
+    "min_value": 15,
+    "max_value": 62,
+    "step": 2.9375
+  },
+  "KContBonusSlope": {
+    "value": 97,
+    "min_value": 48,
+    "max_value": 194,
+    "step": 9.125
+  },
+  "KContBonusCap": {
+    "value": 1098,
+    "min_value": 549,
+    "max_value": 2196,
+    "step": 102.9375
+  },
+  "KContBonusOffset": {
+    "value": 74,
+    "min_value": 37,
+    "max_value": 148,
+    "step": 6.9375
+  },
+  "KContBonusCut": {
+    "value": 48,
+    "min_value": 24,
+    "max_value": 96,
+    "step": 4.5
+  },
+  "KContMalusSlope": {
+    "value": 414,
+    "min_value": 207,
+    "max_value": 828,
+    "step": 38.8125
+  },
+  "KContMalusCap": {
+    "value": 949,
+    "min_value": 474,
+    "max_value": 1898,
+    "step": 89.0
+  },
+  "KContMalusOffset": {
+    "value": 49,
+    "min_value": 24,
+    "max_value": 98,
+    "step": 4.625
+  },
+  "KContMalusPer": {
+    "value": 17,
+    "min_value": 8,
+    "max_value": 34,
+    "step": 1.625
+  },
+  "KMalusFade": {
+    "value": 45,
+    "min_value": 22,
+    "max_value": 90,
+    "step": 4.25
+  },
+  "KParentMalusSlope": {
+    "value": 93,
+    "min_value": 46,
+    "max_value": 186,
+    "step": 8.75
+  },
+  "KParentMalusOffset": {
+    "value": 52,
+    "min_value": 26,
+    "max_value": 104,
+    "step": 4.875
+  },
+  "KParentMalusCap": {
+    "value": 935,
+    "min_value": 467,
+    "max_value": 1870,
+    "step": 87.6875
+  },
+  "KResearchBonusSlope": {
+    "value": 233,
+    "min_value": 116,
+    "max_value": 466,
+    "step": 21.875
+  },
+  "KResearchBonusOffset": {
+    "value": 86,
+    "min_value": 43,
+    "max_value": 172,
+    "step": 8.0625
+  },
+  "KResearchBonusCap": {
+    "value": 1550,
+    "min_value": 775,
+    "max_value": 3100,
+    "step": 145.3125
+  },
+  "KRewardBase": {
+    "value": 88,
+    "min_value": 44,
+    "max_value": 176,
+    "step": 8.25
+  },
+  "KRewardCount": {
+    "value": 17,
+    "min_value": 8,
+    "max_value": 34,
+    "step": 1.625
+  },
+  "KRewardCountCap": {
+    "value": 229,
+    "min_value": 114,
+    "max_value": 458,
+    "step": 21.5
+  },
+  "KRewardTtMove": {
+    "value": 110,
+    "min_value": 55,
+    "max_value": 220,
+    "step": 10.3125
+  },
+  "KRewardBelowEval": {
+    "value": 144,
+    "min_value": 72,
+    "max_value": 288,
+    "step": 13.5
+  },
+  "KRewardBelowEvalMargin": {
+    "value": 39,
+    "min_value": 19,
+    "max_value": 78,
+    "step": 3.6875
+  },
+  "KRewardBelowParent": {
+    "value": 306,
+    "min_value": 153,
+    "max_value": 612,
+    "step": 28.6875
+  },
+  "KRewardBelowParentMargin": {
+    "value": 55,
+    "min_value": 27,
+    "max_value": 110,
+    "step": 5.1875
+  },
+  "KRewardSlope": {
+    "value": 180,
+    "min_value": 90,
+    "max_value": 360,
+    "step": 16.875
+  },
+  "KRewardOffset": {
+    "value": 37,
+    "min_value": 18,
+    "max_value": 74,
+    "step": 3.5
+  },
+  "KRewardCap": {
+    "value": 2414,
+    "min_value": 1207,
+    "max_value": 4828,
+    "step": 226.3125
+  },
+  "KRewardGrandSlope": {
+    "value": 152,
+    "min_value": 76,
+    "max_value": 304,
+    "step": 14.25
+  },
+  "KRewardGrandOffset": {
+    "value": 47,
+    "min_value": 23,
+    "max_value": 94,
+    "step": 4.4375
+  },
+  "KRewardGrandCap": {
+    "value": 1379,
+    "min_value": 689,
+    "max_value": 2758,
+    "step": 129.3125
+  },
+  "KRewardNoisySlope": {
+    "value": 50,
+    "min_value": 25,
+    "max_value": 100,
+    "step": 4.6875
+  },
+  "KRewardNoisyCap": {
+    "value": 654,
+    "min_value": 327,
+    "max_value": 1308,
+    "step": 61.3125
+  },
+  "KCorrSlope": {
+    "value": 148,
+    "min_value": 74,
+    "max_value": 296,
+    "step": 13.875
+  },
+  "KCorrMin": {
+    "value": -1889,
+    "min_value": -3778,
+    "max_value": -944,
+    "step": 177.125
+  },
+  "KCorrMax": {
+    "value": 1008,
+    "min_value": 504,
+    "max_value": 2016,
+    "step": 94.5
+  },
+  "KCorrKeyedMax": {
+    "value": 5897,
+    "min_value": 2948,
+    "max_value": 11794,
+    "step": 552.875
+  },
+  "KCorrContMax": {
+    "value": 6629,
+    "min_value": 3314,
+    "max_value": 13258,
+    "step": 621.5
+  },
+  "KQStandPatT": {
+    "value": 8256,
+    "min_value": 4128,
+    "max_value": 16512,
+    "step": 774.0
+  },
+  "KQMoveLimit": {
+    "value": 3,
+    "min_value": 1,
+    "max_value": 7,
+    "step": 1.0
+  },
+  "KQSeeScale": {
+    "value": 317,
+    "min_value": 158,
+    "max_value": 634,
+    "step": 29.75
+  },
+  "KQSeeCorrectionCap": {
+    "value": 68,
+    "min_value": 34,
+    "max_value": 136,
+    "step": 6.375
+  },
+  "KQSeeConstant": {
+    "value": 74,
+    "min_value": 37,
+    "max_value": 148,
+    "step": 6.9375
+  },
+  "KQSeeHistory": {
+    "value": 48,
+    "min_value": 24,
+    "max_value": 96,
+    "step": 4.5
+  },
+  "KQCutoffBonus": {
+    "value": 100,
+    "min_value": 50,
+    "max_value": 200,
+    "step": 9.375
+  },
+  "KQTailT": {
+    "value": 5072,
+    "min_value": 2536,
+    "max_value": 10144,
+    "step": 475.5
+  },
+  "KWindowBase1024": {
+    "value": 9510,
+    "min_value": 4755,
+    "max_value": 19020,
+    "step": 891.5625
+  },
+  "KWindowStability1024": {
+    "value": 413,
+    "min_value": 206,
+    "max_value": 826,
+    "step": 38.75
+  },
+  "KWindowSquare": {
+    "value": 10658,
+    "min_value": 5329,
+    "max_value": 21316,
+    "step": 999.1875
+  },
+  "KWindowLowGrowth": {
+    "value": 26,
+    "min_value": 13,
+    "max_value": 52,
+    "step": 2.4375
+  },
+  "KWindowHighGrowth": {
+    "value": 60,
+    "min_value": 30,
+    "max_value": 120,
+    "step": 5.625
+  },
+  "KWindowStable16": {
+    "value": 78,
+    "min_value": 39,
+    "max_value": 156,
+    "step": 7.3125
+  },
+  "KOptimismScale": {
+    "value": 46,
+    "min_value": 23,
+    "max_value": 92,
+    "step": 4.3125
+  },
+  "KOptimismOffset": {
+    "value": 81,
+    "min_value": 40,
+    "max_value": 162,
+    "step": 7.625
+  },
+  "KPickVictim": {
+    "value": 14232,
+    "min_value": 7116,
+    "max_value": 28464,
+    "step": 1334.25
+  },
+  "KPickQueenPromotion": {
+    "value": 4558,
+    "min_value": 2279,
+    "max_value": 9116,
+    "step": 427.3125
+  },
+  "KPickQuiet": {
+    "value": 1763,
+    "min_value": 881,
+    "max_value": 3526,
+    "step": 165.3125
+  },
+  "KPickPawn": {
+    "value": 1024,
+    "min_value": 512,
+    "max_value": 2048,
+    "step": 96.0
+  },
+  "KPickCont0": {
+    "value": 1614,
+    "min_value": 807,
+    "max_value": 3228,
+    "step": 151.3125
+  },
+  "KPickCont1": {
+    "value": 1066,
+    "min_value": 533,
+    "max_value": 2132,
+    "step": 99.9375
+  },
+  "KPickCont2": {
+    "value": 1086,
+    "min_value": 543,
+    "max_value": 2172,
+    "step": 101.8125
+  },
+  "KPickCont3": {
+    "value": 1051,
+    "min_value": 525,
+    "max_value": 2102,
+    "step": 98.5625
+  },
+  "KPickEscape1": {
+    "value": 8854,
+    "min_value": 4427,
+    "max_value": 17708,
+    "step": 830.0625
+  },
+  "KPickEscape2": {
+    "value": 8170,
+    "min_value": 4085,
+    "max_value": 16340,
+    "step": 765.9375
+  },
+  "KPickEscape3": {
+    "value": 14051,
+    "min_value": 7025,
+    "max_value": 28102,
+    "step": 1317.3125
+  },
+  "KPickEscape4": {
+    "value": 20357,
+    "min_value": 10178,
+    "max_value": 40714,
+    "step": 1908.5
+  },
+  "KPickCheckSquare": {
+    "value": 10723,
+    "min_value": 5361,
+    "max_value": 21446,
+    "step": 1005.3125
+  },
+  "KPickThreatened": {
+    "value": 8875,
+    "min_value": 4437,
+    "max_value": 17750,
+    "step": 832.0625
+  },
+  "KPickOffense": {
+    "value": 3446,
+    "min_value": 1723,
+    "max_value": 6892,
+    "step": 323.0625
+  },
+  "KPickWall": {
+    "value": 4494,
+    "min_value": 2247,
+    "max_value": 8988,
+    "step": 421.3125
+  },
+  "KPickSeeDivisor": {
+    "value": 47,
+    "min_value": 23,
+    "max_value": 94,
+    "step": 4.4375
+  },
+  "KPickSeeOffset": {
+    "value": 116,
+    "min_value": 58,
+    "max_value": 232,
+    "step": 10.875
+  }
+}
