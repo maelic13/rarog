@@ -22,6 +22,7 @@ param(
     [string]$EngineB = "tools/test_engines/rarog-b23-theta3900-pext-pgo.exe",
     [string]$TuneEngine = "tools/test_engines/rarog-b23core-tune.exe",
     [string]$OffArmTuneEngine = "tools/test_engines/rarog-b23negoff-tune.exe",
+    [string]$CompactTuneEngine = "tools/test_engines/rarog-d76fit-tune.exe",
     [switch]$KeepScratch
 )
 
@@ -383,11 +384,17 @@ try {
     Invoke-Case -Name "Core* surface on an off-arm tune build" -Expect "selectivity-core options" `
         -Arguments (Merge-Arguments $tune @{ Engine = $offArm })
 
-    # At N = 1e8 the smallest registered step (3) perturbs by 0.458, which rounds
-    # to zero on an integer option: the coordinate would look tuned and move
-    # nothing.
+    # A rule 7c tune plays two steps where the seed has the room, so a
+    # coordinate dies only when even that rounds to zero: d76fit's one-step
+    # plies play 2 x 1 x 1e8^-0.102 = 0.31 at N = 1e8 and would look tuned
+    # while moving nothing. (b23core's smallest step, 3, plays 0.76 there and
+    # resolves; no ceiling an int holds makes that surface unresolvable.)
+    $compactTune = Merge-Arguments $tune @{
+        Engine = (Copy-Arm -Source $CompactTuneEngine -Name "compactTuneArm")
+        ConfigGroup = "d76fit"
+    } -Remove @("RunFile")
     Invoke-Case -Name "tune ceiling the surface cannot resolve" -Expect "rounds to zero" `
-        -Arguments (Merge-Arguments $tune @{ Ceiling = 100000000 })
+        -Arguments (Merge-Arguments $compactTune @{ Ceiling = 100000000 })
 
     Invoke-Case -Name "control: the registered tune resolves" -Expect "" -Arguments $tune
 
