@@ -380,8 +380,7 @@ D.6.28, and inputs to D.7.0).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.4 | READY_FOR_IMPLEMENTATION | I2 | Handoff written by D.7.0 (the donor's units as a scaffold, the seed table, eight commits); D.7.3's instrument built 2026-11-16; the kernel compact, Rarog's additions not carried; parity before any game |
-| D.7.4.1 | RESEARCH | I2 | After D.7.4's parity: the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted; the maintainer is asked about the exchange table first |
+| D.7.4.1 | RESEARCH | I2 | D.7.4's parity reached 2026-11-18 (compact fingerprint 7,606,256 / EBF 2.433); waits for the maintainer's decision on the exchange table; then the constants folded into Rarog's units by dimension, checked against the scaffold, the scaffold deleted |
 | D.7.5 | RESEARCH | V | The unfitted paired run of 2,000 games, a diagnostic, not a stop |
 | D.7.6 | RESEARCH | V | The fit as one joint rule 7c run over the whole kernel, read at checkpoints; no gate of its own |
 | D.7.7 | RESEARCH | V | The fitted kernel against the head on `[0,3]`, the one gate; `10+0.1` and 4T reads; H0 opens D.7.10 |
@@ -1839,7 +1838,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       Layer A captured 250 positions with every one of 36 kinds at
       3,418 records or more from 210 positions or more; the trace stays
       in ignored storage with its hash.
-    - **D.7.4 The kernel in the donor's form, behind one switch — `I2`.**
+    - **D.7.4 The kernel in the donor's form, behind one switch — `I2`, DONE 2026-11-18.**
       Own code in Rarog's structure, written in D.8's target shape (probes,
       not interleaved instrumentation). Parity by D.7.3 before any game;
       debug and release tests, fmt, clippy, the allocation guard and the
@@ -1850,6 +1849,80 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       dropped and asked again in D.7.8), section 5 (the donor's units and
       the seed table) and section 8 (scope, the order of eight commits
       and the invariants).
+      **Done 2026-11-18** (`analysis/d74_compact_kernel_2026-11-18.md`;
+      branch `d7-kernel` from `274adaa`, `ef1048d` to `042e2b9`). The
+      kernel runs under the Cargo feature `compact-kernel`; the default
+      build keeps the classic kernel, whose fingerprint stayed 9,067,595 /
+      EBF 2.479 at every commit and whose pooled NPS reads −0.34% (95%
+      −0.63 to −0.04), a pass by the no-regression rule (G1). Layer A: 47
+      kinds, 3,269,262 records, no mismatch, 40 plants each failing its own
+      kind; ten seeds no record detects, each named with its reason. Layer
+      B, the deciding read on `a344748`: depth 8 −0.0098 ± 0.0257, 11
+      +0.0121 ± 0.0227, 14 +0.0188 ± 0.0226, 36 of 36 rates, a pass. The
+      compact fingerprint is **7,606,256 / EBF 2.433** (`a344748`), and the
+      compact kernel is 11.54% faster a node than the classic (G2, at
+      `cb7c79b`'s engine source).
+      *Decisions, maintainer, 2026-11-17:*
+      1. Inventory C-3: the compact kernel takes the donor's non-pawn
+         correction key, kings included, because condition 1 of 2026-11-16
+         carries none of Rarog's departures and the seeds were fitted with
+         that key; not because it makes layer B pass.
+      2. The frozen layer B rule alone decides, once, on a committed build;
+         a failure stops with no games and no layer C without the
+         maintainer's word.
+      3. Independence: the node and quiescence following the donor's
+         statement order is accepted, and the spans are named (below, the
+         analysis and D.11).
+      4. MultiPV under the compact kernel gets the donor's root window.
+      5. D.4.4's pricing instrument is ported to the compact kernel.
+      6. The twin's trace is extended and captured again, so layer A
+         checks every rule and seed.
+      7. The classic kernel's pooled NPS read precedes DONE; the other
+         speed items are registered with an owner and a time.
+      Later the same day: the compact kernel's SEE puts a promotion push
+      through the exchange as the donor's does (`a344748`, after position
+      305's diagnosis; the inventory's SEE-4 row was wrong); layer B is read
+      again on `a344748` as the deciding read, declared before the result,
+      `cb7c79b`'s pass kept as that build's; the three PV-only seeds are
+      named as too sparsely sampled (`042e2b9`).
+      *Departures from the inventory's commit order:* the picker landed
+      with quiescence (`3fa2d96`), which cannot take the donor's form
+      without it; the update seeds landed with the node body (`025ffc9`), so
+      there is no commit 7; the probes are `1b8397d`. After the first layer
+      B read: seven fixes (`856467e` to `62e9474`), the extended trace
+      (`e84f4f9`, `635177b`, `474cdb7`), MultiPV (`cdda460`), pricing
+      (`934213d`), a root-record fix (`e81227e`) and the SEE fix.
+      *Recorded, not changed:* the singular search requires a table move,
+      right here because a tablebase store carries none; the root's depth
+      carries the reduced depth, which feeds only the first iteration's stop
+      guards; the test that nodes equal moves made increments both counters
+      at the same sites.
+      *Open, for D.7.8:* position 305 diverges again from depth 3 (−866
+      against the twin's −883) and stays 2.3 times the twin's largest
+      salted tree, SEE-2 and SEE-3 the first candidates; the classic
+      kernel shares the SEE shortcut on promotion pushes, recorded only.
+      *Speed register:*
+      - the board's `plies_from_null` kept in make, the null move and both
+        unmakes, and the table store's force flag: G1, read 2026-11-17,
+        no regression; closed;
+      - the compact kernel against the classic head: G2, +11.54% a node,
+        read 2026-11-17 before D.7.5; `a344748`'s SEE change is not
+        re-read, and D.7.5's games carry it on the clock;
+      - the king key computed at each correction read: made incremental at
+        adoption, D.7.9, or in D.12;
+      - the gate inputs built at the top of `compact_negamax` before any
+        rule acts: D.7.9, when the probes' needs are known;
+      - the root window's three copies of about 4 KB, the root picker moved
+        by value, once a window: D.7.9, with the root driver;
+      - the board's forms at large: D.12.
+      *Squash paragraph, ready:* "The compact kernel is Rarog's own code in
+      Reckless's search form. Two places are transcribed because the
+      algorithm has one natural form: the interpolation toward beta (an
+      `f32` `mul_add`, truncated) and the cuckoo tables of a repetition one
+      move away (van Kervinck's method). The node's ProbCut loop, the three
+      searches of its move loop and its tail, quiescence, and
+      `Board::is_dead_material` follow the donor's statement order. The
+      constants are the donor's, as seeds to be folded and refitted."
         - **D.7.4.1 The constants folded into Rarog's units and the scaffold deleted — `I2`.**
           Added 2026-11-13 (maintainer decision: no unit translation
           stays in the engine, and the conversion is done properly this

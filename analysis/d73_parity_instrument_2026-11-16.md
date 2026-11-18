@@ -93,3 +93,31 @@ Rarog's side land with D.7.4. Nothing here is Rarog code or plays a game.
 - the comparisons (`cmp_*.json`) and the trace.
 
 The patch's SHA-256 is 07da266fb5f1a380cf8c51984b15ba14c22080a8b63d25af9c4ef1bf71f2a910.
+
+## Appended 2026-11-18: the extended trace (D.7.4)
+
+The record above is unchanged. D.7.4 extended the twin and captured the trace
+again (maintainer decision 6, 2026-11-17); the full read is in
+`analysis/d74_compact_kernel_2026-11-18.md`.
+
+- **Patch:** `tools/oracle-hybrids/reckless-0756957-rarog-hce-trace.patch`,
+  SHA-256 `ce0217e721ba89c1e214dfc3ff11a7ce1363893e524a64d3efe2476592d973ec`
+  (`e84f4f9`, `635177b`); the twin's binary
+  `4fe68f824aed141be2bc3bfd52b113832b6d96523fc3424165997152de5cd577`. Its
+  bench is 4,158,758 with tracing off and on, and 20 stored base rows
+  reproduce exactly, so layer B's stored twin runs still describe it.
+- **Added inputs:** the stored capture refutation on `nmp_gate`, whether the
+  exclusion search reached a move on `singular_result`, the node type on
+  `q_stand_pat`, the null search's outcome on `nmp_result`.
+- **Eleven new kinds,** records (positions): `draw_score` 154,535 (250),
+  `eval_bonus_gate` 92,584 (246), `malus_fade` 6,118 (239), `null_bound`
+  3,418 (210), `pick_threshold` 48,371 (247), `probcut_value` 4,078 (232),
+  `q_cutoff_bonus` 26,389 (241), `score_held` 3,500 (250), `spread` 121,252
+  (247), `tt_cut_bonus` 11,108 (241), `tt_cut_return` 11,108 (241).
+- **The capture:** `analysis/artifacts/d74-parity-2026-11-17/trace-a/`, the
+  same recipe (250 positions, stride 512, the four exclusions), no timeout;
+  the 36 old kinds' counts equal the ones above; 47 kinds, 3,269,262
+  records, 354 MB. SHA-256 of the sorted per-file hashes
+  `1480a5ec363726ee5a00fa1b04f969d87e77cc56d41e5c0e12e3b594affafb14` (this
+  method reproduces 73603995… on the old trace); `summary.json`
+  `63a47e89ae754ade136799313554b84039a167e4da929dace00a64b585d04e04`.

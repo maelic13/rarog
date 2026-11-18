@@ -210,6 +210,7 @@ fail low and the correction's admission rule have the donor's form
 | R4 | Fails before the window opens | 20 (`params.rs:177`) | none; the delta grows until it covers the score | n | termination by construction | K as a guard only |
 | R5 | Stack between windows | kept | reset with the cutoff counts (`search.rs:127-129`) | – | none | D |
 | R6 | Root node | a full scored list, pool order, helper rotation (`node.rs:1659-1704`) | the staged picker, re-scored before each pick (`movepick.rs:72-74`, `:92-94`) | – | MP-6; RAR-R03's bundle | K (root driver and SMP) |
+| R8 | The window under MultiPV | the classic window a line | one running average a line; the width and the fail-high reduction carry from one line to the next within an iteration (`search.rs:98-99`, outside the line loop) | eu, ply | none | D a line, each line's window opened fresh: the carried width and reduction are not taken, because a carried reduction searches line 2 a ply shallower than it reports (maintainer decision 4, 2026-11-17, `cdda460`; the maintainer's to overrule) |
 | R7 | Fail-high stop, proven win, mate watch | Rarog's (`mod.rs:1053-1120`) | the donor's forgotten-mate and aborted-loss rules (`search.rs:197-222`) | – | D.1, D.6.20, D.6.30 | K |
 
 ### 3.9 Picker, histories, correction tables, SEE
@@ -231,11 +232,12 @@ the side's line and the proposal.
 | H-2, H-3 | Update coefficients | fitted (`params.rs:404-417`) | `search.rs:1093-1160` | B.2.3 SPSA and later refits, C | D (seeds) |
 | H-5 | Depth the updates read | after IIR | no IIR | T3 | D |
 | C-1, C-2, C-5 | Minor table, weights, update | W5, W6 | W5, W6 | C.10, C | D |
-| C-3 | Kings in the non-pawn key | left out (`board.rs:1339`) | included (`types/keys.rs:28-31`) | BOARD-9; Basilisk +11.6 ± 9.3 alone, – | K now; the first candidate after adoption |
+| C-3 | Kings in the non-pawn key | left out (`board.rs:1339`) | included (`types/keys.rs:28-31`) | BOARD-9; Basilisk +11.6 ± 9.3 alone, – | D in the compact kernel (maintainer decision 2026-11-17, D.7.4, `856467e`: condition 1 of 2026-11-16 carries none of Rarog's departures, and the seeds were fitted with this key); first proposed K now, the first candidate after adoption |
 | C-4 | Continuation correction | two tables (`correction.rs:58-59`) | one table read at plies 2 and 4 (`history.rs:197-219`) | none, – | D |
 | C-6 | Sharing between threads | per thread | pawn and non-pawn shared | D.2, RAR-M83 | K |
 | SEE-1 | Values | 100/320/330/500/900 (`board.rs:62`) | 109/403/435/679/1,242 (`types/piece.rs:138-148`) | RAR-M19, – | D for every threshold and the victim term |
-| SEE-2, SEE-3, SEE-4 | Legality of recaptures, promotion on recapture, promotion pushes | exact (`board.rs:1462-1495`, `:1605-1612`) | static pins only; no promotion gain (`board/see.rs:18-71`) | RAR-M28, RAR-E15's cluster, C | K (board) |
+| SEE-2, SEE-3 | Legality of recaptures, promotion on recapture | exact (`board.rs:1462-1495`, `:1605-1612`) | static pins only; no promotion gain on a recapture (`board/see.rs:18-71`) | RAR-M28, RAR-E15's cluster, C | K (board) |
+| SEE-4 | Promotion pushes | answered by the gain, queen less pawn, without playing the exchange (`see_ge_impl`) | the gain counted in the move's value and the exchange played, the new queen at risk (`board/see.rs`) | – | D in the compact kernel (D.7.4, `a344748`, after position 305's diagnosis). Corrected 2026-11-18: this row had said Rarog exact and the donor without promotion gain, which is false for a push |
 
 The tables themselves are the same on both sides: the quiet table by side,
 threat bits, from and to (8,192); the noisy table (12,800); the pawn table in
@@ -250,7 +252,7 @@ and limits; which moves take a malus and when.
 | TT-1 | Key check | 16 bits (`tt.rs:581-583`) | 21 bits (`transposition.rs:122`) | D.2 review item 4, open | K |
 | TT-2 | Clock in the key | none (`board.rs:569-571`) | a bucket of 8 plies (`board.rs:79-84`) | BOARD-9; Basilisk −4.5 ± 8.4, – | K |
 | TT-3, TT-4 | Tablebase band in the table | stored as is; only mates meet the rule-50 horizon (`tt.rs:601-629`) | moved by ply; the band meets the horizon too (`transposition.rs:269-271`, `:321-345`) | B.5.2.1; TT-11 open in D.9 | K |
-| TT-7 | Depth of a quiescence entry | 0, evaluation-only −2 (`node.rs:2683`, `tt.rs:31`) | −1 for both (`search.rs:466`, `:1306`) | none, – | K; rules that read the stored depth are written against Rarog's values |
+| TT-7 | Depth of a quiescence entry | 0, evaluation-only −2 (`node.rs:2683`, `tt.rs:31`) | −1 for both (`search.rs:466`, `:1306`) | none, – | K; rules that read the stored depth are written against Rarog's values. One case differs: at depth 2 the null-move bound's `depth − 2 ≤ stored depth` passes for a stored 0 and fails for the donor's −1, so that rule reads a quiescence entry as the donor does (D.7.4, `201e922`) |
 | TT-8, TT-9, TT-10 | Quiescence and ProbCut stores | Q3, Q9, T9 | Q3, Q9, T9 | – | D |
 | SC-1 to SC-5 | `MAX_PLY`, bands, clamps | 128; mate from 31,872; win from 31,744 | 240; 31,760; 31,519 | follow `MAX_PLY` | K |
 | SC-8 | Printed score | the internal score | rescaled by material (`types/score.rs:58-70`) | D.3.9: `NO_CHANGE`, to F.6 | K, after the division of section 5 |
@@ -285,7 +287,7 @@ where dropping it brings back a defect a repair read closed.
 | Draw verdicts exempt from correction (W4) | D.6.15, repair case 1 | keep | whether the donor's optimism reaches a verdict (it must not) |
 | One count per position, null moves counted (NC-1) | D.6.8, RAR-S124 | keep | no |
 | TT move legality at the probe (T2) | correctness | keep | no |
-| Exact SEE (SEE-2 to SEE-4) | RAR-M28, RAR-E15 | keep the algorithm, take the donor's values | no |
+| Exact SEE (SEE-2, SEE-3) | RAR-M28, RAR-E15 | keep the algorithm, take the donor's values; SEE-4 was never Rarog's exactness and takes the donor's form (corrected 2026-11-18) | no |
 | Proven win kept, fail-high stop, mate watch (R7) | D.6.30, D.6.20, D.1 | keep: root driver | D.6.20's clock test |
 | Line bound and extension budget (N6, LR4) | D.6.7, RAR-S122 | drop | the seldepth chains on RAR-S121's replay |
 | Lone-move exclusion returns alpha (SE6) | code comment | drop | the same chains: this is what fed them |
@@ -387,7 +389,7 @@ correction's size, `h` history, `mc` move count. Units as in section 3.
 | Best-move updates | noisy bonus `min(96d, 885) − 43 − 87·cut`; noisy malus `min(175d, 1252) − 58 − 16n`; quiet bonus `min(184d, 1742) − 72 − 42·cut`; quiet malus `min(171d, 1099) − 46 − 31n`; continuation bonus `min(97d, 1098) − 74 − 48·cut`; continuation malus `min(414d, 949) − 49 − 17n`; fade `1024²/(1024 + 45i)²`; parent malus `min(93d − 52, 935)`; re-search bonus `min(233d − 86, 1550)` | hu | `:1092-1149` | 173, 1532; 197, 1405; 42; 1051; 894 |
 | Fail-low reward | factor `88 + min(17·mc, 229) + 110·[TT move] + 144·[best ≤ eval − 97] + 306·[best ≤ −parent eval − 136]`; quiet `factor·min(180d − 37, 2414)/128`; grandparent `min(152d − 47, 1379)`; noisy `min(50d, 654)` | hu, eu | `:1151-1181` | 92; 44; 62 |
 | Quiescence | stand pat 0.8256 toward beta; stop at the third move; SEE `(alpha − eval)/8 − min(corr, 68) − 74 − h/48`; cutoff bonus 100; cutoff 0.5072 toward beta | eu, su, hu | `:1299-1391` | 594; limit 3; 247, 224, −43; 575 |
-| Picker | good noisy at SEE ≥ `−score/47 + 116`; victim `14232·value/1024`; queen promotion 4558; in check `200000 − 20000·piece`; quiet weights 1763, 1024, continuation 1614, 1066, 1086, 1051; escape 8854, 8170, 14051, 20357; check square 10723; threatened −8875; offense 3446; king wall −4494 | hu, su | `movepick.rs` | 63, 87; 18976; the rest equal |
+| Picker | good noisy at SEE ≥ `−score/47 + 116`, or ≥ 1 past two good ones under a quiet table move (`pick_late_good`, missing from this table until 2026-11-18); victim `14232·value/1024`; queen promotion 4558; in check `200000 − 20000·piece`; quiet weights 1763, 1024, continuation 1614, 1066, 1086, 1051; escape 8854, 8170, 14051, 20357; check square 10723; threatened −8875; offense 3446; king wall −4494 | hu, su | `movepick.rs` | 63, 87; 18976; the rest equal |
 | SEE values | 109, 403, 435, 679, 1242 | su | `piece.rs:138-148` | 100, 320, 330, 500, 900 |
 
 The fit's surface (D.7.6) is these groups after the fold. Categoricals (the
