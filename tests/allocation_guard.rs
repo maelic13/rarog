@@ -64,10 +64,10 @@ const SHALLOW_DEPTH: u32 = 5;
 /// full one does, except a depth band of the null-move cut and an endgame
 /// census entry with no code path of its own.
 const DEEP_DEPTH: u32 = if cfg!(debug_assertions) { 11 } else { 13 };
-/// The compact kernel's trees are smaller: at depth 11 bench position 0
-/// grows only 7.4-fold (5,622 to 41,604 nodes) and at 12 9.1-fold, so it
-/// searches to 13 in both builds, where every position grows twentyfold.
-const COMPACT_DEEP_DEPTH: u32 = 13;
+/// The compact kernel's trees are smaller: bench position 0 grows from
+/// 4,811 nodes at depth 5 only 8.7-fold by depth 13 and 18.8-fold by 14, so
+/// it searches to 15 in both builds, where it grows 28.6-fold.
+const COMPACT_DEEP_DEPTH: u32 = 15;
 
 /// Allocations one iteration may add, per searching thread: the line it
 /// reports. Bench position 0 at one thread adds one allocation over eight
