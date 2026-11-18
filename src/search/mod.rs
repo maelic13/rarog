@@ -1590,7 +1590,7 @@ impl Searcher {
                     let stm = board.side_to_move() as usize;
                     self.td.optimism[stm] = optimism;
                     self.td.optimism[1 - stm] = -optimism;
-                    RootWindow::Compact(compact::window::CompactWindow::new(opening))
+                    RootWindow::Compact(compact::window::CompactWindow::at_iteration_depth(opening))
                 } else {
                     let center = self
                         .root_record(order[line])

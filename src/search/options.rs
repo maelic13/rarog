@@ -48,6 +48,17 @@ impl Kernel {
     } else {
         Self::Classic
     };
+
+    /// The most a draw's score lies from zero. The compact kernel scores a
+    /// draw a unit either side of it by the node count, so a line that can
+    /// draw is not scored level with every other draw.
+    #[must_use]
+    pub const fn draw_spread(self) -> i32 {
+        match self {
+            Self::Classic => 0,
+            Self::Compact => 1,
+        }
+    }
 }
 
 impl Default for Kernel {

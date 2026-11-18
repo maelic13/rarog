@@ -2234,6 +2234,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_draw_scores_within_the_kernels_spread_and_reaches_both_ends() {
+        let spread = crate::search::options::Kernel::Compact.draw_spread();
+        let scores: Vec<i32> = (0..5).map(draw_score).collect();
+        assert!(
+            scores.iter().all(|score| score.abs() <= spread),
+            "{scores:?}"
+        );
+        assert!(
+            scores.contains(&spread) && scores.contains(&-spread),
+            "{scores:?}"
+        );
+    }
+
+    #[test]
     fn a_quiescence_entry_bounds_the_null_search_at_depth_one_only() {
         let (beta, stored) = (100, 40);
         let bound = |depth, tt_depth| null_bound(depth, beta, stored, Some(Bound::Lower), tt_depth);

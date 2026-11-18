@@ -67,22 +67,49 @@ impl Iterations {
     }
 }
 
+/// The depth a root window searches at after a fail-high.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum DepthRule {
+    /// One ply less per fail-high so far, as the donor's one-line search.
+    ShallowerAfterFailHigh,
+    /// The iteration's depth: MultiPV lines are ranked against each other,
+    /// and a line settled shallower would outrank one settled at the depth.
+    Iteration,
+}
+
 /// The window state while an iteration's root searches fail.
 #[derive(Copy, Clone, Debug)]
 pub(in crate::search) struct CompactWindow {
     pub(in crate::search) window: Window,
     fails: i32,
+    rule: DepthRule,
 }
 
 impl CompactWindow {
+    /// The one-line search's window: a fail-high re-searches shallower.
     pub(in crate::search) fn new(window: Window) -> Self {
-        Self { window, fails: 0 }
+        Self {
+            window,
+            fails: 0,
+            rule: DepthRule::ShallowerAfterFailHigh,
+        }
     }
 
-    /// The depth the root searches at: one ply less per fail-high so far,
-    /// never below one.
+    /// A MultiPV line's window: every re-search at the iteration's depth.
+    pub(in crate::search) fn at_iteration_depth(window: Window) -> Self {
+        Self {
+            window,
+            fails: 0,
+            rule: DepthRule::Iteration,
+        }
+    }
+
+    /// The depth the root searches at, never below one.
     pub(in crate::search) fn depth(&self, depth: i32) -> i32 {
-        (depth - self.window.reduction).max(1)
+        match self.rule {
+            DepthRule::ShallowerAfterFailHigh => (depth - self.window.reduction).max(1),
+            DepthRule::Iteration => depth,
+        }
     }
 
     /// A fail low; past `max_fails` the window opens below fully, a guard
@@ -132,6 +159,9 @@ mod tests {
         let mut window = CompactWindow::new(narrower);
         window.fail_high(200, 20);
         assert_eq!(window.depth(10), 9, "one ply less after a fail high");
+        let mut line = CompactWindow::at_iteration_depth(narrower);
+        line.fail_high(200, 20);
+        assert_eq!(line.depth(10), 10, "a MultiPV line keeps its depth");
         assert!(window.window.beta > 200 && window.window.delta > narrower.delta);
         window.fail_low(-300, 20);
         assert!(window.window.alpha < -300);
