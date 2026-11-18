@@ -2031,6 +2031,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       D.7.6's fit, so the fit is not tuned around it, is the maintainer's
       decision (asked 2026-11-18). RAR-S126's games show no conversion
       cost: the band appears in 301 of the compact arm's games, 300 won.
+      *Diagnosed 2026-11-18 at zero games (RAR-S127), on the maintainer's
+      decision:* no port defect. Once a mate is in view, lines run to
+      whatever ply cap exists (with the cap and band at the donor's, 240
+      and 31,520, to 224 plies), as the donor's do (the twin needs 34.9
+      million nodes on 202 at depth 18); ordinary lines are the donor's
+      length (PV seldepth 23.08 against 22.96 on 100 parity positions);
+      both named candidates are refuted. Rarog's line bound contains it on
+      both positions but moves `bench 13` by −36%, a shape change across
+      the kernel, so it is not carried before the fit; it is the line
+      bound this item already names, read here with that evidence, and
+      tried again in D.7.9 with Rarog's other additions.
     - **D.7.9 Adoption and checkpoint — `V`, then `I1`.**
       The maintainer's decision on D.7.7 and D.7.8. On adoption: RAR-O08's
       matches (2) and (5) re-read on the new head, pooled NPS, conversion,
