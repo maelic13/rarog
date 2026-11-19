@@ -58,7 +58,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **9,067,595 / EBF 2.479** at engine source `9d7b42f` (D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
+| Fingerprint | `bench 13` **3,488,485 / EBF 2.336** at engine source `d23b9cf` (D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -386,7 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.7 | READY_FOR_IMPLEMENTATION | I2 | The classic kernel deleted: the two baselines archived first, then the deletion with `bench 13` exact at 3,488,485 / EBF 2.336; the fingerprint record moves |
 | D.7.8.1 | READY_FOR_IMPLEMENTATION | I1 | ProbCut's exchange bar given a seeded scale (1,024 reproduces today's play); the donor's 2,536 against it on the tune build, 2,000 games |
 | D.7.8.2 | RESEARCH | R2 | Card first: every reader of the quiescence and evaluation-only depths and the encoding that reads as the donor's; then one commit and the 2,000-game read |
 | D.7.8.3 | READY_FOR_IMPLEMENTATION | I2 | The root ordered by the kernel's own scorer, the classic scorer deleted; the 2,000-game read and a four-thread smoke |
@@ -614,7 +613,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   discussed with the maintainer before any change, and only then gets
   its card. The closed steps are reopened for that review; their records
   below stay as written and describe the classic kernel, which D.7.7
-  deletes. D.6.28, clock use, moved into D.7 as D.7.9, with its text.
+  deleted. D.6.28, clock use, moved into D.7 as D.7.9, with its text.
     - **D.6.1 Castling is neither quiet nor noisy — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-10 on the classic kernel).** (NODE-3, BOARD-1):
      `is_quiet_move` is `flags <= DOUBLE_PUSH` while castling has flags 2 and
      3, and `is_noisy` is capture or promotion, so in the move loop castling
@@ -2117,7 +2116,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           The wrapper's and the window's form tests read the donor's table
           or the fitted numbers. Debug and release suites, fmt, clippy and
           the `tune` and `texel` library suites pass.
-    - **D.7.7 The classic kernel deleted — `I2`.**
+    - **D.7.7 The classic kernel deleted — `I2`, DONE 2026-11-19.**
       Maintainer decision 2026-11-19: the compact kernel is the engine's
       only kernel before any repair. If D.7.13's gate fails it is discarded
       and the classic kernel comes back from this step's parent commit.
@@ -2154,6 +2153,136 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
          list against `tune.rs`'s rule.
       6. *Reported:* the kernel's search code in lines against the donor's
          1,488 (condition 1 of 2026-11-16), and what the deletion removed.
+      *Done 2026-11-19.* **Baselines,** built from `29f32fb` (clean tree)
+      by `tools/build_test.ps1`, pext PGO, `id name Rarog
+      dev-20261119-29f32fbb`, in `tools/test_engines/` with their sidecars:
+      `rarog-d7classic-pext-pgo.exe`, default features, 9,067,595 / EBF
+      2.479, SHA-256
+      `781797e99f40d5b118032c9d110e1cb2d291817015b068ecf5130994893926f4`;
+      `rarog-d7baked-pext-pgo.exe`, `compact-kernel`, 3,488,485 / EBF
+      2.336, SHA-256
+      `7d49ba499b7bb980a89cd7b31bda9bdec26ba0c3ab34179c1238c45dc5a668b4`.
+      Each copy's own `bench 13` read its count. **Commits:** `2a3d46b` and
+      `5d6f737` (two test preconditions, below), `d23b9cf` (engine: the
+      deletion, 31 files, 574 lines added and 7,442 removed), `1c175b2`
+      (tooling: the tune groups), `0a885fe` (a test's name). A restored
+      classic kernel starts from `5d6f737`, whose two tests pass on both
+      kernels. **Deleted:** the classic node and quiescence with their
+      rule helpers and test hooks; the `Kernel` switch and the feature
+      `compact-kernel`; the classic aspiration window; `CoreParams`,
+      `ProofParams` and `QuietParams` with their compiled-in handle, and
+      the nine `SearchParams` coordinates only the classic kernel read
+      (`AspMaxFails`, `LazyMargin` and the thirteen `Tm*` stay); the
+      classic staged picker and its skip logic (the root's scorer stays
+      for D.7.8.3, its `ScoredMove` without the two fields nothing read);
+      the classic correction formula and history updates, and the minor
+      and four-ply correction tables the kernel never read (about 4 MB a
+      thread no longer cleared each game); the TT probe's classic
+      readings; the classic sides of the pricing instrument (its
+      parameter swap: the kernel confines through its seed table); the
+      board's classic draw rule (`can_declare_draw_in_search`) and fast
+      check test, with the discovered-check blockers only that test read;
+      the decision trace only the classic node wrote; the diag
+      correction-slot probe only it fed; the tune groups `b23core`,
+      `b27all`, `b27core`, `b33`, `b43`, `c2margin`, `c3margin`,
+      `c10pilot`, `c10block1`, `c10long` and `d16fix` (45 files), with
+      the guard suite's tune cases moved to `d76fit` and its `Core*`
+      guard deleted. The diag build's counters only the classic node fed
+      stay and read zero (`board_gives_check_fast_calls` among them, which
+      `tools/diag/board_search_profile.py` reads); they are D.8's to
+      prune. **Invariant:** a fresh default release build reads
+      3,488,485 / EBF 2.336, all forty positions' depth, score, nodes and
+      EBF identical to `d7baked`'s; the tune build at its defaults reads
+      the same. **Size** (condition 1 of 2026-11-16): the donor's
+      `search.rs` at `0756957` is 1,490 lines by count (1,187 code lines,
+      non-blank and not a comment); the kernel's node and quiescence
+      (`compact/node.rs`, `compact/quiescence.rs`, tests excluded) are
+      1,689 lines, 1,599 code lines, and 1,307 without the `pricing` and
+      `probes` statements; with its picker, rules and both seed tables,
+      window and module root, 4,773 lines, 4,061 code lines, 3,506
+      without the instruments. **Tests.** The eighteen of D.7.4's record,
+      at `29f32fb` with the compact kernel the default: rewritten for the
+      kernel's form, each keeping its contract —
+      `a_depth_one_search_counts_each_root_move_once` (one open root
+      window at depth 1: twenty), `a_node_budget_waits_for_the_first_iteration`
+      (the first iteration's nodes plus one),
+      `a_clock_spent_before_the_search_began_still_returns_a_first_iteration_move`
+      (every line at depth 1, the last exact naming the move),
+      `search_writes_one_info_line_per_iteration_through_its_sink` and
+      `a_proved_mate_ends_a_clock_search_after_three_iterations_but_not_analysis`
+      (the kernel's window opens from depth 1, so they count exact lines
+      and let bound lines pass), `every_search_parameter_moves_what_it_tunes`
+      (the sixteen `SearchParams` left; the seeds are a tuning build's),
+      `search_populates_persistent_root_move_records` (a line of at least
+      the move: after a fail high the window searches one ply less),
+      `a_stored_win_never_answers_a_position_repeating_the_game_history`
+      (a third occurrence: N5's twofold is the donor's rule now),
+      `bare_king_promotion_choice_in_search` (no minor promotion in the
+      move or its line: at depths 6 and 7 the kernel plays `b8a7` with
+      `f7f8q` next; MP-1's anchor stays D.6.17's question);
+      retired with the forms they pinned —
+      `a_fail_low_store_carries_its_best_scoring_move` (T8),
+      `no_line_searches_past_twice_the_iteration_depth` (N6; the kernel's
+      eight times is `a_line_keeps_eight_times_its_iteration_depth_before_quiescence`),
+      `no_line_spends_more_than_the_iteration_depth_on_extensions` (LR4),
+      and `a_null_move_adds_no_count`, `the_root_never_takes_a_null_move`,
+      `the_verification_region_is_cleared_after_verifying_and_at_search_start`,
+      `singular_decisions_run_in_a_middlegame_search` and
+      `each_recursive_call_types_its_child_by_its_rule` (hooks only the
+      classic node had; the kernel's rules are layer A's);
+      `a_root_fail_high_past_the_soft_target_plays_the_move_with_its_lower_bound`
+      passes unchanged. Two more failed on the compact kernel since the
+      bake (`73966eb`), whose checks ran the default build only; each
+      got its precondition fixed in its own commit:
+      `kq_against_two_minors_is_the_queens_win_at_depth_1` (`2a3d46b`:
+      it asked the search for 150 in evaluation units; the wrapper reads
+      the three positions at 185, 232 and 149 against evaluations of 347,
+      427 and 291, so it asks the evaluation for 150 and the search for a
+      win) and `a_helper_searches_every_line` (`5d6f737`: it ranked upper
+      bounds as scores, and the kernel's root publishes a fail-low against
+      a mate as that mate; it counts at least three exact scores at the
+      final depth, where one line leaves two). Tests of deleted code went
+      with it: 32 of the classic `node.rs` (the eight above among them;
+      the rest unit tests of its helpers, or classic forms called
+      directly: a late direct check surviving the quiet skip, which the
+      kernel skips with the rest; quiescence's PV-bit hand-off; LMR's
+      root and in-check counters, which only the classic node fed; mate
+      after a first-ply check in quiescence, covered by
+      `a_hanging_queen_is_taken_and_a_mate_is_scored`), the classic
+      correction's formula tests, two history updates, the fast check
+      test, the TT probe's classic readings, the staged picker's, the
+      decision trace's and xtask's two-kernel profile test. Three
+      form-free contracts of the classic node moved onto the kernel (the
+      cutoff reset at the ply cap, an exclusion search with only the
+      excluded move scoring no mate, quiescence at the ply cap) and five
+      of the classic correction's (the raw evaluation under any clock,
+      training direction, continuation slots, draw verdicts, the
+      tablebase band). The
+      board's draw tests read the kernel's rule (`is_draw_at`): a single
+      prior occurrence draws only inside the search, and a repetition
+      across a null move is no draw
+      (`a_repetition_across_null_moves_is_no_draw_in_search`, renamed in
+      `0a885fe`). The zugzwang suite's material-guard arms set a deleted
+      coordinate; its four soundness checks run once
+      (`the_null_moves_soundness_properties_hold_together`). The
+      search-path perft walks the kernel's picker and make. No other test
+      was relaxed. **Checks** on the final state, each once, exit status
+      read directly: `cargo fmt --check` 0; `cargo clippy --all-features
+      --all-targets` 0, no warning (none under each feature alone either,
+      read before the last comment-only edits);
+      debug suite 506 passed, 13 ignored; release suite 508 passed, 12
+      ignored (the allocation guard and both search-path perft tests
+      among them); `tune` and `texel` library suites 266 passed each;
+      xtask 57 passed; the parity test on the donor's trace
+      (`analysis/artifacts/d74-parity-2026-11-17/trace-a`) 47 kinds, no
+      mismatch, every plant failing its kind; xtask's PGO build: all
+      copies of both kernel functions trained; the tune build lists the
+      241 seed options by `tune.rs`'s rule and the sixteen `SearchParams`,
+      and no other tuning option (a check that fails the D.7.6.1 tune
+      build on 129 classic options); the Colosseum guard suite 92 of 92, the converter
+      tests, the three groups' `--check` and the coverage audit with the
+      tune build clean. Records and logs:
+      `analysis/artifacts/d77/` (ignored).
     - **D.7.8 Repairs from the audit — `R2` cards, `I1`/`I2`/`V` sub-steps.**
       The audit's findings (`analysis/d7_audit_2026-11-19.md`, A1 to A8),
       one sub-step each, in order, worked as D.7's *How the open steps are
@@ -2475,7 +2604,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     - **D.7.15 If the kernel does not gain — `R3`.**
       Opens only on D.7.13's H0 or its cap without H1 (maintainer decision
       2026-11-19). The new kernel is discarded and the classic kernel
-      restored from D.7.7's parent commit. Then, in this order and each by
+      restored from D.7.7's parent commit (`5d6f737`). Then, in this order and each by
       its own registration: an investigation of why a kernel that read
       about +50 before its repairs did not gate; Rarog's own dropped forms
       retried on it one at a time (D.7.0's inventory, its seventeen
@@ -2510,7 +2639,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   2026-11-05.
   D.8.6, D.8.7 and D.8.19 are read again after D.7 (2026-11-13): a kernel
   rebuilt there is written in their target shape.
-  D.7.7 deletes the classic kernel (2026-11-19), so D.8.1's census is
+  D.7.7 deleted the classic kernel (2026-11-19), so D.8.1's census is
   taken on the tree that remains and every item is read against that
   census before it starts; the counts above are the 2026-11-01 tree's.
     - **D.8.1 P0: the census as a tool — `I1`.** Commit the census as `tools/diag/arch_census.py` (planned) with a test
