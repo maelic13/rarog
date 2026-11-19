@@ -386,7 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.8.5 | RESEARCH | R2 | Screen: clock searches stopped inside an iteration and what they discard; the donor's rule only at 2% or more, then the 2,000-game read and RAR-S129's (P) again |
 | D.7.8.6 | READY_FOR_IMPLEMENTATION | I1 | A helper's previous score reset at a new game; a test; no game read |
 | D.7.8.7 | RESEARCH | R2 | Card only: shared correction tables, their per-node cost and the four-thread read; the maintainer decides from it |
 | D.7.8.8 | RESEARCH | R2 | Position 305's first differing decision on the trace; zero games, one session |
@@ -2502,7 +2501,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           passed; the `tune` and `texel` libraries 292 each; parity on the
           donor's trace without a mismatch. `CHANGELOG.md` has the user's
           sentence.
-        - **D.7.8.5 The interrupted iteration — `R2`, then `I2` if its screen fires.**
+        - **D.7.8.5 The interrupted iteration — `R2`, then `I2` if its screen fires, NO_CHANGE 2026-11-19.**
           (A2) On a stop inside an iteration the root plays the last
           completed iteration's move; the donor plays `root_moves[0]` with
           the interrupted iteration's results, behind its forgotten-mate
@@ -2523,6 +2522,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           search at swept budgets (`tests/root_abort.rs`). The 2,000-game
           read, and RAR-S129's match (P) again at 100,000 nodes a move
           against `reckless-hce`, the parity read this rule clouded.
+          *NO_CHANGE 2026-11-19* (`analysis/d785_interrupt_2026-11-19.md`):
+          B.5's counters on the kernel's root driver (`927063c`, diag
+          only, the fingerprint exact), live under node budgets (90 of 90
+          searches stopped inside an iteration). Of 300 searches, stopped
+          inside an iteration and discarding a new best or failed-high
+          move: `3000+30` 1 and **0 (0%)**, `1000+30` 4 and 1 (0.33%),
+          `300+30` 24 and 4 (1.33%). Under the frozen 2%: the donor's rule
+          is not built and RAR-S129's (P) is not re-run. Retry trigger: a
+          time manager or a rated control that raises the share at its
+          clock to 2%.
         - **D.7.8.6 A helper's previous score at a new game — `I1`.**
           (A6) `reset_worker_state_for_new_game` leaves a helper's previous
           search score, so its first window of a new game opens round the
