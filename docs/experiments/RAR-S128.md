@@ -219,3 +219,34 @@ to extend a stopped tune.
   shape.
 - **Evidence layer:** the tune's own read is not a gate; D.7.7 accepts or
   rejects.
+
+## Amendment, 2026-11-19, before the 2,000 checkpoint: an interim read of the centres
+
+The maintainer's decision, during the run and before its first checkpoint:
+one look at whether the fit is moving the kernel at all. Rule 7c is
+unchanged: the tune is paused after iteration 2,000, this read plays, and
+the same command resumes the tune, whatever the read says. Theta is still
+only a stopped checkpoint's centres.
+
+- **Arms:** the tune binary on both sides (`rarog-d76fit-tune.exe`,
+  `f7c89fb`, SHA-256 `a536482f…`), so they differ only by UCI options and
+  play at equal speed (`colosseum.ps1 -CategoricalTuneBuild`). `d76at2000`
+  takes the rounded centres at iteration 2,000, read from the run's history
+  without recording anything in the run directory; `d76seed` keeps the
+  unfitted seeds. The extraction reproduced the pilot's own theta exactly,
+  230 of 230.
+- **Run:** Colosseum `match`, 2,000 games at `3+0.03`, Hash 64, one thread,
+  the UHO book, no adjudication, seed 20261119,
+  `tools/results/rar-s128-read2000`. About 26 minutes at the tune's rate.
+  Driver: `analysis/artifacts/d76-fit-2026-11-18/read2000/run_read2000.ps1`
+  (`-Step theta`, then `-Step match`, the maintainer's).
+- **Reading:** the manifest's nElo and its 95% interval. It decides nothing
+  about the tune or the gate. A read wholly below zero is recorded as a
+  finding for D.7.7's registration and D.7.8. It is not a stop.
+- **Prediction (frozen before the checkpoint):** **+20 nElo**, 80% band
+  −5 to +45; the interval wholly above zero with probability 0.5. Basis: the
+  registration's +35 at the stop, about two thirds of it by 2,000, as
+  Basilisk's joint fit read +22.9 at 2,000 and gated at +28.2 (BAS-S61,
+  BAS-S62). Against RAR-S126's −11.1 ± 15.2 for the unfitted kernel, +20
+  would put the kernel at 2,000 near +9 against the classic kernel, a
+  sum of two reads and not a measurement.
