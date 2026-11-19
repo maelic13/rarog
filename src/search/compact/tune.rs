@@ -18,8 +18,8 @@ const EXCLUDED: [&str; 5] = [
 ];
 
 /// Seeds whose range is declared rather than the rule's, each for a value
-/// the rule's range would not reach: ProbCut's exchange scale must reach
-/// the donor's 2,536 from the 1,024 the kernel plays.
+/// the rule's range would not reach: ProbCut's exchange scale spans the
+/// unconverted 1,024 and the donor's 2,536 the kernel plays.
 const DECLARED: [(&str, (i32, i32)); 1] = [("probcut_see_scale", (512, 4_096))];
 
 /// A seed's option name: `K` and the seed's name in Pascal case, an array
@@ -147,13 +147,13 @@ mod tests {
             "option name KRfpSquare16 type spin default 8218 min 4109 max 16436"
         )));
         assert!(lines.contains(&String::from(
-            "option name KProbcutSeeScale type spin default 1024 min 512 max 4096"
+            "option name KProbcutSeeScale type spin default 2536 min 512 max 4096"
         )));
         let mut seeds = Seeds::FITTED;
-        assert!(set_uci_option(&mut seeds, "KProbcutSeeScale", "2536"));
+        assert!(set_uci_option(&mut seeds, "KProbcutSeeScale", "1024"));
         assert_eq!(
-            seeds.probcut_see_scale, 2_536,
-            "the donor's form is reachable"
+            seeds.probcut_see_scale, 1_024,
+            "the unconverted bar is reachable"
         );
     }
 

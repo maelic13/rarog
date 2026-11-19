@@ -663,8 +663,8 @@ impl Seeds {
         probcut_depth_per: 132,
         probcut_raise_16: 1_266,
         probcut_t: 2_673,
-        // The bar as the fit played it, unconverted.
-        probcut_see_scale: 1_024,
+        // The donor's form, which RAR-S130's read kept.
+        probcut_see_scale: 2_536,
 
         singular_depth: 7,
         singular_tt_depth: 3,
@@ -2532,18 +2532,26 @@ mod tests {
         );
     }
 
-    /// The kernel plays the bar as the fit did, in evaluation units; the
-    /// donor's form is the same distance carried into the exchange values.
+    /// The kernel plays the donor's form: the evaluation's distance to the
+    /// raised beta carried into the exchange values at the fold's scale.
     #[test]
     fn probcuts_exchange_bar_is_the_distance_to_its_beta_at_the_seeded_scale() {
         for (probcut_beta, eval) in [(300, 100), (100, 300), (0, 0), (-50, -1_250)] {
-            let distance = probcut_beta - eval;
-            assert_eq!(probcut_see_bar(SEEDS, probcut_beta, eval), distance);
-            assert_eq!(
-                probcut_see_bar(&Seeds::DONOR, probcut_beta, eval),
-                distance * 2_536 / 1_024
-            );
+            let carried = i64::from(probcut_beta - eval) * 2_536 / 1_024;
+            for table in [SEEDS, &Seeds::DONOR] {
+                assert_eq!(
+                    i64::from(probcut_see_bar(table, probcut_beta, eval)),
+                    carried
+                );
+            }
         }
+        let mut unconverted = Seeds::FITTED;
+        unconverted.probcut_see_scale = 1_024;
+        assert_eq!(
+            probcut_see_bar(&unconverted, 300, 100),
+            200,
+            "1,024 is the bare distance"
+        );
         let far = TB_WIN_SCORE - 1;
         let mut wide = Seeds::FITTED;
         wide.probcut_see_scale = 4_096;
