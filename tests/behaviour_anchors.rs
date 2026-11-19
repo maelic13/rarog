@@ -12,7 +12,8 @@ use std::sync::{Mutex, MutexGuard};
 use rarog::bench::BENCH_FENS;
 use rarog::board::{Board, CastlingRights, Color, Move, Piece, Square, UciMove};
 use rarog::eval::{Evaluator, MATE_SCORE};
-use rarog::search::options::{Kernel, SearchOptions};
+use rarog::search::DRAW_SPREAD;
+use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, SearchResult, Searcher};
 use rarog::syzygy::{self, Wdl};
 use rarog::wac::wac_positions;
@@ -219,10 +220,7 @@ fn saavedra_rook_promotion_wins() {
     assert_eq!(r.bestmove.to_string(), "c7c8r", "{s}");
     assert!(r.score >= MATE_SCORE - 40, "{s}");
     let queen = alone(fen, "c7c8q", r.depth);
-    assert!(
-        queen.abs() <= Kernel::DEFAULT.draw_spread(),
-        "the queen is drawn: {queen}"
-    );
+    assert!(queen.abs() <= DRAW_SPREAD, "the queen is drawn: {queen}");
 }
 
 /// `tournament_infraction_positions`: legal best moves in two final positions
@@ -451,7 +449,8 @@ fn bare_king_promotion_order() {
 
 /// Not a Basilisk test: whether the promotion order above reaches the search.
 /// BI's bishops (b8, f8) share a colour, a draw. From KBP-K the search must
-/// promote to a queen or rook at every depth 1-12, never to a minor.
+/// never promote to a minor at any depth 1-12, in its move or in its line;
+/// it may move the bishop first and promote after.
 #[test]
 fn bare_king_promotion_choice_in_search() {
     let _g = serial();
@@ -466,7 +465,8 @@ fn bare_king_promotion_choice_in_search() {
     for depth in 1..=12 {
         let r = search(fen, Some(depth), 0);
         eprintln!("KBP-K depth {depth}: {}", summary(&r));
-        if !["f7f8q", "f7f8r"].contains(&r.bestmove.to_string().as_str()) {
+        let minor = |mv: &Move| matches!(mv.to_string().as_str(), "f7f8n" | "f7f8b");
+        if minor(&r.bestmove) || r.pv.iter().any(minor) {
             bad.push(format!("depth {depth}: {}", summary(&r)));
         }
     }

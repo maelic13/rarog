@@ -26,8 +26,7 @@ macro_rules! search_params {
         }
 
         impl $name {
-            /// The compiled-in values, as a constant a production build
-            /// folds into the search; see [`Compiled`].
+            /// The compiled-in values.
             pub const DEFAULT: Self = Self { $( $field: $default, )+ };
         }
 
@@ -35,10 +34,6 @@ macro_rules! search_params {
             fn default() -> Self {
                 Self::DEFAULT
             }
-        }
-
-        impl CompiledDefault for $name {
-            const VALUE: &'static Self = &Self::DEFAULT;
         }
 
         impl $name {
@@ -109,106 +104,21 @@ macro_rules! search_params {
     };
 }
 
-/// A parameter set with compiled-in values.
-pub trait CompiledDefault: 'static {
-    const VALUE: &'static Self;
-}
-
-/// A zero-sized handle to a parameter set's compiled-in values. A production
-/// build cannot change a search parameter (only `tune` builds expose them as
-/// UCI options), so the search reads its per-node sets (core, proof, quiet)
-/// through this handle: every read is a load from a constant the compiler
-/// sees, and folds into the code, where a read through the searcher's memory
-/// is a load at every use.
-pub struct Compiled<T>(std::marker::PhantomData<T>);
-
-impl<T> Default for Compiled<T> {
-    fn default() -> Self {
-        Self(std::marker::PhantomData)
-    }
-}
-
-impl<T: CompiledDefault> std::ops::Deref for Compiled<T> {
-    type Target = T;
-
-    #[inline(always)]
-    fn deref(&self) -> &T {
-        T::VALUE
-    }
-}
-
-/// How the searcher holds a parameter set: the set itself where it can change
-/// (`tune` builds and tests), the compiled-in handle otherwise.
-#[cfg(any(feature = "tune", test))]
-pub type Param<T> = T;
-#[cfg(not(any(feature = "tune", test)))]
-pub type Param<T> = Compiled<T>;
-
 // The single source of truth for every tunable: `field = default, "UciName",
 // min..=max;`. Struct field, Default value, UCI option string and setter clamp
 // are all generated from these lines — see the `search_params!` docs above.
 search_params! {
     struct SearchParams, generated_param_checks;
 
-    /// Initial aspiration window half-width (centipawns).
-    aspiration_delta = 12, "AspirationDelta", 1..=100;
-
-    // ── Aspiration shape ─────────────────────────────────────────────────────
-    // The widening loop is parameterised so the fit sets its shape. These are
-    // fitted together with `AspirationDelta` and the pruning group, which were
-    // fitted around the loop's dynamics: a modern shape adopted without
-    // refitting them measured −4.52 Elo.
-    /// Delta growth per fail-LOW, in percent of the current delta.
-    asp_growth_pct = 164, "AspGrowthPct", 100..=400;
-    /// Delta growth per fail-HIGH, in percent. Separate from the fail-low
-    /// side, since fail-highs and fail-lows carry different information.
-    asp_growth_high_pct = 165, "AspGrowthHighPct", 100..=400;
-    /// Additive term applied with the growth, so a small delta still escapes
-    /// its own rounding.
-    asp_growth_add = 8, "AspGrowthAdd", 0..=50;
-    /// ⛔ TERMINATION BY CONSTRUCTION. After this many consecutive fails on one
-    /// side, that side opens to ±INF unconditionally, so it cannot fail again;
-    /// the loop is bounded at `2 × asp_max_fails` iterations whatever the
-    /// score's magnitude, mate scores and a saturated delta included.
+    /// ⛔ TERMINATION BY CONSTRUCTION. After this many failed searches of one
+    /// root window, a side that fails opens to ±INF unconditionally, so it
+    /// cannot fail again; a window is searched at most `asp_max_fails + 2`
+    /// times whatever the score's magnitude, mate scores included.
     ///
     /// A lower value bounds the re-searches of a runaway iteration, as engines
     /// that open fully after a few fails do; that is the direction the tune
     /// explores.
     asp_max_fails = 20, "AspMaxFails", 1..=32;
-
-    // ── Qsearch SEE thresholds ───────────────────────────────────────────────
-    // Coordinates so SEE's consumers can be re-tuned with SEE itself: a more
-    // accurate SEE de-tunes the constants fitted around the old one.
-    /// Qsearch capture SEE-prune margin: search a capture only if
-    /// `see_ge(alpha − stand_pat − qs_see_margin)` (clamped).
-    qs_see_margin = 247, "QsSeeMargin", 0..=600;
-    /// Upper clamp on the qsearch SEE-prune threshold.
-    qs_see_clamp_hi = 224, "QsSeeClampHi", 0..=600;
-    /// Qsearch bad-capture SEE floor: an ordering-SEE-negative capture is
-    /// skipped unless `see_ge(qs_see_bad_floor)`.
-    qs_see_bad_floor = -43, "QsSeeBadFloor", -400..=0;
-
-    /// Minimum non-pawn pieces the side to move must have for NMP.
-    ///
-    /// 1 = accepted baseline, i.e. exactly the existing
-    /// `has_non_pawn_material` test. Zugzwang risk concentrates where the mover
-    /// has almost nothing left to move: with one minor piece and pawns, "pass"
-    /// and "move" can differ by the whole game. 2 or 3 demand progressively more
-    /// material before a null is trusted.
-    ///
-    /// The existing guard is not removed — this tightens the same test, so 1
-    /// reproduces it exactly and the `tests/zugzwang.rs` pawn-only assertions
-    /// keep covering the boundary.
-    nmp_min_non_pawn_pieces = 1, "NmpMinNonPawnPieces", 1..=3;
-
-    /// ProbCut's move filter, the entry contract of the speculative capture
-    /// search: a percentage applied to the gap the capture must bridge,
-    /// `probcut_beta - static_eval`. At 100 the move must win at least the
-    /// whole gap by SEE; at 0 the gap is ignored and the filter is
-    /// `see_ge(mv, 0)`. The threshold is floored at 0, so this only ever
-    /// tightens that test. Without it Rarog searched 5.17x the reference's
-    /// normalised ProbCut moves and converted 32.6% of them against 71.9%.
-    probcut_see_gap_scale = 92, "ProbCutSeeGapScale", 0..=200;
 
     /// Lazy-eval margin: if the tapered material + PST + pawn score already
     /// exceeds it, the positional block is skipped. Pushed into the evaluator
@@ -273,261 +183,6 @@ search_params! {
     tm_fail_high_target = 20_000, "TmFailHighTarget", 10000..=10000000;  // 2.0
 }
 
-// The selectivity core's own coordinates. Seeds follow the handoff's seed
-// rule: the donor's value converted to Rarog's scale (evaluation units x0.457,
-// SEE units x0.75, plies, counts and history units unchanged), or the
-// geometric mean of the classical-oracle and Rarog-fitted values where the
-// donor's margin is sized for a far more accurate evaluation.
-search_params! {
-    struct CoreParams, generated_core_param_checks;
-
-    // Correction update and blend.
-    /// Update slope in 128ths: `bonus = slope * depth * residual / 128`.
-    corr_update_slope = 250, "CoreCorrUpdateSlope", 32..=512;
-    /// Clamps of one update, in table units (64 per evaluation unit).
-    corr_update_min = -1_692, "CoreCorrUpdateMin", -8192..=-256;
-    corr_update_max = 736, "CoreCorrUpdateMax", 128..=4096;
-    /// Blend weights of the six tables, in 128ths.
-    corr_weight_pawn = 122, "CoreCorrWeightPawn", 0..=384;
-    corr_weight_minor = 56, "CoreCorrWeightMinor", 0..=384;
-    corr_weight_non_pawn_white = 113, "CoreCorrWeightNonPawnWhite", 0..=384;
-    corr_weight_non_pawn_black = 115, "CoreCorrWeightNonPawnBlack", 0..=384;
-    corr_weight_cont2 = 187, "CoreCorrWeightCont2", 0..=384;
-    corr_weight_cont4 = 163, "CoreCorrWeightCont4", 0..=384;
-    // Corrected-eval formula, neutral at zero.
-    /// Material scaling of the raw eval, in 64ths per starting-material unit.
-    eval_material_scale = 15, "CoreEvalMaterialScale", -64..=64;
-    /// Rule-50 damping, in percent of `eval * min(clock, 100) / 199`. The
-    /// evaluator's own damping is compiled out under the core, so the eval the
-    /// table stores does not depend on the clock and the search damps it here.
-    eval_rule50_damping = 100, "CoreEvalRule50Damping", 0..=150;
-
-    // Node-level pruning.
-    /// Razoring margin `base + square * depth^2`, evaluation units.
-    razor_base = 302, "CoreRazorBase", 50..=800;
-    razor_square = 184, "CoreRazorSquare", 20..=400;
-    /// Reverse-futility margin: `square/16 * depth^2 + linear * depth
-    /// - improvement * improvement/1024 + correction * |corr|/1024 - threat *
-    /// unthreatened + constant`, floored at 2.
-    rfp_square = 170, "CoreRfpSquare", 0..=320;
-    rfp_linear = 9, "CoreRfpLinear", -100..=200;
-    rfp_improvement = 58, "CoreRfpImprovement", 0..=512;
-    rfp_correction = 95, "CoreRfpCorrection", 0..=2048;
-    rfp_threat = 12, "CoreRfpThreat", 0..=120;
-    rfp_constant = -14, "CoreRfpConstant", -100..=100;
-    /// Reverse-futility return, in 1024ths of the way from the estimate to beta.
-    rfp_lerp = 586, "CoreRfpLerp", 0..=1024;
-    /// Hindsight: a parent reduction (1024ths of a ply) at or above this
-    /// deepens a child whose eval says the parent's opponent got worse.
-    hindsight_deepen_reduction = 1_676, "CoreHindsightDeepenReduction", 512..=6144;
-    /// Hindsight: an eval swing above this reduces a reduced child one ply.
-    hindsight_reduce_margin = 34, "CoreHindsightReduceMargin", 0..=200;
-    /// Internal iterative reduction: the least depth at which a missing or
-    /// shallow TT move costs a ply.
-    iir_min_depth = 4, "CoreIirMinDepth", 2..=10;
-
-    // Move-loop pruning.
-    /// Late-move pruning count, in 1024ths: `(base + improvement *
-    /// improvement/16 + square * depth^2 + history * history/1024) / 1024`.
-    lmp_base = 2_888, "CoreLmpBase", 0..=8192;
-    lmp_improvement = 80, "CoreLmpImprovement", 0..=400;
-    lmp_square = 402, "CoreLmpSquare", 256..=4096;
-    lmp_history = 75, "CoreLmpHistory", 0..=400;
-    /// Quiet futility value: `eval + base + linear * depth + history *
-    /// history/1024 + above_beta * (eval >= beta) + correction * |corr|/1024`.
-    fp_base = 150, "CoreFpBase", -100..=500;
-    fp_linear = 33, "CoreFpLinear", 0..=300;
-    fp_history = 22, "CoreFpHistory", 0..=200;
-    fp_eval_above_beta = 35, "CoreFpEvalAboveBeta", 0..=200;
-    fp_correction = 110, "CoreFpCorrection", 0..=2048;
-    /// Bad-noisy futility value: `eval + base + linear * depth + history *
-    /// history/1024 + victim value`.
-    bnfp_base = 56, "CoreBnfpBase", -100..=400;
-    bnfp_linear = 40, "CoreBnfpLinear", 10..=300;
-    bnfp_history = 46, "CoreBnfpHistory", 0..=200;
-    /// History pruning below `-slope * depth`.
-    hp_slope = 1_019, "CoreHpSlope", 100..=4000;
-    /// SEE-pruning allowance for quiets: `min(0, -square * depth^2 + linear *
-    /// depth - history * history/1024 + constant)`, SEE units.
-    see_quiet_square = 7, "CoreSeeQuietSquare", 0..=40;
-    see_quiet_linear = 31, "CoreSeeQuietLinear", 0..=200;
-    see_quiet_history = 24, "CoreSeeQuietHistory", 0..=120;
-    see_quiet_constant = 17, "CoreSeeQuietConstant", -100..=100;
-    /// SEE-pruning allowance for noisy moves: `min(0, -square * depth^2 -
-    /// linear * depth - history * history/1024 + constant)`.
-    see_noisy_square = 5, "CoreSeeNoisySquare", 0..=40;
-    see_noisy_linear = 12, "CoreSeeNoisyLinear", 0..=200;
-    see_noisy_history = 33, "CoreSeeNoisyHistory", 0..=120;
-    see_noisy_constant = 33, "CoreSeeNoisyConstant", -100..=100;
-
-    // Late-move reductions, in 1024ths of a ply.
-    lmr_log = 150, "CoreLmrLog", 0..=1024;
-    lmr_improvement = 333, "CoreLmrImprovement", 0..=2048;
-    /// Bounds of the improvement term, in reduction units. Seeded at the
-    /// donor's values; converting them to Rarog's evaluation scale measured
-    /// worse, so the fit decides them.
-    lmr_improvement_clamp_lo = -162, "CoreLmrImprovementClampLo", -1024..=0;
-    lmr_improvement_clamp_hi = 1_065, "CoreLmrImprovementClampHi", 0..=4096;
-    lmr_correction = 3_330, "CoreLmrCorrection", 0..=8192;
-    lmr_exact = 1_748, "CoreLmrExact", 0..=4096;
-    lmr_tt_score_below_alpha = 526, "CoreLmrTtScoreBelowAlpha", 0..=2048;
-    lmr_tt_shallow = 58, "CoreLmrTtShallow", 0..=2048;
-    lmr_quiet = 1_932, "CoreLmrQuiet", 0..=6144;
-    lmr_quiet_history = 316, "CoreLmrQuietHistory", 0..=1024;
-    lmr_alpha_gap = 291, "CoreLmrAlphaGap", 0..=2048;
-    /// Bounds of `alpha - estimated score` in the quiet term, evaluation
-    /// units, seeded at the donor's values like the improvement bounds.
-    lmr_alpha_gap_lo = -65, "CoreLmrAlphaGapLo", -512..=0;
-    lmr_alpha_gap_hi = 98, "CoreLmrAlphaGapHi", 0..=512;
-    lmr_noisy = 830, "CoreLmrNoisy", 0..=6144;
-    lmr_noisy_history = 182, "CoreLmrNoisyHistory", 0..=1024;
-    lmr_critical_ply = 171, "CoreLmrCriticalPly", 0..=512;
-    lmr_pv = 399, "CoreLmrPv", 0..=2048;
-    lmr_pv_window = 306, "CoreLmrPvWindow", 0..=2048;
-    lmr_non_pv = 358, "CoreLmrNonPv", -1024..=1024;
-    lmr_laterality = 24, "CoreLmrLaterality", 0..=256;
-    lmr_tt_pv = 179, "CoreLmrTtPv", 0..=2048;
-    lmr_tt_pv_score = 571, "CoreLmrTtPvScore", 0..=2048;
-    lmr_tt_pv_depth = 633, "CoreLmrTtPvDepth", 0..=2048;
-    lmr_cut_node = 2_071, "CoreLmrCutNode", 0..=4096;
-    lmr_cut_node_no_tt_move = 2_073, "CoreLmrCutNodeNoTtMove", 0..=4096;
-    lmr_gives_check = 1_030, "CoreLmrGivesCheck", 0..=4096;
-    lmr_child_cutoffs = 1_334, "CoreLmrChildCutoffs", 0..=4096;
-    lmr_child_cutoffs_all_node = 253, "CoreLmrChildCutoffsAllNode", 0..=2048;
-    lmr_parent = 130, "CoreLmrParent", 0..=1024;
-    /// Re-search a reduced move one ply deeper when it beats the best score
-    /// by more than this.
-    lmr_research_deeper = 43, "CoreLmrResearchDeeper", 0..=200;
-
-    // History update policy, history units.
-    /// Quiet best-move bonus `min(slope * depth, cap) - 72 - 42 * cut_node`.
-    hist_quiet_bonus_slope = 173, "CoreHistQuietBonusSlope", 32..=512;
-    hist_quiet_bonus_cap = 1_532, "CoreHistQuietBonusCap", 256..=4096;
-    /// Quiet malus `min(slope * depth, cap) - 46 - 31 * quiets searched`.
-    hist_quiet_malus_slope = 197, "CoreHistQuietMalusSlope", 32..=512;
-    hist_quiet_malus_cap = 1_405, "CoreHistQuietMalusCap", 256..=4096;
-    /// Search-order fade of the quiet malus: the i-th quiet gets
-    /// `1024^2 / (1024 + scale * i)^2` of it.
-    hist_malus_index_scale = 42, "CoreHistMalusIndexScale", 0..=256;
-    hist_cont_bonus_cap = 1_051, "CoreHistContBonusCap", 256..=4096;
-    hist_noisy_bonus_cap = 894, "CoreHistNoisyBonusCap", 256..=4096;
-    /// Quiet bonus to a TT move that cuts: `min(190 * depth - 81, cap)`.
-    hist_tt_cutoff_bonus_cap = 1_727, "CoreHistTtCutoffBonusCap", 256..=4096;
-    /// Base of the fail-low reward factor for the parent's quiet move.
-    hist_fail_low_base = 92, "CoreHistFailLowBase", 0..=400;
-
-    // Draw score.
-}
-
-// The proof-search cluster's coordinates. Seeds follow the core's rule: the
-// donor's shape, Rarog's own fitted magnitude where one exists, otherwise the
-// donor's value converted (evaluation units x0.457). Categoricals are
-// switches, never SPSA coordinates.
-search_params! {
-    struct ProofParams, generated_proof_param_checks;
-
-    // Null move.
-    /// Entry margin above beta: `max(2, base - depth_term * depth/4 -
-    /// improvement_term * improvement/1024 - cutoff * (child cutoffs < 2))`,
-    /// evaluation units; the depth term is in quarters of a unit per ply.
-    /// The null move runs only at nodes without the table's PV flag, so no
-    /// term for that flag belongs here (the donors admit such nodes; that
-    /// form was read and not taken).
-    nmp_base = 159, "CoreNmpBase", 0..=400;
-    nmp_depth = 14, "CoreNmpDepth", 0..=80;
-    nmp_improvement = 52, "CoreNmpImprovement", 0..=200;
-    nmp_cutoff = 16, "CoreNmpCutoff", 0..=60;
-    /// Reduction in 1024ths of a ply: `base + improving_term * improving +
-    /// depth_term * depth + eval * clamp(estimate - beta, 0, clamp)/128`.
-    nmp_r_base = 4_255, "CoreNmpRBase", 2048..=8192;
-    nmp_r_improving = 929, "CoreNmpRImproving", 0..=2048;
-    nmp_r_depth = 277, "CoreNmpRDepth", 64..=640;
-    nmp_r_eval = 899, "CoreNmpREval", 0..=3072;
-    nmp_r_clamp = 475, "CoreNmpRClamp", 128..=1536;
-    /// From this depth a null fail-high outside a verification region is
-    /// verified by a search with the null move disabled over the region.
-    nmp_verify_depth = 16, "CoreNmpVerifyDepth", 4..=32;
-
-    // ProbCut.
-    /// `probcut_beta = beta + base - improving_term * improving`, evaluation
-    /// units; the base is Rarog's fitted `ProbCutMargin`.
-    probcut_base = 145, "CoreProbcutBase", 50..=400;
-    probcut_improving = 39, "CoreProbcutImproving", 0..=150;
-    /// Captures searched at most per node.
-    probcut_move_cap = 5, "CoreProbcutMoveCap", 1..=16;
-    /// The verification depth falls one ply below `depth - 4 - improving`
-    /// for every `div` units the qsearch pass cleared `probcut_beta` by.
-    probcut_depth_div = 124, "CoreProbcutDepthDiv", 48..=512;
-    /// A shallower verification must clear `probcut_beta` plus this per ply
-    /// it saved.
-    probcut_adjust = 107, "CoreProbcutAdjust", 0..=300;
-    /// A cut returns this many 1024ths of the way from its score to beta.
-    probcut_lerp = 253, "CoreProbcutLerp", 0..=1024;
-
-    // Singular extensions, multi-cut, low-depth singular extension.
-    /// The singular margin is `(margin * span + margin * depth * (PV-line
-    /// node searched with a null window)) / 16`: sixteenths of an
-    /// evaluation unit per ply of span. 64 is Rarog's fitted `4 * depth`;
-    /// both donors convert to about 8.
-    singular_margin = 12, "CoreSingularMargin", 4..=96;
-    /// The span of the margin when the stored bound is exact, in sixteenths
-    /// of the depth, rounded up; a non-exact bound spans the whole depth.
-    sing_exact_span = 4, "CoreSingExactSpan", 1..=16;
-    /// A stored lower bound seeds a singular candidate only when it is at
-    /// most this many plies shallower than the node; 2 here, not the
-    /// accepted search's `SingularTtDepthMargin` of 3, because 2 measured
-    /// +12.9 ± 9.4 Elo on this arm in 2,000 games.
-    singular_tt_depth_margin = 2, "CoreSingularTtDepthMargin", 0..=4;
-    /// A singular move extends twice when its exclusion score falls this far
-    /// below the singular beta: `pv_term * PV + not_tt_pv * (PV and not
-    /// stored on a PV line) - quiet * quiet TT move - corr * |correction|/128
-    /// + base`; the base, zero as in the donor, sets the bar off the PV.
-    sing_double_base = -11, "CoreSingDoubleBase", -100..=200;
-    sing_double_pv = 95, "CoreSingDoublePv", 0..=300;
-    sing_double_not_tt_pv = 29, "CoreSingDoubleNotTtPv", 0..=100;
-    sing_double_quiet = 10, "CoreSingDoubleQuiet", 0..=50;
-    sing_double_corr = 12, "CoreSingDoubleCorr", 0..=50;
-    /// Three times at this margin, the same terms plus a base.
-    sing_triple_pv = 125, "CoreSingTriplePv", 0..=350;
-    sing_triple_not_tt_pv = 23, "CoreSingTripleNotTtPv", 0..=100;
-    sing_triple_quiet = 7, "CoreSingTripleQuiet", 0..=50;
-    sing_triple_corr = 6, "CoreSingTripleCorr", 0..=50;
-    sing_triple_base = 12, "CoreSingTripleBase", 0..=80;
-    /// A multi-cut returns this many 1024ths of the way from its score to
-    /// beta.
-    sing_multicut_lerp = 379, "CoreSingMulticutLerp", 0..=1024;
-    /// A cut node at depth 7 or less with no singular candidate extends its
-    /// first move when the estimate is this far below alpha.
-    ldse_margin = 12, "CoreLdseMargin", 0..=100;
-    /// Late moves at a node whose TT move beat the exclusion search reduce
-    /// more: `clamp(slope * (tt_move_score - singular_score - offset)/128, 0,
-    /// cap)`, in 1024ths of a ply.
-    lmr_singular_slope = 931, "CoreLmrSingularSlope", 0..=3072;
-    lmr_singular_offset = 89, "CoreLmrSingularOffset", 0..=300;
-    lmr_singular_cap = 2_084, "CoreLmrSingularCap", 0..=4096;
-}
-
-// The quiescence cluster's coordinates and switches. The interpolations are in 1024ths of the way from a fail-high score
-// to beta: 0 keeps the fail-soft score, 1024 is fail-hard.
-search_params! {
-    struct QuietParams, generated_quiet_param_checks;
-
-    /// A stand-pat fail-high is stored and returned this far toward beta.
-    qs_stand_pat_lerp = 594, "QsStandPatLerp", 0..=1024;
-    /// A capture's fail-high is stored and returned this far toward beta.
-    qs_cutoff_lerp = 575, "QsCutoffLerp", 0..=1024;
-    /// Captures after this many at a node are skipped unless they give check,
-    /// recapture on the previous move's square or promote, while the stand pat
-    /// is not a loss.
-    qs_count_limit = 3, "QsCountLimit", 2..=8;
-    /// A capture is skipped when the stand pat, its victim and this margin
-    /// cannot reach alpha; evaluation units over the search's piece scale.
-    qs_futility_margin = 257, "QsFutilityMargin", 0..=400;
-    /// With more than eight pieces on the board, the stand pat, a queen and
-    /// this margin below alpha end the node.
-    qs_delta_margin = 308, "QsDeltaMargin", 0..=800;
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -535,13 +190,6 @@ mod tests {
     #[test]
     fn search_params_defaults_are_sane() {
         let p = SearchParams::default();
-        assert!(p.aspiration_delta > 0);
-        assert!(p.qs_see_margin >= 0);
-        assert!(p.qs_see_bad_floor <= 0);
-        assert_eq!(
-            p.nmp_min_non_pawn_pieces, 1,
-            "4.4c material guard must reproduce has_non_pawn_material"
-        );
         assert!(p.lazy_margin > 0);
         assert!(p.tm_opt_scale > 0);
         assert!(p.tm_fall_base > 0);

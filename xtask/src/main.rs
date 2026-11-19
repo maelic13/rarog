@@ -463,8 +463,8 @@ fn parse_tier(value: &str) -> Result<cpu_tier::Tier> {
 
 /// The features of a build, each one a kind its name carries. A feature is
 /// lower-case letters, digits, `_` and `-`, which the kind writes as `_`
-/// (`compact-kernel` is named `compact_kernel`, as the engine's start-up line
-/// names it); cargo itself refuses an unknown one.
+/// (`probe-arm` is named `probe_arm`, as the engine's start-up line would
+/// name it); cargo itself refuses an unknown one.
 fn parse_features(value: &str) -> Result<Vec<String>> {
     value
         .split(',')
@@ -1536,11 +1536,7 @@ fn build_with_pgo(config: &Config, purpose: Purpose) -> Result<PathBuf> {
 
     let profdata = pgo_dir.join("rarog.profdata");
     merge_profiles(&llvm_profdata, &raw_dir, &profdata, &config.target)?;
-    check_kernel_trained(
-        &llvm_profdata,
-        &profdata,
-        kernel_functions(&config.features),
-    )?;
+    check_kernel_trained(&llvm_profdata, &profdata, KERNEL_FUNCTIONS)?;
 
     let mut use_flags = vec![
         "-C".to_string(),
@@ -1792,22 +1788,7 @@ fn kill_child(child: &mut Child) {
 
 /// The search kernel's functions, as their mangled names spell them: every
 /// instantiation of each must have run in the training bench.
-const KERNEL_FUNCTIONS: [&str; 2] = ["Searcher7negamax", "Searcher10quiescence"];
-
-/// The compact kernel's, which a `compact-kernel` build plays. That build
-/// still compiles the classic kernel, but only tests select it there, so
-/// its copies never run and are not asked for.
-const COMPACT_KERNEL_FUNCTIONS: [&str; 2] =
-    ["Searcher15compact_negamax", "Searcher18compact_quiescence"];
-
-/// The kernel functions a build with these features plays.
-fn kernel_functions(features: &[String]) -> [&'static str; 2] {
-    if features.iter().any(|feature| feature == "compact-kernel") {
-        COMPACT_KERNEL_FUNCTIONS
-    } else {
-        KERNEL_FUNCTIONS
-    }
-}
+const KERNEL_FUNCTIONS: [&str; 2] = ["Searcher15compact_negamax", "Searcher18compact_quiescence"];
 
 /// Fail when a copy of the search kernel has a profile that never ran.
 ///
@@ -2231,7 +2212,7 @@ mod tests {
     /// An excerpt of a real `llvm-profdata show --all-functions --counts`
     /// dump: two kernel copies trained, one not, and an unrelated record.
     const PROFILE_DUMP: &str = "Counters:
-  rarog.cgu.0;_RINvMs1_NtNtCs4_5rarog6search4nodeNtB8_8Searcher7negamaxNtB6_5NonPvE:
+  rarog.cgu.0;_RINvMNtNtNtCs4_5rarog6search7compact4nodeNtB7_8Searcher15compact_negamaxNtNtB7_4node5NonPvE:
     Hash: 0x033f7e9ac0d80e85
     Counters: 496
     Block counts: [12443005, 7727191, 400818, 0]
@@ -2239,11 +2220,11 @@ mod tests {
     Hash: 0x08c2aba3344fef37
     Counters: 6
     Block counts: [0, 0, 0]
-  rarog.cgu.0;_RINvMs1_NtNtCs4_5rarog6search4nodeNtB8_8Searcher7negamaxNtB6_2PvE:
+  rarog.cgu.0;_RINvMNtNtNtCs4_5rarog6search7compact4nodeNtB7_8Searcher15compact_negamaxNtNtB7_4node2PvE:
     Hash: 0x0e9dd448b466f90b
     Counters: 342
     Block counts: [0, 0, 10022]
-  rarog.cgu.0;_RINvMs1_NtNtCs4_5rarog6search4nodeNtB8_8Searcher10quiescenceE:
+  rarog.cgu.0;_RINvMNtNtNtCs4_5rarog6search7compact10quiescenceNtB7_8Searcher18compact_quiescenceNtNtB7_4node5NonPvE:
     Hash: 0x0bcf9b0838dc3c7a
     Counters: 203
     Block counts: [5, 3]
@@ -2255,7 +2236,11 @@ Instrumentation level: IR
         let records = super::kernel_entry_counts(PROFILE_DUMP, super::KERNEL_FUNCTIONS);
         let counts: Vec<u64> = records.iter().map(|(_, entries)| *entries).collect();
         assert_eq!(counts, [12_443_005, 0, 5], "{records:?}");
-        assert!(records[1].0.contains("Searcher7negamaxNtB6_2Pv"));
+        assert!(
+            records[1]
+                .0
+                .contains("Searcher15compact_negamaxNtNtB7_4node2Pv")
+        );
         assert!(
             records
                 .iter()
@@ -2268,7 +2253,7 @@ Instrumentation level: IR
         let verdict = super::kernel_verdict(PROFILE_DUMP, super::KERNEL_FUNCTIONS)
             .expect_err("a copy never ran");
         assert!(
-            verdict.starts_with("1 of 2 `Searcher7negamax` copies never ran"),
+            verdict.starts_with("1 of 2 `Searcher15compact_negamax` copies never ran"),
             "{verdict}"
         );
         let trained =
@@ -2276,66 +2261,13 @@ Instrumentation level: IR
         let lines =
             super::kernel_verdict(&trained, super::KERNEL_FUNCTIONS).expect("every copy ran");
         assert_eq!(lines.len(), 2, "{lines:?}");
-        let missing = PROFILE_DUMP.replace("Searcher10quiescence", "Searcher10other_name");
+        let missing = PROFILE_DUMP.replace("Searcher18compact_quiescence", "Searcher10other_name");
         assert!(
             super::kernel_verdict(
                 &missing.replace("[0, 0, 10022]", "[1]"),
                 super::KERNEL_FUNCTIONS
             )
             .is_err()
-        );
-    }
-
-    /// A `compact-kernel` build's profile: its compact copies ran, the
-    /// classic copies it compiles but never selects did not.
-    const COMPACT_DUMP: &str = "Counters:
-  rarog.cgu.0;_RINvMNtNtNtCs4_5rarog6search7compact4nodeNtB7_8Searcher15compact_negamaxNtNtB7_4node2PvE:
-    Hash: 0x0a1b2c3d4e5f6071
-    Counters: 310
-    Block counts: [90, 4]
-  rarog.cgu.0;_RINvMs1_NtNtCs4_5rarog6search4nodeNtB8_8Searcher7negamaxNtB6_2PvE:
-    Hash: 0x0e9dd448b466f90b
-    Counters: 342
-    Block counts: [0, 0]
-  rarog.cgu.0;_RINvMNtNtNtCs4_5rarog6search7compact10quiescenceNtB7_8Searcher18compact_quiescenceNtNtB7_4node5NonPvE:
-    Hash: 0x1b2c3d4e5f607182
-    Counters: 120
-    Block counts: [7920, 1]
-  rarog.cgu.0;_RINvMs1_NtNtCs4_5rarog6search4nodeNtB8_8Searcher10quiescenceE:
-    Hash: 0x0bcf9b0838dc3c7a
-    Counters: 203
-    Block counts: [0, 0]
-Instrumentation level: IR
-";
-
-    #[test]
-    fn a_compact_kernel_build_checks_the_compact_kernel() {
-        let features = |list: &[&str]| list.iter().map(|f| (*f).to_string()).collect::<Vec<_>>();
-        assert_eq!(
-            super::kernel_functions(&features(&[])),
-            super::KERNEL_FUNCTIONS
-        );
-        assert_eq!(
-            super::kernel_functions(&features(&["tune"])),
-            super::KERNEL_FUNCTIONS
-        );
-        let compact = super::kernel_functions(&features(&["tune", "compact-kernel"]));
-        assert_eq!(compact, super::COMPACT_KERNEL_FUNCTIONS);
-        let lines = super::kernel_verdict(COMPACT_DUMP, compact).expect("the compact copies ran");
-        assert_eq!(
-            lines,
-            [
-                "profile: all 1 `Searcher15compact_negamax` copies trained",
-                "profile: all 1 `Searcher18compact_quiescence` copies trained",
-            ]
-        );
-        // The same profile fails a classic build: its kernel never ran.
-        assert!(super::kernel_verdict(COMPACT_DUMP, super::KERNEL_FUNCTIONS).is_err());
-        let cold = COMPACT_DUMP.replace("[7920, 1]", "[0, 1]");
-        let verdict = super::kernel_verdict(&cold, compact).expect_err("a copy never ran");
-        assert!(
-            verdict.starts_with("1 of 1 `Searcher18compact_quiescence` copies never ran"),
-            "{verdict}"
         );
     }
 
@@ -2703,13 +2635,10 @@ Instrumentation level: IR
         assert!(parse_features("B2-core").is_err());
         assert!(parse_features("b2.core").is_err());
         // A hyphen passes to cargo as written and is named with `_`.
+        assert_eq!(parse_features("probe-arm").unwrap(), ["probe-arm"]);
         assert_eq!(
-            parse_features("compact-kernel").unwrap(),
-            ["compact-kernel"]
-        );
-        assert_eq!(
-            build_name::kinds(true, false, &["compact-kernel"]),
-            ["compact_kernel"]
+            build_name::kinds(true, false, &["probe-arm"]),
+            ["probe_arm"]
         );
         assert!(parse_features("default").is_err());
     }

@@ -2503,7 +2503,7 @@ mod tests {
 
     #[test]
     fn a_draw_scores_within_the_kernels_spread_and_reaches_both_ends() {
-        let spread = crate::search::options::Kernel::Compact.draw_spread();
+        let spread = crate::search::DRAW_SPREAD;
         let scores: Vec<i32> = (0..5).map(draw_score).collect();
         assert!(
             scores.iter().all(|score| score.abs() <= spread),

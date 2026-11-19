@@ -32,11 +32,7 @@ resolver = "3"
 tune = []
 
 default = []
-# The compact search kernel by default: the search in its donor's form, which
-# runs beside the classic kernel until it is gated. A strength arm, never a
-# release build before adoption; tests run both kernels in every build.
-compact-kernel = []
-# Rate probes for the compact kernel: each rule's firings and askings printed
+# Rate probes for the search kernel: each rule's firings and askings printed
 # as `info string rates ...` before `bestmove`, for the tree statistics that
 # compare it with its donor. Instrument-only; it observes and changes nothing.
 probes = []

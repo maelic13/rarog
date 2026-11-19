@@ -1,4 +1,4 @@
-//! Phase 4.4 zugzwang and null-move soundness suite.
+//! Zugzwang and null-move soundness suite.
 //!
 //! Null-move pruning assumes passing is never better than moving. Zugzwang is
 //! exactly where that is false, so an unsound null contract surfaces here and
@@ -6,11 +6,8 @@
 //! to it, because a wrong null cutoff usually yields a *plausible* move rather
 //! than a crash or an illegal one.
 //!
-//! These are the guard rail for the 4.4 switches
-//! (`NmpSuppressNullInVerification`, `NmpRequireCutNode`,
-//! `NmpUseStaticEval`, `SingularDoubleMargin`): a switch that breaks null
-//! soundness should fail a test rather than quietly cost Elo in a 16,000-game
-//! gate.
+//! A change that breaks null soundness should fail a test here rather than
+//! quietly cost Elo in a 16,000-game gate.
 //!
 //! # Two design rules, both learned the hard way
 //!
@@ -32,20 +29,6 @@ use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
 
 fn search(fen: &str, depth: u32) -> (Move, i32) {
-    search_with(fen, depth, |_| {})
-}
-
-/// Search with the 4.4 switches under caller control.
-///
-/// `SearchParams` fields are public independently of the `tune` feature, so a
-/// test can exercise a switch that production leaves off — the fingerprint
-/// cannot verify a switch whose bench population is zero, and only a targeted
-/// test can show that enabling it does not break null soundness.
-fn search_with(
-    fen: &str,
-    depth: u32,
-    configure: impl FnOnce(&mut rarog::search::params::SearchParams),
-) -> (Move, i32) {
     let board = Board::from_fen(fen).expect("valid FEN");
     let mut searcher = Searcher::default();
     let mut options = SearchOptions {
@@ -53,7 +36,6 @@ fn search_with(
         ..SearchOptions::default()
     };
     options.limits.depth = Some(depth);
-    configure(&mut options.engine.search_params);
     let result = searcher.search(board, &options, false, || SearchEvent::None);
     (result.bestmove, result.score)
 }
@@ -213,55 +195,39 @@ fn forced_mates_are_still_proven() {
     );
 }
 
-/// Every 4.4 switch, turned ON, must preserve the soundness properties above.
-///
-/// This is the half of the safety argument the bench fingerprint cannot make.
-/// A switch that lands inert is only safe to enable later if enabling it has
-/// been shown not to break anything, and for a switch with zero bench
-/// population a targeted test is the *only* evidence that exists.
-///
-// Asserted at each value of the material guard, the one 4.4 switch left.
+/// The null move's soundness properties, together: a symmetric blocked
+/// position stays level, a forced mate is proven, a reply in check is legal
+/// at every depth, and the only legal move is returned. This is the half of
+/// the safety argument the bench fingerprint cannot make.
 #[test]
-fn every_4_4_switch_preserves_null_soundness() {
-    type Setter = fn(&mut rarog::search::params::SearchParams);
-    let arms: [(&str, Setter); 3] = [
-        ("baseline", |_p| {}),
-        ("nmp material >=2", |p| p.nmp_min_non_pawn_pieces = 2),
-        ("nmp material >=3", |p| p.nmp_min_non_pawn_pieces = 3),
-    ];
+fn the_null_moves_soundness_properties_hold_together() {
+    // Symmetric blocked: must stay near level.
+    let sym = "4k3/8/8/p1p1p1p1/P1P1P1P1/8/8/4K3 w - - 0 1";
+    let (mv, score) = search(sym, 12);
+    assert_legal(sym, mv, "symmetric blocked");
+    assert!(
+        score.abs() < 200,
+        "symmetric blocked position scored {score} cp"
+    );
 
-    for (label, configure) in arms {
-        // Symmetric blocked: must stay near level.
-        let sym = "4k3/8/8/p1p1p1p1/P1P1P1P1/8/8/4K3 w - - 0 1";
-        let (mv, score) = search_with(sym, 12, configure);
-        assert_legal(sym, mv, label);
-        assert!(
-            score.abs() < 200,
-            "{label}: symmetric blocked position scored {score} cp"
-        );
+    // Forced mate must still be proven.
+    let mate = "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1";
+    let (mv, score) = search(mate, 8);
+    assert_legal(mate, mv, "back-rank mate");
+    assert!(score > 30_000, "mate in one scored only {score}");
 
-        // Forced mate must still be proven.
-        let mate = "6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1";
-        let (mv, score) = search_with(mate, 8, configure);
-        assert_legal(mate, mv, label);
-        assert!(
-            score > 30_000,
-            "{label}: mate in one scored only {score}, so the switch lost a proven mate"
-        );
-
-        // In check with legal replies: the reply must be legal at every depth.
-        let check = "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1";
-        for depth in [3, 8, 12] {
-            let (mv, _) = search_with(check, depth, configure);
-            assert_legal(check, mv, &format!("{label} at depth {depth}"));
-        }
-
-        // The only legal reply must still be returned.
-        let forced = "7k/8/8/8/8/8/6q1/7K w - - 0 1";
-        let legal = Board::from_fen(forced)
-            .expect("valid FEN")
-            .generate_legal_moves();
-        let (mv, _) = search_with(forced, 8, configure);
-        assert_eq!(mv, legal[0], "{label}: lost the only legal move");
+    // In check with legal replies: the reply must be legal at every depth.
+    let check = "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1";
+    for depth in [3, 8, 12] {
+        let (mv, _) = search(check, depth);
+        assert_legal(check, mv, &format!("in check at depth {depth}"));
     }
+
+    // The only legal reply must still be returned.
+    let forced = "7k/8/8/8/8/8/6q1/7K w - - 0 1";
+    let legal = Board::from_fen(forced)
+        .expect("valid FEN")
+        .generate_legal_moves();
+    let (mv, _) = search(forced, 8);
+    assert_eq!(mv, legal[0], "lost the only legal move");
 }

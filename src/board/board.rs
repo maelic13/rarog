@@ -207,16 +207,11 @@ pub struct Threats {
     pub by_piece: [Bitboard; 6],
 }
 
-/// Per-node masks for O(1) "does this move give check?" tests — see
-/// [`Board::check_info`] / [`Board::gives_check_with`].
+/// Per-node masks for O(1) direct-check tests — see [`Board::check_info`].
 pub(crate) struct CheckInfo {
-    /// The opposing king's square at computation time.
-    their_king: Square,
     /// `check_squares[piece]`: squares from which OUR `piece` delivers a
     /// direct check, under pre-move occupancy. King entry is empty.
     check_squares: [Bitboard; 6],
-    /// Sole blockers sitting between one of our sliders and their king.
-    blockers: Bitboard,
 }
 
 impl CheckInfo {
@@ -860,17 +855,8 @@ impl Board {
     }
 
     /// [`Board::generate_legal_captures_pinned_into`] for a caller that holds
-    /// this node's [`Board::threats`]: its `all` decides every king move.
-    pub(crate) fn generate_legal_captures_staged_into(
-        &mut self,
-        threats: &Threats,
-        moves: &mut MoveList,
-    ) -> Bitboard {
-        super::movegen::generate_captures_pinned_into(self, Some(threats.all), moves)
-    }
-
-    /// [`Board::generate_legal_captures_staged_into`] with the legal
-    /// non-capturing queen promotions after the captures.
+    /// this node's [`Board::threats`], with the legal non-capturing queen
+    /// promotions after the captures: its `all` decides every king move.
     pub(crate) fn generate_legal_noisy_staged_into(
         &mut self,
         threats: &Threats,
@@ -906,12 +892,8 @@ impl Board {
         }
     }
 
-    /// Per-node check-detection masks.
-    ///
-    /// [`Board::gives_check`] costs an occupancy-xor plus up to two slider
-    /// lookups per move. These masks are computed once per node, so a normal
-    /// move's check test collapses to two bitboard membership tests
-    /// ([`Board::gives_check_with`]).
+    /// Per-node direct-check masks, computed once per node, so a move's
+    /// direct-check test is one bitboard membership test.
     pub(crate) fn check_info(&self) -> CheckInfo {
         crate::diag_count!(board_check_info_calls);
         let us = self.side_to_move;
@@ -930,26 +912,7 @@ impl Board {
         check_squares[Piece::Rook as usize] = rook_from_k;
         check_squares[Piece::Queen as usize] = bishop_from_k | rook_from_k;
         // King entry stays EMPTY: a king never gives direct check.
-
-        // Discovered-check blockers: any piece that is the SOLE occupant
-        // between one of our sliders and their king (empty-board x-ray scan).
-        let our_bq = self.pieces(us, Piece::Bishop) | self.pieces(us, Piece::Queen);
-        let our_rq = self.pieces(us, Piece::Rook) | self.pieces(us, Piece::Queen);
-        let mut snipers =
-            (atk.bishop(ksq, Bitboard::EMPTY) & our_bq) | (atk.rook(ksq, Bitboard::EMPTY) & our_rq);
-        let mut blockers = Bitboard::EMPTY;
-        while snipers.any() {
-            let sniper = snipers.pop_lsb();
-            let between_bb = crate::board::movegen::between(ksq, sniper) & occ;
-            if between_bb.count() == 1 {
-                blockers |= between_bb;
-            }
-        }
-        CheckInfo {
-            their_king: ksq,
-            check_squares,
-            blockers,
-        }
+        CheckInfo { check_squares }
     }
 
     /// The squares the side not to move attacks, by piece type and in total.
@@ -981,41 +944,6 @@ impl Board {
             .iter()
             .fold(Bitboard::EMPTY, |all, &attacks| all | attacks);
         Threats { all, by_piece }
-    }
-
-    /// Fast path of [`Board::gives_check`], faithful by construction and
-    /// debug-asserted against it (the debug test suite drives this through
-    /// full searches). Normal moves are two mask tests: direct check via
-    /// `check_squares[piece]`, discovered check via the blocker set — a
-    /// blocker leaving its king-ray discovers the slider behind it, unless
-    /// the destination stays on that same ray. Promotions, en passant and
-    /// castling change occupancy/piece identity in ways the pre-move masks
-    /// cannot express, so they take the full computation (they are rare).
-    ///
-    /// The pre-move `check_squares` are correct for direct checks even when
-    /// `from` lies on the `to`→king segment: the mover attacking through its
-    /// own vacated square would mean it already attacked the enemy king
-    /// before moving — an illegal position on our turn — so a *different*
-    /// blocker must exist on that segment, and it still blocks after the
-    /// move. (Promotions break this argument, which is one reason they fall
-    /// back.)
-    pub(crate) fn gives_check_with(&self, mv: Move, ci: &CheckInfo) -> bool {
-        crate::diag_count!(board_gives_check_fast_calls);
-        if mv.is_promo() || mv.is_en_passant() || mv.is_castling() {
-            return self.gives_check(mv);
-        }
-        let from = mv.from_sq();
-        let to = mv.to_sq();
-        let piece = self.moving_piece(mv);
-        let result = (ci.check_squares[piece as usize] & Bitboard::from(to)).any()
-            || ((ci.blockers & Bitboard::from(from)).any()
-                && !crate::board::movegen::on_same_ray(from, to, ci.their_king));
-        debug_assert_eq!(
-            result,
-            self.gives_check(mv),
-            "gives_check_with diverged from gives_check for {mv}"
-        );
-        result
     }
 
     pub fn gives_check(&self, mv: Move) -> bool {
@@ -1261,27 +1189,11 @@ impl Board {
         self.is_rule50_draw() || self.has_insufficient_material() || self.is_threefold_repetition()
     }
 
-    #[inline(always)]
-    pub fn can_declare_draw_in_search(&self) -> bool {
-        if self.halfmove_clock >= 100 {
-            return self.is_rule50_draw();
-        }
-        // Aggressive twofold: a single prior occurrence within the scan bound
-        // scores the position as a draw in search. This is a deliberate
-        // strength heuristic, NOT the arbiter's threefold rule — if a side can
-        // force one repetition it can usually force the claimable second, and
-        // pruning the repetition subtree early is worth Elo. A root-aware form
-        // (a single *pre-root* twofold no longer draws, as Stockfish's
-        // `repetition < ply`) was measured only inside a four-part change
-        // that lost, and that loss lay in its other parts.
-        self.has_insufficient_material() || (self.halfmove_clock >= 4 && self.is_repetition(2))
-    }
-
     pub fn has_repeated_position(&self) -> bool {
         self.halfmove_clock >= 4 && self.is_repetition(2)
     }
 
-    /// The compact kernel's draw at `ply` plies from the root: the fifty-move
+    /// The search's draw at `ply` plies from the root: the fifty-move
     /// rule (mate first), material neither side can mate with, or a
     /// repetition, which needs one earlier occurrence inside the search or
     /// two anywhere since the last irreversible or null move.
@@ -1906,11 +1818,10 @@ impl Board {
     ///
     /// `make_move` otherwise runs [`Board::calculate_checkers`] — four attack
     /// lookups, two of them slider lookups — on every single move, and the
-    /// overwhelming majority of moves produce `EMPTY`. The search computes
-    /// the same predicate anyway (cheaply, via [`Board::gives_check_with`]),
-    /// so passing it through turns the common case into a store of `EMPTY`.
-    /// Checking moves still take the exact computation, because the search
-    /// needs the precise checker set for evasion generation.
+    /// overwhelming majority of moves produce `EMPTY`. A caller that already
+    /// knows the answer turns the common case into a store of `EMPTY`.
+    /// Checking moves still take the exact computation, because evasion
+    /// generation needs the precise checker set.
     ///
     /// The hint is `debug_assert!`ed against the real computation, and
     /// `tests/board_differential.rs` independently rebuilds `checkers` after
@@ -2887,48 +2798,6 @@ mod tests {
             attackers.is_empty(),
             "with the king in place e1 is shielded"
         );
-    }
-
-    /// `gives_check_with`, the search's fast check test, agrees with making
-    /// the move and asking whether the opponent is in check, for every legal
-    /// move of every position a depth-3 walk reaches from the standard perft
-    /// positions and two with promotions and en passant.
-    #[test]
-    fn the_fast_check_test_agrees_with_playing_the_move() {
-        fn walk(board: &mut Board, depth: u32, counts: &mut (u64, u64)) {
-            if depth == 0 {
-                return;
-            }
-            let ci = board.check_info();
-            for mv in board.generate_legal_moves() {
-                let fast = board.gives_check_with(mv, &ci);
-                board.make_move(mv);
-                let checks = board.is_in_check();
-                board.unmake_move(mv);
-                assert_eq!(fast, checks, "{mv} in {}", board.to_fen());
-                counts.0 += 1;
-                counts.1 += u64::from(checks);
-                board.make_move(mv);
-                walk(board, depth - 1, counts);
-                board.unmake_move(mv);
-            }
-        }
-        let mut counts = (0, 0);
-        for fen in [
-            STARTING_FEN,
-            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
-            "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
-            "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
-            "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
-            "8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1",
-            "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
-        ] {
-            let mut board = Board::from_fen(fen).expect("valid FEN");
-            walk(&mut board, 3, &mut counts);
-        }
-        // The walk is fixed, so its coverage is too.
-        assert_eq!(counts, (305_311, 6_433), "moves and checking moves seen");
     }
 
     /// Shuffle both knights out and back: four plies that always exist from the

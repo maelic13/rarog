@@ -290,4 +290,20 @@ mod tests {
         assert_eq!(entry.bound(), Some(Bound::Lower));
         assert_eq!(i32::from(entry.depth), Q_DEPTH);
     }
+
+    #[test]
+    fn quiescence_stops_before_ply_stack_overflow() {
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen("4k3/8/8/8/3q4/8/8/4KQ2 w - - 0 1").expect("valid FEN");
+        let before = board.to_fen();
+        let score = searcher.compact_quiescence::<Pv, _>(
+            &mut board,
+            -INF_SCORE,
+            INF_SCORE,
+            MAX_PLY - 1,
+            &mut || SearchEvent::None,
+        );
+        assert_eq!(board.to_fen(), before);
+        assert!(score.abs() < INF_SCORE);
+    }
 }

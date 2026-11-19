@@ -4,21 +4,6 @@
 // `clippy::too_many_arguments` is accepted crate-wide for search kernels —
 // see the rationale in Cargo.toml's [lints.clippy] section.
 
-/// Print one search decision with its inputs. In a `diag` build, under
-/// `go searchmoves`, on the main thread and at plies one and two only, every
-/// prune, reduction, extension and proof decision is written to the output
-/// sink as `info string trace ply <n> line <moves> <decision>`. Counters say
-/// how often a decision fires; only a trace says which move it dropped and on
-/// what inputs. Expands to nothing without the feature.
-macro_rules! trace_decision {
-    ($searcher:expr, $ply:expr, $($arg:tt)*) => {
-        #[cfg(feature = "diag")]
-        if $searcher.td.trace_decisions && matches!($ply, 1 | 2) {
-            $searcher.trace_line($ply, format_args!($($arg)*));
-        }
-    };
-}
-
 /// Whether a pricing probe switched `rule` off at `ply`: the one decision a
 /// node-level probe reverses. Always false outside the `pricing` build.
 macro_rules! pricing_off {
@@ -55,15 +40,11 @@ use crate::board::{Board, Color, GameResult, Move, MoveList};
 use crate::eval::{INF_SCORE, MATE_SCORE};
 use crate::infra;
 use crate::search::options::{
-    EngineOptions, HashRequest, Kernel, MAX_THREADS, SearchLimits, SearchOptions,
+    EngineOptions, HashRequest, MAX_THREADS, SearchLimits, SearchOptions,
 };
 use crate::syzygy::{self, Wdl};
 use crate::tt::{TB_VALUE, TB_WIN_SCORE, TranspositionTable};
 
-use params::CoreParams;
-use params::Param;
-use params::ProofParams;
-use params::QuietParams;
 use params::SearchParams;
 use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared, TbRootDecision};
 use stack::{PlyArray, StackEntry};
@@ -74,7 +55,10 @@ use time::{IterationSignals, MateWatch, RuntimeLimits, TbExtension, compute_runt
 const MAX_DEPTH: usize = 100;
 
 pub(crate) const MAX_PLY: usize = 128;
-const MAX_QPLY: usize = 16;
+/// The most a draw's score lies from zero. The kernel scores a draw a unit
+/// either side of it by the node count, so a line that can draw is not
+/// scored level with every other draw.
+pub const DRAW_SPREAD: i32 = 1;
 const MIN_PARALLEL_DEPTH: usize = 4;
 const SHARED_NODE_BATCH: u64 = 128;
 const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
@@ -239,8 +223,8 @@ impl RootMove {
 
     /// Root-only bookkeeping must not be inlined into the node kernel. Besides
     /// executing only a few hundred times per search, keeping the floating
-    /// point/statistics block cold prevents it from perturbing `negamax`'s hot
-    /// code layout (inlining it measured a real NPS loss).
+    /// point/statistics block cold prevents it from perturbing the node
+    /// kernel's hot code layout (inlining it measured a real NPS loss).
     #[cold]
     #[inline(never)]
     fn record_search(
@@ -281,11 +265,6 @@ struct SearchConfig {
     /// Root, clock and quiescence settings, which integration tests set to
     /// exercise switches production leaves off, so they stay runtime values.
     params: SearchParams,
-    core: Param<CoreParams>,
-    proof: Param<ProofParams>,
-    quiet: Param<QuietParams>,
-    /// The kernel this search runs.
-    kernel: Kernel,
     /// The compact kernel's seeds as the tuning options set them.
     #[cfg(feature = "tune")]
     compact_seeds: &'static compact::rules::Seeds,
@@ -297,10 +276,6 @@ impl Default for SearchConfig {
     fn default() -> Self {
         Self {
             params: SearchParams::default(),
-            core: Param::<CoreParams>::default(),
-            proof: Param::<ProofParams>::default(),
-            quiet: Param::<QuietParams>::default(),
-            kernel: Kernel::DEFAULT,
             #[cfg(feature = "tune")]
             compact_seeds: compact::rules::SEEDS,
             limits: RuntimeLimits::default(),
@@ -317,108 +292,6 @@ struct ReportedLine {
     score: i32,
     bound: RootBound,
     pv: Vec<Move>,
-}
-
-/// An aspiration window and its widening state for one root search.
-///
-/// From depth 4 the window centres on `center` unless that is a mate score.
-/// Each failure widens the failing side by the growth parameters, re-centred
-/// on `center`; a fail-low also pulls beta to the midpoint of the new alpha
-/// and the old beta. A
-/// side opens fully after `asp_max_fails` failures, once its delta saturates,
-/// or when the failing score is in the mate range, so the loop terminates.
-struct Aspiration {
-    alpha: i32,
-    beta: i32,
-    center: i32,
-    alpha_delta: i32,
-    beta_delta: i32,
-    fail_lows: i32,
-    fail_highs: i32,
-}
-
-impl Aspiration {
-    fn new(params: &SearchParams, depth: usize, center: i32) -> Self {
-        let use_aspiration = depth >= 4 && center.abs() < MATE_SCORE - infra::to_i32(MAX_PLY);
-        let delta = params.aspiration_delta;
-        Self {
-            alpha: if use_aspiration {
-                (center - delta).max(-INF_SCORE)
-            } else {
-                -INF_SCORE
-            },
-            beta: if use_aspiration {
-                (center + delta).min(INF_SCORE)
-            } else {
-                INF_SCORE
-            },
-            center,
-            alpha_delta: delta,
-            beta_delta: delta,
-            fail_lows: 0,
-            fail_highs: 0,
-        }
-    }
-
-    fn fail_low(&mut self, params: &SearchParams, score: i32) {
-        self.fail_lows += 1;
-        self.alpha_delta =
-            (self.alpha_delta * params.asp_growth_pct / 100 + params.asp_growth_add).min(INF_SCORE);
-        self.alpha = if self.fail_lows >= params.asp_max_fails
-            || self.alpha_delta >= INF_SCORE
-            || score <= -(MATE_SCORE - infra::to_i32(MAX_PLY))
-        {
-            -INF_SCORE
-        } else {
-            (self.center - self.alpha_delta).max(-INF_SCORE)
-        };
-        self.beta = (self.alpha + self.beta) / 2;
-    }
-
-    fn fail_high(&mut self, params: &SearchParams, score: i32) {
-        self.fail_highs += 1;
-        self.beta_delta = (self.beta_delta * params.asp_growth_high_pct / 100
-            + params.asp_growth_add)
-            .min(INF_SCORE);
-        self.beta = if self.fail_highs >= params.asp_max_fails
-            || self.beta_delta >= INF_SCORE
-            || score >= MATE_SCORE - infra::to_i32(MAX_PLY)
-        {
-            INF_SCORE
-        } else {
-            (self.center + self.beta_delta).min(INF_SCORE)
-        };
-    }
-}
-
-/// The root window of one iteration, in the form of the kernel that runs.
-enum RootWindow {
-    Classic(Aspiration),
-    Compact(compact::window::CompactWindow),
-}
-
-impl RootWindow {
-    /// The window and the depth the next root search runs at.
-    fn bounds(&self, depth: i32) -> (i32, i32, i32) {
-        match self {
-            Self::Classic(window) => (window.alpha, window.beta, depth),
-            Self::Compact(window) => (window.window.alpha, window.window.beta, window.depth(depth)),
-        }
-    }
-
-    fn fail_low(&mut self, params: &SearchParams, score: i32) {
-        match self {
-            Self::Classic(window) => window.fail_low(params, score),
-            Self::Compact(window) => window.fail_low(score, params.asp_max_fails),
-        }
-    }
-
-    fn fail_high(&mut self, params: &SearchParams, score: i32) {
-        match self {
-            Self::Classic(window) => window.fail_high(params, score),
-            Self::Compact(window) => window.fail_high(score, params.asp_max_fails),
-        }
-    }
 }
 
 /// One search thread: what every thread shares, the configuration of the
@@ -831,20 +704,12 @@ impl Searcher {
             .td
             .evaluator
             .set_lazy_margin(engine_options.search_params.lazy_margin);
-        // The kernels keep their scores and corrections in different units,
-        // so a change of kernel discards the table, as a change of evaluation
-        // does, and this thread's corrections and histories with it.
         #[cfg(feature = "probes")]
         {
             self.td.rates.clear();
             self.td.hist.updates = 0;
         }
-        let kernel_changed = self.cfg.kernel != engine_options.kernel;
-        self.cfg.kernel = engine_options.kernel;
-        if kernel_changed {
-            self.clear_history();
-        }
-        if (lazy_margin_changed || kernel_changed) && age_tt {
+        if lazy_margin_changed && age_tt {
             self.shared.tt.clear();
         }
 
@@ -867,12 +732,6 @@ impl Searcher {
         self.shared.syzygy.fifty_move_rule = engine_options.syzygy.fifty_move_rule;
         self.shared.syzygy.root = TbRootDecision::default();
         self.cfg.params = engine_options.search_params.clone();
-        #[cfg(any(feature = "tune", test))]
-        {
-            self.cfg.core = engine_options.core_params.clone();
-            self.cfg.proof = engine_options.proof_params.clone();
-            self.cfg.quiet = engine_options.quiet_params.clone();
-        }
         // The kernel reads its seeds by a static reference, as it reads the
         // donor's in every other build, so a node borrows nothing from the
         // searcher. A table is allocated only when the options change it,
@@ -881,17 +740,6 @@ impl Searcher {
         if *self.cfg.compact_seeds != engine_options.compact_seeds {
             self.cfg.compact_seeds = Box::leak(Box::new(engine_options.compact_seeds.clone()));
         }
-        // Without `tune` no option reaches these sets, so the compiled-in
-        // handles are what the options hold. A caller outside the crate that
-        // sets one (an integration test) needs a `tune` build.
-        #[cfg(not(any(feature = "tune", test)))]
-        debug_assert!(
-            engine_options.core_params == CoreParams::DEFAULT
-                && engine_options.proof_params == ProofParams::DEFAULT
-                && engine_options.quiet_params == QuietParams::DEFAULT,
-            "a core, proof or quiet search parameter was set in a build that reads the \
-             compiled-in values; set it in a `tune` build"
-        );
         self.td.nmp_min_ply = 0;
         self.shared.syzygy.largest = syzygy::largest().min(self.shared.syzygy.probe_limit);
         self.td.tb_root_scores.clear();
@@ -903,10 +751,6 @@ impl Searcher {
         self.td.pv_table = PlyArray::new([Move::NULL; MAX_PLY]);
         self.td.pv_len = PlyArray::new(0);
         self.td.stack = PlyArray::new(StackEntry::default());
-        #[cfg(feature = "diag")]
-        {
-            self.td.trace_decisions = self.td.thread_id == 0 && !limits.search_moves.is_empty();
-        }
     }
 
     /// A root with no legal move: report the position's value and then
@@ -1036,7 +880,6 @@ impl Searcher {
         // target votes again every iteration and can reach the majority
         // single-handedly — which is the opposite of pooling the decision.
         let mut cast_stop_vote = false;
-        let compact = self.cfg.kernel == Kernel::Compact;
         let mut iterations =
             compact::window::Iterations::new(self.td.compact_previous_score, 1, self.seeds());
 
@@ -1050,47 +893,36 @@ impl Searcher {
             }
             let previous_bestmove = bestmove;
             let mut failed_high_past_target = false;
-            // The aspiration window centers on this thread's own last
-            // completed score — unless the pool has already proven an Exact
-            // root score DEEPER than this thread's progress, in which case it
-            // centers on the pool's estimate (fewer fail-high/low re-searches
+            // The window opens on this thread's own average, joined by the
+            // pool's estimate when the pool has already proven an Exact root
+            // score deeper than this thread's progress (fewer re-searches
             // when joining the pool's view). Serial searches have no shared
-            // state and keep `best_score` bit-for-bit.
-            let mut window_center = best_score;
-            let mut pool_average = None;
-            if let Some(shared) = self.shared.pool()
-                && let Some((pool_depth, pool_score)) = shared.pool_best_exact()
-                && pool_depth > infra::to_i32(completed_depth)
+            // state.
+            let pool_average = self
+                .shared
+                .pool()
+                .and_then(|shared| shared.pool_best_exact())
+                .filter(|&(pool_depth, _)| pool_depth > infra::to_i32(completed_depth))
+                .map(|(_, pool_score)| pool_score);
+            let (opening, optimism) = iterations.open(0, pool_average);
+            let stm = board.side_to_move() as usize;
+            self.td.optimism[stm] = optimism;
+            self.td.optimism[1 - stm] = -optimism;
+            #[cfg(feature = "probes")]
             {
-                window_center = pool_score;
-                pool_average = Some(pool_score);
+                self.td.rates.record(compact::probes::Kind::Optimism, true);
+                self.td.rates.record(compact::probes::Kind::Window, true);
             }
-            let mut window = if compact {
-                let (opening, optimism) = iterations.open(0, pool_average);
-                let stm = board.side_to_move() as usize;
-                self.td.optimism[stm] = optimism;
-                self.td.optimism[1 - stm] = -optimism;
-                #[cfg(feature = "probes")]
-                {
-                    self.td.rates.record(compact::probes::Kind::Optimism, true);
-                    self.td.rates.record(compact::probes::Kind::Window, true);
-                }
-                RootWindow::Compact(compact::window::CompactWindow::new(opening, self.seeds()))
-            } else {
-                // Termination by construction: see `Aspiration`.
-                RootWindow::Classic(Aspiration::new(&self.cfg.params, depth, window_center))
-            };
+            let mut window = compact::window::CompactWindow::new(opening, self.seeds());
 
             loop {
                 #[cfg(feature = "diag")]
                 let window_nodes_before = self.td.nodes;
                 let (alpha, beta, search_depth) = window.bounds(infra::to_i32(depth));
-                if compact {
-                    // Each window searches from a clean stack, its cutoff
-                    // counts included.
-                    self.td.stack = PlyArray::new(StackEntry::default());
-                    self.td.root_report_depth = infra::to_i32(depth);
-                }
+                // Each window searches from a clean stack, its cutoff counts
+                // included.
+                self.td.stack = PlyArray::new(StackEntry::default());
+                self.td.root_report_depth = infra::to_i32(depth);
                 let score = self.search_root_window(&mut board, search_depth, alpha, beta, poll);
                 #[cfg(feature = "diag")]
                 let window_nodes = self.td.nodes.saturating_sub(window_nodes_before);
@@ -1101,20 +933,9 @@ impl Searcher {
                 if depth >= 4 {
                     crate::diag_add!(asp_search_nodes, window_nodes);
                 }
-                // Termination guard. The widened window re-centers
-                // on the previous iteration's best_score; with the delta
-                // clamped to INF_SCORE that caps the reachable bound at
-                // best_score ± INF_SCORE, which can never contain a mate score
-                // found *this* iteration when best_score is negative-ish
-                // (prev + 32001 < mate) — the fail-high loop then never
-                // terminates (WAC.005 hung every fixed-depth search ≥ 4; games
-                // masked it because the clock aborts the iteration). Force the
-                // failing side fully open once a mate-magnitude score appears
-                // or the delta saturates; every other re-search keeps the
-                // best_score-centered dynamics — the SF-style "re-center on the
-                // failing score" variant measured −4.52 ± 4.80 Elo, because
-                // AspirationDelta and the pruning group were tuned around these
-                // dynamics.
+                // A failed window re-centres on the failing score and grows;
+                // after `asp_max_fails` failures the failing side opens fully,
+                // so the loop ends.
                 if score <= alpha {
                     crate::diag_count!(asp_fail_low);
                     crate::diag_add!(asp_fail_low_nodes, window_nodes);
@@ -1122,11 +943,9 @@ impl Searcher {
                         let shown = score;
                         self.send_bounded_info_line(depth, shown, RootBound::Upper, bestmove);
                     }
-                    window.fail_low(&self.cfg.params, score);
+                    window.fail_low(score, self.cfg.params.asp_max_fails);
                     #[cfg(feature = "probes")]
-                    if compact {
-                        self.td.rates.record(compact::probes::Kind::Window, true);
-                    }
+                    self.td.rates.record(compact::probes::Kind::Window, true);
                     continue;
                 }
                 if score >= beta {
@@ -1165,18 +984,14 @@ impl Searcher {
                         failed_high_past_target = true;
                         break;
                     }
-                    window.fail_high(&self.cfg.params, score);
+                    window.fail_high(score, self.cfg.params.asp_max_fails);
                     #[cfg(feature = "probes")]
-                    if compact {
-                        self.td.rates.record(compact::probes::Kind::Window, true);
-                    }
+                    self.td.rates.record(compact::probes::Kind::Window, true);
                     continue;
                 }
                 best_score = score;
                 completed_depth = depth;
-                if compact {
-                    iterations.record_exact(0, score);
-                }
+                iterations.record_exact(0, score);
                 if self.td.pv_len[0] > 0 {
                     bestmove = self.td.pv_table[0][0];
                     pondermove = if self.td.pv_len[0] > 1 {
@@ -1230,9 +1045,7 @@ impl Searcher {
             if self.td.stopped || self.td.quit || failed_high_past_target {
                 break;
             }
-            if compact {
-                iterations.end_iteration(best_score, bestmove);
-            }
+            iterations.end_iteration(best_score, bestmove);
 
             if emit_info {
                 self.send_info(depth, best_score);
@@ -1410,11 +1223,11 @@ impl Searcher {
             self.pricing_dump();
         }
 
-        if compact && best_score > -INF_SCORE {
+        if best_score > -INF_SCORE {
             self.td.compact_previous_score = best_score;
         }
         #[cfg(feature = "probes")]
-        if compact && emit_info && self.td.thread_id == 0 {
+        if emit_info && self.td.thread_id == 0 {
             self.td
                 .rates
                 .add_fired(compact::probes::Kind::Gravity, self.td.hist.updates);
@@ -1555,7 +1368,6 @@ impl Searcher {
         // A record's score alone is not a line: a move that never raised alpha
         // keeps the bound of its last attempt.
         let mut settled: Vec<ReportedLine> = Vec::new();
-        let compact = self.cfg.kernel == Kernel::Compact;
         let mut iterations =
             compact::window::Iterations::new(self.td.compact_previous_score, lines, self.seeds());
 
@@ -1589,39 +1401,28 @@ impl Searcher {
                 self.td.root_moves.clear();
                 self.td.root_moves.extend_from_slice(&order[line..]);
                 self.td.multipv_line = line;
-                let mut window = if compact {
-                    // Line 1 joins the pool's deeper average, as the one-line
-                    // search does.
-                    let pool_average = self
-                        .shared
-                        .pool()
-                        .and_then(|shared| shared.pool_best_exact())
-                        .filter(|&(pool_depth, _)| {
-                            line == 0 && pool_depth > infra::to_i32(completed_depth)
-                        })
-                        .map(|(_, pool_score)| pool_score);
-                    let (opening, optimism) = iterations.open(line, pool_average);
-                    let stm = board.side_to_move() as usize;
-                    self.td.optimism[stm] = optimism;
-                    self.td.optimism[1 - stm] = -optimism;
-                    RootWindow::Compact(compact::window::CompactWindow::at_iteration_depth(
-                        opening,
-                        self.seeds(),
-                    ))
-                } else {
-                    let center = self
-                        .root_record(order[line])
-                        .map_or(-INF_SCORE, |rm| rm.previous_score);
-                    RootWindow::Classic(Aspiration::new(&self.cfg.params, depth, center))
-                };
+                // Line 1 joins the pool's deeper average, as the one-line
+                // search does.
+                let pool_average = self
+                    .shared
+                    .pool()
+                    .and_then(|shared| shared.pool_best_exact())
+                    .filter(|&(pool_depth, _)| {
+                        line == 0 && pool_depth > infra::to_i32(completed_depth)
+                    })
+                    .map(|(_, pool_score)| pool_score);
+                let (opening, optimism) = iterations.open(line, pool_average);
+                let stm = board.side_to_move() as usize;
+                self.td.optimism[stm] = optimism;
+                self.td.optimism[1 - stm] = -optimism;
+                let mut window =
+                    compact::window::CompactWindow::at_iteration_depth(opening, self.seeds());
                 let mut attempt: Option<ReportedLine> = None;
                 let completed = loop {
                     let (alpha, beta, search_depth) = window.bounds(infra::to_i32(depth));
-                    if compact {
-                        // Each window searches from a clean stack.
-                        self.td.stack = PlyArray::new(StackEntry::default());
-                        self.td.root_report_depth = infra::to_i32(depth);
-                    }
+                    // Each window searches from a clean stack.
+                    self.td.stack = PlyArray::new(StackEntry::default());
+                    self.td.root_report_depth = infra::to_i32(depth);
                     let score =
                         self.search_root_window(&mut board, search_depth, alpha, beta, poll);
                     if self.td.stopped || self.td.quit {
@@ -1642,7 +1443,7 @@ impl Searcher {
                             .max_by_key(|&(score, _)| score)
                             .map_or(order[line], |(_, mv)| mv);
                         attempt = Some(self.reported_line(bounded_move, depth, RootBound::Upper));
-                        window.fail_low(&self.cfg.params, score);
+                        window.fail_low(score, self.cfg.params.asp_max_fails);
                         continue;
                     }
                     if score >= beta {
@@ -1653,12 +1454,10 @@ impl Searcher {
                             order[line]
                         };
                         attempt = Some(self.reported_line(fail_high_move, depth, RootBound::Lower));
-                        window.fail_high(&self.cfg.params, score);
+                        window.fail_high(score, self.cfg.params.asp_max_fails);
                         continue;
                     }
-                    if compact {
-                        iterations.record_exact(line, score);
-                    }
+                    iterations.record_exact(line, score);
                     break true;
                 };
                 if !completed {
@@ -1734,9 +1533,7 @@ impl Searcher {
             if stopped {
                 break;
             }
-            if compact {
-                iterations.end_iteration(best_score, bestmove);
-            }
+            iterations.end_iteration(best_score, bestmove);
             settled = order[..ranked]
                 .iter()
                 .map(|&mv| self.reported_line(mv, depth, RootBound::Exact))
@@ -1825,7 +1622,7 @@ impl Searcher {
             #[cfg(feature = "pricing")]
             self.pricing_dump();
         }
-        if compact && best_score > -INF_SCORE {
+        if best_score > -INF_SCORE {
             self.td.compact_previous_score = best_score;
         }
         let best_score = best_score;
@@ -2131,20 +1928,6 @@ impl Searcher {
         })
     }
 
-    /// Write one decision-trace line; see `trace_decision!`.
-    #[cfg(feature = "diag")]
-    #[cold]
-    #[inline(never)]
-    fn trace_line(&self, ply: usize, decision: std::fmt::Arguments<'_>) {
-        let line = (0..ply)
-            .map(|p| self.td.stack[p].mv.to_string())
-            .collect::<Vec<_>>()
-            .join(" ");
-        self.td.sink.line(&format!(
-            "info string trace ply {ply} line {line} {decision}"
-        ));
-    }
-
     fn elapsed_ms(&self) -> f64 {
         #[cfg(test)]
         if let Some((from_nodes, elapsed_ms)) = self.td.test_clock {
@@ -2311,8 +2094,9 @@ mod tests {
     /// or, for a clock parameter, the time limits or the soft stop on a named
     /// clock. The SPSA coverage audit reads the source; this reads behaviour,
     /// so a parameter the search no longer consults, or consults only where no
-    /// named position reaches, fails here by name. Release only: the sweep is
-    /// about 300 searches.
+    /// named position reaches, fails here by name. The kernel's seeds are not
+    /// search parameters: a tuning build's sets them (see the seed test above).
+    /// Release only: the sweep is about 25 searches at depth 8.
     /// A tuning build's compact seeds reach the compact search: a seed set
     /// through the options changes its tree, its own value leaves the tree
     /// alone, and a searcher given new values and then the old ones searches
@@ -2324,7 +2108,6 @@ mod tests {
         let options = |value: &str| {
             let mut options = SearchOptions::default();
             options.limits.depth = Some(8);
-            options.engine.kernel = Kernel::Compact;
             assert!(options.engine.set_compact_seed("KLmrLog", value));
             options
         };
@@ -2336,7 +2119,6 @@ mod tests {
         };
         let mut donor = SearchOptions::default();
         donor.limits.depth = Some(8);
-        donor.engine.kernel = Kernel::Compact;
         let base = tree(&mut Searcher::default(), &donor);
         assert_eq!(tree(&mut Searcher::default(), &options("269")), base);
         let moved = tree(&mut Searcher::default(), &options("400"));
@@ -2353,7 +2135,7 @@ mod tests {
     #[test]
     #[cfg_attr(
         debug_assertions,
-        ignore = "about 300 searches; the release suite runs it"
+        ignore = "about 25 searches at depth 8; the release suite runs it"
     )]
     fn every_search_parameter_moves_what_it_tunes() {
         const DEPTH: u32 = 8;
@@ -2361,24 +2143,12 @@ mod tests {
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
         const SEMI_SLAV: &str =
             "rnbqkb1r/pp3ppp/2p1pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 0 5";
-        // A knight up, so null moves see a surplus over beta.
+        // A knight up.
         const KNIGHT_UP: &str = "r1bqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         // Two pieces a side, and a rule-50 clock under way.
         const TWO_PIECES: &str = "2r3k1/pp1n1ppp/4p3/3pP3/3P1P2/2RB2P1/PP5P/6K1 w - - 40 30";
         const PAWN_ENDING: &str = "8/5pk1/6p1/8/4P3/5PK1/8/8 w - - 10 50";
         const POSITIONS: [&str; 5] = [KIWIPETE, SEMI_SLAV, KNIGHT_UP, TWO_PIECES, PAWN_ENDING];
-        // Parameters that act only deeper than the sweep, each with the
-        // position and depth where an end of its range first moved the tree:
-        // a null move's surplus past 128, a singular extension at a new PV
-        // node, a capped singular reduction, and a pruned quiet at a node
-        // already at or above beta.
-        const DEEP: [(&str, &str, u32); 5] = [
-            ("CoreNmpRClamp", KIWIPETE, 10),
-            ("CoreSingDoubleNotTtPv", KNIGHT_UP, 11),
-            ("CoreSingTripleNotTtPv", SEMI_SLAV, 13),
-            ("CoreLmrSingularCap", TWO_PIECES, 10),
-            ("CoreFpEvalAboveBeta", PAWN_ENDING, 13),
-        ];
         // Proved live by a test of its own: a root fail-high stops the search
         // at the low end of the range and not at the high end.
         const ELSEWHERE: [(&str, &str); 1] = [(
@@ -2461,15 +2231,11 @@ mod tests {
             if ELSEWHERE.iter().any(|(elsewhere, _)| *elsewhere == name) {
                 return;
             }
-            let deep = DEEP.iter().find(|(deep, _, _)| *deep == name);
-            let deep_base = deep.map(|&(_, fen, depth)| tree(&base, fen, depth));
             let live = [min, max].into_iter().any(|value| {
                 let mut options = base.clone();
                 set(&mut options, value);
                 if name.starts_with("Tm") {
                     clock(&options) != base_clock
-                } else if let (Some(&(_, fen, depth)), Some(deep_base)) = (deep, deep_base) {
-                    tree(&options, fen, depth) != deep_base
                 } else {
                     POSITIONS
                         .iter()
@@ -2486,30 +2252,11 @@ mod tests {
                 *field(&mut o.engine.search_params) = v;
             });
         }
-        for &(name, min, max, field) in CoreParams::FIELDS {
-            visit(name, min, max, &|o, v| {
-                *field(&mut o.engine.core_params) = v;
-            });
-        }
-        for &(name, min, max, field) in ProofParams::FIELDS {
-            visit(name, min, max, &|o, v| {
-                *field(&mut o.engine.proof_params) = v;
-            });
-        }
-        for &(name, min, max, field) in QuietParams::FIELDS {
-            visit(name, min, max, &|o, v| {
-                *field(&mut o.engine.quiet_params) = v;
-            });
-        }
         assert!(
             dead.is_empty(),
             "moved nothing at either end of its range: {dead:?}"
         );
-        for name in DEEP
-            .iter()
-            .map(|d| d.0)
-            .chain(ELSEWHERE.iter().map(|e| e.0))
-        {
+        for name in ELSEWHERE.iter().map(|e| e.0) {
             assert!(
                 visited.iter().any(|v| v == name),
                 "{name} is no longer a parameter"
@@ -2692,6 +2439,11 @@ mod tests {
     fn a_node_budget_waits_for_the_first_iteration() {
         let board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             .expect("valid FEN");
+        let mut first = SearchOptions::default();
+        first.limits.depth = Some(1);
+        let first_iteration = Searcher::default()
+            .search(board.clone(), &first, false, || SearchEvent::None)
+            .nodes;
         let mut options = SearchOptions::default();
         options.limits.nodes = 1;
         let result = Searcher::default().search(board, &options, false, || SearchEvent::None);
@@ -2701,8 +2453,9 @@ mod tests {
             "{}",
             result.score
         );
-        // The twenty root moves, and the first node of depth 2 that stops it.
-        assert_eq!(result.nodes, 21);
+        // The first iteration's windows, and the first node of depth 2 that
+        // stops it.
+        assert_eq!(result.nodes, first_iteration + 1);
     }
 
     /// A tablebase score is exact however the search's window failed, so its
@@ -2741,12 +2494,20 @@ mod tests {
 
         let lines = lines.lock().unwrap();
         assert_eq!(result.depth, 3);
-        assert_eq!(lines.len(), 3, "{lines:?}");
-        for (index, line) in lines.iter().enumerate() {
+        // A window that fails prints its bound on the way; each iteration
+        // ends on one exact line.
+        let exact: Vec<&String> = lines
+            .iter()
+            .filter(|line| !line.contains("lowerbound") && !line.contains("upperbound"))
+            .collect();
+        assert_eq!(exact.len(), 3, "{lines:?}");
+        for (index, line) in exact.iter().enumerate() {
             assert!(
                 line.starts_with(&format!("info depth {} ", index + 1)),
                 "{line}"
             );
+        }
+        for line in lines.iter() {
             assert!(line.contains(" pv "), "{line}");
         }
 
@@ -2759,43 +2520,6 @@ mod tests {
             quiet_lines.lock().unwrap().is_empty(),
             "emit_info = false writes nothing"
         );
-    }
-
-    /// The decision trace fires only under `searchmoves`, and only at plies one
-    /// and two.
-    #[cfg(feature = "diag")]
-    #[test]
-    fn decision_trace_is_bounded_to_searchmoves_and_plies_one_and_two() {
-        let run = |search_moves: Vec<crate::board::UciMove>| {
-            let lines = Arc::new(Mutex::new(Vec::new()));
-            let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
-            let mut options = SearchOptions::default();
-            options.limits.depth = Some(6);
-            options.limits.search_moves = search_moves;
-            searcher.search(options.board.clone(), &options, false, || SearchEvent::None);
-            let lines = lines.lock().unwrap();
-            lines
-                .iter()
-                .filter(|line| line.starts_with("info string trace "))
-                .cloned()
-                .collect::<Vec<_>>()
-        };
-
-        assert!(run(Vec::new()).is_empty(), "no searchmoves, no trace");
-        let traced = run(vec![
-            crate::board::UciMove::parse("e2e4").expect("valid move"),
-            crate::board::UciMove::parse("d2d4").expect("valid move"),
-        ]);
-        assert!(!traced.is_empty(), "searchmoves must produce a trace");
-        for line in &traced {
-            let (ply, rest) = line
-                .strip_prefix("info string trace ply ")
-                .and_then(|rest| rest.split_once(" line "))
-                .unwrap_or_else(|| panic!("malformed trace line: {line}"));
-            let path = rest.split_whitespace().take(2).collect::<Vec<_>>();
-            assert!(matches!(ply, "1" | "2"), "{line}");
-            assert!(matches!(path[0], "e2e4" | "d2d4"), "{line}");
-        }
     }
 
     /// The budget is measured from the instant `go` was
@@ -3080,7 +2804,9 @@ mod tests {
             .find(|rm| rm.mv == result.bestmove)
             .expect("best move has a persistent record");
         assert_eq!(best.last_best_depth, result.depth);
-        assert!(best.pv_len > 1);
+        // At least the move: after a fail high the window searches one ply
+        // less, and a line from depth 1 is the move alone.
+        assert!(best.pv_len >= 1);
         assert!(
             searcher
                 .td
@@ -3337,19 +3063,22 @@ mod tests {
             FROZEN_CLOCK,
             BUDGET,
         );
-        let first_mate = lines
+        // A window that fails prints its bound on the way; each iteration
+        // ends on one exact line.
+        let exact: Vec<&InfoLine> = lines.iter().filter(|line| line.bound.is_empty()).collect();
+        let first_mate = exact
             .iter()
             .position(|line| line.score == "mate 1")
             .expect("the mate is found");
         assert_eq!(
-            lines.len(),
+            exact.len(),
             first_mate + 3,
             "three mate iterations, then the stop"
         );
-        for line in &lines[first_mate..] {
-            assert!(line.score == "mate 1" && line.first == "h5f7" && line.bound.is_empty());
+        for line in &exact[first_mate..] {
+            assert!(line.score == "mate 1" && line.first == "h5f7");
         }
-        assert_eq!(result.depth, lines[first_mate].depth + 2);
+        assert_eq!(result.depth, exact[first_mate].depth + 2);
         assert_eq!(result.bestmove.to_string(), "h5f7");
         assert!(
             result.nodes < (BUDGET * 2048) as u64,
@@ -3455,18 +3184,19 @@ mod tests {
         assert!(lines.last().expect("a line was printed").bound.is_empty());
     }
 
-    /// A position is counted once, when a move reaches it: a depth-1 search
-    /// from the start position makes its twenty root moves, and neither the
-    /// root nor a child's hand-off to quiescence adds a count.
+    /// A position is counted once, when a move reaches it: a depth-1 root
+    /// search of the start position in an open window makes its twenty root
+    /// moves, and neither the root nor a child's hand-off to quiescence adds
+    /// a count.
     #[test]
     fn a_depth_one_search_counts_each_root_move_once() {
-        let board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        let mut board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             .expect("valid FEN");
-        let mut options = SearchOptions::default();
-        options.limits.depth = Some(1);
-        let result = Searcher::default().search(board, &options, false, || SearchEvent::None);
-        assert_eq!(result.depth, 1);
-        assert_eq!(result.nodes, 20);
+        let mut searcher = Searcher::default();
+        searcher.search_root_window(&mut board, 1, -INF_SCORE, INF_SCORE, &mut || {
+            SearchEvent::None
+        });
+        assert_eq!(searcher.td.nodes, 20);
     }
 
     #[test]
@@ -3503,8 +3233,11 @@ mod tests {
             usize::MAX,
         );
         assert_eq!(result.depth, 1);
-        assert_eq!(lines.len(), 1);
-        assert_eq!(lines[0].first, result.bestmove.to_string());
+        // The first iteration's windows, ending on its one exact line.
+        assert!(lines.iter().all(|line| line.depth == 1));
+        let last = lines.last().expect("a line was printed");
+        assert!(last.bound.is_empty());
+        assert_eq!(last.first, result.bestmove.to_string());
     }
 
     /// A castling move that fails belongs to the quiet tables: no search

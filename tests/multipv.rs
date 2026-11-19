@@ -4,7 +4,7 @@
 use std::sync::{Arc, Mutex};
 
 use rarog::board::{Board, Move, UciMove};
-use rarog::search::options::{Kernel, SearchOptions};
+use rarog::search::options::SearchOptions;
 use rarog::search::{InfoReport, InfoSink, SearchEvent, Searcher};
 
 struct Recorder(Arc<Mutex<Vec<String>>>);
@@ -249,8 +249,8 @@ fn four_threads_with_three_lines_report_distinct_legal_lines() {
     assert_eq!(bestmove.to_string(), lines[0].pv[0]);
 }
 
-/// The compact kernel opens each line's window round that line's own
-/// average; its lines must be what the classic driver's are.
+/// The kernel opens each line's window round that line's own average; its
+/// lines must be distinct, exact and in Rarog's units.
 #[test]
 fn the_compact_kernel_reports_distinct_exact_lines_in_rarogs_units() {
     for fen in [
@@ -261,7 +261,6 @@ fn the_compact_kernel_reports_distinct_exact_lines_in_rarogs_units() {
     ] {
         let (lines, bestmove, _) = search_lines(fen, 8, |options| {
             options.engine.multi_pv = 3;
-            options.engine.kernel = Kernel::Compact;
         });
         assert_well_formed(fen, &lines, 3);
         assert_eq!(bestmove.to_string(), lines[0].pv[0], "{fen}");
@@ -271,7 +270,6 @@ fn the_compact_kernel_reports_distinct_exact_lines_in_rarogs_units() {
     let queen_up = "rnb1kbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3";
     let (lines, _, _) = search_lines(queen_up, 8, |options| {
         options.engine.multi_pv = 3;
-        options.engine.kernel = Kernel::Compact;
     });
     assert_well_formed(queen_up, &lines, 3);
     assert!(
@@ -280,8 +278,8 @@ fn the_compact_kernel_reports_distinct_exact_lines_in_rarogs_units() {
     );
 }
 
-/// The classic window round a kernel-unit score ran the compact kernel away
-/// on bench position 11 (35.5 million nodes at depth 13 with one line).
+/// A window round a score in the wrong unit once ran the kernel away on
+/// bench position 11 (35.5 million nodes at depth 13 with one line).
 #[test]
 fn the_compact_kernels_lines_do_not_run_away() {
     let fen = rarog::bench::BENCH_FENS[10];
@@ -293,7 +291,6 @@ fn the_compact_kernels_lines_do_not_run_away() {
     };
     options.limits.depth = Some(13);
     options.engine.multi_pv = 2;
-    options.engine.kernel = Kernel::Compact;
     searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
     let result = searcher.search(board, &options, false, || SearchEvent::None);
     assert_eq!(result.depth, 13);

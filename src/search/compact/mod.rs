@@ -1,5 +1,4 @@
-//! The compact kernel: the search in its donor's form, beside the classic
-//! kernel behind one switch ([`Kernel`](crate::search::options::Kernel)).
+//! The search kernel, in its donor's form.
 //!
 //! Every decision the kernel takes is a pure function of an input struct and
 //! the seed table ([`rules`]), so each can be checked against the donor's own
@@ -25,7 +24,7 @@ macro_rules! probe {
 mod node;
 #[cfg(test)]
 mod parity;
-mod picker;
+pub(super) mod picker;
 #[cfg(feature = "pricing")]
 mod pricing;
 #[cfg(any(test, feature = "probes"))]

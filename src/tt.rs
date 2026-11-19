@@ -659,9 +659,6 @@ pub(crate) struct TtProbe {
     /// The entry's own PV bit. Combine with the node's `is_pv` via
     /// [`Self::pv_line`].
     stored_pv: bool,
-    /// Whether the probe hit at all. Only the diagnostic census reads it.
-    #[cfg(feature = "diag")]
-    pub(crate) hit: bool,
 }
 
 impl TtProbe {
@@ -673,8 +670,6 @@ impl TtProbe {
         raw_static_eval: VALUE_NONE,
         mv: None,
         stored_pv: false,
-        #[cfg(feature = "diag")]
-        hit: false,
     };
 
     /// Decode a probe result. `halfmove_clock` is the node's, and is what makes
@@ -694,8 +689,6 @@ impl TtProbe {
                 raw_static_eval: i32::from(entry.static_eval),
                 mv: entry.best_move(),
                 stored_pv: entry.is_pv_node(),
-                #[cfg(feature = "diag")]
-                hit: true,
             },
         }
     }
@@ -704,88 +697,6 @@ impl TtProbe {
     #[inline(always)]
     pub(crate) fn pv_line(&self, is_pv: bool) -> bool {
         is_pv || self.stored_pv
-    }
-
-    /// Cut this node off outright: the score to return, or `None`. The caller
-    /// owns the node-role guards (`!is_pv`, no excluded move); this covers only
-    /// deep enough plus a bound that resolves the window.
-    #[inline(always)]
-    pub(crate) fn cutoff_score(&self, depth: i32, alpha: i32, beta: i32) -> Option<i32> {
-        if self.depth < depth {
-            return None;
-        }
-        match self.bound? {
-            Bound::Exact => Some(self.score),
-            Bound::Lower if self.score >= beta => Some(self.score),
-            Bound::Upper if self.score <= alpha => Some(self.score),
-            _ => None,
-        }
-    }
-
-    /// The main search's cutoff, conditioned on the node type. A result at or
-    /// above beta needs one ply more than the node's depth; a fail-low entry
-    /// cuts an expected cut node, and a fail-high entry an expected all node,
-    /// only above depth 5, where a wrong prediction is cheap to re-search.
-    /// The caller owns the node-role guards and the rule-50 guard.
-    #[inline(always)]
-    pub(crate) fn node_cutoff_score(
-        &self,
-        depth: i32,
-        alpha: i32,
-        beta: i32,
-        cut_node: bool,
-    ) -> Option<i32> {
-        let bound = self.bound?;
-        if self.depth <= depth - i32::from(self.score < beta) {
-            return None;
-        }
-        let admitted = match bound {
-            Bound::Exact => true,
-            Bound::Upper => self.score <= alpha && (!cut_node || depth > 5),
-            Bound::Lower => self.score >= beta && (cut_node || depth > 5),
-        };
-        admitted.then_some(self.score)
-    }
-
-    /// Stand in for the static eval when forward-pruning. The main-search form:
-    /// requires a real score and `min_depth` plies of stored depth. The
-    /// accepted callers pass 0, admitting depth-0 qsearch entries.
-    #[inline(always)]
-    pub(crate) fn refine_eval(&self, static_eval: i32, min_depth: i32) -> i32 {
-        if self.score == VALUE_NONE || self.depth < min_depth {
-            return static_eval;
-        }
-        self.refine_eval_bound_only(static_eval)
-    }
-
-    /// The same refinement with NO depth or `VALUE_NONE` guard: the qsearch
-    /// stand-pat form. At `min_depth == 0` the two agree on every
-    /// storable state, which a test below pins.
-    #[inline(always)]
-    fn refine_eval_bound_only(&self, base: i32) -> i32 {
-        match self.bound {
-            Some(Bound::Exact) => self.score,
-            Some(Bound::Lower) if self.score > base => self.score,
-            Some(Bound::Upper) if self.score < base => self.score,
-            _ => base,
-        }
-    }
-
-    /// Is the stored depth too shallow to guide move ordering? The evidence
-    /// half of the IIR predicate; the caller owns the node-role half.
-    #[inline(always)]
-    pub(crate) fn too_shallow_to_order(&self, depth: i32) -> bool {
-        self.depth < depth - 3
-    }
-
-    /// An inexact bound that points the wrong way for the current window: a
-    /// `Lower` at or below `alpha`, or an `Upper` at or above `beta`. Such an
-    /// entry is admissible but told the node nothing. Diagnostic only.
-    #[cfg(any(test, feature = "diag"))]
-    #[inline(always)]
-    pub(crate) fn contradicts_window(&self, alpha: i32, beta: i32) -> bool {
-        matches!(self.bound, Some(Bound::Lower)) && self.score <= alpha
-            || matches!(self.bound, Some(Bound::Upper)) && self.score >= beta
     }
 }
 
@@ -1007,10 +918,10 @@ fn entry_quality(entry: TtEntry, age: u8) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::{
-        Bound, LocalCluster, SharedCluster, TB_VALUE, TB_WIN_SCORE, TtProbe, cluster_count,
-        cluster_index, key16_of, score_from_tt, score_to_tt, size_of,
+        LocalCluster, SharedCluster, TB_VALUE, TB_WIN_SCORE, TtProbe, cluster_count, cluster_index,
+        key16_of, score_from_tt, score_to_tt, size_of,
     };
-    use crate::eval::{MATE_SCORE, VALUE_NONE};
+    use crate::eval::MATE_SCORE;
 
     /// An entry whose every field derives from its key, so a load that pairs
     /// one store's tag with another's payload shows as a mismatch.
@@ -1168,107 +1079,12 @@ mod tests {
         assert_eq!(score_from_tt(TB_VALUE - 10, ply, 99), TB_VALUE - 10);
     }
 
-    /// Build a probe directly, bypassing `from_entry`, so a case can be stated
-    /// without constructing a table and a matching key.
-    fn probe(bound: Bound, depth: i32, score: i32) -> TtProbe {
-        TtProbe {
-            bound: Some(bound),
-            depth,
-            score,
-            ..TtProbe::MISS
-        }
-    }
-
     #[test]
     fn a_miss_grants_no_capability() {
         let miss = TtProbe::MISS;
-        assert_eq!(miss.cutoff_score(0, -100, 100), None);
-        assert_eq!(miss.refine_eval(42, 0), 42);
-        assert_eq!(miss.refine_eval_bound_only(42), 42);
         assert_eq!(miss.depth, -1);
-    }
-
-    #[test]
-    fn cutoff_requires_depth_and_a_resolving_bound() {
-        assert_eq!(probe(Bound::Exact, 8, 50).cutoff_score(8, 0, 100), Some(50));
-        assert_eq!(probe(Bound::Exact, 9, 50).cutoff_score(8, 0, 100), Some(50));
-        assert_eq!(probe(Bound::Exact, 7, 50).cutoff_score(8, 0, 100), None);
-        assert_eq!(
-            probe(Bound::Lower, 8, 150).cutoff_score(8, 0, 100),
-            Some(150)
-        );
-        assert_eq!(probe(Bound::Lower, 8, 50).cutoff_score(8, 0, 100), None);
-        assert_eq!(
-            probe(Bound::Upper, 8, -50).cutoff_score(8, 0, 100),
-            Some(-50)
-        );
-        assert_eq!(probe(Bound::Upper, 8, 50).cutoff_score(8, 0, 100), None);
-    }
-
-    #[test]
-    fn eval_refinement_only_moves_in_the_bound_direction() {
-        assert_eq!(probe(Bound::Lower, 4, 80).refine_eval(30, 0), 80);
-        assert_eq!(probe(Bound::Lower, 4, 10).refine_eval(30, 0), 30);
-        assert_eq!(probe(Bound::Upper, 4, 10).refine_eval(30, 0), 10);
-        assert_eq!(probe(Bound::Upper, 4, 80).refine_eval(30, 0), 30);
-    }
-
-    #[test]
-    fn only_the_main_search_form_enforces_a_depth_floor() {
-        let shallow = probe(Bound::Lower, 0, 80);
-        assert_eq!(shallow.refine_eval(30, 4), 30, "depth floor rejects it");
-        assert_eq!(
-            shallow.refine_eval_bound_only(30),
-            80,
-            "the qsearch form has no floor"
-        );
-        assert_eq!(shallow.refine_eval(30, 0), 80);
-        let none = TtProbe {
-            score: VALUE_NONE,
-            ..probe(Bound::Lower, 8, 0)
-        };
-        assert_eq!(none.refine_eval(30, 0), 30, "VALUE_NONE is rejected");
-    }
-
-    #[test]
-    fn guarded_refinement_at_depth_zero_equals_the_unguarded_form() {
-        // Every stored depth is >= 0 and a converted score is never VALUE_NONE,
-        // so the two refinement forms agree at a depth floor of zero.
-        for bound in [Bound::Exact, Bound::Lower, Bound::Upper] {
-            for depth in 0..=12 {
-                for score in [-MATE_SCORE, -300, -1, 0, 1, 300, MATE_SCORE] {
-                    for base in [-500, -1, 0, 1, 500] {
-                        let ev = probe(bound, depth, score);
-                        assert_eq!(
-                            ev.refine_eval(base, 0),
-                            ev.refine_eval_bound_only(base),
-                            "bound {bound:?} depth {depth} score {score} base {base}"
-                        );
-                    }
-                }
-            }
-        }
-        assert_eq!(
-            TtProbe::MISS.refine_eval(42, 0),
-            TtProbe::MISS.refine_eval_bound_only(42)
-        );
-    }
-
-    #[test]
-    fn a_contradicting_bound_can_never_produce_a_cutoff() {
-        for alpha in -300..=300 {
-            for beta in (alpha + 1)..=300 {
-                for score in [alpha - 1, alpha, beta, beta + 1] {
-                    for bound in [Bound::Lower, Bound::Upper] {
-                        let ev = probe(bound, 99, score);
-                        if ev.contradicts_window(alpha, beta) {
-                            assert_eq!(ev.cutoff_score(0, alpha, beta), None);
-                        }
-                    }
-                }
-            }
-        }
-        assert!(!probe(Bound::Exact, 8, 50).contradicts_window(0, 100));
+        assert!(miss.bound.is_none());
+        assert!(miss.mv.is_none());
     }
 
     #[test]
@@ -1402,9 +1218,6 @@ mod tests {
                 assert_eq!(probe.depth, EVAL_ONLY_DEPTH);
                 assert_eq!(probe.mv, None);
                 assert!(probe.pv_line(false), "the PV bit is stored");
-                assert_eq!(probe.node_cutoff_score(1, -1000, 1000, true), None);
-                assert_eq!(probe.cutoff_score(0, -1000, 1000), None);
-                assert_eq!(probe.refine_eval(55, 0), 55);
             }
             // Eval-only entries occupy their slots: a table holding nothing
             // else reports them in `hashfull`.
@@ -1457,78 +1270,6 @@ mod tests {
                 let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
                 assert_eq!((probe.depth, probe.score), (3, 6));
             }
-        }
-
-        fn probe(bound: Bound, depth: i32, score: i32) -> TtProbe {
-            TtProbe {
-                bound: Some(bound),
-                depth,
-                score,
-                ..TtProbe::MISS
-            }
-        }
-
-        #[test]
-        fn node_cutoff_needs_an_extra_ply_at_or_above_beta() {
-            assert_eq!(
-                probe(Bound::Upper, 8, -10).node_cutoff_score(8, 0, 100, false),
-                Some(-10)
-            );
-            assert_eq!(
-                probe(Bound::Upper, 7, -10).node_cutoff_score(8, 0, 100, false),
-                None
-            );
-            assert_eq!(
-                probe(Bound::Lower, 8, 150).node_cutoff_score(8, 0, 100, true),
-                None
-            );
-            assert_eq!(
-                probe(Bound::Lower, 9, 150).node_cutoff_score(8, 0, 100, true),
-                Some(150)
-            );
-            assert_eq!(
-                probe(Bound::Exact, 8, 50).node_cutoff_score(8, 0, 100, true),
-                Some(50)
-            );
-            assert_eq!(
-                probe(Bound::Exact, 8, 100).node_cutoff_score(8, 0, 100, true),
-                None
-            );
-            assert_eq!(
-                probe(Bound::Exact, 9, 100).node_cutoff_score(8, 0, 100, true),
-                Some(100)
-            );
-        }
-
-        #[test]
-        fn node_cutoff_distrusts_a_contrary_prediction_at_low_depth() {
-            // Fail-low entry at an expected cut node: only above depth 5.
-            assert_eq!(
-                probe(Bound::Upper, 5, -10).node_cutoff_score(5, 0, 100, true),
-                None
-            );
-            assert_eq!(
-                probe(Bound::Upper, 6, -10).node_cutoff_score(6, 0, 100, true),
-                Some(-10)
-            );
-            // Fail-high entry at an expected all node: only above depth 5.
-            assert_eq!(
-                probe(Bound::Lower, 6, 150).node_cutoff_score(5, 0, 100, false),
-                None
-            );
-            assert_eq!(
-                probe(Bound::Lower, 7, 150).node_cutoff_score(6, 0, 100, false),
-                Some(150)
-            );
-            // A bound that does not resolve the window never cuts.
-            assert_eq!(
-                probe(Bound::Upper, 20, 50).node_cutoff_score(8, 0, 100, false),
-                None
-            );
-            assert_eq!(
-                probe(Bound::Lower, 20, 50).node_cutoff_score(8, 0, 100, true),
-                None
-            );
         }
     }
 }

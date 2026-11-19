@@ -3,9 +3,6 @@
 //! reads them.
 
 use crate::board::{Board, UciMove};
-use crate::search::params::CoreParams;
-use crate::search::params::ProofParams;
-use crate::search::params::QuietParams;
 use crate::search::params::SearchParams;
 
 pub(crate) const MAX_THREADS: usize = 1024;
@@ -31,42 +28,6 @@ impl Default for SyzygyOptions {
     }
 }
 
-/// Which search kernel runs: the classic kernel, or the compact kernel, the
-/// search in its donor's form. The classic kernel is the default until the
-/// compact one is adopted; a build with the `compact-kernel` feature starts
-/// with the compact one.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Kernel {
-    Classic,
-    Compact,
-}
-
-impl Kernel {
-    /// This build's kernel.
-    pub const DEFAULT: Self = if cfg!(feature = "compact-kernel") {
-        Self::Compact
-    } else {
-        Self::Classic
-    };
-
-    /// The most a draw's score lies from zero. The compact kernel scores a
-    /// draw a unit either side of it by the node count, so a line that can
-    /// draw is not scored level with every other draw.
-    #[must_use]
-    pub const fn draw_spread(self) -> i32 {
-        match self {
-            Self::Classic => 0,
-            Self::Compact => 1,
-        }
-    }
-}
-
-impl Default for Kernel {
-    fn default() -> Self {
-        Self::DEFAULT
-    }
-}
-
 #[derive(Clone)]
 pub struct EngineOptions {
     pub move_overhead: f64,
@@ -79,14 +40,6 @@ pub struct EngineOptions {
     pub large_pages: bool,
     pub syzygy: SyzygyOptions,
     pub search_params: SearchParams,
-    /// The selectivity core's coordinates.
-    pub core_params: CoreParams,
-    /// The proof-search cluster's coordinates.
-    pub proof_params: ProofParams,
-    /// The quiescence cluster's coordinates and switches.
-    pub quiet_params: QuietParams,
-    /// The search kernel; the build's default.
-    pub kernel: Kernel,
     /// The compact kernel's seeds, which only a tuning build can set.
     #[cfg(feature = "tune")]
     pub(crate) compact_seeds: super::compact::rules::Seeds,
@@ -118,10 +71,6 @@ impl Default for EngineOptions {
             large_pages: true,
             syzygy: SyzygyOptions::default(),
             search_params: SearchParams::default(),
-            core_params: CoreParams::default(),
-            proof_params: ProofParams::default(),
-            quiet_params: QuietParams::default(),
-            kernel: Kernel::DEFAULT,
             #[cfg(feature = "tune")]
             compact_seeds: super::compact::rules::Seeds::FITTED,
         }

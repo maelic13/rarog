@@ -1,7 +1,8 @@
 //! Search behaviour through the public API: root edge cases, `searchmoves`, node limits, quit and ponderhit, disabled tablebases.
 
 use rarog::board::{Board, Move};
-use rarog::search::options::{Kernel, SearchOptions};
+use rarog::search::DRAW_SPREAD;
+use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, SearchExit, Searcher};
 use rarog::syzygy;
 use rarog::uci::go;
@@ -51,11 +52,7 @@ fn search_returns_legal_root_move_in_drawn_material_positions() {
 
         let result = searcher.search(board, &options, false, || SearchEvent::None);
 
-        assert!(
-            result.score.abs() <= Kernel::DEFAULT.draw_spread(),
-            "{fen}: {}",
-            result.score
-        );
+        assert!(result.score.abs() <= DRAW_SPREAD, "{fen}: {}", result.score);
         assert_ne!(result.bestmove, Move::NULL, "{fen}");
         assert!(
             legal_moves
@@ -79,11 +76,7 @@ fn search_returns_legal_move_in_root_fifty_move_claim_position() {
     let result = searcher.search(board, &options, false, || SearchEvent::None);
 
     assert_ne!(result.bestmove, Move::NULL);
-    assert!(
-        result.score.abs() <= Kernel::DEFAULT.draw_spread(),
-        "{}",
-        result.score
-    );
+    assert!(result.score.abs() <= DRAW_SPREAD, "{}", result.score);
     assert!(
         legal_moves
             .iter()

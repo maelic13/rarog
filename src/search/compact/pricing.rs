@@ -1,15 +1,15 @@
 //! The pricing instrument on the compact kernel, in the `pricing` build
 //! only (`analysis/pruning_pricing_card_2026-11-04.md`).
 //!
-//! The probes are the classic kernel's, run on this kernel: a sampled
-//! decision is reversed by searching what its rule denied, and the probe
-//! leaves the measured search as it found it (`super::super::pricing`
-//! saves and restores the thread's state, freezes the histories and the
-//! corrections, and sends every table store to its scratch table).
+//! A sampled decision is reversed by searching what its rule denied, and
+//! the probe leaves the measured search as it found it
+//! (`super::super::pricing` saves and restores the thread's state, freezes
+//! the histories and the corrections, and sends every table store to its
+//! scratch table).
 //!
 //! A plant changes one seed: `RAROG_PRICING_SEED=<name>=<value>[,...]`
 //! sets the measured search's table, and with `RAROG_PRICING_CONFINE=1` a
-//! probe reads the donor's table, so the plant acts only in the decisions
+//! probe reads the kernel's own table, so the plant acts only in the decisions
 //! it prices.
 
 use std::sync::OnceLock;
@@ -55,8 +55,6 @@ impl Rule {
             | Self::FdsFailLow => 5,
             Self::LateMovePruning | Self::BadNoisyFutility | Self::QCount | Self::ProbCut => 4,
             Self::Razor | Self::NullMove | Self::MultiCut => 3,
-            // No compact rule: no hook reads them.
-            Self::QDelta | Self::QFutility | Self::QBadFloor => 0,
         }
     }
 }
@@ -235,7 +233,6 @@ impl Searcher {
             piece: board.moving_piece(mv),
             alpha,
             beta,
-            qply: 0,
         };
         self.compact_price_q_move::<NODE, _>(board, &decision, &capture, poll);
     }

@@ -10,58 +10,6 @@ use super::history::HistoryTables;
 use super::stack::{PlyArray, StackEntry};
 use super::{InfoSink, MAX_PLY, RootMove, SilentSink};
 
-/// A recursive `negamax` call site, for the test that pins the `cut_node`
-/// each child receives.
-#[cfg(test)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum ChildSite {
-    Root,
-    NullMove,
-    NullVerify,
-    ProbCutVerify,
-    ProbCutResearch,
-    Singular,
-    FirstMove,
-    LmrReduced,
-    LmrResearch,
-    ZeroWindow,
-    PvResearch,
-}
-
-#[cfg(test)]
-impl ChildSite {
-    pub(super) const COUNT: usize = 11;
-}
-
-/// Calls counted by site, the caller's `cut_node`, whether the child is a PV
-/// node and the `cut_node` it received. A caller names its site just before
-/// the call and the child consumes it on entry, so a call no site named is
-/// counted as untagged.
-#[cfg(test)]
-#[derive(Default)]
-pub(super) struct CutNodeLog {
-    pub(super) pending: Option<(ChildSite, bool)>,
-    counts: [[[[u64; 2]; 2]; 2]; ChildSite::COUNT],
-    pub(super) untagged: u64,
-}
-
-#[cfg(test)]
-impl CutNodeLog {
-    pub(super) fn receive(&mut self, pv: bool, cut_node: bool) {
-        match self.pending.take() {
-            Some((site, parent)) => {
-                self.counts[site as usize][usize::from(parent)][usize::from(pv)]
-                    [usize::from(cut_node)] += 1;
-            }
-            None => self.untagged += 1,
-        }
-    }
-
-    pub(super) fn calls(&self, site: ChildSite, parent: bool, pv: bool, received: bool) -> u64 {
-        self.counts[site as usize][usize::from(parent)][usize::from(pv)][usize::from(received)]
-    }
-}
-
 /// Everything one search thread owns and mutates while it searches: the
 /// per-ply stack and PV, the move-ordering histories and correction tables,
 /// the root-move records, the node counters, the evaluator, the stop flags and
@@ -76,9 +24,6 @@ pub(super) struct ThreadData {
     /// The soft target expired while pondering: stop at `ponderhit`.
     pub(super) stop_on_ponderhit: bool,
     pub(super) sink: Box<dyn InfoSink>,
-    /// Print search decisions at plies one and two; see `trace_decision!`.
-    #[cfg(feature = "diag")]
-    pub(super) trace_decisions: bool,
     pub(super) nodes: u64,
     pub(super) tb_hits: u64,
     pub(super) seldepth: usize,
@@ -138,49 +83,9 @@ pub(super) struct ThreadData {
     /// The compact kernel's root score at the previous search's end, in its
     /// own units: the next search's running average starts there.
     pub(super) compact_previous_score: i32,
-    /// The plies at which a null move was made, for the tests of its gates.
-    #[cfg(test)]
-    pub(super) null_move_plies: Vec<usize>,
     /// Moves made in the tree, for the test of the node count.
     #[cfg(test)]
     pub(super) moves_made: u64,
-    /// Null-move verification searches started.
-    #[cfg(test)]
-    pub(super) nmp_verifications: u64,
-    /// ProbCut capture searches started, and ProbCut cutoffs.
-    #[cfg(test)]
-    pub(super) probcut_searches: u64,
-    #[cfg(test)]
-    pub(super) probcut_cuts: u64,
-    /// Singular exclusion searches started, and nodes whose first move a
-    /// singular or low-depth singular decision extended or reduced.
-    #[cfg(test)]
-    pub(super) singular_searches: u64,
-    #[cfg(test)]
-    pub(super) extended_nodes: u64,
-    /// The most any node's spent extension budget exceeded its iteration's
-    /// depth (zero or less when the budget holds), and the extensions the
-    /// budget cut short.
-    #[cfg(test)]
-    pub(super) budget_overrun: i32,
-    #[cfg(test)]
-    pub(super) budget_truncations: u64,
-    /// The most any node's depth would have carried its line past twice
-    /// its iteration's depth (zero or less when the bound holds), and the
-    /// nodes whose depth the bound cut.
-    #[cfg(test)]
-    pub(super) line_overrun: i32,
-    #[cfg(test)]
-    pub(super) line_clamps: u64,
-    /// The `cut_node` each recursive `negamax` call received, by call site.
-    #[cfg(test)]
-    pub(super) cut_node_log: CutNodeLog,
-    /// Late-move reductions applied at a root node and at a node in check,
-    /// for the tests of the reduction scope.
-    #[cfg(test)]
-    pub(super) lmr_at_root: u64,
-    #[cfg(test)]
-    pub(super) lmr_in_check: u64,
     /// A clock for the tests of the clock's stops: from this node count on,
     /// the search reads this many elapsed milliseconds, and none before it.
     #[cfg(test)]
@@ -200,8 +105,6 @@ impl Default for ThreadData {
             ponderhit: false,
             stop_on_ponderhit: false,
             sink: Box::new(SilentSink),
-            #[cfg(feature = "diag")]
-            trace_decisions: false,
             nodes: 0,
             tb_hits: 0,
             seldepth: 0,
@@ -228,33 +131,7 @@ impl Default for ThreadData {
             previous_search_score: None,
             compact_previous_score: 0,
             #[cfg(test)]
-            null_move_plies: Vec::new(),
-            #[cfg(test)]
             moves_made: 0,
-            #[cfg(test)]
-            nmp_verifications: 0,
-            #[cfg(test)]
-            probcut_searches: 0,
-            #[cfg(test)]
-            probcut_cuts: 0,
-            #[cfg(test)]
-            singular_searches: 0,
-            #[cfg(test)]
-            extended_nodes: 0,
-            #[cfg(test)]
-            budget_overrun: i32::MIN,
-            #[cfg(test)]
-            budget_truncations: 0,
-            #[cfg(test)]
-            line_overrun: i32::MIN,
-            #[cfg(test)]
-            line_clamps: 0,
-            #[cfg(test)]
-            cut_node_log: CutNodeLog::default(),
-            #[cfg(test)]
-            lmr_at_root: 0,
-            #[cfg(test)]
-            lmr_in_check: 0,
             #[cfg(test)]
             test_clock: None,
             #[cfg(feature = "pricing")]

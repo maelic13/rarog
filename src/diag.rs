@@ -523,15 +523,6 @@ pub(crate) fn record_endgame_family(w: [u32; 5], b: [u32; 5]) {
     }
 }
 
-/// Stable domains keep independent samples from accidentally selecting exactly
-/// the same positions. Public constants make call sites self-documenting.
-#[cfg(feature = "diag")]
-pub(crate) const SAMPLE_MAIN: u64 = 0x4D41_494E_5F34_2E31;
-#[cfg(feature = "diag")]
-pub(crate) const SAMPLE_QSEARCH: u64 = 0x5153_4541_5243_4831;
-#[cfg(feature = "diag")]
-pub(crate) const SAMPLE_CORRECTION: u64 = 0x434F_5252_5F34_2E31;
-
 /// Sampling stride mask, read once from `RAROG_DIAG_SAMPLE_STRIDE`.
 ///
 /// The differential suite needs the CORE counters exact, because the
@@ -570,51 +561,6 @@ pub fn sampled(hash: u64, ply: usize, domain: u64) -> bool {
     value = (value ^ (value >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
     value = (value ^ (value >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
     ((value ^ (value >> 31)) & sample_mask()) == 0
-}
-
-/// Diagnostic-only ownership tags for the deliberately lossy correction
-/// tables. A repeated slot/key is normal reuse; a different key in the same
-/// slot is an observed collision. The map is sparse because callers invoke it
-/// only for sampled updates.
-#[cfg(feature = "diag")]
-mod correction_probe {
-    use std::collections::HashMap;
-    use std::sync::atomic::Ordering;
-    use std::sync::{Mutex, OnceLock};
-
-    static OWNERS: OnceLock<Mutex<HashMap<(u8, usize), u64>>> = OnceLock::new();
-
-    fn owners() -> &'static Mutex<HashMap<(u8, usize), u64>> {
-        OWNERS.get_or_init(|| Mutex::new(HashMap::new()))
-    }
-
-    pub fn reset() {
-        owners()
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .clear();
-    }
-
-    pub fn record(source: u8, index: usize, key: u64, value: i16) {
-        use crate::diag::counters;
-        let mut owners = owners()
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        match owners.insert((source, index), key) {
-            None => counters::corr_slot_first.fetch_add(1, Ordering::Relaxed),
-            Some(old) if old == key => counters::corr_slot_repeat.fetch_add(1, Ordering::Relaxed),
-            Some(_) => counters::corr_slot_collision.fetch_add(1, Ordering::Relaxed),
-        };
-        if value.unsigned_abs() >= 15_000 {
-            counters::corr_slot_near_saturation.fetch_add(1, Ordering::Relaxed);
-        }
-    }
-}
-
-#[cfg(feature = "diag")]
-#[inline]
-pub(crate) fn record_correction_slot(source: u8, index: usize, key: u64, value: i16) {
-    correction_probe::record(source, index, key, value);
 }
 
 /// Increment a diagnostic counter by name. Expands to nothing without the
@@ -659,7 +605,6 @@ pub fn reset() {
     #[cfg(feature = "diag")]
     {
         counters::reset();
-        correction_probe::reset();
     }
 }
 
@@ -669,7 +614,12 @@ mod tests {
 
     use crate::board::{Board, MoveList};
 
-    use super::{SAMPLE_MAIN, SAMPLE_QSEARCH, counters, sampled};
+    use super::{counters, sampled};
+
+    /// Two sampling domains: stable domains keep independent samples from
+    /// selecting exactly the same positions.
+    const SAMPLE_MAIN: u64 = 0x4D41_494E_5F34_2E31;
+    const SAMPLE_QSEARCH: u64 = 0x5153_4541_5243_4831;
 
     #[test]
     fn sampler_is_stable_sparse_and_domain_separated() {
@@ -703,9 +653,9 @@ mod tests {
         assert!(captures.is_empty());
         assert_eq!(quiets.len(), 20);
 
-        let check_info = board.check_info();
+        let _ = board.check_info();
         let mv = board.parse_move("e2e4").expect("legal test move");
-        let gives_check = board.gives_check_with(mv, &check_info);
+        let gives_check = board.gives_check(mv);
         assert!(!gives_check);
         assert!(board.see_ge(mv, 0));
         board.make_move_with_check(mv, gives_check);
@@ -725,7 +675,7 @@ mod tests {
         );
         assert_eq!(counters::board_check_info_calls.load(Ordering::Relaxed), 1);
         assert_eq!(
-            counters::board_gives_check_fast_calls.load(Ordering::Relaxed),
+            counters::board_gives_check_full_calls.load(Ordering::Relaxed),
             1
         );
         assert_eq!(

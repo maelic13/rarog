@@ -15,7 +15,7 @@ use super::{KERNEL_SEE_VALUES, is_quiet_move};
 
 /// The picker's stages, visited in this order and never revisited.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(super) enum Stage {
+pub(in crate::search) enum Stage {
     TtMove,
     GenerateNoisy,
     /// Noisy moves whose exchange clears their bar, best first.
@@ -31,7 +31,7 @@ pub(super) enum Stage {
 /// behind them; a noisy move that fails its bar is swapped down below the
 /// noisy moves not yet looked at, so the failures end up in order at the
 /// list's front.
-pub(super) struct CompactPicker {
+pub(in crate::search) struct CompactPicker {
     moves: ScoredMoveList,
     noisy_len: usize,
     noisy_index: usize,
@@ -51,7 +51,7 @@ impl CompactPicker {
     /// A picker that hands over `tt_move` first, if any, and holds noisy
     /// moves to `threshold` if one is given.
     #[inline(always)]
-    pub(super) fn new(tt_move: Move, threshold: Option<i32>, ply: usize) -> Self {
+    pub(in crate::search) fn new(tt_move: Move, threshold: Option<i32>, ply: usize) -> Self {
         Self {
             moves: ScoredMoveList::new(),
             noisy_len: 0,
@@ -69,7 +69,7 @@ impl CompactPicker {
     }
 
     /// The stage of the move last handed over.
-    pub(super) fn stage(&self) -> Stage {
+    pub(in crate::search) fn stage(&self) -> Stage {
         self.stage
     }
 
@@ -92,7 +92,7 @@ impl CompactPicker {
 
     /// The next move, or `None` when every stage is spent. Once
     /// `skip_quiets` is set, no quiet is handed over again.
-    pub(super) fn next(
+    pub(in crate::search) fn next(
         &mut self,
         searcher: &Searcher,
         board: &mut Board,
@@ -113,7 +113,7 @@ impl CompactPicker {
                     for &mv in noisy.as_slice() {
                         if mv != self.tt_move {
                             let score = searcher.compact_noisy_score(board, threats, mv);
-                            self.moves.push(mv, score, 0, 0);
+                            self.moves.push(mv, score);
                         }
                     }
                     self.noisy_len = self.moves.len();
@@ -235,8 +235,6 @@ impl Searcher {
             out.push(
                 mv,
                 compact_quiet_score(self.seeds(), board, threats, &ctx, hist, mv),
-                0,
-                0,
             );
         }
     }

@@ -1,18 +1,18 @@
-//! Perft through the search's own move path: the staged picker in the
-//! search's stage order, the search's make with its check hint, and unmake.
+//! Perft through the search's own move path: the kernel's staged picker in
+//! its stage order, and the search's make and unmake.
 //!
 //! The board's perft walks the plain legal generator, so a picker that drops,
-//! repeats or invents a move, a TT move whose flags differ from the generated
-//! move's, or a check hint that leaves the checker set wrong would pass it and
-//! show up only as an unexplained loss in games. Here every node rebuilds the
-//! board's derived fields and keys from scratch after each make and unmake,
-//! every emitted move must pass the TT move's legality test unchanged, and the
-//! leaf count must equal the reference count.
+//! repeats or invents a move, or a TT move whose flags differ from the
+//! generated move's, would pass it and show up only as an unexplained loss in
+//! games. Here every node rebuilds the board's derived fields and keys from
+//! scratch after each make and unmake, every emitted move must pass the TT
+//! move's legality test unchanged, and the leaf count must equal the
+//! reference count.
 
-use crate::board::{Board, CheckInfo, Move, Square};
+use crate::board::{Board, Move, Square};
 
 use super::Searcher;
-use super::movepick::{MovePicker, Stage};
+use super::compact::picker::{CompactPicker, Stage};
 
 /// The picker stage a move came from.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -84,14 +84,11 @@ fn node(
     }
     let tt_move = tt_move(board);
     let threats = board.threats();
-    let mut picker = MovePicker::staged(tt_move, ply);
-    picker.fill_noisy(searcher, board, &threats);
-    let mut node_ci: Option<CheckInfo> = None;
+    let mut picker = CompactPicker::new(tt_move, None, ply);
     let mut tt_pending = !tt_move.is_null();
     let mut seen = Vec::new();
     let mut leaves = 0;
-    while let Some(picked) = picker.next(searcher, board, &threats, false, &mut node_ci) {
-        let mv = picked.mv;
+    while let Some(mv) = picker.next(searcher, board, &threats, false) {
         let source = if tt_pending {
             tt_pending = false;
             Source::TtMove
@@ -123,9 +120,7 @@ fn node(
         }
         seen.push(mv);
         let before = restorable(board);
-        let ci = node_ci.get_or_insert_with(|| board.check_info());
-        let gives_check = board.gives_check_with(mv, ci);
-        board.make_move_with_check(mv, gives_check);
+        board.make_move(mv);
         if let Err(err) = board.check_consistency() {
             board.unmake_move(mv);
             return Err(format!("{}: after making {mv}: {err}", board.to_fen()));

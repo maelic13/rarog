@@ -542,8 +542,8 @@ impl Searcher {
     }
 
     /// Publish and retain one completed root-move visit outside the hot node
-    /// kernel: root-only branches placed in `negamax` measured about -0.8%
-    /// best-of NPS despite running only at the root.
+    /// kernel: root-only branches placed in the node kernel measured about
+    /// -0.8% best-of NPS despite running only at the root.
     #[cold]
     #[inline(never)]
     pub(super) fn record_root_move_search(

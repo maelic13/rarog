@@ -110,6 +110,11 @@ impl CompactWindow {
         }
     }
 
+    /// The window and the depth the next root search runs at.
+    pub(in crate::search) fn bounds(&self, depth: i32) -> (i32, i32, i32) {
+        (self.window.alpha, self.window.beta, self.depth(depth))
+    }
+
     /// The depth the root searches at, never below one.
     pub(in crate::search) fn depth(&self, depth: i32) -> i32 {
         match self.rule {

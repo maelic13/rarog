@@ -712,12 +712,10 @@ impl Searcher {
 
         loop {
             let (mv, bad_stage) = match &mut moves {
-                Moves::Root(picker) => {
-                    match picker.next(self, board, &threats, false, &mut check_info) {
-                        Some(picked) => (picked.mv, false),
-                        None => break,
-                    }
-                }
+                Moves::Root(picker) => match picker.next() {
+                    Some(picked) => (picked.mv, false),
+                    None => break,
+                },
                 Moves::Staged(picker) => match picker.next(self, board, &threats, skip_quiets) {
                     Some(mv) => (mv, picker.stage() == Stage::BadNoisy),
                     None => break,
@@ -1456,7 +1454,64 @@ impl Searcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::search::options::{Kernel, SearchOptions};
+    use crate::search::options::SearchOptions;
+
+    /// The grandchild cutoff reset stays inside the stack at the deepest node
+    /// that reaches it.
+    #[test]
+    fn cutoff_count_reset_is_bounded_at_the_ply_cap() {
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen("4k3/8/8/8/3q4/8/8/4KQ2 w - - 0 1").expect("valid FEN");
+        for ply in [MAX_PLY - 3, MAX_PLY - 2] {
+            let score = searcher.compact_negamax::<NonPv, _>(
+                &mut board,
+                -1,
+                0,
+                2,
+                false,
+                ply,
+                0,
+                Move::NULL,
+                &mut || SearchEvent::None,
+            );
+            assert!(score.abs() < INF_SCORE, "ply {ply}");
+        }
+    }
+
+    /// An exclusion search whose only legal move is the excluded one fails
+    /// low, and with no mate, which its empty move list would otherwise
+    /// score: the forced evasion `Kxg2` is singular.
+    #[test]
+    fn an_exclusion_search_with_only_the_excluded_move_returns_alpha() {
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen("7k/8/8/8/8/8/6q1/7K w - - 0 1").expect("valid FEN");
+        let forced = board.parse_move("h1g2").expect("legal capture");
+        assert_eq!(
+            board.generate_legal_moves().len(),
+            1,
+            "the capture is forced"
+        );
+        let singular_beta = -100;
+        let score = searcher.compact_negamax::<NonPv, _>(
+            &mut board,
+            singular_beta - 1,
+            singular_beta,
+            3,
+            true,
+            1,
+            1,
+            forced,
+            &mut || SearchEvent::None,
+        );
+        assert!(
+            score < singular_beta,
+            "{score}: the excluded move is singular"
+        );
+        assert!(
+            score > -MATE_SCORE + infra::to_i32(MAX_PLY),
+            "{score}: no mate is scored"
+        );
+    }
 
     #[test]
     fn a_line_keeps_eight_times_its_iteration_depth_before_quiescence() {
@@ -1483,7 +1538,6 @@ mod tests {
 
     fn compact_search(fen: &str, depth: u32) -> (Searcher, super::super::super::SearchResult) {
         let mut options = SearchOptions::default();
-        options.engine.kernel = Kernel::Compact;
         options.limits.depth = Some(depth);
         let mut searcher = Searcher::default();
         let board = Board::from_fen(fen).expect("a legal FEN");
