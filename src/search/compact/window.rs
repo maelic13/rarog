@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn the_window_narrows_as_the_score_and_move_hold_and_widens_on_failures() {
-        let mut iterations = Iterations::new(0, 1, rules::SEEDS);
+        let mut iterations = Iterations::new(0, 1, &Seeds::DONOR);
         let (opening, optimism) = iterations.open(0, None);
         // The base half-width, 9510 1024ths, to the unit below.
         assert_eq!((opening.alpha, opening.beta, opening.delta), (-9, 9, 9));
@@ -162,16 +162,16 @@ mod tests {
         );
         assert_eq!(optimism, 46 * 4 / (4 + 81));
 
-        let mut window = CompactWindow::new(narrower, rules::SEEDS);
+        let mut window = CompactWindow::new(narrower, &Seeds::DONOR);
         window.fail_high(200, 20);
         assert_eq!(window.depth(10), 9, "one ply less after a fail high");
-        let mut line = CompactWindow::at_iteration_depth(narrower, rules::SEEDS);
+        let mut line = CompactWindow::at_iteration_depth(narrower, &Seeds::DONOR);
         line.fail_high(200, 20);
         assert_eq!(line.depth(10), 10, "a MultiPV line keeps its depth");
         assert!(window.window.beta > 200 && window.window.delta > narrower.delta);
         window.fail_low(-300, 20);
         assert!(window.window.alpha < -300);
-        let mut guarded = CompactWindow::new(narrower, rules::SEEDS);
+        let mut guarded = CompactWindow::new(narrower, &Seeds::DONOR);
         guarded.fail_low(0, 1);
         assert_eq!(
             guarded.window.alpha,
@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     fn each_line_opens_round_its_own_average_with_line_ones_stability() {
-        let mut iterations = Iterations::new(0, 3, rules::SEEDS);
+        let mut iterations = Iterations::new(0, 3, &Seeds::DONOR);
         let mv = Move::from_uci("e2e4").expect("a move");
         for _ in 0..4 {
             iterations.record_exact(0, 5);

@@ -61,12 +61,12 @@ impl Rule {
     }
 }
 
-/// The measured search's seed table: the donor's with the planted values,
+/// The measured search's seed table: the kernel's with the planted values,
 /// read once from `RAROG_PRICING_SEED`.
 fn planted() -> &'static Seeds {
     static PLANTED: OnceLock<Seeds> = OnceLock::new();
     PLANTED.get_or_init(|| {
-        let mut seeds = Seeds::DONOR;
+        let mut seeds = Seeds::FITTED;
         let Ok(raw) = std::env::var("RAROG_PRICING_SEED") else {
             return seeds;
         };
@@ -90,7 +90,7 @@ fn planted() -> &'static Seeds {
 
 impl Searcher {
     /// The seed table this search reads: the planted one, or inside a
-    /// confined probe the donor's.
+    /// confined probe the kernel's own.
     pub(super) fn pricing_seeds(&self) -> &'static Seeds {
         if self.td.pricing.confined_probe() {
             SEEDS

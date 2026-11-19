@@ -56,18 +56,18 @@ fn tunables() -> impl Iterator<Item = (String, fn(&mut Seeds) -> &mut i32, i32, 
         .iter()
         .filter(|(seed, _)| !EXCLUDED.contains(seed))
         .map(|&(seed, field)| {
-            let mut donor = Seeds::DONOR;
-            let (min, max) = range(*field(&mut donor));
+            let mut seeds = Seeds::FITTED;
+            let (min, max) = range(*field(&mut seeds));
             (option_name(seed), field, min, max)
         })
 }
 
-/// The `option` lines a tuning build lists, the donor's values as defaults.
+/// The `option` lines a tuning build lists, the kernel's seeds as defaults.
 pub(in crate::search) fn uci_option_strings() -> Vec<String> {
     tunables()
         .map(|(name, field, min, max)| {
-            let mut donor = Seeds::DONOR;
-            let default = *field(&mut donor);
+            let mut seeds = Seeds::FITTED;
+            let default = *field(&mut seeds);
             format!("option name {name} type spin default {default} min {min} max {max}")
         })
         .collect()
@@ -98,8 +98,8 @@ mod tests {
         assert_eq!(SEED_FIELDS.len(), 246);
         assert_eq!(lines.len(), 241);
         for (name, field, min, max) in tunables() {
-            let mut donor = Seeds::DONOR;
-            let value = *field(&mut donor);
+            let mut seeds = Seeds::FITTED;
+            let value = *field(&mut seeds);
             assert!(
                 min < max && (min..=max).contains(&value),
                 "{name}: {value} in [{min}, {max}]"
@@ -136,7 +136,7 @@ mod tests {
         assert_eq!(range(-3), (-7, -1));
         let lines = uci_option_strings();
         assert!(lines.contains(&String::from(
-            "option name KRfpSquare16 type spin default 7365 min 3682 max 14730"
+            "option name KRfpSquare16 type spin default 8218 min 4109 max 16436"
         )));
     }
 
@@ -146,13 +146,13 @@ mod tests {
         assert!(set_uci_option(&mut seeds, "krfpsquare16", "8000"));
         assert_eq!(seeds.rfp_square_16, 8_000);
         assert!(set_uci_option(&mut seeds, "KRfpSquare16", "1"));
-        assert_eq!(seeds.rfp_square_16, 3_682, "clamped to the range");
+        assert_eq!(seeds.rfp_square_16, 4_109, "clamped to the range");
         assert!(set_uci_option(&mut seeds, "KPickCont2", "1200"));
         assert_eq!(seeds.pick_cont[2], 1_200);
         assert!(!set_uci_option(&mut seeds, "KLmrSpreadThread", "1"));
         assert!(!set_uci_option(&mut seeds, "Hash", "16"));
         let mut expected = Seeds::DONOR;
-        expected.rfp_square_16 = 3_682;
+        expected.rfp_square_16 = 4_109;
         expected.pick_cont[2] = 1_200;
         assert_eq!(seeds, expected);
     }

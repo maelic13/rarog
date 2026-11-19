@@ -123,7 +123,7 @@ impl Default for EngineOptions {
             quiet_params: QuietParams::default(),
             kernel: Kernel::DEFAULT,
             #[cfg(feature = "tune")]
-            compact_seeds: super::compact::rules::Seeds::DONOR,
+            compact_seeds: super::compact::rules::Seeds::FITTED,
         }
     }
 }

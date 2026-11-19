@@ -184,12 +184,12 @@ mod tests {
     fn the_wrapper_weighs_material_optimism_and_keeps_verdicts() {
         let mut searcher = Searcher::default();
         let board = Board::starting_position();
-        // 200 * (21032 + 10296) / 27015, no correction trained.
+        // 200 * (16385 + 10296) / 32596, no correction trained.
         let material = kernel_material(&board);
-        assert_eq!(searcher.compact_eval(&board, 200, material, 0), (231, 0));
+        assert_eq!(searcher.compact_eval(&board, 200, material, 0), (163, 0));
         searcher.td.optimism = [10, -10];
-        // (200 * 31328 + 10 * (1548 + 10296)) / 27015.
-        assert_eq!(searcher.compact_eval(&board, 200, material, 0), (236, 0));
+        // (200 * 26681 + 10 * (1539 + 10296)) / 32596.
+        assert_eq!(searcher.compact_eval(&board, 200, material, 0), (167, 0));
         let bare_kings = Board::from_fen("8/8/8/4k3/8/8/8/4K3 w - - 0 1").expect("a legal FEN");
         assert_eq!(searcher.compact_eval(&bare_kings, 0, 0, 0), (0, 0));
     }
