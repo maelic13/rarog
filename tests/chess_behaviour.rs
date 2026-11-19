@@ -121,13 +121,13 @@ fn kqks_shortest_mate_is_reported_at_depth_11() {
     assert_eq!(mating_line_moves(fen, &result.pv), Some(4), "{fen}");
 }
 
-/// A longer mate than the shortest still reports the line it found: here
-/// the search mates in six at every depth to 16 (Stockfish: five), as the
-/// classic kernel did.
+/// A longer mate than the shortest still reports the line it found: the
+/// score counts the line's moves, and no line beats Stockfish's five. Read
+/// at depths past the one where the search first finds a mate.
 #[test]
 fn a_mate_score_matches_the_line_it_reports() {
     let fen = "k7/8/8/8/2K5/8/8/7R w - - 0 1";
-    for depth in [11, 14] {
+    for depth in [14, 18] {
         let result = search(fen, depth);
         let moves = mating_line_moves(fen, &result.pv).expect("the line is a mate");
         assert_eq!(result.score, mating(moves), "{fen} at depth {depth}");
