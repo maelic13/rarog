@@ -254,9 +254,10 @@ mod tests {
         let (mut searcher, board, score) = search::<Pv>(fen, -INF_SCORE, INF_SCORE);
         let raw = bounded_raw(searcher.raw_eval(&board));
         let (stand_pat, _) = searcher.compact_eval(&board, raw, kernel_material(&board), 1);
-        // Most of a queen, which is worth about 900.
+        // The capture wins the queen: a lost position becomes a won one, a
+        // swing well past the deficit, whatever scale the wrapper gives.
         assert!(
-            score > stand_pat + 800,
+            stand_pat < 0 && score > 0 && score - stand_pat > 3 * -stand_pat / 2,
             "{score} after Rxd5 from {stand_pat}"
         );
         assert_eq!(searcher.td.pv_table[1][1].to_string(), "d2d5");
