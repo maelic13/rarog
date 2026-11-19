@@ -386,7 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.8.4 | READY_FOR_IMPLEMENTATION | I1 | A failed root window's bound line only past 10,000,000 nodes; fingerprint exact, no game read |
 | D.7.8.5 | RESEARCH | R2 | Screen: clock searches stopped inside an iteration and what they discard; the donor's rule only at 2% or more, then the 2,000-game read and RAR-S129's (P) again |
 | D.7.8.6 | READY_FOR_IMPLEMENTATION | I1 | A helper's previous score reset at a new game; a test; no game read |
 | D.7.8.7 | RESEARCH | R2 | Card only: shared correction tables, their per-node cost and the four-thread read; the maintainer decides from it |
@@ -2474,7 +2473,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           this step scores the root once a node. Not in this step's
           text and not read; left to the maintainer (2026-11-20) whether
           it becomes a step of its own.
-        - **D.7.8.4 Bound lines in short searches — `I1`.**
+        - **D.7.8.4 Bound lines in short searches — `I1`, DONE 2026-11-19.**
           (A4) The kernel's narrow window fails often by design, and Rarog
           prints a bound line for each failure: 39 info lines a
           100,000-node search, 24 of them bounds, against the donor's 16
@@ -2485,6 +2484,24 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           *Check:* info lines a 100,000-node search on the audit's five
           positions (`infolines.py`), near the donor's count. No game read:
           play is unchanged.
+          *Done 2026-11-19* (`1b153dd`): a failed root window's bound line
+          waits for 10,000,000 nodes on the search's count; the line a
+          fail-high past the soft target stops on is still printed, as the
+          report of the move played (the donor prints on a stop too). The
+          floor is an `EngineOptions` field no UCI command sets, so a test
+          can ask for every bound line; the stopped-fail-high anchor does,
+          its scenario unchanged. Tests state the rule: no bound line
+          under the floor with the exact lines unchanged, the stop line
+          printed under it, a short process search printing one exact line
+          an iteration; planted faults in the floor and the stop line each
+          fail them. `bench 13` 3,320,355 / EBF 2.317, exact. *Check:*
+          `infolines.py` at 100,000 nodes on the audit's five positions:
+          16.0 lines a search, none a bound, against the donor's 15.8 (0.2
+          bounds) and the step's start's 38.8 (22.8). Checks: fmt; clippy
+          over all features at zero warnings; debug 540 and release 542
+          passed; the `tune` and `texel` libraries 292 each; parity on the
+          donor's trace without a mismatch. `CHANGELOG.md` has the user's
+          sentence.
         - **D.7.8.5 The interrupted iteration — `R2`, then `I2` if its screen fires.**
           (A2) On a stop inside an iteration the root plays the last
           completed iteration's move; the donor plays `root_moves[0]` with

@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.7.8.4** (`I1`): Bound lines in short searches.
+**Now: D.7.8.5** (`R2`): The interrupted iteration.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -83,7 +83,7 @@ field, about 3,475 on CCRL's Blitz scale.
         - [x] **D.7.8.1** ProbCut's exchange bar in exchange units — DONE 2026-11-19
         - [x] **D.7.8.2** The table's depth for quiescence and evaluation-only entries — DONE 2026-11-19
         - [x] **D.7.8.3** The root's moves ordered by the kernel's own scorer — DONE 2026-11-19
-        - [ ] **D.7.8.4** Bound lines in short searches — **READY_FOR_IMPLEMENTATION / I1**
+        - [x] **D.7.8.4** Bound lines in short searches — DONE 2026-11-19
         - [ ] **D.7.8.5** The interrupted iteration — **RESEARCH / R2**
         - [ ] **D.7.8.6** A helper's previous score at a new game — **READY_FOR_IMPLEMENTATION / I1**
         - [ ] **D.7.8.7** Correction tables shared between threads — **RESEARCH / R2**

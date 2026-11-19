@@ -10,6 +10,12 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ## [Unreleased]
 
+### Changed
+
+- **Fewer info lines in short searches.** A search no longer prints a
+  bound line each time its window fails; those lines appear only in long
+  searches, so a GUI shows one line per depth.
+
 ### Fixed
 
 - **A found mate is kept.** When a deeper search lost sight of a mate it
