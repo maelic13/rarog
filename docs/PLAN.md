@@ -58,7 +58,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **3,278,226 / EBF 2.313** at engine source `e63b652` (D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
+| Fingerprint | `bench 13` **3,348,508 / EBF 2.329** at engine source `e363908` (D.7.8.2: quiescence and evaluation-only entries at the donor's depth, RAR-S131's read pending; before it 3,278,226 / EBF 2.313 at `e63b652`, D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -386,7 +386,7 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.8.2 | RESEARCH | R2 | Card first: every reader of the quiescence and evaluation-only depths and the encoding that reads as the donor's; then one commit and the 2,000-game read |
+| D.7.8.2 | LOCAL_QUALIFIED | R2 | Card done: both depths at the donor's −1 (`e363908`, bench 3,348,508); RAR-S131's 2,000-game read registered, the maintainer's command |
 | D.7.8.3 | READY_FOR_IMPLEMENTATION | I2 | The root ordered by the kernel's own scorer, the classic scorer deleted; the 2,000-game read and a four-thread smoke |
 | D.7.8.4 | READY_FOR_IMPLEMENTATION | I1 | A failed root window's bound line only past 10,000,000 nodes; fingerprint exact, no game read |
 | D.7.8.5 | RESEARCH | R2 | Screen: clock searches stopped inside an iteration and what they discard; the donor's rule only at 2% or more, then the 2,000-game read and RAR-S129's (P) again |
@@ -2384,6 +2384,39 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           and the encoding under which each reads as the donor's with
           TT-7's conversion deleted. *Then* one commit with the table's
           tests; the fingerprint moves; the 2,000-game read.
+          *Card (2026-11-19):* the readers of a stored depth in the kernel
+          are the table cut (`tt_depth > depth − (score < beta)`), the
+          singular candidate (`tt_depth >= depth − 3`), the reductions'
+          `tt_depth < depth` and `tt_depth >= depth`, the PV search's
+          `tt_depth > 1` and the null-move bound (`depth − 2 <= tt_depth`).
+          The first five ask about a node of depth 1 or more and read a
+          quiescence or evaluation-only entry alike at 0, −1 or −2; the
+          evaluation-only entry has no score, which each also requires.
+          The null-move bound is the one that differs, and TT-7 converted
+          it. The table's keep rule and victim rank read the depth
+          itself. The encoding that reads as the donor's everywhere is
+          both kinds at −1 (`TtDepth::SOME`), an evaluation-only entry
+          told apart by its missing bound; the empty slot stays apart
+          (depth 0, no bound).
+          *Implemented 2026-11-19:* `3e27052` (tests, first: the
+          shortest-mate check for KQK split out, below) and `e363908`
+          (engine: `QUIESCENCE_DEPTH` and `EVAL_ONLY_DEPTH` at −1, TT-7's
+          conversion deleted, the table's tests of the keep rule and the
+          rank, a planted depth 0 failing the first). `bench 13` 3,348,508
+          / EBF 2.329 (+2.1%). Checks: fmt, clippy over all features at
+          zero warnings, debug 537 and release 539 passed, the `tune` and
+          `texel` libraries 290 each, parity on the donor's trace without
+          a mismatch (3,418 null-move bound records). *Found at zero
+          games:* KQK's mate in four (`k7/8/8/8/8/2K5/8/1Q6 w`) is
+          reported as a mate in six from depth 10 to 17 and as four only
+          at 18, where it was four from depth 9: the quiescence half alone
+          does it (built alone, the same bench and mates), a kept deeper
+          entry holding the longer mate; Reckless's search reports five at
+          every depth from 9 to 18. The mate is still found and played;
+          the exact check is an ignored test naming this (maintainer
+          decision 2026-11-19). The read is RAR-S131, registered before any
+          game: `d782cand` against `d782base`, case 2. The step closes on
+          the read.
         - **D.7.8.3 The root's moves ordered by the kernel's own scorer — `I2`.**
           (A8, inventory R6) The root's list is scored by the classic
           picker's scorer over the kernel's tables, the last user of that
