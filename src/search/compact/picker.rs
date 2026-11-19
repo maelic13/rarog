@@ -496,9 +496,8 @@ mod tests {
     ) -> Vec<(Move, Stage)> {
         let mut board = board.clone();
         let threats = board.threats();
-        let mut scored = ScoredMoveList::new();
-        searcher.score_root_moves(&mut board, &threats, keep, tt_move, &mut scored);
-        let mut picker = MovePicker::full(scored, tt_move);
+        let mut picker = MovePicker::new(tt_move);
+        searcher.score_root_moves(&mut board, &threats, keep, tt_move, picker.scored_mut());
         std::iter::from_fn(|| picker.next())
             .map(|picked| {
                 let stage = match picked.score {

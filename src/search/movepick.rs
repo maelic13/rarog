@@ -110,13 +110,22 @@ pub(super) struct MovePicker {
 }
 
 impl MovePicker {
-    pub(super) fn full(scored: ScoredMoveList, tt_move: Move) -> Self {
+    /// An empty picker that hands over `tt_move` first; its list is filled
+    /// in place, as the list is too large to move by value once a window.
+    #[inline(always)]
+    pub(super) fn new(tt_move: Move) -> Self {
         Self {
-            scored,
+            scored: ScoredMoveList::new(),
             index: 0,
             tt_move,
             stage: Stage::TtMove,
         }
+    }
+
+    /// The list the picker hands over, best first, to fill before the first
+    /// move is taken.
+    pub(super) fn scored_mut(&mut self) -> &mut ScoredMoveList {
+        &mut self.scored
     }
 
     /// Yield the next move.

@@ -705,10 +705,13 @@ impl Searcher {
         }
 
         let mut moves = if NODE::ROOT {
-            Moves::Root(self.compact_root_picker(board, &threats, tt_move))
+            Moves::Root(MovePicker::new(tt_move))
         } else {
             Moves::Staged(CompactPicker::new(tt_move, None, ply))
         };
+        if let Moves::Root(picker) = &mut moves {
+            self.compact_root_moves(board, &threats, tt_move, picker.scored_mut());
+        }
         let mut check_info: Option<CheckInfo> = None;
         let mut best_score = -INF_SCORE;
         let mut best_move = Move::NULL;
@@ -1243,35 +1246,34 @@ impl Searcher {
         best_score
     }
 
-    /// The root's moves: every legal move in the root list in the kernel's
-    /// order, the pool's searched moves lifted above it, rotated for a
-    /// helper.
-    fn compact_root_picker(
+    /// The root's moves into `scored`: every legal move in the root list in
+    /// the kernel's order, the pool's searched moves lifted above it, rotated
+    /// for a helper.
+    fn compact_root_moves(
         &self,
         board: &mut Board,
         threats: &crate::board::Threats,
         tt_move: Move,
-    ) -> MovePicker {
+        scored: &mut ScoredMoveList,
+    ) {
         let mut legal = MoveList::new();
         board.generate_legal_movelist_into(&mut legal);
         let root_moves = &self.td.root_moves;
         let narrowed = !root_moves.is_empty() && legal.iter().any(|mv| root_moves.contains(mv));
-        let mut scored = ScoredMoveList::new();
         self.score_root_moves(
             board,
             threats,
             |mv| !narrowed || root_moves.contains(&mv),
             tt_move,
-            &mut scored,
+            scored,
         );
         if scored.len() > 1 {
-            self.apply_shared_root_scores(&mut scored);
+            self.apply_shared_root_scores(scored);
         }
         if self.td.root_move_offset > 0 && scored.len() > 1 {
             let offset = self.td.root_move_offset % scored.len();
             diversify_root_scores(scored.as_mut_slice(), offset);
         }
-        MovePicker::full(scored, tt_move)
     }
 
     /// The reduction inputs read off the stack and the board after the move
