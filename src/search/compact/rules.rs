@@ -100,6 +100,9 @@ pub(crate) struct Seeds {
     pub(crate) probcut_depth_per: i32,
     pub(crate) probcut_raise_16: i32,
     pub(crate) probcut_t: i32,
+    /// ProbCut's exchange bar, in 1024ths of the evaluation's distance to
+    /// the raised beta: the evaluation's units into the exchange values.
+    pub(crate) probcut_see_scale: i32,
 
     // Singular search: the candidate, the margin per ply of its span, the
     // extension bars in sixteenths and the multi-cut's return.
@@ -392,6 +395,9 @@ impl Seeds {
         probcut_depth_per: 129,
         probcut_raise_16: 1_273,
         probcut_t: 2_695,
+        // The donor's bar is its own evaluation's distance; the fold's
+        // scale, 2536/1024, carries Rarog's into the exchange values.
+        probcut_see_scale: 2_536,
 
         singular_depth: 5,
         singular_tt_depth: 3,
@@ -657,6 +663,8 @@ impl Seeds {
         probcut_depth_per: 132,
         probcut_raise_16: 1_266,
         probcut_t: 2_673,
+        // The bar as the fit played it, unconverted.
+        probcut_see_scale: 1_024,
 
         singular_depth: 7,
         singular_tt_depth: 3,
@@ -935,6 +943,7 @@ pub(crate) const SEED_FIELDS: &[SeedField] = seed_fields!(
     probcut_depth_per,
     probcut_raise_16,
     probcut_t,
+    probcut_see_scale,
     singular_depth,
     singular_tt_depth,
     singular_exact_div,
@@ -1610,6 +1619,14 @@ pub(crate) fn probcut_gate(i: &ProbcutGateInput) -> bool {
         i.eval >= i.beta
     };
     i.cut_node && !is_win(i.beta) && promising && !i.tt_quiet
+}
+
+/// The exchange a capture must win for ProbCut to search it: the evaluation's
+/// distance to the raised beta, carried into the exchange values.
+#[inline(always)]
+pub(crate) fn probcut_see_bar(s: &Seeds, probcut_beta: i32, eval: i32) -> i32 {
+    let bar = i64::from(probcut_beta - eval) * i64::from(s.probcut_see_scale) / 1024;
+    i32::try_from(bar).unwrap_or_else(|_| unreachable!("a score's distance scaled fits"))
 }
 
 /// ProbCut's verification after a capture's quiescence score.
@@ -2513,6 +2530,24 @@ mod tests {
             scores.contains(&spread) && scores.contains(&-spread),
             "{scores:?}"
         );
+    }
+
+    /// The kernel plays the bar as the fit did, in evaluation units; the
+    /// donor's form is the same distance carried into the exchange values.
+    #[test]
+    fn probcuts_exchange_bar_is_the_distance_to_its_beta_at_the_seeded_scale() {
+        for (probcut_beta, eval) in [(300, 100), (100, 300), (0, 0), (-50, -1_250)] {
+            let distance = probcut_beta - eval;
+            assert_eq!(probcut_see_bar(SEEDS, probcut_beta, eval), distance);
+            assert_eq!(
+                probcut_see_bar(&Seeds::DONOR, probcut_beta, eval),
+                distance * 2_536 / 1_024
+            );
+        }
+        let far = TB_WIN_SCORE - 1;
+        let mut wide = Seeds::FITTED;
+        wide.probcut_see_scale = 4_096;
+        assert_eq!(probcut_see_bar(&wide, far, -far), 8 * far, "no overflow");
     }
 
     #[test]

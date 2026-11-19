@@ -510,7 +510,8 @@ impl Searcher {
         });
         probe!(self, ProbcutGate, probcut);
         if probcut && !pricing_off!(self, ply, ProbCut) {
-            let mut picker = CompactPicker::new(Move::NULL, Some(probcut_beta - eval), ply);
+            let bar = rules::probcut_see_bar(self.seeds(), probcut_beta, eval);
+            let mut picker = CompactPicker::new(Move::NULL, Some(bar), ply);
             while let Some(mv) = picker.next(self, board, &threats, true) {
                 if picker.stage() == Stage::BadNoisy {
                     break;

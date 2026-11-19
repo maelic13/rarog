@@ -17,6 +17,11 @@ const EXCLUDED: [&str; 5] = [
     "q_see_correction_scale",
 ];
 
+/// Seeds whose range is declared rather than the rule's, each for a value
+/// the rule's range would not reach: ProbCut's exchange scale must reach
+/// the donor's 2,536 from the 1,024 the kernel plays.
+const DECLARED: [(&str, (i32, i32)); 1] = [("probcut_see_scale", (512, 4_096))];
+
 /// A seed's option name: `K` and the seed's name in Pascal case, an array
 /// entry's index appended (`pick_cont[2]` is `KPickCont2`).
 fn option_name(seed: &str) -> String {
@@ -57,7 +62,10 @@ fn tunables() -> impl Iterator<Item = (String, fn(&mut Seeds) -> &mut i32, i32, 
         .filter(|(seed, _)| !EXCLUDED.contains(seed))
         .map(|&(seed, field)| {
             let mut seeds = Seeds::FITTED;
-            let (min, max) = range(*field(&mut seeds));
+            let (min, max) = DECLARED
+                .iter()
+                .find(|(declared, _)| *declared == seed)
+                .map_or_else(|| range(*field(&mut seeds)), |&(_, declared)| declared);
             (option_name(seed), field, min, max)
         })
 }
@@ -95,8 +103,8 @@ mod tests {
     #[test]
     fn every_seed_but_the_five_is_an_option_inside_its_range() {
         let lines = uci_option_strings();
-        assert_eq!(SEED_FIELDS.len(), 246);
-        assert_eq!(lines.len(), 241);
+        assert_eq!(SEED_FIELDS.len(), 247);
+        assert_eq!(lines.len(), 242);
         for (name, field, min, max) in tunables() {
             let mut seeds = Seeds::FITTED;
             let value = *field(&mut seeds);
@@ -111,7 +119,7 @@ mod tests {
         let mut names: Vec<String> = tunables().map(|(name, ..)| name.to_lowercase()).collect();
         names.sort();
         names.dedup();
-        assert_eq!(names.len(), 241, "option names are unique");
+        assert_eq!(names.len(), 242, "option names are unique");
         for seed in EXCLUDED {
             assert!(
                 SEED_FIELDS.iter().any(|(name, _)| *name == seed),
@@ -138,6 +146,15 @@ mod tests {
         assert!(lines.contains(&String::from(
             "option name KRfpSquare16 type spin default 8218 min 4109 max 16436"
         )));
+        assert!(lines.contains(&String::from(
+            "option name KProbcutSeeScale type spin default 1024 min 512 max 4096"
+        )));
+        let mut seeds = Seeds::FITTED;
+        assert!(set_uci_option(&mut seeds, "KProbcutSeeScale", "2536"));
+        assert_eq!(
+            seeds.probcut_see_scale, 2_536,
+            "the donor's form is reachable"
+        );
     }
 
     #[test]

@@ -1384,6 +1384,11 @@ const UNDETECTABLE: &[(&str, &str)] = &[
          sixteenths: every floor from 1 to 16 sixteenths takes the same decisions",
     ),
     (
+        "probcut_see_scale",
+        "ProbCut's picker bar, which no trace kind records: the picker's exchange \
+         test is not a rule the trace samples",
+    ),
+    (
         "double_new_pv_16",
         "read only at a PV node whose singular search failed low, which the \
          trace samples sparsely (47 records in the 2026-11-17 capture, 11 at a new PV \
