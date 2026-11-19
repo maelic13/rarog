@@ -58,7 +58,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **3,348,508 / EBF 2.329** at engine source `e363908` (D.7.8.2: quiescence and evaluation-only entries at the donor's depth, kept by RAR-S131; before it 3,278,226 / EBF 2.313 at `e63b652`, D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
+| Fingerprint | `bench 13` **3,320,355 / EBF 2.317** at engine source `4271031` (D.7.8.3: the root ordered by the kernel's own scorer, RAR-S132's read pending; before it 3,348,508 / EBF 2.329 at `e363908`, D.7.8.2: quiescence and evaluation-only entries at the donor's depth, kept by RAR-S131; before it 3,278,226 / EBF 2.313 at `e63b652`, D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -386,7 +386,7 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.8.3 | READY_FOR_IMPLEMENTATION | I2 | The root ordered by the kernel's own scorer, the classic scorer deleted; the 2,000-game read and a four-thread smoke |
+| D.7.8.3 | LOCAL_QUALIFIED | I2 | Implemented: the root in the staged picker's order, ties included (`4271031`, bench 3,320,355); RAR-S132's 2,000-game read and four-thread smoke registered, the maintainer's commands |
 | D.7.8.4 | READY_FOR_IMPLEMENTATION | I1 | A failed root window's bound line only past 10,000,000 nodes; fingerprint exact, no game read |
 | D.7.8.5 | RESEARCH | R2 | Screen: clock searches stopped inside an iteration and what they discard; the donor's rule only at 2% or more, then the 2,000-game read and RAR-S129's (P) again |
 | D.7.8.6 | READY_FOR_IMPLEMENTATION | I1 | A helper's previous score reset at a new game; a test; no game read |
@@ -2419,6 +2419,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           *Done 2026-11-19:* RAR-S131 read nElo +1.2 ± 15.2 over 2,000
           games, above the −13 harm line: kept. D.7.8.3 starts from
           `e363908`'s engine (`d782cand`).
+          *Superseded 2026-11-19 (D.7.8.3):* with the root in the kernel's
+          own order, ties included, KQK's mate in four is reported from
+          depth 8 and its check runs again; the longer mate needed the
+          classic root order with the donor's keep rule.
         - **D.7.8.3 The root's moves ordered by the kernel's own scorer — `I2`.**
           (A8, inventory R6) The root's list is scored by the classic
           picker's scorer over the kernel's tables, the last user of that
@@ -2429,6 +2433,39 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           Lazy SMP's; the classic scorer and its constants are deleted.
           The fingerprint moves. *Read:* the 2,000-game read, and 200
           games at four threads for faults alone.
+          *Implemented 2026-11-19:* `2f47a78` (test precondition, first:
+          the KRK mate-line check reads at depths 14 and 18, past the
+          first mate, verified on `e363908`'s engine) and `4271031`
+          (engine). The root's list is written in the staged picker's
+          order, ties included: the moves come from its generators and
+          its selection step orders them, the good-noisy bar decided in
+          that order with its count of good moves so far; the whole list
+          is ordered and then narrowed to the root's lines, as the
+          donor's root skips a move outside its lines once handed over.
+          The classic scorer, its constants and its two tests are gone;
+          the tests that replace them show every legal move once, a
+          narrowed list keeping the whole list's order, and the root's
+          order equal to the staged picker's move for move on empty and
+          filled histories (planted faults in the bar, its count and the
+          table move's partition each fail it). `bench 13` 3,320,355 /
+          EBF 2.317 (−0.8%). Checks: fmt; clippy over all features and
+          targets at zero warnings (a planted lint showed it reports);
+          debug 538 and release 540 passed with the KRK check failing
+          before its precondition commit, the behaviour tests 8 of 8 in
+          both after; the `tune` and `texel` libraries 291 each; parity
+          on the donor's trace without a mismatch. *Found at zero
+          games:* a first form at the same scores with the full
+          generator's tie order read 4,408,144 / EBF 2.350 (+31.6%, one
+          position ×5) and reported the queen mate in three as seven at
+          depth 10; the root's tie order alone moves the tree by a third.
+          With ties as the staged picker's, the mate in three shows from
+          depth 8 and KQK's mate in four from depth 8 (D.7.8.2's ignored
+          check runs again); KRK (`k7/8/8/8/2K5/8/8/7R w`, Stockfish's
+          five) first shows a mate at depth 12, nine to depth 18, where
+          `e363908` showed six from 10 and Reckless's search six from 12.
+          The read is RAR-S132, registered before any game: `d783cand`
+          against `d783base`, case 2, and the four-thread smoke for
+          faults. The step closes on both.
         - **D.7.8.4 Bound lines in short searches — `I1`.**
           (A4) The kernel's narrow window fails often by design, and Rarog
           prints a bound line for each failure: 39 info lines a

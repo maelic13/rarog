@@ -71,6 +71,10 @@ does it (built alone: the same bench and the same mates); the kept deeper
 entry holds the longer mate. Reckless's search reports a mate in five at
 every depth from 9 to 18. The mate is still found and played. The exact
 check is an ignored test naming this finding (`3e27052`).
+*Superseded 2026-11-19 by D.7.8.3 (RAR-S132):* with the root in the
+kernel's own order, ties included, the mate in four is reported from
+depth 8; the longer mate needed the classic root order with this keep
+rule, and the check runs again.
 
 ## PRE-REGISTERED PREDICTION (frozen 2026-11-19, before any game)
 
