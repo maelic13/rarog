@@ -387,8 +387,7 @@ request. The rows below are D.7's, then D.6's in number order.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.7.8.7 | RESEARCH | R2 | Card written 2026-11-19: build after D.7 (recommended) or before D.7.13's four-thread read; the maintainer decides |
-| D.7.8.10 | RESEARCH | V | RAR-S133 registered: 65 tune options, 2,000 games at 100,000 nodes a move; a fold only on an interval wholly above zero |
-| D.7.8 | RESEARCH | R2 | Closes after its ten sub-steps, with a table of what each changed, its read and its commit |
+| D.7.8 | RESEARCH | R2 | Nine of ten sub-steps closed (table below, 2026-11-20); closes with the table once the maintainer decides D.7.8.7 |
 | D.7.9 | RESEARCH | R2 | Clock use, moved from D.6.28: the screen on the repaired kernel's games, the low-clock horizon's card and field read, the constants to the fit's surface |
 | D.7.10 | RESEARCH | V | The repaired kernel against `d7classic` at `3+0.03` and `10+0.1`, 2,000 games each: a diagnostic that sets the fit's control |
 | D.7.11.1 | RESEARCH | I1 | The finishing surface: the added seeds, the plies and counts left out, the activation read, the audit and the pilot |
@@ -2321,6 +2320,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       than the classic: 185 against 210 at 25,000 nodes a position, 201
       against 232 at 50,000, 219 against 243 at 100,000. Tactics, not
       Elo; the WAC band now reads 50,000 nodes and is calibrated at 201.
+      *The table, as of 2026-11-20* (the fingerprint after the last is
+      3,320,355 / EBF 2.317):
+
+      | Step | What changed | Read | Commits |
+      |---|---|---|---|
+      | D.7.8.1 | ProbCut's exchange bar at the donor's scale, 2,536 | RAR-S130, nElo −7.2 ± 15.2, kept | `ee1c79c`, `e63b652` |
+      | D.7.8.2 | Quiescence and evaluation-only entries at the donor's depth, −1 | RAR-S131, +1.2 ± 15.2, kept | `3e27052`, `e363908` |
+      | D.7.8.3 | The root in the staged picker's order, ties included; the classic scorer deleted | RAR-S132, +4.1 ± 15.2, no fault at four threads, kept | `2f47a78`, `4271031` |
+      | D.7.8.4 | A failed window's bound line only past 10,000,000 nodes | none: play unchanged, info lines 16.0 against the donor's 15.8 | `1b153dd` |
+      | D.7.8.5 | Nothing: 0 of 300 searches at `3000+30` discard a move | the frozen screen, `NO_CHANGE` | `927063c` (counters) |
+      | D.7.8.6 | One per-thread reset at a new game, helpers included | none: one thread exact | `60424e5` |
+      | D.7.8.7 | Nothing yet: the card, the maintainer's decision | — | `31dede4` (card) |
+      | D.7.8.8 | Nothing: the divergence is the pickers' tie rule, recorded | zero games | `66fd73b` |
+      | D.7.8.9 | The king-keyed non-pawn keys kept, the gates asked lazily, the root list filled in place | pooled NPS +0.95% (+0.37 to +1.54) | `80eec20`, `e68d245`, `b88700a` |
+      | D.7.8.10 | Nothing: a unit half the size | RAR-S133, −4.9 ± 15.2, `NO_CHANGE` | `f92abf0` (registration) |
+
         - **D.7.8.1 ProbCut's exchange bar in exchange units — `I1`, DONE 2026-11-19.**
           (A1) ProbCut's picker holds captures to `probcut_beta − eval`,
           an evaluation-unit difference, tested against the donor's
@@ -2650,7 +2665,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           +1.85%), between; step 2, six cycles: **+0.95% (+0.37% to
           +1.54%), accepted**, no disturbed cycle. An accept below +1% on
           code that moved is recorded as possibly code layout (PROCESS).
-        - **D.7.8.10 A finer kernel unit: the screen — `V`.**
+        - **D.7.8.10 A finer kernel unit: the screen — `V`, NO_CHANGE 2026-11-20.**
           (A3, the audit's decision 5) The fitted wrapper hands the kernel
           0.50 to 0.82 of the HCE's value in whole units, and the margins
           were folded to that unit; the donor works about 3.5 times finer.
@@ -2665,6 +2680,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           time manager's slopes do not enter), 2,000 games; the bench of
           both beside it. Interval wholly above zero: an `I1` step folds
           the finer unit in before D.7.9. Otherwise `NO_CHANGE`.
+          *NO_CHANGE 2026-11-20* (RAR-S133): 65 options from the tune
+          build's defaults, classed by the fold's factors (52 doubled, 13
+          halved and `wrap_divisor` halved; `optimism_scale` kept, being
+          in the raw evaluation's units; `q_see_correction_scale`, no
+          option, the one seed not reached), `bench 13` 3,417,466 / EBF
+          2.311 against 3,320,355 / 2.317. 2,000 games at 100,000 nodes a
+          move: nElo −4.9 ± 15.2, the interval [−20.1, +10.3] not wholly
+          above zero. The kernel keeps its fitted unit.
     - **D.7.9 Clock use on the new kernel — `R2`.**
       Moved here from D.6.28 on 2026-11-19 (maintainer decision): it is the
       largest known lever beside the kernel (the donor's search led by 22.5

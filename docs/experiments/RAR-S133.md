@@ -1,10 +1,13 @@
-# RAR-S133 — D.7.8.10: the kernel on a unit half the size, emulated through the tune options, 2,000 games at 100,000 nodes a move — REGISTERED 2026-11-20, before any game
+# RAR-S133 — D.7.8.10: the kernel on a unit half the size, emulated through the tune options, 2,000 games at 100,000 nodes a move — REGISTERED 2026-11-20, before any game; READ 2026-11-20: nElo −4.9 ± 15.2, NO_CHANGE
 
 Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 - **Date / owner:** registered 2026-11-20, before any game. Run by the
   agent overnight on the maintainer's delegation of 2026-11-19 ("you are
   allowed to run long matches and reads during this night").
+- **Disposition:** read 2026-11-20: nElo −4.9 ± 15.2, the interval
+  [−20.1, +10.3] not wholly above zero: D.7.8.10 closes `NO_CHANGE`.
+  Inside the prediction's 80% band.
 - **Kind:** PLAN D.7.8.10, a `V` screen inside D.7's cluster, its rule
   frozen in PLAN: an interval wholly above zero sends an `I1` step that
   folds the finer unit in before D.7.9; anything else closes the step
@@ -91,3 +94,32 @@ same arithmetic at the same speed.
   where a whole unit would move them more than 1%, which leaves little to
   gain; the unscaled constants above work slightly against the fine arm.
 - **Most likely failure mode:** a null inside ±15 nElo, read `NO_CHANGE`.
+
+## Result (read 2026-11-20)
+
+Run 2026-11-20 00:13 to 00:32 local, 18 minutes, Colosseum CLI 0.5.0
+(pinned `8fa63cc`), placement automatic with a core of headroom, the
+wrapper's idle check passed on the first attempt. The runner's report and
+the manifest
+(`tools/results/colosseum_match_rar-s133_20261120_001346.manifest.txt`,
+both arms `git_sha` `991bf15`, bench 3,320,355):
+
+- "Elo -3.1 +/- 9.7; nElo -4.9 +/- 15.2 over 2000 paired games"
+- `d7810fine` 563 W / 581 L / 856 D; pentanomial 47, 230, 459, 222, 42
+  ("recount of games.pgn agrees"); faults none, engine faults none.
+- search, `d7810fine`: depth 18.33 mean, 69,366 nodes a move;
+  `d7810unit`: depth 18.40 mean, 69,230 nodes a move; both 56.3 ms a move
+  (a move's last completed iteration, so under the 100,000 budget).
+
+**Reading:** the interval [−20.1, +10.3] is not wholly above zero:
+**`NO_CHANGE`**. The kernel keeps its fitted unit, and D.7.11's fit runs
+on it.
+
+### Calibration (appended after the result)
+
+Predicted +3 nElo, 80% band −10 to +16, P(interval wholly above zero)
+0.12; read −4.9, inside the band, below the centre. The basis held: a
+rescale that moves the tree 2.9% shows no effect at 2,000 games. Whether
+the unscaled constants cost the fine arm a little, or there is nothing
+to gain, this read cannot say; it was built only to catch a gain the size
+of the interval.
