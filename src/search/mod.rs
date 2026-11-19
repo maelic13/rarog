@@ -40,7 +40,7 @@ use crate::board::{Board, Color, GameResult, Move, MoveList};
 use crate::eval::{INF_SCORE, MATE_SCORE};
 use crate::infra;
 use crate::search::options::{
-    EngineOptions, HashRequest, MAX_THREADS, SearchLimits, SearchOptions,
+    BOUND_LINES_FROM_NODES, EngineOptions, HashRequest, MAX_THREADS, SearchLimits, SearchOptions,
 };
 use crate::syzygy::{self, Wdl};
 use crate::tt::{TB_VALUE, TB_WIN_SCORE, TranspositionTable};
@@ -270,6 +270,10 @@ struct SearchConfig {
     compact_seeds: &'static compact::rules::Seeds,
     limits: RuntimeLimits,
     start: Instant,
+    /// The search's node count past which a failed root window prints its
+    /// bound line; below it only exact lines and the line a search stops on
+    /// are printed.
+    bound_lines_from_nodes: u64,
 }
 
 impl Default for SearchConfig {
@@ -280,6 +284,7 @@ impl Default for SearchConfig {
             compact_seeds: compact::rules::SEEDS,
             limits: RuntimeLimits::default(),
             start: Instant::now(),
+            bound_lines_from_nodes: BOUND_LINES_FROM_NODES,
         }
     }
 }
@@ -732,6 +737,7 @@ impl Searcher {
         self.shared.syzygy.fifty_move_rule = engine_options.syzygy.fifty_move_rule;
         self.shared.syzygy.root = TbRootDecision::default();
         self.cfg.params = engine_options.search_params.clone();
+        self.cfg.bound_lines_from_nodes = engine_options.bound_lines_from_nodes;
         // The kernel reads its seeds by a static reference, as it reads the
         // donor's in every other build, so a node borrows nothing from the
         // searcher. A table is allocated only when the options change it,
@@ -939,9 +945,8 @@ impl Searcher {
                 if score <= alpha {
                     crate::diag_count!(asp_fail_low);
                     crate::diag_add!(asp_fail_low_nodes, window_nodes);
-                    if emit_info {
-                        let shown = score;
-                        self.send_bounded_info_line(depth, shown, RootBound::Upper, bestmove);
+                    if emit_info && self.shows_bound_lines() {
+                        self.send_bounded_info_line(depth, score, RootBound::Upper, bestmove);
                     }
                     window.fail_low(score, self.cfg.params.asp_max_fails);
                     #[cfg(feature = "probes")]
@@ -951,9 +956,13 @@ impl Searcher {
                 if score >= beta {
                     crate::diag_count!(asp_fail_high);
                     crate::diag_add!(asp_fail_high_nodes, window_nodes);
-                    if emit_info {
-                        let shown = score;
-                        self.send_bounded_info_line(depth, shown, RootBound::Lower, bestmove);
+                    let stops = self.td.thread_id == 0
+                        && !self.td.pondering
+                        && self.elapsed_ms() >= soft_target_ms * fail_high_target;
+                    // The line a search stops on is its report of the move
+                    // it plays, so it is printed however short the search.
+                    if emit_info && (stops || self.shows_bound_lines()) {
+                        self.send_bounded_info_line(depth, score, RootBound::Lower, bestmove);
                     }
                     // Past a multiple of the soft target (twice it by default)
                     // a fail-high ends the search on the move that failed high,
@@ -967,10 +976,7 @@ impl Searcher {
                     // centred on or, after a fail-low pulled it down, above
                     // every move's bound from that fail-low. The main thread
                     // decides; helpers keep their vote.
-                    if self.td.thread_id == 0
-                        && !self.td.pondering
-                        && self.elapsed_ms() >= soft_target_ms * fail_high_target
-                    {
+                    if stops {
                         crate::diag_count!(tm_fail_high_stop);
                         if self.td.pv_len[0] > 0 {
                             bestmove = self.td.pv_table[0][0];
@@ -1922,6 +1928,12 @@ impl Searcher {
         })
     }
 
+    /// Whether a failed root window prints its bound line: past the floor
+    /// on the search's count, every thread's nodes included.
+    fn shows_bound_lines(&self) -> bool {
+        self.reported_nodes() > self.cfg.bound_lines_from_nodes
+    }
+
     fn reported_tb_hits(&self) -> u64 {
         self.shared.pool().map_or(self.td.tb_hits, |shared_state| {
             shared_state.tb_hits.load(Ordering::Relaxed)
@@ -2522,6 +2534,50 @@ mod tests {
         );
     }
 
+    /// A failed window's bound line is printed only past the floor, and
+    /// keeps the exact line's shape when it is; the exact lines are the
+    /// same either way.
+    #[test]
+    fn bound_lines_are_printed_past_the_node_floor_only() {
+        let limits = SearchLimits {
+            depth: Some(10),
+            ..SearchLimits::default()
+        };
+        let fen = FAIL_HIGH_CANDIDATES[0];
+        let options = EngineOptions::default();
+        let (short, lines) = clock_search(fen, &limits, &options, None, usize::MAX);
+        assert!(short.nodes < BOUND_LINES_FROM_NODES);
+        assert!(
+            lines.iter().all(|line| line.bound.is_empty()),
+            "no bound line"
+        );
+        let (all, every) = clock_search_with_bounds(fen, &limits, &options, None, usize::MAX, 0);
+        assert_eq!(all.nodes, short.nodes, "printing changes no search");
+        assert!(
+            every.iter().any(|line| !line.bound.is_empty()),
+            "a window fails"
+        );
+        let exact = |lines: &[InfoLine]| {
+            lines
+                .iter()
+                .filter(|line| line.bound.is_empty())
+                .map(|line| {
+                    (
+                        line.depth,
+                        line.score.clone(),
+                        line.nodes,
+                        line.first.clone(),
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            exact(&lines),
+            exact(&every),
+            "the exact lines are unchanged"
+        );
+    }
+
     /// The budget is measured from the instant `go` was
     /// parsed, not from the engine thread's start. A `go movetime 200`
     /// parsed 300 ms ago has already spent its budget and must return at
@@ -3013,11 +3069,35 @@ mod tests {
         test_clock: Option<(u64, f64)>,
         poll_budget: usize,
     ) -> (SearchResult, Vec<InfoLine>) {
+        clock_search_with_bounds(
+            fen,
+            limits,
+            options,
+            test_clock,
+            poll_budget,
+            BOUND_LINES_FROM_NODES,
+        )
+    }
+
+    /// `clock_search` with failed windows' bound lines printed past
+    /// `bound_lines_from_nodes` nodes.
+    fn clock_search_with_bounds(
+        fen: &str,
+        limits: &SearchLimits,
+        options: &EngineOptions,
+        test_clock: Option<(u64, f64)>,
+        poll_budget: usize,
+        bound_lines_from_nodes: u64,
+    ) -> (SearchResult, Vec<InfoLine>) {
         let board = Board::from_fen(fen).expect("valid fen");
         let legal = board.generate_legal_moves();
         let lines = Arc::new(Mutex::new(Vec::new()));
         let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
-        searcher.reset_search_state(limits, options, board.side_to_move(), 0, true);
+        let options = EngineOptions {
+            bound_lines_from_nodes,
+            ..options.clone()
+        };
+        searcher.reset_search_state(limits, &options, board.side_to_move(), 0, true);
         assert!(searcher.shared.pool().is_none());
         searcher.td.test_clock = test_clock;
         let mut polls = 0;
@@ -3120,8 +3200,15 @@ mod tests {
                     depth: Some(DEPTH),
                     ..SearchLimits::default()
                 };
-                let (_, mut lines) =
-                    clock_search(fen, &probe, &EngineOptions::default(), None, usize::MAX);
+                // Every failed window's line, so the fail-high shows.
+                let (_, mut lines) = clock_search_with_bounds(
+                    fen,
+                    &probe,
+                    &EngineOptions::default(),
+                    None,
+                    usize::MAX,
+                    0,
+                );
                 let at = lines.iter().position(|line| line.bound == "lowerbound")?;
                 let completed = lines[..at]
                     .iter()
@@ -3148,9 +3235,16 @@ mod tests {
             compute_runtime_limits(&clock, &options, board.side_to_move(), 0, MAX_DEPTH).maximum_ms;
 
         // The clock passes the soft target, not the maximum, during the
-        // iteration that fails high.
+        // iteration that fails high. The search is short of the bound-line
+        // floor, so the line it stops on is printed because it stops.
         let late = Some((completed_nodes + 1, 0.99 * maximum_ms));
         let (stopped, lines) = clock_search(fen, &clock, &options, late, usize::MAX);
+        assert!(stopped.nodes < BOUND_LINES_FROM_NODES);
+        assert_eq!(
+            lines.iter().filter(|line| !line.bound.is_empty()).count(),
+            1,
+            "only the line it stops on is a bound"
+        );
         let last = lines.last().expect("a line was printed");
         assert_eq!(last.bound, "lowerbound");
         assert_eq!(

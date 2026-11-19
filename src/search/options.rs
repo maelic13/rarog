@@ -40,6 +40,10 @@ pub struct EngineOptions {
     pub large_pages: bool,
     pub syzygy: SyzygyOptions,
     pub search_params: SearchParams,
+    /// The search's node count past which a failed root window prints its
+    /// bound line, `BOUND_LINES_FROM_NODES` by default. No UCI option sets
+    /// it: a caller that wants every bound line, as a test, sets 0.
+    pub bound_lines_from_nodes: u64,
     /// The compact kernel's seeds, which only a tuning build can set.
     #[cfg(feature = "tune")]
     pub(crate) compact_seeds: super::compact::rules::Seeds,
@@ -71,11 +75,17 @@ impl Default for EngineOptions {
             large_pages: true,
             syzygy: SyzygyOptions::default(),
             search_params: SearchParams::default(),
+            bound_lines_from_nodes: BOUND_LINES_FROM_NODES,
             #[cfg(feature = "tune")]
             compact_seeds: super::compact::rules::Seeds::FITTED,
         }
     }
 }
+
+/// The search's node count below which a failed root window prints no bound
+/// line, the donor's: the kernel's narrow windows fail often by design, and
+/// in a short search a line for each buries the exact ones.
+pub(crate) const BOUND_LINES_FROM_NODES: u64 = 10_000_000;
 
 #[derive(Clone, Default)]
 pub struct SearchLimits {
