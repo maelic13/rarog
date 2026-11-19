@@ -220,7 +220,7 @@ fn an_irreversible_move_makes_the_earlier_position_hash_unreachable() {
 /// triangle, return to the start without a draw. The arbiter's threefold
 /// never sees a null.
 #[test]
-fn a_repetition_across_null_moves_scores_as_a_draw_in_search() {
+fn a_repetition_across_null_moves_is_no_draw_in_search() {
     // Deep inside a search, so only the null can keep the draw away.
     const DEEP_PLY: usize = 64;
     const FEN: &str = "4k3/8/8/8/8/8/PPP5/4K3 w - - 0 1";
