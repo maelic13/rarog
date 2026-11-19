@@ -366,6 +366,17 @@ Rarog's own default 10. A held rating measured before this decision
 measured after it; an engine whose setting changed is re-rated in the next
 round robin, and a row says which setting its rating was played at.
 
+**Equal nodes are not equal work against a foreign engine** (RAR-S129,
+2026-11-19). Under a node budget every search stops inside an iteration.
+Rarog's root driver then plays the last completed iteration's move, and
+its last report covers 75% to 85% of the budget in contested positions;
+Reckless and Stockfish play from the interrupted iteration. A fixed-node
+match of Rarog against such an engine is tilted toward it by that rule,
+not by the kernel, and a PGN's `n=` for Rarog is the last completed
+iteration's count, not the work done. Name the asymmetry in the
+registration, and for a question about the kernel prefer two Rarog arms,
+which share the driver. PLAN D.7.8.5 reads the rule itself.
+
 ### Toolchain and harness notes
 
 `build_test.ps1` manifests bind every test asset to its executable hash, source

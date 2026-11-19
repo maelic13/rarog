@@ -1,10 +1,12 @@
-# RAR-S128 — D.7.6: the compact kernel's fit, one rule 7c run over its whole surface — REGISTERED 2026-11-18, before any reading
+# RAR-S128 — D.7.6: the compact kernel's fit, one rule 7c run over its whole surface — REGISTERED 2026-11-18, before any reading; STOPPED 2026-11-19 by the maintainer at the 2,000 checkpoint: the centres +56.8 ± 9.5 Elo over the seeds, baked in
 
 Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 - **Date / owner:** registered 2026-11-18, before the tune build exists and
   before any reading. The activation read and the curvature sweep are the
   agent's; the tune is the maintainer's to start (D.7 decision 6).
+- Disposition: retained — stopped 2026-11-19 at the 2,000 checkpoint by the maintainer (rule 7c); its
+  centres are the kernel's seeds (PLAN D.7.6.2) without a gate at this state; D.7.13 gates the kernel.
 - **Kind:** PLAN D.7.6, the fit of one dependency-complete cluster (rule 3):
   every coordinate of the compact kernel in one joint run, so the parts are
   fitted together. No gate of fitted over unfitted (maintainer decision
@@ -250,3 +252,59 @@ only a stopped checkpoint's centres.
   BAS-S62). Against RAR-S126's −11.1 ± 15.2 for the unfitted kernel, +20
   would put the kernel at 2,000 near +9 against the classic kernel, a
   sum of two reads and not a measurement.
+
+## Result: stopped at the 2,000 checkpoint (2026-11-19)
+
+- **The pilot** (128 iterations, 3,840 games, `tools/results/d76-pilot`):
+  every option accepted and the run played end to end; two integer
+  coordinates' arms met a bound (`KSingularTtDepth` its minimum on 10 of
+  128 iterations, `KNegativeExtension` its maximum on 1), which stopped
+  nothing. Its theta was not used.
+- **The run:** started 2026-11-18 23:18 UTC, 2,000 iterations (60,000
+  games) at 4,546 games an hour, no fault, no time loss, no rail, no arm
+  clamped on over 1% of iterations. Paused by the maintainer after
+  iteration 2,000 for the interim read (one further iteration was played
+  when the wrapper resumed and is outside the checkpoint).
+- **The checkpoint at 2,000** (`tools/spsa_read.py`, window 1,000 to
+  2,000): CONTINUE. Max |z| 3.90 against the line 3.69 (`KLmrQuietHistory`);
+  `sum z² − n` +30.4 (+1.4 SD, line 42.9); live. Floor: no coordinate above
+  4.7 Elo across a perturbation; the tune's own gain since iteration 0
+  +67.3 Elo (null SD 14.0); forecast for 2,000 to 4,000 at most +7.3 ± 5.1.
+- **The interim read** (the amendment above;
+  `tools/results/colosseum_match_rar-s128-read2000_20261119_131254.manifest.txt`):
+  "Elo +56.8 +/- 9.5; nElo +93.1 +/- 15.2 over 2000 paired games";
+  `d76at2000` 702 W / 920 D / 378 L; pentanomial 6, 159, 419, 337, 79;
+  faults none, time losses none; depth 17.13 mean against 16.28; the
+  fitted arm won all 702 games in which it reported +500 or a mate, the
+  seeds' arm 378 of 394.
+- **The stop:** the maintainer's, at the checkpoint, on 2026-11-19 (rule
+  7c: `STOP` in the run directory, theta that checkpoint's centres), after
+  the audit of the kernel and of this tune
+  (`analysis/d7_audit_2026-11-19.md`). Theta:
+  `tools/results/d76-fit/theta-2000.toml`, SHA-256 `d5b4998b…18dc9a`, equal
+  to the interim read's 230 values. Not a quiet stop: the window was live,
+  and what is left goes to PLAN D.7.11's finishing fit on a repaired
+  kernel and a completed surface.
+- **Baked** as the kernel's seeds (PLAN D.7.6.2, `73966eb`): compact
+  `bench 13` 3,488,485 / EBF 2.336, the tune binary's count at theta.
+- **Where the gain is** (RAR-S129 W and the audit): the two wrapper
+  coordinates alone +24.9 ± 9.0 Elo; the other 228 about +32 by difference.
+
+### Calibration (appended after the result)
+
+- *Activation and sweep:* recorded above.
+- *Tune live at 2,000* (0.8): yes. *Its stop:* not by the rule, so the
+  predictions on when it would go quiet are not scored.
+- *The tune's own gain read at its stop:* predicted +35 nElo (80% band +10
+  to +80); the read at 2,000 is +67.3 Elo in the tune's own unit, inside
+  the band's upper half with the run a third done.
+- *Floor at 2,000:* predicted about 10 Elo (band 6 to 16); measured 4.7
+  across a perturbation, below the band: the perturbation of two steps
+  lowers it more than the square-root scaling from Basilisk's 49
+  coordinates assumed.
+- *The interim read:* predicted +20 nElo (80% band −5 to +45); measured
+  +93.1 ± 15.2, far above the band. The miss is in magnitude: the basis
+  was a surface already fitted once (Basilisk's), where this one was
+  seeded by a scale ratio, and one scale carried 44% of the gain.
+- *Most likely failure mode* (a quiet stop with a high floor): did not
+  occur.
