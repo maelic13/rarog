@@ -25,10 +25,14 @@ const PV_BIT: u8 = 0x04;
 const AGE_MASK: u8 = 0xF8;
 const AGE_STRIDE: u8 = 0x08;
 const AGE_QUALITY_DIVISOR: i32 = 2;
+/// Stored depth of a quiescence result, the donor's: one ply below every
+/// main-search store, so it never satisfies a main-search depth test, and
+/// level with an evaluation-only entry in the keep rule and as a victim.
+pub(crate) const QUIESCENCE_DEPTH: i32 = -1;
 /// Stored depth of an entry that holds only a raw static eval: no bound, no
-/// score, no move. Below every searched depth (qsearch stores 0, the floor
-/// for a stored result is -1), so it never satisfies a depth test.
-pub(crate) const EVAL_ONLY_DEPTH: i32 = -2;
+/// score, no move. A quiescence result's depth, as in the donor's table; the
+/// missing bound tells the two apart.
+pub(crate) const EVAL_ONLY_DEPTH: i32 = QUIESCENCE_DEPTH;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Bound {
@@ -1153,7 +1157,8 @@ mod tests {
     mod core {
         use super::super::{
             AGE_MASK, AGE_QUALITY_DIVISOR, AGE_STRIDE, Bound, EVAL_ONLY_DEPTH, LocalTable, PV_BIT,
-            TranspositionTable, TtEntry, TtProbe, TtStorage, TtStore, entry_quality,
+            QUIESCENCE_DEPTH, TranspositionTable, TtEntry, TtProbe, TtStorage, TtStore,
+            entry_quality,
         };
         use crate::board::Move;
         use crate::eval::VALUE_NONE;
@@ -1228,6 +1233,61 @@ mod tests {
                 }
                 assert!(tt.hashfull() > 0, "eval-only entries count as used");
             }
+        }
+
+        /// The keep rule reads a quiescence store as the donor's table does:
+        /// it keeps a same-position entry three plies deep (five for a PV
+        /// store) and replaces a shallower one.
+        #[test]
+        fn a_quiescence_store_keeps_an_entry_three_plies_deep_and_replaces_a_shallower_one() {
+            let mv = Move::from_uci("e2e4").expect("valid move");
+            for (is_pv, kept) in [(false, 3), (true, 5)] {
+                for mut tt in both_backends() {
+                    tt.store(stored(kept, 50, Bound::Lower, mv, false));
+                    tt.store(stored(
+                        QUIESCENCE_DEPTH,
+                        10,
+                        Bound::Exact,
+                        Move::NULL,
+                        is_pv,
+                    ));
+                    let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
+                    assert_eq!((probe.depth, probe.score), (kept, 50), "pv {is_pv}");
+                }
+                for mut tt in both_backends() {
+                    tt.store(stored(kept - 1, 50, Bound::Lower, mv, false));
+                    tt.store(stored(
+                        QUIESCENCE_DEPTH,
+                        10,
+                        Bound::Exact,
+                        Move::NULL,
+                        is_pv,
+                    ));
+                    let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
+                    assert_eq!(
+                        (probe.depth, probe.score),
+                        (QUIESCENCE_DEPTH, 10),
+                        "pv {is_pv}"
+                    );
+                    assert_eq!(probe.mv, Some(mv), "a store without a move keeps the move");
+                }
+            }
+        }
+
+        /// A quiescence result and an evaluation-only entry rank level as
+        /// victims, below every searched depth, as in the donor's table.
+        #[test]
+        fn quiescence_and_evaluation_only_entries_rank_level_as_victims() {
+            let at = |depth: i32, bound: u8| TtEntry {
+                depth: i8::try_from(depth).expect("a small depth"),
+                flag_age: bound,
+                ..TtEntry::default()
+            };
+            let quiescence = entry_quality(at(QUIESCENCE_DEPTH, Bound::Exact as u8), 0);
+            let eval_only = entry_quality(at(EVAL_ONLY_DEPTH, 0), 0);
+            assert_eq!(quiescence, eval_only);
+            assert!(entry_quality(at(1, Bound::Lower as u8), 0) > quiescence);
+            assert!(at(EVAL_ONLY_DEPTH, 0).is_occupied() && !TtEntry::default().is_occupied());
         }
 
         #[test]

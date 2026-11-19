@@ -14,8 +14,8 @@ use super::picker::CompactPicker;
 use super::rules;
 use super::{KERNEL_SEE_VALUES, bounded_raw, is_quiet_move, kernel_material};
 
-/// The depth a quiescence result is stored at.
-pub(super) const Q_DEPTH: i32 = 0;
+/// The depth a quiescence result is stored at: the table's.
+pub(super) const Q_DEPTH: i32 = crate::tt::QUIESCENCE_DEPTH;
 
 impl Searcher {
     pub(super) fn compact_quiescence<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
