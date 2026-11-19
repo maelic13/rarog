@@ -31,6 +31,7 @@ any prune while those bases were on a ref.
 | `6fd195e` | RAR-R20 | `097ea5d` | the cascade fix's four parts as the defaults, version `2.7.0-dev+d16fix4`; reproduces the arm's tree (`3678a90f…`); the throwaway branch `d16-arm2` is deleted |
 | `217125b` | RAR-R21 | `2f17467` | the cascade cluster's four parts as the search defaults, version `2.7.0-dev+d16fit` (the SPSA block's fit arm); reproduces the arm's tree (`56fd6135…`); the throwaway branch `d16-fit` is deleted |
 | `584c02d` | RAR-R22 | `570555b` | the cascade cluster at RAR-R21's block-1 values as the search defaults, version `2.7.0-dev+d16gate2`; reproduces the arm's tree (`ea3e13ab…`); the throwaway branch `d16-gate2` is deleted |
+| `a344748-d788-p305-diag` | D.7.8.8 | `a344748` | a diagnostic, never an arm: the donor's SEE forms, root re-scoring and tie rule behind `RAROG_SEE_VARIANT` bits, for position 305 against the twin (`analysis/d788_p305_2026-11-19.md`); `a344748` is on `d7-kernel`; proved 2026-11-19 to apply and reproduce the diagnostic's diff (SHA-256 `1b65be12…d274`) |
 | `7703768` | RAR-R27 | `6253027` | the LMR correction term capped at one ply as the search default, version `2.7.0-dev+d16gate3`; reproduces the arm's tree (`f82869d2…`); the throwaway branch `d16-gate3` is deleted |
 
 **Added 2026-11-04 (D.1's gate arms):** the six rows from `082a780` to

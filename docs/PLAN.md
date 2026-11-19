@@ -2609,7 +2609,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           recorded with its reason. It changes no play by itself.
           *Done 2026-11-19, recorded, no card*
           (`analysis/d788_p305_2026-11-19.md`; the diagnostic
-          `analysis/d788_p305_diag_a344748.patch`): the first
+          `analysis/arm_patches/a344748-d788-p305-diag.patch`): the first
           differing decision is the pickers' tie rule. Among equal scores
           the donor takes the last entry and removes it with
           `swap_remove`, its table move leaving the list the same way;
