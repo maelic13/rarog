@@ -605,7 +605,9 @@ fn kbnk_keeps_both_minors() {
 }
 
 /// `pawnless_scale_truth_table`, second half: KQ against two minors is served
-/// as the queen's win at depth 1 (no tables loaded, as in Basilisk).
+/// as the queen's win at depth 1 (no tables loaded, as in Basilisk): the
+/// evaluation reads at least Basilisk's 150, in its own units, and the
+/// search keeps the win, whatever scale the search's wrapper gives it.
 #[test]
 fn kq_against_two_minors_is_the_queens_win_at_depth_1() {
     let _g = serial();
@@ -616,9 +618,10 @@ fn kq_against_two_minors_is_the_queens_win_at_depth_1() {
         "8/8/3bb3/4k3/8/8/8/K6Q b - - 1 1",
     ] {
         let r = search(fen, Some(1), 0);
-        if -r.score <= 150 {
+        let eval = eval_white(fen);
+        if eval < 150 || -r.score <= 0 {
             failures.push(format!(
-                "{fen}: White's score {} ({})",
+                "{fen}: White's evaluation {eval}, score {} ({})",
                 -r.score,
                 summary(&r)
             ));
