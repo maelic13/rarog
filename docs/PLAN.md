@@ -387,7 +387,6 @@ request. The rows below are D.7's, then D.6's in number order.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.7.8.7 | RESEARCH | R2 | Card written 2026-11-19: build after D.7 (recommended) or before D.7.13's four-thread read; the maintainer decides |
-| D.7.8.8 | RESEARCH | R2 | Position 305's first differing decision on the trace; zero games, one session |
 | D.7.8.9 | READY_FOR_IMPLEMENTATION | I1 | The speed register's three items, fingerprint exact; the pooled NPS read prepared |
 | D.7.8.10 | RESEARCH | V | A unit half the size emulated through the tune options, 100,000 nodes a move each; a fold only on an interval wholly above zero |
 | D.7.8 | RESEARCH | R2 | Closes after its ten sub-steps, with a table of what each changed, its read and its commit |
@@ -2598,7 +2597,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           four-thread read showing the kernel scaling worse than
           `d7classic`, which makes sharing its first candidate. **The
           maintainer decides** (asked 2026-11-20).
-        - **D.7.8.8 Position 305's second divergence from the donor — `R2`.**
+        - **D.7.8.8 Position 305's second divergence from the donor — `R2`, DONE 2026-11-19.**
           (from D.7.4) With the promotion push put through the exchange,
           position 305 equals the twin at depths 1 and 2 and diverges from
           depth 3 (−866 against −883), its depth-14 tree 2.3 times the
@@ -2608,6 +2607,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           games, one session: the first differing decision on the trace,
           named; a card if it is a departure worth taking, otherwise
           recorded with its reason. It changes no play by itself.
+          *Done 2026-11-19, recorded, no card*
+          (`analysis/d788_p305_2026-11-19.md`; the diagnostic
+          `analysis/d788_p305_diag_a344748.patch`): the first
+          differing decision is the pickers' tie rule. Among equal scores
+          the donor takes the last entry and removes it with
+          `swap_remove`, its table move leaving the list the same way;
+          Rarog takes the first. With the donor's tie rule `a344748`
+          equals the twin on 305 in nodes and every rule count through
+          depth 6 (797, 1,149, 1,309, 2,009); a third divergence starts at
+          depth 7. SEE-2, SEE-3, the king rule and castling are refuted
+          (every donor SEE form together reads `a344748`'s 956 at depth
+          3), and so is the donor's root re-scoring. At depth 14 the tie
+          rule alone runs 305 to 184 million nodes and with the root's
+          re-scoring to 530,420, inside the twin's salted range: tie order
+          is chaotic, not a quality, so the 2.3 times D.7.4 recorded is an
+          instance of it, and matching the donor's tie rule would buy
+          parity on a diagnostic, not strength.
         - **D.7.8.9 The speed register — `I1`.**
           (from D.7.4) Three items waited for adoption: the king key
           computed at each correction read, to be kept incrementally; the

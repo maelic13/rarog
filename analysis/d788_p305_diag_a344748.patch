@@ -1,0 +1,375 @@
+diff --git a/src/board/board.rs b/src/board/board.rs
+index 30a846c..0ebb489 100644
+--- a/src/board/board.rs
++++ b/src/board/board.rs
+@@ -9,7 +9,7 @@ use std::fmt;
+ use super::attacks::{ATTACKS, knight_attacks_of, pawn_attacks_of};
+ use super::bitboard::Bitboard;
+ use super::cuckoo::CUCKOO;
+-use super::movegen::{between, generate_legal_moves};
++use super::movegen::{between, generate_legal_moves, ray_through};
+ use super::moves::{
+     CAPTURE, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, DOUBLE_PUSH, EN_PASSANT, Move, MoveList,
+     PROMO_BISHOP, PROMO_CAPTURE_BISHOP, PROMO_CAPTURE_KNIGHT, PROMO_CAPTURE_QUEEN,
+@@ -1758,6 +1758,10 @@ impl Board {
+             return gain >= threshold;
+         }
+ 
++        let variant = see_variant();
++        if matches!(quiet, QuietSee::Exchange) && variant != 0 {
++            return self.see_ge_variant(mv, threshold, values, variant);
++        }
+         let mut gain = self
+             .captured_piece(mv)
+             .map_or(0, |piece| values.value(piece));
+@@ -1798,6 +1802,97 @@ impl Board {
+         result
+     }
+ 
++    /// Pieces of `color` pinned to its king in this position, and the enemy
++    /// sliders pinning them.
++    fn static_pins(&self, color: Color) -> (Bitboard, Bitboard) {
++        let king = self.king_sq(color);
++        let atk = &ATTACKS;
++        let them = !color;
++        let snipers = (atk.rook(king, Bitboard::EMPTY)
++            & (self.pieces(them, Piece::Rook) | self.pieces(them, Piece::Queen)))
++            | (atk.bishop(king, Bitboard::EMPTY)
++                & (self.pieces(them, Piece::Bishop) | self.pieces(them, Piece::Queen)));
++        let mut pinned = Bitboard::EMPTY;
++        let mut pinners = Bitboard::EMPTY;
++        for sniper in snipers {
++            let blockers = between(king, sniper) & self.all_occ;
++            if blockers.count() == 1 && (blockers & self.color_occ(color)).any() {
++                pinned |= blockers;
++                pinners |= Bitboard::from(sniper);
++            }
++        }
++        (pinned, pinners)
++    }
++
++    /// The donor's exchange (Reckless `board/see.rs`) with the forms the
++    /// variant bits choose; without bit 2 recapturers keep exact legality.
++    fn see_ge_variant(&self, mv: Move, threshold: i32, values: SeeValues, variant: u32) -> bool {
++        if variant & 8 != 0 && mv.is_castling() {
++            return true;
++        }
++        let mut gain = self
++            .captured_piece(mv)
++            .map_or(0, |piece| values.value(piece));
++        let mut occupant = self.moving_piece(mv);
++        if mv.is_promo() {
++            occupant = mv.promo_piece();
++            gain += values.value(occupant) - values.value(Piece::Pawn);
++        }
++        if gain < threshold {
++            return false;
++        }
++        let target = mv.to_sq();
++        let mut occ = self.see_occupancy(mv);
++        let mut side = self.side_to_move;
++        let mut result = true;
++        let mut limit = gain - threshold + 1;
++        let pins = [self.static_pins(Color::White), self.static_pins(Color::Black)];
++        while occupant != Piece::King {
++            side = !side;
++            let recapture = if variant & 2 != 0 {
++                let mut ours = self.attackers_to_color(target, occ, side) & occ;
++                let (pinned, _) = pins[side as usize];
++                let (_, their_pinners) = pins[!side as usize];
++                if (their_pinners & occ).any() {
++                    ours &= !(pinned & !ray_through(self.king_sq(side), target));
++                }
++                if ours.any() {
++                    let (from, piece) = self.least_valuable_attacker(ours, side);
++                    if variant & 4 != 0
++                        && piece == Piece::King
++                        && (self.attackers_to_color(target, occ, !side) & occ & !Bitboard::from(target)).any()
++                    {
++                        None
++                    } else {
++                        Some((from, piece))
++                    }
++                } else {
++                    None
++                }
++            } else {
++                self.see_recapturer(target, occ, side)
++            };
++            let Some((from, piece)) = recapture else {
++                break;
++            };
++            let promoted = if variant & 1 != 0 {
++                piece
++            } else {
++                Self::see_recapture_piece(piece, target)
++            };
++            let capture_gain =
++                values.value(occupant) + values.value(promoted) - values.value(piece);
++            if capture_gain < limit {
++                break;
++            }
++            limit = capture_gain - limit + 1;
++            result = !result;
++            occupant = promoted;
++            occ ^= Bitboard::from(from);
++        }
++        result
++    }
++
+     pub fn game_result(&self) -> Option<GameResult> {
+         if self.can_declare_draw() {
+             return Some(GameResult::Draw);
+@@ -3442,3 +3537,14 @@ mod repetition_tests {
+         assert!(!dead("8/8/4k3/8/8/4K3/4P3/8 w - - 0 1"), "a pawn");
+     }
+ }
++
++/// The diagnostic's variant bits, read once.
++fn see_variant() -> u32 {
++    static VARIANT: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
++    *VARIANT.get_or_init(|| {
++        std::env::var("RAROG_SEE_VARIANT")
++            .ok()
++            .and_then(|v| v.parse().ok())
++            .unwrap_or(0)
++    })
++}
+diff --git a/src/board/movegen.rs b/src/board/movegen.rs
+index 279af78..4c10911 100644
+--- a/src/board/movegen.rs
++++ b/src/board/movegen.rs
+@@ -1006,7 +1006,7 @@ pub fn between(a: Square, b: Square) -> Bitboard {
+ }
+ 
+ /// Full ray through both `a` and `b` (including both endpoints).
+-fn ray_through(a: Square, b: Square) -> Bitboard {
++pub(super) fn ray_through(a: Square, b: Square) -> Bitboard {
+     LINE[a.index()][b.index()]
+ }
+ 
+diff --git a/src/search/compact/node.rs b/src/search/compact/node.rs
+index 07afe47..c659002 100644
+--- a/src/search/compact/node.rs
++++ b/src/search/compact/node.rs
+@@ -302,6 +302,12 @@ impl Searcher {
+                 tt_pv,
+             );
+             probe!(self, Hindsight, depth != before);
++            if hs_print() {
++                eprintln!(
++                    "hindsight nodes={} depth_in={} reduction={} eval_delta={} tt_pv={} depth={}",
++                    self.td.nodes, before, parent.reduction, eval + parent.static_eval, i32::from(tt_pv), depth
++                );
++            }
+         }
+ 
+         let potential_singularity =
+@@ -688,7 +694,9 @@ impl Searcher {
+             extension = 1;
+         }
+ 
+-        let mut moves = if NODE::ROOT {
++        let mut moves = if NODE::ROOT && donor_root() {
++            Moves::Staged(CompactPicker::new_root(tt_move, ply))
++        } else if NODE::ROOT {
+             Moves::Root(self.compact_root_picker(board, &threats, tt_move))
+         } else {
+             Moves::Staged(CompactPicker::new(tt_move, None, ply))
+@@ -721,6 +729,9 @@ impl Searcher {
+             if mv == excluded {
+                 continue;
+             }
++            if NODE::ROOT && !self.td.root_moves.is_empty() && !self.td.root_moves.contains(&mv) {
++                continue;
++            }
+             search_count = 0;
+             move_count += 1;
+             let is_quiet = is_quiet_move(mv);
+@@ -1516,3 +1527,18 @@ mod tests {
+         }
+     }
+ }
++
++fn donor_root() -> bool {
++    static ROOT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
++    *ROOT.get_or_init(|| {
++        std::env::var("RAROG_SEE_VARIANT")
++            .ok()
++            .and_then(|v| v.parse::<u32>().ok())
++            .is_some_and(|v| v & 16 != 0)
++    })
++}
++
++fn hs_print() -> bool {
++    static P: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
++    *P.get_or_init(|| std::env::var("RAROG_HS_PRINT").is_ok())
++}
+diff --git a/src/search/compact/picker.rs b/src/search/compact/picker.rs
+index a32d7aa..bae0a3f 100644
+--- a/src/search/compact/picker.rs
++++ b/src/search/compact/picker.rs
+@@ -7,7 +7,7 @@ use crate::board::{Bitboard, Board, Move, MoveList, Piece, Threats};
+ 
+ use super::super::Searcher;
+ use super::super::history::HistoryTables;
+-use super::super::movepick::{QuietContext, ScoredMoveList, pick_next};
++use super::super::movepick::{donor_ties, QuietContext, ScoredMoveList, pick_next};
+ use super::rules::{
+     NoisyOrderInput, QuietOrderInput, Seeds, good_noisy_threshold, noisy_order, quiet_order,
+ };
+@@ -45,9 +45,16 @@ pub(super) struct CompactPicker {
+     threshold: Option<i32>,
+     stage: Stage,
+     ply: usize,
++    root: bool,
+ }
+ 
+ impl CompactPicker {
++    pub(super) fn new_root(tt_move: Move, ply: usize) -> Self {
++        let mut picker = Self::new(tt_move, None, ply);
++        picker.root = true;
++        picker
++    }
++
+     /// A picker that hands over `tt_move` first, if any, and holds noisy
+     /// moves to `threshold` if one is given.
+     #[inline(always)]
+@@ -65,6 +72,7 @@ impl CompactPicker {
+             threshold,
+             stage: Stage::TtMove,
+             ply,
++            root: false,
+         }
+     }
+ 
+@@ -111,11 +119,16 @@ impl CompactPicker {
+                     let mut noisy = MoveList::new();
+                     self.pinned = board.generate_legal_noisy_staged_into(threats, &mut noisy);
+                     for &mv in noisy.as_slice() {
+-                        if mv != self.tt_move {
++                        if mv != self.tt_move || donor_ties() {
+                             let score = searcher.compact_noisy_score(board, threats, mv);
+                             self.moves.push(mv, score, 0, 0);
+                         }
+                     }
++                    if donor_ties()
++                        && let Some(at) = self.moves.as_mut_slice().iter().position(|e| e.mv == self.tt_move)
++                    {
++                        self.moves.swap_remove_at(at);
++                    }
+                     self.noisy_len = self.moves.len();
+                     self.stage = Stage::GoodNoisy;
+                 }
+@@ -137,6 +150,12 @@ impl CompactPicker {
+                         if board.see_ge_exchange_with_values(picked.mv, bar, KERNEL_SEE_VALUES) {
+                             self.noisy_index += 1;
+                             self.good_emitted += 1;
++                            if self.root {
++                                let rest = &mut self.moves.as_mut_slice()[self.noisy_index..self.noisy_len];
++                                for entry in rest {
++                                    entry.score = searcher.compact_noisy_score(board, threats, entry.mv);
++                                }
++                            }
+                             return Some(picked.mv);
+                         }
+                         self.moves
+@@ -165,6 +184,21 @@ impl CompactPicker {
+                     self.stage = Stage::Quiets;
+                 }
+                 Stage::Quiets => {
++                    if self.root && !skip_quiets {
++                        let ctx = searcher.quiet_context(board, threats, self.ply, &mut None);
++                        let start = self.noisy_len + self.quiet_index;
++                        for entry in &mut self.moves.as_mut_slice()[start..] {
++                            probe!(searcher, PickQuiet, true);
++                            entry.score = compact_quiet_score(
++                                searcher.seeds(),
++                                board,
++                                threats,
++                                &ctx,
++                                &searcher.td.hist,
++                                entry.mv,
++                            );
++                        }
++                    }
+                     let quiets = &mut self.moves.as_mut_slice()[self.noisy_len..];
+                     if !skip_quiets && self.quiet_index < quiets.len() {
+                         let picked = pick_next(quiets, self.quiet_index);
+@@ -227,8 +261,9 @@ impl Searcher {
+         }
+         let ctx = self.quiet_context(board, threats, ply, &mut None);
+         let hist = &self.td.hist;
++        let start = out.len();
+         for &mv in quiets {
+-            if mv == tt_move || (mv.is_promo() && mv.promo_piece() == Piece::Queen) {
++            if (mv == tt_move && !donor_ties()) || (mv.is_promo() && mv.promo_piece() == Piece::Queen) {
+                 continue;
+             }
+             probe!(self, PickQuiet, true);
+@@ -239,6 +274,12 @@ impl Searcher {
+                 0,
+             );
+         }
++        if donor_ties()
++            && !tt_move.is_null()
++            && let Some(at) = out.as_mut_slice()[start..].iter().position(|e| e.mv == tt_move)
++        {
++            out.swap_remove_at(start + at);
++        }
+     }
+ }
+ 
+diff --git a/src/search/movepick.rs b/src/search/movepick.rs
+index 084eca1..9602f8e 100644
+--- a/src/search/movepick.rs
++++ b/src/search/movepick.rs
+@@ -76,6 +76,13 @@ impl ScoredMoveList {
+     }
+ 
+     #[inline(always)]
++    pub(super) fn swap_remove_at(&mut self, index: usize) {
++        let last = self.len - 1;
++        let slice = self.as_mut_slice();
++        slice[index] = slice[last];
++        self.len = last;
++    }
++
+     pub(super) fn push(&mut self, mv: Move, score: i32, see: i16, quiet_history: i32) {
+         self.push_quiet(mv, score, see, quiet_history, false);
+     }
+@@ -114,8 +121,34 @@ impl ScoredMoveList {
+ 
+ /// Selection step: move the highest-scored entry of `moves[index..]` into
+ /// `moves[index]` and return it. Ties resolve to the earliest entry.
++pub(super) fn donor_ties() -> bool {
++    static TIES: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
++    *TIES.get_or_init(|| {
++        std::env::var("RAROG_SEE_VARIANT")
++            .ok()
++            .and_then(|v| v.parse::<u32>().ok())
++            .is_some_and(|v| v & 32 != 0)
++    })
++}
++
+ pub(super) fn pick_next(moves: &mut [ScoredMove], index: usize) -> ScoredMove {
+     let tail = &mut moves[index..];
++    if donor_ties() {
++        let n = tail.len();
++        let mut best = 0;
++        let mut best_score = i32::MIN;
++        for (i, c) in tail.iter().enumerate() {
++            if c.score >= best_score {
++                best = i;
++                best_score = c.score;
++            }
++        }
++        let picked = tail[best];
++        tail[best] = tail[n - 1];
++        tail.copy_within(0..n - 1, 1);
++        tail[0] = picked;
++        return picked;
++    }
+     let mut best = 0;
+     let mut best_score = tail[0].score;
+     for (offset, candidate) in tail.iter().enumerate().skip(1) {
