@@ -126,7 +126,7 @@ const DERIVED_KEY_MASKS: [[u64; 3]; 6] = [
     [0, u64::MAX, u64::MAX],
     [0, 0, u64::MAX],
     [0, 0, u64::MAX],
-    [0, 0, 0],
+    [0, 0, u64::MAX],
 ];
 
 const NO_PIECE: u8 = 255;
@@ -1373,8 +1373,9 @@ impl Board {
                     minor_hash ^= piece_key;
                     non_pawn_hash[color as usize] ^= piece_key;
                 }
-                Piece::Rook | Piece::Queen => non_pawn_hash[color as usize] ^= piece_key,
-                Piece::King => {}
+                Piece::Rook | Piece::Queen | Piece::King => {
+                    non_pawn_hash[color as usize] ^= piece_key;
+                }
             }
         }
 
@@ -1447,16 +1448,11 @@ impl Board {
         self.minor_hash
     }
 
+    /// `color`'s non-pawn key: the key over that colour's knights, bishops,
+    /// rooks, queens and king, kept as the pieces move.
     #[inline(always)]
     pub fn non_pawn_key(&self, color: Color) -> u64 {
         self.non_pawn_hash[color as usize]
-    }
-
-    /// `color`'s non-pawn key with its king's square keyed in: the key over
-    /// that colour's knights, bishops, rooks, queens and king.
-    #[inline(always)]
-    pub fn non_pawn_key_with_king(&self, color: Color) -> u64 {
-        self.non_pawn_hash[color as usize] ^ ZOBRIST.piece(color, Piece::King, self.king_sq(color))
     }
 
     #[inline(always)]
@@ -3155,7 +3151,7 @@ mod repetition_tests {
     }
 
     #[test]
-    fn the_non_pawn_key_with_king_is_its_pieces_keys_xored() {
+    fn the_non_pawn_key_is_its_pieces_keys_king_included_xored() {
         fn from_scratch(board: &Board, color: Color) -> u64 {
             let mut key = 0;
             for piece in [
@@ -3174,7 +3170,7 @@ mod repetition_tests {
         fn check(board: &Board) {
             for color in [Color::White, Color::Black] {
                 assert_eq!(
-                    board.non_pawn_key_with_king(color),
+                    board.non_pawn_key(color),
                     from_scratch(board, color),
                     "{color:?} in {}",
                     board.to_fen()
@@ -3193,11 +3189,11 @@ mod repetition_tests {
             // Every move, its key after it and after unmaking it: captures,
             // castling, promotions and king moves change the key.
             for mv in board.generate_legal_moves() {
-                let before = [Color::White, Color::Black].map(|c| board.non_pawn_key_with_king(c));
+                let before = [Color::White, Color::Black].map(|c| board.non_pawn_key(c));
                 board.make_move(mv);
                 check(&board);
                 board.unmake_move(mv);
-                let after = [Color::White, Color::Black].map(|c| board.non_pawn_key_with_king(c));
+                let after = [Color::White, Color::Black].map(|c| board.non_pawn_key(c));
                 assert_eq!(before, after, "{mv:?} in {fen}");
             }
         }

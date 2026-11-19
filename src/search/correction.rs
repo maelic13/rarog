@@ -80,8 +80,7 @@ struct CorrectionSlots {
 impl Searcher {
     /// The compact kernel's slots: its non-pawn keys include each side's king.
     fn compact_correction_slots(&self, board: &Board, ply: usize) -> CorrectionSlots {
-        let non_pawn =
-            [Color::White, Color::Black].map(|color| board.non_pawn_key_with_king(color));
+        let non_pawn = [Color::White, Color::Black].map(|color| board.non_pawn_key(color));
         self.correction_slots_keyed(board, ply, non_pawn)
     }
 
