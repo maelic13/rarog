@@ -386,7 +386,7 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.8.7 | RESEARCH | R2 | Card only: shared correction tables, their per-node cost and the four-thread read; the maintainer decides from it |
+| D.7.8.7 | RESEARCH | R2 | Card written 2026-11-19: build after D.7 (recommended) or before D.7.13's four-thread read; the maintainer decides |
 | D.7.8.8 | RESEARCH | R2 | Position 305's first differing decision on the trace; zero games, one session |
 | D.7.8.9 | READY_FOR_IMPLEMENTATION | I1 | The speed register's three items, fingerprint exact; the pooled NPS read prepared |
 | D.7.8.10 | RESEARCH | V | A unit half the size emulated through the tune options, 100,000 nodes a move each; a fold only on an interval wholly above zero |
@@ -2556,6 +2556,48 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           before D.7.13's four-thread read or left to the thread work
           after D.7. One thread plays the same either way, so the fit does
           not wait for it.
+          *Card (2026-11-19).* **The donor's form:** `SharedCorrectionHistory`
+          (Reckless `thread.rs`, at `0756957`) holds the pawn table and the
+          two non-pawn tables, each `[16 buckets][2 sides][65,536]` of
+          `AtomicI16`, one copy per NUMA node; a read is a relaxed load,
+          an update a relaxed load and a relaxed store (no read-modify-
+          write, so a racing update may be lost, never torn). The
+          continuation correction stays per thread. Rarog's three tables
+          have the same shape (`correction.rs`), per thread, 12 MB each.
+          **What sharing needs:** the three tables move to the search's
+          shared state, their entries `AtomicI16`; the node reads them
+          through the reference it already holds to the shared state (no
+          `Arc` touched per node) and trains them with the same gravity
+          formula as a relaxed load and store. It is the exception AGENTS'
+          per-node rule asks a reason and an NPS read for; the atomic
+          signals one search's evaluation residuals to every thread of
+          that search, and a new game clears it once rather than per
+          thread. **One thread:** on x86-64 a relaxed 16-bit load or store
+          is the same `mov` as today's, so one thread plays the same
+          (`bench 13` exact) and the expected cost is an extra pointer
+          load a node, within PROCESS's NPS read (four PGO builds an arm,
+          step 1 about 6 minutes, ±0.4%, after about 15 minutes of
+          builds). Memory: 12 MB less a helper. **Four threads:** RAR-M83
+          read four threads worth 1.33 (1.16 to 1.49) doublings of the
+          classic kernel's own time against Reckless's 1.51 and
+          Stockfish's 1.55, NOT DEFICIENT; how much of the gap sharing
+          closes is unmeasured. **The read that would accept it:** both
+          arms at four threads, `3+0.03`, the explicit one-CPU-per-core
+          placement, three games at a time (RAR-S132's smoke played 200 in
+          10.6 minutes). A gain needs an SPRT: `[0,3]` at a true +4 nElo
+          takes about 47,000 games, about 41 hours; `[0,5]`, widened for a
+          prior of +5 to +10 at four threads, about 15,000 to 20,000,
+          13 to 18 hours. A no-harm read only (case 2, 2,000 games) takes
+          about 1 hour 45 minutes. **Recommendation: build it after D.7,
+          in the thread work.** The fit and the gate are one-thread, which
+          sharing does not change; built before D.7.13 it would sit in the
+          four-thread read beside the gate with the kernel's other
+          changes, and that read could not say which moved it; its own
+          acceptance read costs half a day to two days of four-thread
+          games. What would change the recommendation: D.7.13's
+          four-thread read showing the kernel scaling worse than
+          `d7classic`, which makes sharing its first candidate. **The
+          maintainer decides** (asked 2026-11-20).
         - **D.7.8.8 Position 305's second divergence from the donor — `R2`.**
           (from D.7.4) With the promotion push put through the exchange,
           position 305 equals the twin at depths 1 and 2 and diverges from
