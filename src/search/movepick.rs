@@ -1,11 +1,11 @@
-//! The root's move picker and its move scoring.
+//! The root's move picker, the scored list every picker fills, and the
+//! per-node context of quiet ordering.
 
 use std::mem::MaybeUninit;
 use std::slice;
 
 use crate::board::attacks::{knight_attacks_of, pawn_attacks_of};
 use crate::board::{ATTACKS, Bitboard, Board, CheckInfo, Color, Move, Piece, Threats};
-use crate::eval::piece_value;
 
 use super::Searcher;
 use super::history::{CONT_PLY_BACK, HistoryTables};
@@ -18,25 +18,8 @@ const LEVER_RANKS: [Bitboard; 2] = [
 ];
 const HOME_RANKS: [Bitboard; 2] = [Bitboard(0xFF), Bitboard(0xFF00_0000_0000_0000)];
 
-// Quiet ordering weights, in history units.
-const QUIET_WEIGHT: i32 = 1_763;
-const CONT_WEIGHTS: [i32; 4] = [1_614, 1_066, 1_086, 1_051];
-/// Leaving a square attacked by a cheaper piece, per moving piece type.
-const ESCAPE_BONUS: [i32; 6] = [0, 8_854, 8_170, 14_051, 20_357, 0];
-const CHECK_SQUARE_BONUS: i32 = 10_723;
-const THREATENED_TO_MALUS: i32 = 8_875;
-const OFFENSE_BONUS: i32 = 3_446;
-const KING_WALL_PAWN_MALUS: i32 = 4_494;
-// Noisy ordering: the victim's value in SEE units scaled to history units,
-// a queen-promotion bonus, and in check an ordering by moving piece so
-// evasions by cheaper pieces come first.
-const VICTIM_WEIGHT: i32 = 18_976;
-const QUEEN_PROMOTION_BONUS: i32 = 4_558;
-const IN_CHECK_BASE: i32 = 200_000;
-const IN_CHECK_PER_PIECE: i32 = 20_000;
-/// Good-noisy SEE threshold: `-score / DIVISOR + OFFSET`, in SEE units.
-const GOOD_NOISY_SEE_DIVISOR: i32 = 63;
-const GOOD_NOISY_SEE_OFFSET: i32 = 87;
+/// The table move's place in the root's list, above every other tier.
+pub(super) const ROOT_TT_SCORE: i32 = 30_000_000;
 
 #[derive(Copy, Clone, Default)]
 pub(crate) struct ScoredMove {
@@ -165,7 +148,7 @@ impl MovePicker {
 fn tt_scored_move(mv: Move) -> ScoredMove {
     ScoredMove {
         mv,
-        score: 30_000_000,
+        score: ROOT_TT_SCORE,
     }
 }
 
@@ -271,100 +254,6 @@ impl Searcher {
             cont,
         }
     }
-
-    /// Ordering score of one quiet move.
-    fn quiet_score(
-        &self,
-        board: &Board,
-        threats: &Threats,
-        ctx: &QuietContext,
-        hist: &HistoryTables,
-        mv: Move,
-    ) -> i32 {
-        let piece = board.moving_piece(mv);
-        let pt = piece as usize;
-        let (from, to) = (mv.from_sq(), mv.to_sq());
-        let quiet = hist.quiet(threats.all, ctx.stm, mv);
-        let mut score = QUIET_WEIGHT * quiet / 1024 + hist.pawn(ctx.pawn_row, ctx.stm, piece, to);
-        for (slot, context) in ctx.cont.iter().enumerate() {
-            if let Some(context) = *context {
-                score += CONT_WEIGHTS[slot] * hist.cont(context, ctx.stm, piece, to) / 1024;
-            }
-        }
-        if ctx.threatened[pt].contains(from) {
-            score += ESCAPE_BONUS[pt];
-        }
-        if ctx.check_squares[pt].contains(to) {
-            score += CHECK_SQUARE_BONUS;
-        }
-        if ctx.threatened[pt].contains(to) {
-            score -= THREATENED_TO_MALUS;
-        }
-        if ctx.offense[pt].contains(to) {
-            score += OFFENSE_BONUS;
-        }
-        if ctx.wall_pawns.contains(from) {
-            score -= KING_WALL_PAWN_MALUS;
-        }
-        score
-    }
-
-    /// Ordering score of a capture or promotion: the victim, its history,
-    /// a queen promotion, and in check the moving piece.
-    pub(super) fn noisy_score(&self, board: &Board, threats: &Threats, mv: Move) -> i32 {
-        let piece = board.moving_piece(mv);
-        let captured = board.captured_piece(mv);
-        let victim = captured.map_or(0, piece_value);
-        let mut score = VICTIM_WEIGHT * victim / 1024
-            + self.td.hist.noisy(
-                threats.all,
-                board.side_to_move(),
-                piece,
-                mv.to_sq(),
-                captured,
-            );
-        if mv.is_promo() && mv.promo_piece() == Piece::Queen {
-            score += QUEEN_PROMOTION_BONUS;
-        }
-        if board.is_in_check() {
-            score += IN_CHECK_BASE - IN_CHECK_PER_PIECE * piece as i32;
-        }
-        score
-    }
-
-    /// Score a whole move list for the root picker: TT move, good noisy
-    /// moves, quiets, bad noisy moves. Appends to the caller's list: the list
-    /// is 4 KB, and returning it by value copied it at every node.
-    pub(super) fn score_moves(
-        &self,
-        board: &Board,
-        threats: &Threats,
-        moves: &[Move],
-        tt_move: Move,
-        ply: usize,
-        scored: &mut ScoredMoveList,
-        node_ci: &mut Option<CheckInfo>,
-    ) {
-        let mut ctx = None;
-        for &mv in moves {
-            if mv == tt_move {
-                scored.push(mv, 30_000_000);
-            } else if mv.is_noisy() {
-                let noisy = self.noisy_score(board, threats, mv);
-                let threshold = -noisy / GOOD_NOISY_SEE_DIVISOR + GOOD_NOISY_SEE_OFFSET;
-                if board.see_ge(mv, threshold) {
-                    scored.push(mv, 20_000_000 + noisy);
-                } else {
-                    scored.push(mv, -2_000_000 + noisy);
-                }
-            } else {
-                let ctx =
-                    ctx.get_or_insert_with(|| self.quiet_context(board, threats, ply, node_ci));
-                let score = self.quiet_score(board, threats, ctx, &self.td.hist, mv);
-                scored.push(mv, score);
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -384,80 +273,5 @@ mod tests {
         }
         assert_eq!(list.as_mut_slice().len(), 256);
         list.push(mv, 0);
-    }
-
-    fn drain(picker: &mut MovePicker) -> Vec<Move> {
-        let mut out = Vec::new();
-        while let Some(picked) = picker.next() {
-            out.push(picked.mv);
-        }
-        out
-    }
-
-    const FENS: [&str; 6] = [
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-        "4k3/8/4p3/3p4/8/2N5/8/4K3 w - - 0 1",
-        // In check: the root picker serves evasions too.
-        "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1",
-        "4k3/8/8/8/8/5n2/8/3BK3 w - - 0 1",
-        // Promotions, with and without capture.
-        "1r2k3/2P5/8/8/8/8/1p6/2N1K3 b - - 0 1",
-    ];
-
-    /// Every legal move exactly once, with and without a TT move, including
-    /// in check and with promotions.
-    #[test]
-    fn pickers_emit_every_legal_move_exactly_once() {
-        let searcher = Searcher::default();
-        for fen in FENS {
-            let board = Board::from_fen(fen).expect("valid FEN");
-            let threats = board.threats();
-            let mut legal: Vec<Move> = board.generate_legal_movelist().as_slice().to_vec();
-            legal.sort_unstable_by_key(|m| m.0);
-            let tt_candidates = [Move::NULL, legal[0], legal[legal.len() - 1]];
-            for tt in tt_candidates {
-                let mut scored = ScoredMoveList::new();
-                searcher.score_moves(&board, &threats, &legal, tt, 0, &mut scored, &mut None);
-                let mut full = MovePicker::full(scored, tt);
-                let mut got = drain(&mut full);
-                got.sort_unstable_by_key(|m| m.0);
-                assert_eq!(got, legal, "full picker, fen {fen}, tt {tt}");
-            }
-        }
-    }
-
-    #[test]
-    fn checking_and_escaping_quiets_are_ordered_first() {
-        let searcher = Searcher::default();
-        // The white knight on d4 is attacked by the c5 pawn; Nf5 escapes to a
-        // safe square, Rh8 checks along the rank, Kb1 does neither.
-        let board = Board::from_fen("4k3/8/8/2p5/3N4/8/8/K6R w - - 0 1").expect("valid FEN");
-        let threats = board.threats();
-        let legal = board.generate_legal_moves();
-        let mut scored = ScoredMoveList::new();
-        searcher.score_moves(
-            &board,
-            &threats,
-            &legal,
-            Move::NULL,
-            0,
-            &mut scored,
-            &mut None,
-        );
-        let score_of = |uci: &str, scored: &mut ScoredMoveList| {
-            let mv = board.parse_move(uci).expect("legal");
-            scored
-                .as_mut_slice()
-                .iter()
-                .find(|s| s.mv == mv)
-                .expect("scored")
-                .score
-        };
-        let check = score_of("h1h8", &mut scored);
-        let escape = score_of("d4f5", &mut scored);
-        let idle = score_of("a1b1", &mut scored);
-        assert!(check >= idle + CHECK_SQUARE_BONUS, "{check} vs {idle}");
-        assert!(escape >= idle + ESCAPE_BONUS[Piece::Knight as usize] - THREATENED_TO_MALUS);
     }
 }

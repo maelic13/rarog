@@ -7,11 +7,19 @@ use crate::board::{Bitboard, Board, Move, MoveList, Piece, Threats};
 
 use super::super::Searcher;
 use super::super::history::HistoryTables;
-use super::super::movepick::{QuietContext, ScoredMoveList, pick_next};
+use super::super::movepick::{QuietContext, ROOT_TT_SCORE, ScoredMoveList, pick_next};
 use super::rules::{
     NoisyOrderInput, QuietOrderInput, Seeds, good_noisy_threshold, noisy_order, quiet_order,
 };
 use super::{KERNEL_SEE_VALUES, is_quiet_move};
+
+/// The root's tiers below the table move and the pool's searched moves
+/// (`apply_shared_root_scores`, from 25,000,000): the good noisy moves,
+/// the quiets round zero, the bad noisy moves. Every ordering score lies
+/// within `ROOT_ORDER_SPAN` of zero, so no tier reaches the next.
+const ROOT_GOOD_NOISY: i32 = 20_000_000;
+const ROOT_BAD_NOISY: i32 = -20_000_000;
+const ROOT_ORDER_SPAN: i32 = 4_000_000;
 
 /// The picker's stages, visited in this order and never revisited.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -188,6 +196,93 @@ impl CompactPicker {
 }
 
 impl Searcher {
+    /// The root's moves, written into `out` in the order the staged picker
+    /// hands them over at any other node, ties included: the table move, the
+    /// noisy moves that clear the good-noisy bar, the quiets, the noisy moves
+    /// that failed it. The moves come from the staged picker's generators and
+    /// are put in order by its selection step, so a tie falls as it does
+    /// there, and the bar is decided in that order, so its count of good
+    /// moves so far is the same. The whole list is ordered and then narrowed
+    /// to the moves `keep` admits, as the donor's root skips a move outside
+    /// its lines once its picker hands it over. The scores never rise along
+    /// the list, so the root's picker takes it in place until the pool's
+    /// scores reorder it.
+    pub(in crate::search) fn score_root_moves(
+        &self,
+        board: &mut Board,
+        threats: &Threats,
+        keep: impl Fn(Move) -> bool,
+        tt_move: Move,
+        out: &mut ScoredMoveList,
+    ) {
+        debug_assert_eq!(out.len(), 0, "the root's list starts empty");
+        if !tt_move.is_null() && keep(tt_move) {
+            out.push(tt_move, ROOT_TT_SCORE);
+        }
+        let mut generated = MoveList::new();
+        let pinned = board.generate_legal_noisy_staged_into(threats, &mut generated);
+        let mut noisy_list = ScoredMoveList::new();
+        for &mv in generated.as_slice() {
+            if mv != tt_move {
+                noisy_list.push(mv, self.compact_noisy_score(board, threats, mv));
+            }
+        }
+        let tt_quiet = is_quiet_move(tt_move);
+        let mut good = 0;
+        let noisy = noisy_list.as_mut_slice();
+        for index in 0..noisy.len() {
+            let picked = pick_next(noisy, index);
+            debug_assert!(picked.score.abs() < ROOT_ORDER_SPAN, "{}", picked.score);
+            let bar = good_noisy_threshold(self.seeds(), picked.score, tt_quiet, good);
+            let tier = if board.see_ge_exchange_with_values(picked.mv, bar, KERNEL_SEE_VALUES) {
+                good += 1;
+                ROOT_GOOD_NOISY
+            } else {
+                ROOT_BAD_NOISY
+            };
+            noisy[index].score = tier + picked.score;
+        }
+        let good_tier = |score: i32| score > ROOT_GOOD_NOISY - ROOT_ORDER_SPAN;
+        for entry in noisy
+            .iter()
+            .filter(|entry| good_tier(entry.score) && keep(entry.mv))
+        {
+            out.push(entry.mv, entry.score);
+        }
+        generated = MoveList::new();
+        board.generate_legal_quiets_staged_into(pinned, threats, &mut generated);
+        // The quiet generator's queen pushes are the noisy generator's too.
+        let mut quiets = generated
+            .iter()
+            .copied()
+            .filter(|&mv| mv != tt_move && is_quiet_move(mv))
+            .peekable();
+        if quiets.peek().is_some() {
+            let ctx = self.quiet_context(board, threats, 0, &mut None);
+            let mut quiet_list = ScoredMoveList::new();
+            for mv in quiets {
+                probe!(self, PickQuiet, true);
+                let score =
+                    compact_quiet_score(self.seeds(), board, threats, &ctx, &self.td.hist, mv);
+                debug_assert!(score.abs() < ROOT_ORDER_SPAN, "{score}");
+                quiet_list.push(mv, score);
+            }
+            let quiet = quiet_list.as_mut_slice();
+            for index in 0..quiet.len() {
+                let picked = pick_next(quiet, index);
+                if keep(picked.mv) {
+                    out.push(picked.mv, picked.score);
+                }
+            }
+        }
+        for entry in noisy
+            .iter()
+            .filter(|entry| !good_tier(entry.score) && keep(entry.mv))
+        {
+            out.push(entry.mv, entry.score);
+        }
+    }
+
     /// A noisy move's ordering score in the compact kernel.
     fn compact_noisy_score(&self, board: &Board, threats: &Threats, mv: Move) -> i32 {
         probe!(self, PickNoisy, true);
@@ -276,15 +371,25 @@ fn compact_quiet_score(
 
 #[cfg(test)]
 mod tests {
+    use super::super::super::movepick::MovePicker;
     use super::*;
     use crate::board::Board;
+    use crate::search::{EngineOptions, SearchEvent, SearchLimits};
 
     fn drain(board: &mut Board, tt_move: Move, skip_quiets: bool) -> Vec<(Move, Stage)> {
-        let searcher = Searcher::default();
+        drain_with(&Searcher::default(), board, tt_move, skip_quiets)
+    }
+
+    fn drain_with(
+        searcher: &Searcher,
+        board: &mut Board,
+        tt_move: Move,
+        skip_quiets: bool,
+    ) -> Vec<(Move, Stage)> {
         let threats = board.threats();
         let mut picker = CompactPicker::new(tt_move, None, 0);
         let mut out = Vec::new();
-        while let Some(mv) = picker.next(&searcher, board, &threats, skip_quiets) {
+        while let Some(mv) = picker.next(searcher, board, &threats, skip_quiets) {
             out.push((mv, picker.stage()));
         }
         out
@@ -345,6 +450,142 @@ mod tests {
                 .any(|(mv, _)| mv.is_promo() && mv.promo_piece() != Piece::Queen),
             "an under-promotion push is quiet"
         );
+    }
+
+    const ROOT_FENS: [&str; 7] = [
+        crate::board::STARTING_FEN,
+        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+        // In check: the root serves evasions too.
+        "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1",
+        // Promotions, with and without capture.
+        "1r2k3/2P5/8/8/8/8/1p6/2N1K3 b - - 0 1",
+        "1n2k3/2P5/8/8/8/8/8/4K2R w K - 0 1",
+        // Two rooks and a bishop hang, and the knights trade evenly: under a
+        // quiet table move the bar rises once three good captures are out,
+        // and the trade fails it.
+        "4k3/8/r3p2r/1b1n4/8/2N5/8/R3K2R w - - 0 1",
+    ];
+
+    /// A searcher whose histories a short search of `board` has filled.
+    fn warmed(board: &Board) -> Searcher {
+        let limits = SearchLimits {
+            depth: Some(6),
+            ..SearchLimits::default()
+        };
+        let mut searcher = Searcher::default();
+        searcher.reset_search_state(
+            &limits,
+            &EngineOptions::default(),
+            board.side_to_move(),
+            0,
+            true,
+        );
+        let legal = board.generate_legal_moves();
+        searcher.search_root(board.clone(), &legal, false, &mut || SearchEvent::None);
+        searcher
+    }
+
+    /// The root's moves that `keep` admits, best first, each with the stage
+    /// its score's tier stands for.
+    fn root_order(
+        searcher: &Searcher,
+        board: &Board,
+        tt_move: Move,
+        keep: impl Fn(Move) -> bool,
+    ) -> Vec<(Move, Stage)> {
+        let mut board = board.clone();
+        let threats = board.threats();
+        let mut scored = ScoredMoveList::new();
+        searcher.score_root_moves(&mut board, &threats, keep, tt_move, &mut scored);
+        let mut picker = MovePicker::full(scored, tt_move);
+        std::iter::from_fn(|| picker.next())
+            .map(|picked| {
+                let stage = match picked.score {
+                    _ if picked.mv == tt_move => Stage::TtMove,
+                    s if s > ROOT_GOOD_NOISY - ROOT_ORDER_SPAN => Stage::GoodNoisy,
+                    s if s < ROOT_BAD_NOISY + ROOT_ORDER_SPAN => Stage::BadNoisy,
+                    _ => Stage::Quiets,
+                };
+                (picked.mv, stage)
+            })
+            .collect()
+    }
+
+    /// Every legal move once and the table move first, with and without
+    /// one, in check and with promotions.
+    #[test]
+    fn the_root_hands_over_every_legal_move_once_the_table_move_first() {
+        let searcher = Searcher::default();
+        for fen in ROOT_FENS {
+            let board = Board::from_fen(fen).expect("a legal FEN");
+            let mut legal = board.generate_legal_moves();
+            legal.sort_unstable_by_key(|mv| mv.0);
+            for tt_move in [Move::NULL, legal[0], legal[legal.len() - 1]] {
+                let order = root_order(&searcher, &board, tt_move, |_| true);
+                if !tt_move.is_null() {
+                    assert_eq!(order[0].0, tt_move, "{fen}: the table move first");
+                }
+                let mut seen: Vec<Move> = order.iter().map(|&(mv, _)| mv).collect();
+                seen.sort_unstable_by_key(|mv| mv.0);
+                assert_eq!(seen, legal, "{fen}, {tt_move}: every legal move once");
+            }
+        }
+    }
+
+    /// A narrowed root list (MultiPV's later lines, `searchmoves`) hands over
+    /// exactly the moves it admits, in the order of the whole list.
+    #[test]
+    fn a_narrowed_root_keeps_the_whole_lists_order() {
+        let searcher = Searcher::default();
+        for fen in ROOT_FENS {
+            let board = Board::from_fen(fen).expect("a legal FEN");
+            let full = root_order(&searcher, &board, Move::NULL, |_| true);
+            let admitted: Vec<Move> = full.iter().step_by(2).map(|&(mv, _)| mv).collect();
+            let narrowed = root_order(&searcher, &board, Move::NULL, |mv| admitted.contains(&mv));
+            let expected: Vec<(Move, Stage)> = full
+                .iter()
+                .copied()
+                .filter(|(mv, _)| admitted.contains(mv))
+                .collect();
+            assert_eq!(narrowed, expected, "{fen}");
+        }
+    }
+
+    /// The root's order is the staged picker's, move for move and ties
+    /// included, each move in the staged picker's stage. Read on empty
+    /// histories, where a capture's score is its victim's and many quiets
+    /// tie, and on histories a search has filled.
+    #[test]
+    fn the_roots_order_is_the_staged_pickers() {
+        for fen in ROOT_FENS {
+            let mut board = Board::from_fen(fen).expect("a legal FEN");
+            for warm in [false, true] {
+                let searcher = if warm {
+                    warmed(&board)
+                } else {
+                    Searcher::default()
+                };
+                let legal = board.generate_legal_moves();
+                let quiet = *legal
+                    .iter()
+                    .find(|&&mv| is_quiet_move(mv))
+                    .expect("a quiet");
+                for tt_move in [Move::NULL, legal[0], legal[legal.len() - 1], quiet] {
+                    let staged: Vec<(Move, Stage)> =
+                        drain_with(&searcher, &mut board, tt_move, false)
+                            .into_iter()
+                            // The picker has moved past the table move's stage
+                            // when it hands the move over.
+                            .map(|(mv, stage)| {
+                                (mv, if mv == tt_move { Stage::TtMove } else { stage })
+                            })
+                            .collect();
+                    let root = root_order(&searcher, &board, tt_move, |_| true);
+                    assert_eq!(root, staged, "{fen}, warm {warm}, table move {tt_move}");
+                }
+            }
+        }
     }
 
     /// A TT move as the probe hands it over, from the key: none, a legal

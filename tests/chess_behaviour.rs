@@ -107,13 +107,10 @@ fn mate_scores_count_the_moves_to_mate_exactly() {
     }
 }
 
-/// KQK's shortest mate, four moves, reported from depth 9 until the table
-/// took the donor's keep rule (PLAN D.7.8.2): a quiescence store no longer
-/// overwrites a deeper entry holding a longer mate, and the search reports
-/// a mate in six from depth 10 to 17, the shortest at 18. The donor's own
-/// search reports a mate in five at every depth from 9 to 18.
+/// KQK's shortest mate, four moves, is reported by depth 11. A table entry
+/// kept over a quiescence store can hold a longer mate, so how soon the
+/// shortest shows depends on the order the root searches its moves in.
 #[test]
-#[ignore = "the donor's keep rule reports KQK's mate in four as six until depth 18 (PLAN D.7.8.2)"]
 fn kqks_shortest_mate_is_reported_at_depth_11() {
     let fen = "k7/8/8/8/8/2K5/8/1Q6 w - - 0 1";
     let result = search(fen, 11);

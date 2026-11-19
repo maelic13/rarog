@@ -1233,8 +1233,9 @@ impl Searcher {
         best_score
     }
 
-    /// The root's moves: every legal move in the root list, scored, in the
-    /// pool's order, rotated for a helper.
+    /// The root's moves: every legal move in the root list in the kernel's
+    /// order, the pool's searched moves lifted above it, rotated for a
+    /// helper.
     fn compact_root_picker(
         &self,
         board: &mut Board,
@@ -1244,18 +1245,14 @@ impl Searcher {
         let mut legal = MoveList::new();
         board.generate_legal_movelist_into(&mut legal);
         let root_moves = &self.td.root_moves;
-        if !root_moves.is_empty() && legal.iter().any(|mv| root_moves.contains(mv)) {
-            legal.retain(|mv| root_moves.contains(&mv));
-        }
+        let narrowed = !root_moves.is_empty() && legal.iter().any(|mv| root_moves.contains(mv));
         let mut scored = ScoredMoveList::new();
-        self.score_moves(
+        self.score_root_moves(
             board,
             threats,
-            legal.as_slice(),
+            |mv| !narrowed || root_moves.contains(&mv),
             tt_move,
-            0,
             &mut scored,
-            &mut None,
         );
         if scored.len() > 1 {
             self.apply_shared_root_scores(&mut scored);
