@@ -252,7 +252,7 @@ fn four_threads_with_three_lines_report_distinct_legal_lines() {
 /// The kernel opens each line's window round that line's own average; its
 /// lines must be distinct, exact and in Rarog's units.
 #[test]
-fn the_compact_kernel_reports_distinct_exact_lines_in_rarogs_units() {
+fn lines_are_distinct_exact_and_in_rarogs_units() {
     for fen in [
         MIDDLEGAME,
         "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
@@ -281,7 +281,7 @@ fn the_compact_kernel_reports_distinct_exact_lines_in_rarogs_units() {
 /// A window round a score in the wrong unit once ran the kernel away on
 /// bench position 11 (35.5 million nodes at depth 13 with one line).
 #[test]
-fn the_compact_kernels_lines_do_not_run_away() {
+fn two_lines_at_depth_13_do_not_run_away() {
     let fen = rarog::bench::BENCH_FENS[10];
     let mut searcher = Searcher::default();
     let board = Board::from_fen(fen).expect("valid FEN");

@@ -1456,6 +1456,56 @@ mod tests {
     use super::*;
     use crate::search::options::SearchOptions;
 
+    /// One root search of `fen` from a fresh searcher.
+    fn root_search(fen: &str, depth: i32, alpha: i32, beta: i32) -> (Searcher, Board, i32) {
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen(fen).expect("a legal FEN");
+        let score =
+            searcher.search_root_window(&mut board, depth, alpha, beta, &mut || SearchEvent::None);
+        (searcher, board, score)
+    }
+
+    /// A root window far above the position's value fails low and one far
+    /// below it fails high, each returning a bound on its own side; a full
+    /// window stores the root's exact result under the move it reports.
+    #[test]
+    fn a_root_window_fails_on_the_side_of_the_value_and_the_root_stores_its_result() {
+        const DEPTH: i32 = 7;
+        const FAR: i32 = 400;
+        let mut checked = 0;
+        for fen in crate::bench::BENCH_FENS.iter().step_by(3) {
+            let (searcher, board, exact) = root_search(fen, DEPTH, -INF_SCORE, INF_SCORE);
+            assert!(exact.abs() < INF_SCORE, "{fen}");
+            let entry = searcher
+                .shared
+                .tt
+                .probe(board.hash())
+                .expect("the root is stored");
+            assert_eq!(entry.bound(), Some(Bound::Exact), "{fen}");
+            assert_eq!(entry.best_move(), Some(searcher.td.pv_table[0][0]), "{fen}");
+            assert_eq!(
+                i32::from(entry.score),
+                exact,
+                "{fen}: the stored score is the returned one"
+            );
+            if is_decisive(exact) {
+                continue;
+            }
+            let (_, _, low) = root_search(fen, DEPTH, exact + FAR, exact + FAR + 1);
+            assert!(
+                low <= exact + FAR,
+                "{fen}: {low} above a window over {exact}"
+            );
+            let (_, _, high) = root_search(fen, DEPTH, exact - FAR - 1, exact - FAR);
+            assert!(
+                high >= exact - FAR,
+                "{fen}: {high} below a window under {exact}"
+            );
+            checked += 1;
+        }
+        assert!(checked >= 10, "{checked} positions");
+    }
+
     /// The grandchild cutoff reset stays inside the stack at the deepest node
     /// that reaches it.
     #[test]

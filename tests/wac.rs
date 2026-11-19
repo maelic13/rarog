@@ -1,6 +1,6 @@
 //! WAC tactical-suite floor test — guards against gross tactical breakage.
 //!
-//! Runs the full 300-position suite at a shallow fixed depth and asserts a
+//! Runs the full 300-position suite on a fixed node budget and asserts a
 //! conservative pass-count floor (SaberTooth's pattern: a floor, not
 //! all-pass, so normal search evolution doesn't flap the suite — only a
 //! collapse fails it). The floor sits well under the calibrated solved
@@ -26,17 +26,18 @@ use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
 use rarog::wac::{move_matches_any, wac_positions};
 
-const TEST_DEPTH: u32 = 6;
+/// Nodes a position: a budget, not a depth, so the count reads tactics per
+/// unit of work, which a change of per-ply effort does not move by itself.
+const TEST_NODES: u64 = 50_000;
 /// A band around the calibrated count, not the count itself, so ordinary
 /// search changes do not flap it: about 8% each way. Below it a tactical
 /// regression has likely landed; above it the band is stale, and both bounds
-/// move to the new count, in the commit that moved it. A fixed-depth count
-/// can fall while the engine gets stronger (less work per nominal depth), so
-/// a fall is investigated, not reverted on sight. Calibrated 2026-11-08 at
-/// 178/300 (the development fingerprint 15,625,852).
-const CALIBRATED: usize = 178;
-const FLOOR: usize = 164;
-const CEILING: usize = 192;
+/// move to the new count, in the commit that moved it. Calibrated 2026-11-19
+/// at 201/300 on the compact kernel (3,488,485); the classic kernel solved
+/// 232 on this budget.
+const CALIBRATED: usize = 201;
+const FLOOR: usize = 185;
+const CEILING: usize = 217;
 
 #[test]
 fn aspiration_terminates_on_sudden_mate_scores() {
@@ -84,7 +85,7 @@ fn wac_solved_count_stays_in_its_band() {
             board: board.clone(),
             ..SearchOptions::default()
         };
-        options.limits.depth = Some(TEST_DEPTH);
+        options.limits.nodes = TEST_NODES;
         let result = searcher.search(board, &options, false, || SearchEvent::None);
         if move_matches_any(&options.board, result.bestmove, &pos.best_moves) {
             solved += 1;
@@ -93,12 +94,12 @@ fn wac_solved_count_stays_in_its_band() {
 
     assert!(
         solved >= FLOOR,
-        "WAC solved {solved}/300 at depth {TEST_DEPTH} — below the floor {FLOOR}; \
+        "WAC solved {solved}/300 at {TEST_NODES} nodes — below the floor {FLOOR}; \
          a tactical regression has likely landed"
     );
     assert!(
         solved <= CEILING,
-        "WAC solved {solved}/300 at depth {TEST_DEPTH}, above the band's ceiling {CEILING} \
+        "WAC solved {solved}/300 at {TEST_NODES} nodes, above the band's ceiling {CEILING} \
          around {CALIBRATED}: recalibrate both bounds to the new count"
     );
 }
