@@ -762,31 +762,6 @@ function Assert-EngineArmEquality {
     if (-not $Quiet) { Write-Host "  Compiler equality OK: $compilerA" }
 }
 
-function Assert-CoreSurfaceArm {
-    # The Core* coordinates exist only in a tune build of the selectivity core,
-    # every tune build since B.8 removed the B.1 search; an older binary may
-    # lack them. A flavor string does not say which binary carries them, so the
-    # binary is judged by the options it actually advertises: one without them
-    # would tune a different search under the same names or fail late on a
-    # missing option.
-    param(
-        [Parameter(Mandatory)][string[]]$Names,
-        [Parameter(Mandatory)][object[]]$Advertised,
-        [string]$Flavor,
-        [Parameter(Mandatory)][string]$ConfigGroup
-    )
-
-    $normalize = { param($value) ($value -replace '\s+', ' ').Trim().ToLowerInvariant() }
-    $advertisedNames = @($Advertised | ForEach-Object { & $normalize $_.Name })
-    $core = @($Names | Where-Object { $_ -like "Core*" })
-    $missing = @($core | Where-Object { $advertisedNames -notcontains (& $normalize $_) })
-    if ($missing.Count -gt 0) {
-        throw ("Config group '$ConfigGroup' names selectivity-core options ($($missing[0]) and " +
-               "$($missing.Count - 1) more) that the tune binary (flavor '$Flavor') does not advertise. " +
-               "Build a tune binary of the current head: ./tools/build_test.ps1 -Tune.")
-    }
-}
-
 function Assert-TuneSurface {
     # A tune surface is only meaningful against the binary that will run it:
     # every coordinate must exist, be a spin, start at the engine's own default,

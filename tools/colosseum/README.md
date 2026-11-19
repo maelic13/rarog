@@ -105,19 +105,18 @@ A registered surface lives in `tools/spsa_configs/config_<group>.json`. Convert
 it once per horizon, because `c_end` is the perturbation at the end of the run:
 
 ```powershell
-python tools/spsa_config_to_colosseum.py b23core --iterations 5000
+python tools/spsa_config_to_colosseum.py d76fit --rule7c --ceiling 6000
 ```
 
-That writes `tools/spsa_configs/colosseum/<group>.tune.toml`, the 82-coordinate
+That writes `tools/spsa_configs/colosseum/<group>.tune.toml`, the coordinate
 vector, and `<group>.run.toml`, which extends `spsa-tune.toml` and applies
 `fixed_<group>.json` to both arms. `--check` fails when either file no longer
 matches the JSON, so a surface cannot drift from its registration. Run a tune
 with:
 
 ```powershell
-./tools/colosseum.ps1 -Mode spsa -Engine tools/test_engines/rarog-b23core-tune.exe `
-  -ConfigGroup b23core -Iterations <N> -TotalGames <N*30> `
-  -Seed <n> -Dir tools/results/<experiment>
+./tools/colosseum.ps1 -Mode spsa -Engine tools/test_engines/rarog-d76fit-tune.exe `
+  -ConfigGroup d76fit -Ceiling 6000 -Seed <n> -Dir tools/results/<experiment>
 ```
 
 The wrapper re-runs `--check` before every tune, so a surface that has drifted

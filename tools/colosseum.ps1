@@ -22,8 +22,7 @@
       - both arms share a build flavour and a compiler;
       - -ExpectRevision, when given, matches both sidecars;
       - an SPSA surface names only options the tune binary advertises, as spins,
-        at the engine's own defaults and ranges, still resolving at the horizon,
-        and a Core* surface requires a tune build that advertises them;
+        at the engine's own defaults and ranges, still resolving at the horizon;
       - the configuration Colosseum resolves is Rarog's policy, field by field:
         no adjudication, the registered clock and margin, Hash and Threads, the
         UHO book in random order, placement automatic with a core of headroom
@@ -491,10 +490,6 @@ if ($Mode -eq "spsa") {
     if (-not (Test-Path $surfacePath)) { throw "Config not found: $surfacePath" }
     $surface = Get-Content $surfacePath -Raw | ConvertFrom-Json
     $fixed = if (Test-Path $fixedPath) { Get-Content $fixedPath -Raw | ConvertFrom-Json } else { $null }
-
-    $names = @($surface.PSObject.Properties.Name)
-    if ($fixed) { $names += @($fixed.PSObject.Properties.Name) }
-    Assert-CoreSurfaceArm -Names $names -Advertised $advertised["tune"] -Flavor $manifests["tune"].flavor -ConfigGroup $ConfigGroup
 
     $tuned = @(Assert-TuneSurface -Advertised $advertised["tune"] -Surface $surface -Rule7c `
         -Iterations $Ceiling -Label (Split-Path $engines[0].Path -Leaf) -Fixed $fixed)

@@ -20,8 +20,6 @@
         tools\weather-factory\main.py is missing (this script also auto-clones
         weather-factory if absent).
       - Build the tune binary: ./tools/build_test.ps1 -Suffix <s> -Tune
-        (a surface of the selectivity core's Core* options is refused on a
-        tune build that does not advertise them)
 
 .PARAMETER ConfigGroup
     Which registered parameter group to tune (selects
@@ -188,12 +186,7 @@ if (-not $LaunchOnly) {
 
     $armConfig = Join-Path $configs "config_$ConfigGroup.json"
     if (-not (Test-Path $armConfig)) { throw "Config not found: $armConfig" }
-    $armNames = @((Get-Content $armConfig -Raw | ConvertFrom-Json).PSObject.Properties.Name)
     $armFixed = Join-Path $configs "fixed_$ConfigGroup.json"
-    if (Test-Path $armFixed) {
-        $armNames += @((Get-Content $armFixed -Raw | ConvertFrom-Json).PSObject.Properties.Name)
-    }
-    Assert-CoreSurfaceArm -Names $armNames -Flavor $engineManifest.flavor -ConfigGroup $ConfigGroup
 
     $srcConfig = $armConfig
     $advertisedDetails = @(Get-EngineUciOptions -Path $engine -Detailed)

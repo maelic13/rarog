@@ -20,9 +20,7 @@
 param(
     [string]$EngineA = "tools/test_engines/rarog-b24b-core-pext-pgo.exe",
     [string]$EngineB = "tools/test_engines/rarog-b23-theta3900-pext-pgo.exe",
-    [string]$TuneEngine = "tools/test_engines/rarog-b23core-tune.exe",
-    [string]$OffArmTuneEngine = "tools/test_engines/rarog-b23negoff-tune.exe",
-    [string]$CompactTuneEngine = "tools/test_engines/rarog-d76fit-tune.exe",
+    [string]$TuneEngine = "tools/test_engines/rarog-d76fit-tune.exe",
     [switch]$KeepScratch
 )
 
@@ -31,7 +29,7 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $wrapper = Join-Path $repo "tools\colosseum.ps1"
 $pin = Join-Path $repo "tools\colosseum\colosseum.pin.json"
 
-foreach ($required in @($EngineA, $EngineB, $TuneEngine, $OffArmTuneEngine)) {
+foreach ($required in @($EngineA, $EngineB, $TuneEngine)) {
     if (-not (Test-Path -LiteralPath (Join-Path $repo $required))) {
         throw "This suite needs $required, which is not staged on this host."
     }
@@ -40,11 +38,15 @@ foreach ($required in @($EngineA, $EngineB, $TuneEngine, $OffArmTuneEngine)) {
 $scratch = Join-Path ([System.IO.Path]::GetTempPath()) ("rarog-guards-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $scratch | Out-Null
 # A tune reads the rule 7c conversion of its surface beside its run file. The
-# suite generates one for b23core inside the ignored tools/results, where the
+# suite generates one for d76fit inside the ignored tools/results, where the
 # run file's relative path to the tune policy resolves, and checks it there.
 $surfaceScratch = Join-Path $repo ("tools\results\guards-surface-" + [guid]::NewGuid())
-python (Join-Path $repo "tools\spsa_config_to_colosseum.py") b23core --rule7c --ceiling 6000 --out $surfaceScratch | Out-Null
+python (Join-Path $repo "tools\spsa_config_to_colosseum.py") d76fit --rule7c --ceiling 6000 --out $surfaceScratch | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Could not generate the rule 7c surface the tune cases need." }
+# A block-form conversion of the same surface, which a tune must refuse.
+$blockScratch = Join-Path $repo ("tools\results\guards-block-" + [guid]::NewGuid())
+python (Join-Path $repo "tools\spsa_config_to_colosseum.py") d76fit --iterations 2000 --out $blockScratch | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Could not generate the block-form surface." }
 
 function Merge-Arguments {
     # PowerShell's hashtable `+` throws on a duplicate key, which is exactly what
@@ -124,8 +126,8 @@ try {
     }
     $tune = @{
         Mode = "spsa"; Engine = (Copy-Arm -Source $TuneEngine -Name "tuneArm")
-        ConfigGroup = "b23core"; Ceiling = 6000; Seed = 7
-        RunFile = (Join-Path $surfaceScratch "b23core.run.toml")
+        ConfigGroup = "d76fit"; Ceiling = 6000; Seed = 7
+        RunFile = (Join-Path $surfaceScratch "d76fit.run.toml")
         Dir = (Join-Path $scratch "tune"); DryRun = $true; AllowBusyHost = $true
     }
 
@@ -204,7 +206,7 @@ try {
     $catTune = Copy-Arm -Source $TuneEngine -Name "catTune"
     $categorical = @{
         Mode = "match"; EngineA = $catTune; EngineB = $catTune; NameA = "alt"; NameB = "base"
-        OptionsA = @("CoreRfpLinear=30"); Games = 200; Seed = 7; CategoricalTuneBuild = $true
+        OptionsA = @("KLmrLog=300"); Games = 200; Seed = 7; CategoricalTuneBuild = $true
         Dir = (Join-Path $scratch "categorical"); DryRun = $true; AllowBusyHost = $true
     }
     Invoke-Case -Name "control: a categorical on one tune build" -Expect "" -Arguments $categorical
@@ -379,20 +381,11 @@ try {
         $probe.Dispose()
     }
 
-    $offArm = Copy-Arm -Source $OffArmTuneEngine -Name "offArm"
-    Set-Sidecar -EnginePath $offArm -Fields @{ git_dirty = $false }
-    Invoke-Case -Name "Core* surface on an off-arm tune build" -Expect "selectivity-core options" `
-        -Arguments (Merge-Arguments $tune @{ Engine = $offArm })
-
     # A rule 7c tune plays two steps where the seed has the room, so a
     # coordinate dies only when even that rounds to zero: d76fit's one-step
     # plies play 2 x 1 x 1e8^-0.102 = 0.31 at N = 1e8 and would look tuned
-    # while moving nothing. (b23core's smallest step, 3, plays 0.76 there and
-    # resolves; no ceiling an int holds makes that surface unresolvable.)
-    $compactTune = Merge-Arguments $tune @{
-        Engine = (Copy-Arm -Source $CompactTuneEngine -Name "compactTuneArm")
-        ConfigGroup = "d76fit"
-    } -Remove @("RunFile")
+    # while moving nothing.
+    $compactTune = Merge-Arguments $tune -Remove @("RunFile")
     Invoke-Case -Name "tune ceiling the surface cannot resolve" -Expect "rounds to zero" `
         -Arguments (Merge-Arguments $compactTune @{ Ceiling = 100000000 })
     Invoke-Case -Name "control: the compact surface resolves" -Expect "" -Arguments $compactTune
@@ -409,7 +402,7 @@ try {
     Invoke-Case -Name "a surface converted for another ceiling" -Expect "not the rule 7c conversion" `
         -Arguments (Merge-Arguments $tune @{ Ceiling = 5000 })
     Invoke-Case -Name "a block-form surface" -Expect "not the rule 7c conversion" `
-        -Arguments (Merge-Arguments $tune -Remove @("RunFile"))
+        -Arguments (Merge-Arguments $tune @{ RunFile = (Join-Path $blockScratch "d76fit.run.toml") })
     Invoke-Case -Name "-Ceiling in a gate" -Expect "ignores" `
         -Arguments (Merge-Arguments $base @{ Ceiling = 6000 })
     Invoke-Case -Name "control: a short tune smoke resolves" -Expect "" `
@@ -559,6 +552,7 @@ try {
     if (-not $KeepScratch) {
         Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $surfaceScratch -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $blockScratch -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
