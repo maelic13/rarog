@@ -426,11 +426,19 @@ impl Searcher {
     pub fn new_game(&mut self) {
         self.worker_pool.start_new_game();
         self.shared.tt.clear();
+        self.reset_thread_for_new_game();
+        self.worker_pool.finish_new_game();
+    }
+
+    /// What one thread carries from game to game, cleared: its histories,
+    /// pawn cache and previous search scores. The main thread and every
+    /// helper run this one reset, so a new game's first window opens at
+    /// the same score on each.
+    fn reset_thread_for_new_game(&mut self) {
         self.clear_history();
         self.td.evaluator.clear_pawn_table();
         self.td.previous_search_score = None;
         self.td.compact_previous_score = 0;
-        self.worker_pool.finish_new_game();
     }
 
     pub(crate) fn clear_history(&mut self) {

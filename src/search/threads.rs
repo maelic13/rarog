@@ -131,7 +131,7 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
             // helper's history and cache pages are touched here, not by that
             // search.
             let mut worker = Searcher::helper();
-            worker.reset_worker_state_for_new_game();
+            worker.reset_thread_for_new_game();
             let _ = ack.send(());
             while let Ok(message) = receiver.recv() {
                 match message {
@@ -151,7 +151,7 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
                         let _ = result_tx.send(result);
                     }
                     WorkerMessage::NewGame => {
-                        worker.reset_worker_state_for_new_game();
+                        worker.reset_thread_for_new_game();
                         let _ = ack.send(());
                     }
                     WorkerMessage::Shutdown => break,
@@ -271,12 +271,6 @@ fn parallel_result_key(
 }
 
 impl Searcher {
-    fn reset_worker_state_for_new_game(&mut self) {
-        self.clear_history();
-        self.td.evaluator.clear_pawn_table();
-        self.td.previous_search_score = None;
-    }
-
     fn run_worker_job(
         &mut self,
         job: WorkerJob,
@@ -607,6 +601,33 @@ mod tests {
     use crate::uci::info::report_line;
 
     const SELF_STOP_LIMIT: Duration = Duration::from_secs(30);
+
+    /// A helper's previous search scores are cleared at a new game, as the
+    /// main thread's are: its first window would otherwise open round the
+    /// last game's score.
+    #[test]
+    fn a_helpers_previous_scores_are_cleared_at_a_new_game() {
+        let mut helper = Searcher::helper();
+        let board = Board::default();
+        let legal = board.generate_legal_moves();
+        let limits = crate::search::options::SearchLimits {
+            depth: Some(6),
+            ..Default::default()
+        };
+        helper.reset_search_state(
+            &limits,
+            &EngineOptions::default(),
+            board.side_to_move(),
+            0,
+            true,
+        );
+        helper.search_root(board, &legal, false, &mut || SearchEvent::None);
+        helper.td.compact_previous_score = 250;
+        helper.td.previous_search_score = Some(250);
+        helper.reset_thread_for_new_game();
+        assert_eq!(helper.td.compact_previous_score, 0);
+        assert_eq!(helper.td.previous_search_score, None);
+    }
 
     struct Recorder(Arc<Mutex<Vec<String>>>);
 
