@@ -1,9 +1,12 @@
-# RAR-S131 — D.7.8.2: quiescence and evaluation-only entries at the donor's depth, 2,000 games — REGISTERED 2026-11-19, before any game
+# RAR-S131 — D.7.8.2: quiescence and evaluation-only entries at the donor's depth, 2,000 games — REGISTERED 2026-11-19, before any game; READ 2026-11-19: nElo +1.2 ± 15.2, kept
 
 Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 - **Date / owner:** registered 2026-11-19, before any game. The run is the
   maintainer's command.
+- **Disposition:** read 2026-11-19: nElo +1.2 ± 15.2, above the −13 harm
+  line, so the change is kept; fingerprint 3,348,508 / EBF 2.329. Inside
+  the prediction's 80% band.
 - **Kind:** PLAN D.7.8.2, a repair inside D.7's one cluster: no gate of its
   own (D.7, *How the open steps are worked*), one 2,000-game read against
   the build the step started from, under AGENTS' case-2 harm rule.
@@ -80,3 +83,24 @@ check is an ignored test naming this finding (`3e27052`).
 - **Most likely failure mode:** none visible at 2,000 games: the interval
   spans zero either way.
 - **Evidence layer:** games, both arms PGO builds of the same toolchain.
+
+## Result (read 2026-11-19)
+
+Run by the maintainer 2026-11-19, 22 minutes, Colosseum CLI 0.5.0 (pinned
+`8fa63cc`). The runner's report and the wrapper's manifest
+(`tools/results/colosseum_match_rar-s131_20261119_202611.manifest.txt`):
+
+- "Elo +0.7 +/- 8.8; nElo +1.2 +/- 15.2 over 2000 paired games"
+- `d782cand` 498 W / 494 L / 1008 D; pentanomial 19, 249, 466, 241, 25
+  ("recount of games.pgn agrees"); faults none, engine faults none.
+- search, `d782cand`: depth 17.94 mean, 127,151 nodes and 61.3 ms a move,
+  2,072,987 nps; `d782base`: depth 17.99 mean, 126,939 nodes and 61.3 ms
+  a move, 2,071,934 nps.
+
+**Reading:** +1.2 nElo is above the −13 harm line: the change is kept.
+
+### Calibration (appended after the result)
+
+Predicted +1 nElo, 80% band −14 to +16; read +1.2, at the centre. As
+predicted the read resolves nothing finer than the harm rule; the KQK
+mate-distance finding showed no visible cost at this control.
