@@ -1,9 +1,13 @@
-# RAR-S132 — D.7.8.3: the root ordered by the kernel's own scorer, 2,000 games and a four-thread fault smoke — REGISTERED 2026-11-19, before any game
+# RAR-S132 — D.7.8.3: the root ordered by the kernel's own scorer, 2,000 games and a four-thread fault smoke — REGISTERED 2026-11-19, before any game; READ 2026-11-19: nElo +4.1 ± 15.2, no fault at four threads, kept
 
 Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 - **Date / owner:** registered 2026-11-19, before any game. Both runs are
   the maintainer's commands.
+- **Disposition:** read 2026-11-19: nElo +4.1 ± 15.2, above the −13 harm
+  line, and no fault or time loss in the 200 four-thread games, so the
+  change is kept; fingerprint 3,320,355 / EBF 2.317. Inside the
+  prediction's 80% band.
 - **Kind:** PLAN D.7.8.3, a repair inside D.7's one cluster: no gate of its
   own (D.7, *How the open steps are worked*), one 2,000-game read against
   the build the step started from, under AGENTS' case-2 harm rule, and 200
@@ -116,3 +120,35 @@ games, stops the step until the cause is found, whatever the read says.
 - **Smoke:** no fault in 200 games, P 0.95; the helpers' code is unchanged
   and reorders the list as before.
 - **Evidence layer:** games, both arms PGO builds of the same toolchain.
+
+## Result (read 2026-11-19)
+
+Both run by the maintainer 2026-11-19, Colosseum CLI 0.5.0 (pinned
+`8fa63cc`).
+
+**The read** (22 minutes;
+`tools/results/colosseum_match_rar-s132_20261119_215710.manifest.txt`):
+
+- "Elo +2.3 +/- 8.3; nElo +4.1 +/- 15.2 over 2000 paired games"
+- `d783cand` 502 W / 489 L / 1009 D; pentanomial 14, 233, 498, 236, 19
+  ("recount of games.pgn agrees"); faults none, engine faults none.
+- search, `d783cand`: depth 18.22 mean, 125,721 nodes and 60.8 ms a move,
+  2,066,853 nps; `d783base`: depth 18.25 mean, 126,064 nodes and 60.9 ms
+  a move, 2,070,785 nps.
+
+**The fault smoke** (11 minutes, placement explicit as registered;
+`tools/results/colosseum_match_rar-s132-4t_20261119_221859.manifest.txt`):
+200 of 200 games scored, faults "time: 0-0; other: 0-0", engine faults
+none; at four threads `d783cand` 8,784,602 nps and depth 20.22 mean,
+`d783base` 8,790,418 and 20.32. Its score is not read.
+
+**Reading:** +4.1 nElo is above the −13 harm line and the smoke has no
+fault: the change is kept.
+
+### Calibration (appended after the result)
+
+Predicted +2 nElo, 80% band −13 to +17; read +4.1, near the centre. The
+smoke's no-fault prediction held. The read resolves nothing finer than
+the harm rule; the static root order is not the donor's live re-scoring
+(found after the games: the donor re-scores the root's remaining moves
+as each is searched), which this read does not test.
