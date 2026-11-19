@@ -1,9 +1,13 @@
-# RAR-S130 — D.7.8.1: ProbCut's exchange bar at the donor's scale, 2,536, against the fitted 1,024, 2,000 games — REGISTERED 2026-11-19, before any game
+# RAR-S130 — D.7.8.1: ProbCut's exchange bar at the donor's scale, 2,536, against the fitted 1,024, 2,000 games — REGISTERED 2026-11-19, before any game; READ 2026-11-19: nElo −7.2 ± 15.2, not wholly below zero, so 2,536 is the seed
 
 Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 - **Date / owner:** registered 2026-11-19, before any game. The run is the
   maintainer's command.
+- **Disposition:** read 2026-11-19: nElo −7.2 ± 15.2, the interval
+  [−22.4, +8.0] not wholly below zero, so by the frozen reading the donor's
+  2,536 is the fitted table's seed (`e63b652`); the fingerprint moves to
+  3,278,226 / EBF 2.313. Inside the prediction's 80% band.
 - **Kind:** PLAN D.7.8.1, a repair inside D.7's one cluster: no gate of its
   own (D.7, *How the open steps are worked*), one 2,000-game read under the
   step's own rule.
@@ -94,3 +98,31 @@ not have verified. A fingerprint and a rate, not Elo.
 - **Most likely failure mode:** a small loss from the fitted ProbCut seeds
   tuned to the wider bar; the interval still crosses zero.
 - **Evidence layer:** games on a tune build without PGO, both sides alike.
+
+## Result (read 2026-11-19)
+
+Run by the maintainer 2026-11-19, 22 minutes, Colosseum CLI 0.5.0 (pinned
+`8fa63cc`). The runner's report and the wrapper's manifest
+(`tools/results/colosseum_match_rar-s130_20261119_185038.manifest.txt`):
+
+- "Elo -4.2 +/- 8.9; nElo -7.2 +/- 15.2 over 2000 paired games"
+- `d781donor` 496 W / 520 L / 984 D; pentanomial 26, 251, 465, 237, 21
+  ("recount of games.pgn agrees"); faults none, engine faults none.
+- search, `d781donor`: depth 17.50 mean, 103,806 nodes and 61.2 ms a move,
+  1,696,237 nps; `d781fit`: depth 17.49 mean, 104,316 nodes and 61.3 ms a
+  move, 1,701,605 nps.
+
+**Reading:** the 95% interval [−22.4, +8.0] includes zero, so the run is
+not wholly below zero: the donor's 2,536 becomes the fitted table's seed
+in its own commit (`e63b652`), `bench 13` **3,278,226 / EBF 2.313**, the
+companion's bench at 2,536 reproduced by a fresh default build. The scale
+stays a coordinate of D.7.11's surface, range 512 to 4,096.
+
+### Calibration (appended after the result)
+
+Predicted −2 nElo, 80% band −20 to +16; read −7.2, inside the band, the
+same sign. P(wholly below zero) was 0.10 and it was not. The named failure
+mode, neighbours fitted around the unconverted bar, is neither shown nor
+excluded: 2,000 games resolve about ±15 nElo. The two arms searched the
+same depth and nodes a move; the bar's 17% fewer ProbCut captures did not
+show as depth at this control.
