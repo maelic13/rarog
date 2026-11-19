@@ -327,8 +327,6 @@ impl Searcher {
         let improving = improvement > 0;
         probe!(self, SingularGate, potential_singularity);
 
-        // The three gates are asked before any acts, so each is counted at
-        // every node that reaches them.
         let razor = rules::razors(
             self.seeds(),
             &rules::RazorInput {
@@ -341,7 +339,7 @@ impl Searcher {
                 bound: tt_bound,
             },
         );
-        let rfp = rules::RfpInput {
+        let rfp_input = |board: &Board| rules::RfpInput {
             tt_pv,
             in_check,
             excluded: has_excluded,
@@ -352,8 +350,9 @@ impl Searcher {
             correction,
             unthreatened: (threats.all & board.color_occ(stm)).is_empty(),
         };
-        let rfp_cuts = rules::rfp_cuts(self.seeds(), &rfp);
-        let null_gate = rules::NullGateInput {
+        let child_cutoffs = self.td.stack[ply + 1].cutoff_count;
+        let nmp_min_ply = self.td.nmp_min_ply;
+        let null_input = |board: &Board| rules::NullGateInput {
             cut_node,
             in_check,
             excluded: has_excluded,
@@ -363,9 +362,9 @@ impl Searcher {
             depth,
             tt_pv,
             improvement,
-            child_cutoffs: self.td.stack[ply + 1].cutoff_count,
+            child_cutoffs,
             ply: infra::to_i32(ply),
-            nmp_min_ply: self.td.nmp_min_ply,
+            nmp_min_ply,
             material,
             tt_capture_refutes: tt_bound == Some(Bound::Lower)
                 && tt_move.is_capture()
@@ -374,10 +373,19 @@ impl Searcher {
                         >= KERNEL_SEE_VALUES.as_array()[Piece::Knight as usize]
                 }),
         };
-        let null_move = rules::nmp_gate(self.seeds(), &null_gate);
-        probe!(self, Razor, razor);
-        probe!(self, Rfp, rfp_cuts);
-        probe!(self, NmpGate, null_move);
+        // The probes count each of the three gates at every node that reaches
+        // them, so there all three are asked before any acts; otherwise a gate
+        // is asked only when the one before it did not end the node.
+        #[cfg(feature = "probes")]
+        {
+            probe!(self, Razor, razor);
+            probe!(self, Rfp, rules::rfp_cuts(self.seeds(), &rfp_input(board)));
+            probe!(
+                self,
+                NmpGate,
+                rules::nmp_gate(self.seeds(), &null_input(board))
+            );
+        }
         if razor && !pricing_off!(self, ply, Razor) {
             let score = self.compact_quiescence::<NonPv, _>(board, alpha, beta, ply, poll);
             #[cfg(feature = "pricing")]
@@ -397,6 +405,7 @@ impl Searcher {
             );
             return score;
         }
+        let rfp_cuts = rules::rfp_cuts(self.seeds(), &rfp_input(board));
         if rfp_cuts && !pricing_off!(self, ply, ReverseFutility) {
             let value = rules::rfp_value(self.seeds(), estimate, beta);
             #[cfg(feature = "pricing")]
@@ -413,6 +422,7 @@ impl Searcher {
             );
             return value;
         }
+        let null_move = rules::nmp_gate(self.seeds(), &null_input(board));
         if null_move && !pricing_off!(self, ply, NullMove) {
             debug_assert!(!parent.mv.is_null(), "a null move after a null move");
             let reduction = rules::nmp_reduction(self.seeds(), improving, depth, estimate, beta);
