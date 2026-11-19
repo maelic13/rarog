@@ -387,7 +387,7 @@ request. The rows below are D.7's, then D.6's in number order.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.7.8.7 | RESEARCH | R2 | Card written 2026-11-19: build after D.7 (recommended) or before D.7.13's four-thread read; the maintainer decides |
-| D.7.8.10 | RESEARCH | V | A unit half the size emulated through the tune options, 100,000 nodes a move each; a fold only on an interval wholly above zero |
+| D.7.8.10 | RESEARCH | V | RAR-S133 registered: 65 tune options, 2,000 games at 100,000 nodes a move; a fold only on an interval wholly above zero |
 | D.7.8 | RESEARCH | R2 | Closes after its ten sub-steps, with a table of what each changed, its read and its commit |
 | D.7.9 | RESEARCH | R2 | Clock use, moved from D.6.28: the screen on the repaired kernel's games, the low-clock horizon's card and field read, the constants to the fit's surface |
 | D.7.10 | RESEARCH | V | The repaired kernel against `d7classic` at `3+0.03` and `10+0.1`, 2,000 games each: a diagnostic that sets the fit's control |
