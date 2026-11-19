@@ -944,14 +944,11 @@ mod tests {
     }
 
     /// A mate search ends on a completed iteration, where each of the helper's
-    /// lines holds an exact score at that depth: the three best root moves
-    /// are exact. One line would leave the second and third upper bounds. A
-    /// move that raised alpha before a better one overtook it in its line is
-    /// exact too, so the exact count can exceed the lines. A lower bound is
-    /// left out of the ranking: at equal depth the pool keeps a fail-high's
-    /// lower bound over the upper bound its re-search then returned, so it
-    /// can stand for a fail-high no search confirmed, which is no line's
-    /// result.
+    /// three lines holds an exact score at that depth, so the pool holds at
+    /// least three. A move that raised alpha before a better one overtook it
+    /// in its line is exact too, so the count can exceed the lines; one line
+    /// leaves two here. Bounds are not ranked against exact scores: a move
+    /// that fails low against a mate publishes that mate as its upper bound.
     #[test]
     fn a_helper_searches_every_line() {
         let board = Board::from_fen(MATE_IN_2).expect("valid FEN");
@@ -979,23 +976,14 @@ mod tests {
         );
 
         let depth = i32::try_from(result.depth).expect("a small depth");
-        let mut scored: Vec<(i32, RootBound)> = (0..moves.len())
-            .filter_map(|index| match context.root_score(index) {
-                Some((at, score, bound)) if at == depth && bound != RootBound::Lower => {
-                    Some((score, bound))
-                }
-                _ => None,
-            })
+        let scored: Vec<Option<(i32, i32, RootBound)>> = (0..moves.len())
+            .map(|index| context.root_score(index))
             .collect();
-        // An upper bound equal to an exact score cannot rank above it.
-        scored.sort_by_key(|&(score, bound)| (std::cmp::Reverse(score), bound != RootBound::Exact));
-        assert!(scored.len() >= 3, "{scored:?}");
-        assert!(
-            scored[..3]
-                .iter()
-                .all(|&(_, bound)| bound == RootBound::Exact),
-            "{scored:?}"
-        );
+        let exact = scored
+            .iter()
+            .filter(|score| matches!(score, Some((at, _, RootBound::Exact)) if *at == depth))
+            .count();
+        assert!(exact >= 3, "depth {depth}: {scored:?}");
     }
 
     #[test]
