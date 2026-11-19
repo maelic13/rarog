@@ -888,6 +888,7 @@ impl Searcher {
         let mut cast_stop_vote = false;
         let mut iterations =
             compact::window::Iterations::new(self.td.compact_previous_score, 1, self.seeds());
+        crate::diag_count!(root_searches);
 
         for depth in 1..=max_depth {
             // Per iteration, as Stockfish resets `selDepth`: carried across a
@@ -920,6 +921,9 @@ impl Searcher {
                 self.td.rates.record(compact::probes::Kind::Window, true);
             }
             let mut window = compact::window::CompactWindow::new(opening, self.seeds());
+            // The move an earlier window of this iteration failed high on.
+            #[cfg(feature = "diag")]
+            let mut iteration_fail_high_move = Move::NULL;
 
             loop {
                 #[cfg(feature = "diag")]
@@ -933,6 +937,8 @@ impl Searcher {
                 #[cfg(feature = "diag")]
                 let window_nodes = self.td.nodes.saturating_sub(window_nodes_before);
                 if self.td.stopped || self.td.quit {
+                    #[cfg(feature = "diag")]
+                    self.count_interrupted_iteration(bestmove, iteration_fail_high_move);
                     break;
                 }
                 #[cfg(feature = "diag")]
@@ -956,6 +962,10 @@ impl Searcher {
                 if score >= beta {
                     crate::diag_count!(asp_fail_high);
                     crate::diag_add!(asp_fail_high_nodes, window_nodes);
+                    #[cfg(feature = "diag")]
+                    if self.td.pv_len[0] > 0 {
+                        iteration_fail_high_move = self.td.pv_table[0][0];
+                    }
                     let stops = self.td.thread_id == 0
                         && !self.td.pondering
                         && self.elapsed_ms() >= soft_target_ms * fail_high_target;
@@ -1926,6 +1936,27 @@ impl Searcher {
         self.shared.pool().map_or(self.td.nodes, |shared_state| {
             shared_state.nodes.load(Ordering::Relaxed) + (self.td.nodes & SHARED_NODE_BATCH_MASK)
         })
+    }
+
+    /// What a stop inside an iteration discards when the root falls back to
+    /// `fallback`, the last completed iteration's move: the interrupted
+    /// window's root resets its line and sets it only when a fully searched
+    /// move raises alpha.
+    #[cfg(feature = "diag")]
+    #[cold]
+    fn count_interrupted_iteration(&self, fallback: Move, fail_high_move: Move) {
+        crate::diag_count!(root_stop_mid_iteration);
+        let new_best = self.td.pv_len[0] > 0 && self.td.pv_table[0][0] != fallback;
+        let failed_high_new = !fail_high_move.is_null() && fail_high_move != fallback;
+        if new_best {
+            crate::diag_count!(root_stop_partial_new_best);
+        }
+        if failed_high_new {
+            crate::diag_count!(root_stop_after_fail_high_new);
+        }
+        if new_best || failed_high_new {
+            crate::diag_count!(root_stop_discards);
+        }
     }
 
     /// Whether a failed root window prints its bound line: past the floor

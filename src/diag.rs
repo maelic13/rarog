@@ -344,6 +344,15 @@ pub mod counters {
         root_iterations,
         root_best_changes,
         root_interrupted_fallback,
+        // A single-PV search stopped inside an iteration, and what the
+        // fallback to the last completed one discards: a move that raised
+        // alpha in the interrupted window, a move an earlier window of the
+        // iteration failed high on, either.
+        root_searches,
+        root_stop_mid_iteration,
+        root_stop_partial_new_best,
+        root_stop_after_fail_high_new,
+        root_stop_discards,
         // Clock stops: a proved mate held for three iterations (or a loss in
         // two plies), a root fail-high past the soft target, and hard-limit
         // polls held because no iteration had completed.
