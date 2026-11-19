@@ -386,7 +386,7 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.8.1 | READY_FOR_IMPLEMENTATION | I1 | ProbCut's exchange bar given a seeded scale (1,024 reproduces today's play); the donor's 2,536 against it on the tune build, 2,000 games |
+| D.7.8.1 | LOCAL_QUALIFIED | I1 | ProbCut's exchange bar given a seeded scale, 1,024 in (`ee1c79c`, the fingerprint unchanged); RAR-S130's read of the donor's 2,536 against it registered, the maintainer's command |
 | D.7.8.2 | RESEARCH | R2 | Card first: every reader of the quiescence and evaluation-only depths and the encoding that reads as the donor's; then one commit and the 2,000-game read |
 | D.7.8.3 | READY_FOR_IMPLEMENTATION | I2 | The root ordered by the kernel's own scorer, the classic scorer deleted; the 2,000-game read and a four-thread smoke |
 | D.7.8.4 | READY_FOR_IMPLEMENTATION | I1 | A failed root window's bound line only past 10,000,000 nodes; fingerprint exact, no game read |
@@ -2318,6 +2318,19 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       billion nodes, so the kernel carries a line bound of eight times the
       iteration's depth (`f7c89fb`, maintainer decision before any game; it
       binds no bench tree; four times failed the KBNK anchor). It stays.
+      *Found by the tests rebuilt on the kernel (2026-11-19, `38528bc`),
+      neither repaired in D.7:* (1) once late-move pruning or futility
+      fires, the kernel's picker skips every quiet left, direct checks
+      among them, as its donor's does; the classic kernel kept them. On
+      the WAC positions and their continuations it plays a move that
+      allows a mate in one in 1 of 123 positions where some move avoids
+      one, at every depth to 7 (the classic kernel: none); with the skip
+      off it does not. A dropped Rarog form, so not retried inside D.7
+      (decision 6); `no_mate_in_one_is_allowed` is an ignored test until
+      it is. (2) At equal nodes the kernel solves fewer WAC positions
+      than the classic: 185 against 210 at 25,000 nodes a position, 201
+      against 232 at 50,000, 219 against 243 at 100,000. Tactics, not
+      Elo; the WAC band now reads 50,000 nodes and is calibrated at 201.
         - **D.7.8.1 ProbCut's exchange bar in exchange units — `I1`.**
           (A1) ProbCut's picker holds captures to `probcut_beta − eval`,
           an evaluation-unit difference, tested against the donor's
@@ -2334,6 +2347,21 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           and ProbCut's attempts a node at both values. The donor's value
           becomes the seed unless its interval is wholly below zero; either
           way the scale is a coordinate of D.7.11's surface.
+          *Implemented 2026-11-19 (`ee1c79c`):* `probcut_see_bar` in
+          `rules.rs`, the fitted table at 1,024 and the donor's at 2,536;
+          `bench 13` 3,488,485 / EBF 2.336 on all forty positions, and
+          planted at 2,536 the rule's test fails and the bench reads
+          3,278,226 / 2.313. `KProbcutSeeScale` takes a declared range,
+          512 to 4,096: the range rule's half to twice of 1,024 does not
+          reach 2,536, so as written the read could not be played.
+          Checks: fmt, clippy over all features at zero warnings, debug
+          535 and release 537 passed, the `tune` and `texel` libraries
+          288 each, parity on the donor's trace without a mismatch (the
+          seed named among those no record detects). At zero games the
+          donor's bar lets 17% fewer captures a node into ProbCut (49.94
+          against 41.48 a 1,000 nodes) with verifications almost level.
+          The read is RAR-S130, registered before any game; its binary
+          is `rarog-d781-tune.exe`. The step closes on the read.
         - **D.7.8.2 The table's depth for quiescence and evaluation-only entries — `R2`.**
           (A5) Rarog stores a quiescence entry at depth 0 and an
           evaluation-only entry at −2; the donor stores both at −1. The
