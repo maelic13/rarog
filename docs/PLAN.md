@@ -386,7 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.8.6 | READY_FOR_IMPLEMENTATION | I1 | A helper's previous score reset at a new game; a test; no game read |
 | D.7.8.7 | RESEARCH | R2 | Card only: shared correction tables, their per-node cost and the four-thread read; the maintainer decides from it |
 | D.7.8.8 | RESEARCH | R2 | Position 305's first differing decision on the trace; zero games, one session |
 | D.7.8.9 | READY_FOR_IMPLEMENTATION | I1 | The speed register's three items, fingerprint exact; the pooled NPS read prepared |
@@ -2532,11 +2531,19 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           is not built and RAR-S129's (P) is not re-run. Retry trigger: a
           time manager or a rated control that raises the share at its
           clock to 2%.
-        - **D.7.8.6 A helper's previous score at a new game — `I1`.**
+        - **D.7.8.6 A helper's previous score at a new game — `I1`, DONE 2026-11-19.**
           (A6) `reset_worker_state_for_new_game` leaves a helper's previous
           search score, so its first window of a new game opens round the
           last game's score. Reset with the main thread's; a test fails
           without it. The one-thread fingerprint is exact; no game read.
+          *Done 2026-11-19* (`60424e5`): the main thread and every helper run
+          one per-thread reset (histories, pawn cache, both previous
+          scores), so the two cannot drift again; the test fails with the
+          compact score left out. `bench 13` 3,320,355 / EBF 2.317,
+          exact. Checks: fmt; clippy over all features at zero warnings;
+          debug 541 and release 543 passed; the `tune` and `texel`
+          libraries 293 each; parity without a mismatch. No changelog
+          entry: a helper's first window is not something a user sees.
         - **D.7.8.7 Correction tables shared between threads — `R2`.**
           (A7, inventory C-6) The donor shares its pawn and non-pawn
           correction tables between threads; Rarog's are per thread, and

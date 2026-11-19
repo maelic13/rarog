@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.7.8.6** (`I1`): A helper's previous score at a new game.
+**Now: D.7.8.7** (`R2`): Correction tables shared between threads.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -85,7 +85,7 @@ field, about 3,475 on CCRL's Blitz scale.
         - [x] **D.7.8.3** The root's moves ordered by the kernel's own scorer — DONE 2026-11-19
         - [x] **D.7.8.4** Bound lines in short searches — DONE 2026-11-19
         - [x] **D.7.8.5** The interrupted iteration — NO_CHANGE 2026-11-19
-        - [ ] **D.7.8.6** A helper's previous score at a new game — **READY_FOR_IMPLEMENTATION / I1**
+        - [x] **D.7.8.6** A helper's previous score at a new game — DONE 2026-11-19
         - [ ] **D.7.8.7** Correction tables shared between threads — **RESEARCH / R2**
         - [ ] **D.7.8.8** Position 305's second divergence from the donor — **RESEARCH / R2**
         - [ ] **D.7.8.9** The speed register — **READY_FOR_IMPLEMENTATION / I1**
