@@ -88,7 +88,7 @@ field, about 3,475 on CCRL's Blitz scale.
         - [x] **D.7.8.6** A helper's previous score at a new game — DONE 2026-11-19
         - [ ] **D.7.8.7** Correction tables shared between threads — **RESEARCH / R2**
         - [x] **D.7.8.8** Position 305's second divergence from the donor — DONE 2026-11-19
-        - [ ] **D.7.8.9** The speed register — **READY_FOR_IMPLEMENTATION / I1**
+        - [x] **D.7.8.9** The speed register — DONE 2026-11-20
         - [ ] **D.7.8.10** A finer kernel unit: the screen — **RESEARCH / V**
     - [ ] **D.7.9** Clock use on the new kernel — **RESEARCH / R2**
     - [ ] **D.7.10** The pre-fit read: the repaired kernel against the classic — **RESEARCH / V**

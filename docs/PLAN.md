@@ -387,7 +387,6 @@ request. The rows below are D.7's, then D.6's in number order.
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.7.8.7 | RESEARCH | R2 | Card written 2026-11-19: build after D.7 (recommended) or before D.7.13's four-thread read; the maintainer decides |
-| D.7.8.9 | READY_FOR_IMPLEMENTATION | I1 | The speed register's three items, fingerprint exact; the pooled NPS read prepared |
 | D.7.8.10 | RESEARCH | V | A unit half the size emulated through the tune options, 100,000 nodes a move each; a fold only on an interval wholly above zero |
 | D.7.8 | RESEARCH | R2 | Closes after its ten sub-steps, with a table of what each changed, its read and its commit |
 | D.7.9 | RESEARCH | R2 | Clock use, moved from D.6.28: the screen on the repaired kernel's games, the low-clock horizon's card and field read, the constants to the fit's surface |
@@ -1957,12 +1956,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       - the compact kernel against the classic head: G2, +11.54% a node,
         read 2026-11-17 before D.7.5; `a344748`'s SEE change is not
         re-read, and D.7.5's games carry it on the clock;
-      - the king key computed at each correction read: made incremental at
-        adoption, D.7.9, or in D.12;
-      - the gate inputs built at the top of `compact_negamax` before any
-        rule acts: D.7.9, when the probes' needs are known;
-      - the root window's three copies of about 4 KB, the root picker moved
-        by value, once a window: D.7.9, with the root driver;
+      - the king key computed at each correction read, the gate inputs
+        built at the top of `compact_negamax` before any rule acts, and
+        the root window's copies: done in D.7.8.9 (2026-11-20, +0.95%);
+        closed;
       - the board's forms at large: D.12.
       *Squash paragraph, ready:* "The compact kernel is Rarog's own code in
       Reckless's search form. Two places are transcribed because the
@@ -2624,7 +2621,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           is chaotic, not a quality, so the 2.3 times D.7.4 recorded is an
           instance of it, and matching the donor's tie rule would buy
           parity on a diagnostic, not strength.
-        - **D.7.8.9 The speed register — `I1`.**
+        - **D.7.8.9 The speed register — `I1`, DONE 2026-11-20.**
           (from D.7.4) Three items waited for adoption: the king key
           computed at each correction read, to be kept incrementally; the
           gate inputs built at the top of the node before any rule acts;
@@ -2633,6 +2630,26 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           assembly. *Read:* the pooled NPS read by PROCESS's method against
           the build the step started from, prepared here. It comes before
           the fit so the fit runs at the kernel's final speed.
+          *Done 2026-11-20.* Three engine commits, `bench 13` 3,320,355 /
+          EBF 2.317 exact at each: `80eec20` (the non-pawn keys carry
+          their kings, kept by the per-type masks as every piece moves;
+          nothing read the key without the king); `e68d245` (the three
+          gates: reverse futility and the null-move gate are asked only
+          where the gate before did not end the node; the `probes` build
+          still asks all three first, its rates byte-identical on a
+          depth-12 search); `b88700a` (the root fills its picker's list in
+          place: since D.7.7's 8-byte `ScoredMove` the copy was one of
+          2,056 bytes a window, in `compact_root_picker`; the assembly now
+          has no `memcpy` in the root's or the node's functions). Checks
+          on `b88700a`: fmt; clippy over all features at zero warnings;
+          debug 541 and release 543 passed; the `tune` and `texel`
+          libraries 293 each; parity without a mismatch. *Read*
+          (`analysis/artifacts/d78-night/nps/`, `tools/nps_read.py`): four
+          pext PGO builds an arm from clean trees, `42e3073` against
+          `b88700a`, idle host. Step 1, two cycles: +0.89% (−0.06% to
+          +1.85%), between; step 2, six cycles: **+0.95% (+0.37% to
+          +1.54%), accepted**, no disturbed cycle. An accept below +1% on
+          code that moved is recorded as possibly code layout (PROCESS).
         - **D.7.8.10 A finer kernel unit: the screen — `V`.**
           (A3, the audit's decision 5) The fitted wrapper hands the kernel
           0.50 to 0.82 of the HCE's value in whole units, and the margins
