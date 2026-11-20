@@ -318,6 +318,39 @@ games, the host's; the miss is in the instrument's environment, not the
 engine (the search itself was inside its deadline). 140 to 155 iterations an
 hour (0.8): **hit**, 153.7.
 
+### Amendment, 2026-11-20, before the tune's first game: the pause is tested in the tune
+
+Maintainer decisions the same day, after the pilot's result.
+
+- **The time loss.** The maintainer reports starting programs on the host
+  during the pilot, possibly in the stall's window; the host is left idle
+  for the tune. That agrees with the registered reading (the host's, the
+  search inside its deadline) and changes no rule: a fault in the tune
+  reads FAULT at its checkpoint and is examined then, by the acceptance
+  rule above.
+- **The pause criterion moves into the tune's opening minutes**, since the
+  pilot ended at its ceiling and cannot be interrupted again:
+  1. The tune starts by its one command.
+  2. After at least three whole iterations, the maintainer presses Ctrl+C
+     once and waits for the driver to end (games in flight get 30
+     seconds).
+  3. With the tune paused, from its files only: the wrapper's `interrupted`
+     line; `spsa_read.py <run> --at <k> --window <k>` without `--record`,
+     whose load runs the move check over every completed iteration, under
+     1e-6; `resolved-config.json`'s seed 2026113502 and schedule.
+  4. The same command resumes it.
+  5. Optionally, a second Ctrl+C after at least three more iterations, and
+     the same read on the resumed run, then the same command again; without
+     it, the move check on the resumed run is read by the wrapper's own read
+     at 2,000, since every read loads the run through it.
+- **Pass:** the move check under 1e-6 on the paused run and on the resumed
+  one, the iteration count continuing with the iteration in flight
+  replayed, the seed and schedule unchanged. **Fail:** the tune is not
+  resumed (or `STOP` is placed at the next checkpoint) and the fault is
+  reported as the runner's, for the maintainer's Colosseum.
+- The pilot's other criteria stand as read above; with this amendment
+  D.7.11.5 is done and the tune is cleared to start.
+
 ## Use
 
 Theta, if kept by the read at the stop, is baked by D.7.11.8 (the tune

@@ -386,7 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.11.5 | READY_FOR_IMPLEMENTATION | V | The pilot, the maintainer's: 64 iterations, interrupted once and resumed; then the one command that starts the tune |
 | D.7.11.6 | READY_FOR_IMPLEMENTATION | V | The rule 7c run at `3+0.03`, the maintainer's; it stops only by its rules |
 | D.7.11.7 | READY_FOR_IMPLEMENTATION | V | The read at the stop: theta against the start, 2,000 games on the tune build; baked unless wholly below zero |
 | D.7.11.8 | READY_FOR_IMPLEMENTATION | I1 | Theta baked; the tune build at its defaults and the default build reproduce the new fingerprint |
@@ -3246,7 +3245,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           fault limit passed, and the read's extraction, run on RAR-S128's
           stopped run, equal to that run's own theta line for line, its
           directory unchanged. The pilot's command handed over.
-        - **D.7.11.5 The pilot — `V`, the maintainer's.**
+        - **D.7.11.5 The pilot — `V`, the maintainer's, DONE 2026-11-20.**
           64 iterations of 30 games, about 26 minutes, not PROCESS's
           default 128: its uses are the run proved end to end on the new
           build, the rate, the spread of an iteration's score at the first
@@ -3259,6 +3258,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           before the tune's first game.
           Its theta is never used. PROCESS's re-audit follows it.
           *Done:* the maintainer has the one command that starts the tune.
+          *Result (2026-11-20, RAR-S135):* 64 iterations at 153.7 an
+          hour, so 13.0 hours to the first checkpoint and 39.0 to the
+          ceiling, restated before the tune's first game; every option
+          accepted, no arm clamped, the re-audit without a rail. One time
+          loss, the host's by the registered rule (a stall held all
+          fifteen slots; the maintainer reports programs started on the
+          host). The run was not interrupted, so the pause is tested in
+          the tune's opening minutes by an amendment (maintainer decision
+          the same day). The tune's command handed over.
         - **D.7.11.6 The run — `V`, the maintainer's.**
           It stops only by its rules: quiet, a rail, a fault, the ceiling,
           or the maintainer's `STOP` at a checkpoint. Nothing waits for a
