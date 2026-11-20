@@ -92,6 +92,18 @@ random order, no adjudication, a 20 ms margin.
 
 **Cost:** about 25 minutes, 75 minutes and 12 minutes on an idle host.
 
+**One command runs all three**, in the order 1, 3, 2:
+`analysis/artifacts/d79-clock-2026-11-20/run_r34.ps1` (SHA-256
+`7badad718c2011b8…`).
+- It retries a start once a minute, but only while the harness refuses the
+  host as busy before any game.
+- It never restarts a read that ran; run again, it resumes an interrupted
+  read with the same seed.
+- It reads each manifest's time losses and stops the chain on one by
+  `d791cand`.
+- Its `-DryRun` path ran through all three reads on 2026-11-20, and its
+  manifest checks read RAR-S132's manifest correctly.
+
 **Exposure:** every clock search, so every move of every game.
 
 ## Readings and dispositions (frozen)
