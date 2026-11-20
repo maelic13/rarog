@@ -1,4 +1,4 @@
-# RAR-S134 — D.7.10: the pre-fit read, the repaired kernel with Reckless's time manager against the classic kernel, 2,000 games at `3+0.03` and 2,000 at `10+0.1` — REGISTERED 2026-11-20, before any game
+# RAR-S134 — D.7.10: the pre-fit read, the repaired kernel with Reckless's time manager against the classic kernel, 2,000 games at `3+0.03` and 2,000 at `10+0.1` — READ 2026-11-20: +63.8 and +65.0 Elo, the fit at `3+0.03`
 
 Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -100,6 +100,62 @@ overstate the direct difference, so the centre is shrunk.
   `3+0.03` one. That would say the first fit, made at `3+0.03`, does not
   carry to a longer control.
 
-## Results
+## Results (read 2026-11-20)
 
-Not run.
+Both runs completed, 2,000 scored games each, every game a rules result,
+no fault, no time loss by either arm in either run (each manifest's
+`run_status`, `pentanomial` and `time_losses` lines; the pentanomial
+recount of `games.pgn` agrees).
+
+| Control | Manifest | Elo | nElo | Pentanomial |
+| --- | --- | --- | --- | --- |
+| `3+0.03` | `colosseum_match_rar-s134_20261120_135946` | **+63.8 ± 9.1** | +109.2 ± 15.2 | 15, 107, 444, 368, 66 |
+| `10+0.1` | `colosseum_match_rar-s134-ltc_20261120_142106` | **+65.0 ± 8.3** | +121.8 ± 15.2 | 4, 115, 423, 423, 35 |
+
+Search lines (each `results.txt`), `d710kern` against `d7classic`:
+- `3+0.03`: depth 16.31 against 14.43 mean; 132,467 against 127,649
+  nodes a move; 1.96M against 1.94M nodes a second.
+- `10+0.1`: depth 20.15 against 18.16 mean; 440,122 against 442,661
+  nodes a move; 1.97M against 2.03M nodes a second.
+
+Clock profile (`clock_screen.py`, outputs `clock_s134_stc.txt` and
+`clock_s134_ltc.txt` in `analysis/artifacts/d710-prefit-2026-11-20/`):
+- Spend of the budget, pooled: 0.896 against 0.872 at `3+0.03`, 0.913
+  against 0.894 at `10+0.1`. The first twenty moves take 0.762 and 0.753
+  of the base against 0.721 and 0.676.
+- At `3+0.03` the kernel's clock goes lower: 31.3% of its sides fall
+  under 100 ms at some move, against none of the classic's, the floor's
+  median 258 ms against 344. No time was lost. At `10+0.1` neither arm's
+  sides fall under 100 ms.
+- The harness's hold stays small: the per-game maximum's p99 is 5.5 ms
+  at `3+0.03` and 13.7 ms at `10+0.1`.
+
+### Uses
+
+1. **The new kernel against the old:** +63.8 ± 9.1 Elo at `3+0.03` and
+   +65.0 ± 8.3 at `10+0.1`, the kernel and the time manager together.
+   Not a gate: D.7.13 gates the cluster.
+2. **The fit's control:** the `10+0.1` Elo is 1.02 times the `3+0.03`
+   Elo, above one half, so D.7.11 runs at `3+0.03` with rule 7c's shape
+   unchanged.
+3. The `3+0.03` interval is wholly above zero, so D.7 goes on.
+
+### Calibration
+
+- `3+0.03`, predicted +65 [+40, +90]: +63.8, a hit.
+- `10+0.1`, predicted +45 [+15, +75]: +65.0, inside the band but a miss
+  in magnitude of +20. The assumption that failed: that the first fit,
+  read at `3+0.03` only, and the time manager, which gained less at
+  `10+0.1` in RAR-R34, would leave less at the longer control. The
+  kernel's gain holds there whole.
+- Use 2 at 0.70 and no time loss at 0.85: both happened.
+- Sizing, a miss in the instrument's scope: the `10+0.1` read took 2,000
+  games because RAR-R34's did, not from its use. Use 2 reads point
+  estimates against a threshold of half the `3+0.03` Elo; at the
+  predicted values about 1,000 games (±11.6 Elo) would have mis-set the
+  control about 2% of the time, and by 1,260 games the running estimate
+  stood six standard errors above the threshold. A read's game count is sized
+  from its decision rule at registration.
+
+Evidence layer: fixed reads inside D.7's cluster, Elo at each control;
+nothing here accepts strength.

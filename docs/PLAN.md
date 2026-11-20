@@ -386,9 +386,8 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.10 | READY_FOR_IMPLEMENTATION | V | Registered 2026-11-20 as RAR-S134, dry-run: the repaired kernel with D.7.9.1's time manager against `d7classic`, 2,000 games at `3+0.03` and at `10+0.1`, the maintainer's runs; sets the fit's control |
 | D.7.11.1 | RESEARCH | I1 | The finishing surface: the added seeds, the plies and counts left out, the activation read, the audit and the pilot |
-| D.7.11.2 | RESEARCH | V | The rule 7c run at D.7.10's control, the maintainer's; its theta baked |
+| D.7.11.2 | RESEARCH | V | The rule 7c run at `3+0.03` (D.7.10, RAR-S134), the maintainer's; its theta baked |
 | D.7.11 | RESEARCH | V | Closes when D.7.11.2's theta is baked and the tune build at its defaults reproduces the new fingerprint |
 | D.7.12 | RESEARCH | I1 | `score cp` calibrated on the fitted kernel's games, output only; the fitting tool |
 | D.7.13 | RESEARCH | V | The one gate: the fitted, repaired kernel against `d7classic` on `[0,3]`, with `10+0.1` and four-thread reads beside it |
@@ -2995,7 +2994,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           - Evidence layer: fixed reads inside D.7's cluster; D.7.13 gates
             it. The fifteen coordinates join D.7.11.1, and D.7.10 reads
             the kernel with the port.
-    - **D.7.10 The pre-fit read: the repaired kernel against the classic — `V`.**
+    - **D.7.10 The pre-fit read: the repaired kernel against the classic — `V`, DONE 2026-11-20.**
       One registration, two fixed matches of 2,000 games, the repaired
       kernel (pext, PGO) against `d7classic`: `3+0.03` and `10+0.1`. A
       diagnostic, not a gate (the gate is D.7.13). Its uses, frozen here:
@@ -3018,6 +3017,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       - One command runs both (`run_s134.ps1`), about 1 hour 45 minutes.
       - Predicted: +65 Elo at `3+0.03` and +45 at `10+0.1`, so the fit
         runs at `3+0.03` (0.70).
+      *Read 2026-11-20* (RAR-S134):
+      - +63.8 ± 9.1 Elo at `3+0.03` and +65.0 ± 8.3 at `10+0.1`, 2,000
+        games each, no fault or time loss.
+      - Use 2: the `10+0.1` Elo is 1.02 times the `3+0.03` Elo, so D.7.11
+        runs at `3+0.03`. Use 3 does not fire.
+      - At `3+0.03` 31% of the kernel's sides fall under 100 ms at some
+        move (the classic's none), without a time loss; D.7.11.2's
+        `--max-time-losses 0` stops a fit that forfeits.
+      - Predicted +45 at `10+0.1`: a miss in magnitude; the kernel's gain
+        holds whole at the longer control.
     - **D.7.11 The finishing fit — `V`.**
       One rule 7c run on the repaired kernel from the baked centres, over
       a completed surface, the time manager's constants in it. The
@@ -3057,7 +3066,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
             pilot (128 iterations) before the run: every option accepted,
             no arm clamped, no forfeit.
         - **D.7.11.2 The run and its theta — `V`.**
-          Registered before any game: the control D.7.10 set, 30 games an
+          Registered before any game: the control D.7.10 set (`3+0.03`), 30 games an
           iteration on 15 slots, `--max-time-losses 0` so that a forfeit
           stops the run (D.7.9), the perturbation two steps, `r_end`
           0.00155, the ceiling 6,000 iterations (3,000 at `10+0.1`),
