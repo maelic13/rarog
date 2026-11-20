@@ -386,6 +386,8 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
+| D.7.8.12 | READY_FOR_IMPLEMENTATION | R2 | Card 2026-11-20 from the profile: six neutral items in order, the table prefetch first, each a commit at the exact fingerprint with a pooled NPS read |
+| D.7.8 | RESEARCH | R2 | Reopened 2026-11-20 for D.7.8.12, the speed pass; closes with the table after it |
 | D.7.9 | RESEARCH | R2 | Clock use, moved from D.6.28: the screen on the repaired kernel's games, the low-clock horizon's card and field read, the constants to the fit's surface |
 | D.7.10 | RESEARCH | V | The repaired kernel against `d7classic` at `3+0.03` and `10+0.1`, 2,000 games each: a diagnostic that sets the fit's control |
 | D.7.11.1 | RESEARCH | I1 | The finishing surface: the added seeds, the plies and counts left out, the activation read, the audit and the pilot |
@@ -2271,7 +2273,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       tests, the three groups' `--check` and the coverage audit with the
       tune build clean. Records and logs:
       `analysis/artifacts/d77/` (ignored).
-    - **D.7.8 Repairs from the audit — `R2` cards, `I1`/`I2`/`V` sub-steps, DONE 2026-11-20.**
+    - **D.7.8 Repairs from the audit — `R2` cards, `I1`/`I2`/`V` sub-steps.**
       The audit's findings (`analysis/d7_audit_2026-11-19.md`, A1 to A8),
       one sub-step each, in order, worked as D.7's *How the open steps are
       worked* states. The step closes after the last of them, with a table:
@@ -2279,7 +2281,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       2026-11-20 (maintainer decisions) D.7.8.7 moved to D.13 with its
       card, its number retired, and D.7.8.11 was added from the question
       RAR-S132's read left: whether the donor's live re-scoring of the
-      root is the better form. The steps this one replaces left three
+      root is the better form. Later that day the step was reopened for
+      D.7.8.12, a speed pass before the fit (maintainer decision: as much
+      effective speed and NPS as can be had before the work continues,
+      Reckless as the reference). The steps this one replaces left three
       records, kept here.
       *From D.7.4 (text of 2026-11-18):* position 305's second divergence
       from its donor is D.7.8.8. The pricing identity's null-move and
@@ -2323,7 +2328,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       than the classic: 185 against 210 at 25,000 nodes a position, 201
       against 232 at 50,000, 219 against 243 at 100,000. Tactics, not
       Elo; the WAC band now reads 50,000 nodes and is calibrated at 201.
-      *The table, final 2026-11-20* (the fingerprint after the last is
+      *The table, as of 2026-11-20* (the fingerprint after the last is
       3,320,355 / EBF 2.317):
 
       | Step | What changed | Read | Commits |
@@ -2339,6 +2344,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       | D.7.8.9 | The king-keyed non-pawn keys kept, the gates asked lazily, the root list filled in place | pooled NPS +0.95% (+0.37 to +1.54) | `80eec20`, `e68d245`, `b88700a` |
       | D.7.8.10 | Nothing: a unit half the size | RAR-S133, −4.9 ± 15.2, `NO_CHANGE` | `f92abf0` (registration) |
       | D.7.8.11 | Nothing: the root's live re-scoring changed the next move in 0.96% of re-scores, under the frozen 1% | zero games, `NO_CHANGE` | recipe `1bbab9f-d7811-root-rescore.patch` |
+      | D.7.8.12 | Open | — | — |
 
         - **D.7.8.1 ProbCut's exchange bar in exchange units — `I1`, DONE 2026-11-19.**
           (A1) ProbCut's picker holds captures to `probcut_beta − eval`,
@@ -2706,6 +2712,66 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           faster between root moves (a root-specific history, or D.7.11's
           fit raising the quiet order's history weights), then this screen
           again on the recipe.
+        - **D.7.8.12 The speed pass before the fit — `R2` card, `I1` items, `V` reads.**
+          (maintainer decision 2026-11-20: as much effective speed and NPS
+          as can be had before D.7.9 and the fit, Reckless as the
+          reference) *The profile* (`analysis/d7812_profile_2026-11-20.md`,
+          zero games): the shipped pext PGO build at 415 ns a node on
+          `bench 13`, game play the same shape. Outside the evaluation the
+          kernel is about as fast a node as Reckless; the clear gap is the
+          table, 48 ns a node against Reckless's 23, 8.5% of all samples on
+          the cluster's first load. Reckless prefetches the child's cluster
+          before it makes the move, from the key the move will produce;
+          Rarog prefetches only after, and `Board::key_after_hint` goes
+          unused. **Mechanism:** memory latency the search does not hide,
+          and work at every node that no node needs. **Interactions:** none
+          with play for items 1 to 6, which keep `bench 13` exact; a
+          prefetch competes for cache only, and code layout moves under PGO
+          (PROCESS: an accept below +1% on code that moved is recorded as
+          possibly layout). **Invariants:** the fingerprint exact at every
+          commit; AGENTS' per-node rule (no allocation, no clone, no
+          `memcpy`; the node's assembly checked); no new `unsafe` site (the
+          floor is 17); the board's contract and perft. *The items,* in
+          order, each its own engine commit:
+          1. The table prefetch before the move, as Reckless: the hint's key
+             prefetched before the push and the make in the node, in
+             quiescence and in ProbCut, the prefetch after the make kept.
+             Ceiling about 8.5%.
+          2. The correction slots and the pawn table's entry prefetched once
+             the make has set their keys, so they arrive while the table is
+             probed (Rarog's own). Ceiling about 3.4%.
+          3. `SearchedMoves` written only as moves are pushed, through one
+             fixed-capacity list type shared with the other lists, so the
+             `unsafe` sites do not grow. Ceiling about 0.7%.
+          4. The board's undo stack as a fixed array, no `Vec` capacity
+             checks in make and unmake. Ceiling about 0.65%. The stack
+             alone; the board's forms stay D.12's.
+          5. The evaluation's hot paths (`eval_piece_activity`,
+             `eval_threats`, `AttackMaps::fill` and their slider lookups,
+             21 to 23% of samples): drilled to the line, behaviour-neutral
+             rewrites only, the evaluation's tests and the `texel` trace
+             gate exact.
+          6. Quiet scoring (4.4%, its multiply 2.6% more, waiting on the
+             continuation histories): examined for a neutral form; none is
+             presumed, as Reckless pays the same loads.
+          Not in the pass: a different selection step or tie order, which
+          moves the tree (D.7.8.3's tie order moved it by a third) and
+          would need its own game read; the release profile, already
+          Reckless's; the PGO training load, which the game profile
+          matches. *Read and stop rule (frozen 2026-11-20):* each item by
+          PROCESS's pooled NPS method against the commit before it, four
+          pext PGO builds an arm, on an idle host: kept on accept; on
+          *between*, kept only when it removes code or work without adding
+          any, otherwise reverted; reverted on reject, its reason recorded.
+          After the last, one pooled read of the whole pass against
+          `63fa0e2`'s engine, and `bench 13` NPS beside it. No games: no
+          item moves play. *Prediction (frozen 2026-11-20, before any
+          item):* item 1 +3% (80% band +1 to +6), item 2 +0.8% (0 to +2),
+          item 3 +0.4% (0 to +1), item 4 +0.3% (−0.2 to +0.8), item 5 +1%
+          (0 to +3), item 6 0%; the pass as a whole +5% (80% band +2.5 to
+          +9). At about 2 Elo a percent at `3+0.03` (three measurements)
+          that is worth about 10 Elo, a conversion this step does not
+          measure.
     - **D.7.9 Clock use on the new kernel — `R2`.**
       Moved here from D.6.28 on 2026-11-19 (maintainer decision): it is the
       largest known lever beside the kernel (the donor's search led by 22.5
