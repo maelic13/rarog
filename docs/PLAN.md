@@ -386,8 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.8.12 | READY_FOR_IMPLEMENTATION | R2 | Card 2026-11-20 from the profile: six neutral items in order, the table prefetch first, each a commit at the exact fingerprint with a pooled NPS read |
-| D.7.8 | RESEARCH | R2 | Reopened 2026-11-20 for D.7.8.12, the speed pass; closes with the table after it |
 | D.7.9 | RESEARCH | R2 | Clock use, moved from D.6.28: the screen on the repaired kernel's games, the low-clock horizon's card and field read, the constants to the fit's surface |
 | D.7.10 | RESEARCH | V | The repaired kernel against `d7classic` at `3+0.03` and `10+0.1`, 2,000 games each: a diagnostic that sets the fit's control |
 | D.7.11.1 | RESEARCH | I1 | The finishing surface: the added seeds, the plies and counts left out, the activation read, the audit and the pilot |
@@ -2273,7 +2271,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       tests, the three groups' `--check` and the coverage audit with the
       tune build clean. Records and logs:
       `analysis/artifacts/d77/` (ignored).
-    - **D.7.8 Repairs from the audit — `R2` cards, `I1`/`I2`/`V` sub-steps.**
+    - **D.7.8 Repairs from the audit — `R2` cards, `I1`/`I2`/`V` sub-steps, DONE 2026-11-20.**
       The audit's findings (`analysis/d7_audit_2026-11-19.md`, A1 to A8),
       one sub-step each, in order, worked as D.7's *How the open steps are
       worked* states. The step closes after the last of them, with a table:
@@ -2328,7 +2326,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       than the classic: 185 against 210 at 25,000 nodes a position, 201
       against 232 at 50,000, 219 against 243 at 100,000. Tactics, not
       Elo; the WAC band now reads 50,000 nodes and is calibrated at 201.
-      *The table, as of 2026-11-20* (the fingerprint after the last is
+      *The table, final 2026-11-20* (the fingerprint after the last is
       3,320,355 / EBF 2.317):
 
       | Step | What changed | Read | Commits |
@@ -2344,7 +2342,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       | D.7.8.9 | The king-keyed non-pawn keys kept, the gates asked lazily, the root list filled in place | pooled NPS +0.95% (+0.37 to +1.54) | `80eec20`, `e68d245`, `b88700a` |
       | D.7.8.10 | Nothing: a unit half the size | RAR-S133, −4.9 ± 15.2, `NO_CHANGE` | `f92abf0` (registration) |
       | D.7.8.11 | Nothing: the root's live re-scoring changed the next move in 0.96% of re-scores, under the frozen 1% | zero games, `NO_CHANGE` | recipe `1bbab9f-d7811-root-rescore.patch` |
-      | D.7.8.12 | Open | — | — |
+      | D.7.8.12 | The child's table cluster asked for as soon as the move is picked; one fixed-capacity list for every move list | pooled NPS +2.71% (+2.11 to +3.31) | `1ff6522`, `80cef6f`, `0690de9` |
 
         - **D.7.8.1 ProbCut's exchange bar in exchange units — `I1`, DONE 2026-11-19.**
           (A1) ProbCut's picker holds captures to `probcut_beta − eval`,
@@ -2712,7 +2710,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           faster between root moves (a root-specific history, or D.7.11's
           fit raising the quiet order's history weights), then this screen
           again on the recipe.
-        - **D.7.8.12 The speed pass before the fit — `R2` card, `I1` items, `V` reads.**
+        - **D.7.8.12 The speed pass before the fit — `R2` card, `I1` items, `V` reads, DONE 2026-11-20.**
           (maintainer decision 2026-11-20: as much effective speed and NPS
           as can be had before D.7.9 and the fit, Reckless as the
           reference) *The profile* (`analysis/d7812_profile_2026-11-20.md`,
@@ -2772,6 +2770,37 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           +9). At about 2 Elo a percent at `3+0.03` (three measurements)
           that is worth about 10 Elo, a conversion this step does not
           measure.
+          *Done 2026-11-20* (`analysis/d7812_profile_2026-11-20.md`,
+          *Result*; reads in `analysis/artifacts/d7812/nps/`). `bench 13`
+          3,320,355 / EBF 2.317 at every commit; each item's checks fmt,
+          clippy over all features at zero warnings, debug 541 and release
+          543 passed. By PROCESS's pooled read against the commit before:
+          item 1 (`1ff6522`, the hint before the make) **+1.09%**
+          (+0.52 to +1.67), accepted; item 2 (`8f3c0f0`, the correction
+          and pawn entries) +0.14% (−0.16 to +0.44), `NO_CHANGE`, reverted
+          (`2aad651`), after two reads discarded as disturbed (four and one
+          disturbed cycles, a remote-desktop session opened and closed
+          during them); item 3 (`80cef6f`, one list type) +0.31% (+0.04 to
+          +0.57), `NO_CHANGE` at step 2, kept by the frozen clause (30
+          lines and the per-node writes removed, nothing added); item 4
+          not built (the undo stack is a `Vec` because a game's history is
+          unbounded, and a fixed array would drop repetition evidence);
+          item 5 none (the evaluation's 23% is spread over about twenty
+          terms, none over 0.5% on a line); item 6 none (the waiting is on
+          the continuation histories' loads, the donor's own). Added after
+          item 1's read, under the same rule, as item 1b: a profile of
+          items 1 and 3 still put 5.5% of samples on the cluster's first
+          load, so the hint moved up to where the move is picked, before
+          the pruning rules (`0690de9`), **+1.12%** (+0.93 to +1.31),
+          accepted. **The pass, `0690de9` against `b88700a`: +2.71%
+          (+2.11 to +3.31), accepted at step 1.** The assembly of the node,
+          quiescence, the picker, make and unmake and the evaluation holds
+          no `memcpy` or `memset`. Calibration: predicted +5% (80% band
+          +2.5 to +9), read +2.71%, at the band's low end; the table
+          prefetch paid +2.2% against a predicted +3%, and the second
+          prefetch nothing, which the profile's line share did not
+          foresee: once the table's line is hidden, the correction and
+          pawn loads were not on the critical path.
     - **D.7.9 Clock use on the new kernel — `R2`.**
       Moved here from D.6.28 on 2026-11-19 (maintainer decision): it is the
       largest known lever beside the kernel (the donor's search led by 22.5
