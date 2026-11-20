@@ -386,8 +386,8 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.11.1 | READY_FOR_IMPLEMENTATION | I1 | The tune build: four history limits, five exchange values and the singular margin's stored-PV coefficient as seeds, `q_see_correction_scale` an option; 3,320,355 unchanged |
-| D.7.11.2 | READY_FOR_IMPLEMENTATION | V | The surface files and the activation read on the registered tune build: 228 coordinates expected, the coverage audit clean |
+| D.7.11.1 | READY_FOR_IMPLEMENTATION | I1 | The tune build: the pawn table's limit, the five exchange values and the singular margin's stored-PV coefficient as seeds, `q_see_correction_scale` an option; 3,320,355 unchanged |
+| D.7.11.2 | READY_FOR_IMPLEMENTATION | V | The surface files and the activation read on the registered tune build, at `bench 13` and `bench 17`: 225 coordinates expected, the coverage audit clean |
 | D.7.11.3 | READY_FOR_IMPLEMENTATION | M | RAR-S135 registered before any game: surface, shape, fault rule, reads, the frozen prediction |
 | D.7.11.4 | READY_FOR_IMPLEMENTATION | V | The drivers for the pilot, the tune and a read, each run once through its dry path; the pilot's command handed over |
 | D.7.11.5 | READY_FOR_IMPLEMENTATION | V | The pilot, the maintainer's: 64 iterations, interrupted once and resumed; then the one command that starts the tune |
@@ -405,7 +405,7 @@ request. The rows below are D.7's, then D.6's in number order.
 | D.6.4 | RESEARCH | R2 | Review after D.7: the kernel stores no move at a fail low, as its donor; confirm what the store carries and which consumers read it |
 | D.6.5 | RESEARCH | R2 | Review after D.7: the exclusion search's estimate in the kernel is its donor's form; confirm against RAR-S118's and RAR-S119's reads |
 | D.6.6 | RESEARCH | R2 | Review after D.7: the staged picker hands the table move before generating captures; confirm the cycles RAR-S120 priced are gone |
-| D.6.7 | RESEARCH | R2 | Review after D.7: the kernel's line bound is eight times the depth; RAR-S121's replay on it, the searches reaching the ply cap counted |
+| D.6.7 | RESEARCH | R2 | Review after D.7: the kernel's line bound is eight times the depth; RAR-S121's replay on it, the searches reaching the ply cap counted; the eight was chosen at zero games and no fit holds it (D.7.11) |
 | D.6.8 | RESEARCH | R2 | Review after D.7: one count per move made; confirm the hand-off to quiescence, the exclusion search and the verification count nothing twice |
 | D.6.9 | RESEARCH | R2 | Review after D.7: an evaluation item, which the kernel does not change; its screen as written, read through the kernel's wrapper |
 | D.6.10 | RESEARCH | R2 | Review after D.7: an evaluation item; its screen as written, read through the kernel's wrapper |
@@ -442,6 +442,7 @@ request. The rows below are D.7's, then D.6's in number order.
 | D.8.18 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.19 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.20 | READY_FOR_IMPLEMENTATION | I1 | Its census has no dependency |
+| D.8.21 | RESEARCH | V | Added 2026-11-20 from D.7.11: opens after D.7.14; a count on replayed gate games of how often each of eight seeds' terms binds, a seed deleted only if its term never does |
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11 | RESEARCH | R2 | The originality disclosure, moved from E.3.0; its hold is lifted for 2.7.0 (maintainer decision 2026-11-13) and stands for the release after it |
@@ -3062,12 +3063,13 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
            rated control's games showing a factor at one end on more than
            90% of iterations. The fit is then its own registration at
            `10+0.1` or longer; until then H.3 holds clock refinements.
-      2. *The surface is 228 coordinates:* 217 of the kernel's 242 seed
-         options and eleven new ones (D.7.11.1), each by the engine's
+      2. *The surface is 225 coordinates:* 218 of the kernel's 242 seed
+         options and seven new ones (D.7.11.1), each by the engine's
          range rule, step range/16, the full two steps (the least room
-         is 5.0 steps). The kernel's five exchange values joined the
-         same day, when the maintainer asked what was still unfitted:
-         the first scan had missed `compact/mod.rs`.
+         is 5.0 steps). Revised twice the same day, before any reading:
+         the kernel's exchange values joined when the maintainer asked
+         what was still unfitted (the first scan had missed
+         `compact/mod.rs`), and the units below left.
          - *Out, a seed a fit moves in whole units (16):*
            `singular_depth`, `singular_tt_depth`, `singular_exact_div`,
            `probcut_depth_base`, `tt_cut_typed_depth`,
@@ -3078,12 +3080,21 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
            are banked in the bake (`singular_depth` 5 to 7,
            `tt_cut_typed_depth` and `hp_depth` 5 to 6); the next unit on
            those is what the exclusion gives up.
-         - *Out, inactive on the current kernel's bench (9):*
+         - *Out, inactive on `bench 13` and on `bench 17` (8):*
            `fds_singular`, `fds_singular_cap`, `fds_singular_offset`,
            `nmp_min_16`, `rfp_min_16`, `pick_check_base`,
-           `pick_check_piece`, `tt_cut_fifty`, `window_stability_cap`.
-         - *Out, by construction (4):* the two thread spreads and
-           `pick_escape[0]` and `[5]`.
+           `tt_cut_fifty`, `window_stability_cap`. `pick_check_piece`
+           is inactive at 13 and active at 17, and is in. Whether any
+           of the eight is removed is D.8.21's question, after D.7.14.
+         - *Out, by construction (8):* the two thread spreads,
+           `pick_escape[0]` and `[5]`, and four units. A history
+           table's limit scales with its amounts and its consumers'
+           weights, and the exchange values with every exchange margin
+           and the wrapper's bases, without changing a decision; the
+           rest of each family is in the surface. So the quiet, noisy
+           and continuation limits and the pawn's exchange value are
+           held. The pawn table's limit is in: that table is written
+           with the quiet table's amounts, so its limit is free.
          - *Not coordinates:* `LazyMargin` (the frozen evaluation's own
            constant, rule 2), `AspMaxFails` and `TmFailHighTarget`
            (guards).
@@ -3113,36 +3124,37 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
          start, with the tune paused or stopped, and changes nothing in
          the run. No forecast is made from a read, two reads never rank
          two checkpoints, and theta is never chosen by one.
-      6. *What stays unfitted after this fit* is tabled in the record,
-         each with its owner: the clock (item 1's trigger, H.3), the
-         thread constants (D.13, D.14, G.1), `LazyMargin` (the
-         evaluation's freeze), and the whole-unit seeds with the whole
-         surface again at F.6's refit.
+      6. *What stays unfitted after this fit* is tabled in the record
+         and noted at each owner: the clock at H.3, the thread spreads
+         at G.1, `LazyMargin` at the next evaluation change (E.4, then
+         F.4.1) through PROCESS's margin block, the whole-unit seeds at
+         F.6, the depth thresholds at G.3, and the eight seeds no bench
+         reaches at D.8.21. GUIDE's obligations hold one row for them.
       The step closes when D.7.11.8 bakes theta, or D.7.11.7's rule keeps
       the start.
         - **D.7.11.1 The tune build — `I1`.**
-          *Inputs:* the record's *In: eleven new options*. Engine only.
-          - `Seeds` gains the four history limits (`quiet_history_max`
-            8,192, `noisy_history_max` 12,800, `pawn_history_max` 8,192,
-            `cont_history_max` 15,320, the same in both tables), read by
-            `history.rs` in place of its literals, and
+          *Inputs:* the record's *In: seven new options*. Engine only.
+          - `Seeds` gains `pawn_history_max` (8,192 in both tables), read
+            by `history.rs` in place of its literal, and
             `singular_pv_per_ply_1024`, seeded at each table's
             `singular_per_ply_1024`, for the stored-PV term of
-            `singular_margin`.
+            `singular_margin`. The quiet, noisy and continuation limits
+            stay literals.
           - The kernel's five exchange values (109, 403, 435, 679, 1,242:
             `KERNEL_SEE_VALUES` in `compact/mod.rs`, the donor's fitted
             piece values) become seeds, `exchange_value[0]` to `[4]`,
-            read once a search and never rebuilt at a node. In the same
+            read once a search and never rebuilt at a node; `[0]`, the
+            pawn, joins `tune.rs`'s exclusions as their unit. In the same
             commit the test "a captured piece at least a knight"
             compares piece types, not values, so a perturbed bishop
             cannot flip it.
-          - `q_see_correction_scale` leaves `tune.rs`'s exclusions: 257
-            seed fields, 253 options.
+          - `q_see_correction_scale` leaves `tune.rs`'s exclusions: 254
+            seed fields, 249 options.
           - Nothing else: no clock change, no range rule, no other seed.
           *Checks:* `bench 13` 3,320,355 / EBF 2.317 on the default build
           and on the tune build at its defaults; a test that each new
-          option reaches its rule; every table inside an `i16` at the
-          largest limit (30,640); per-node code reads the seeds by
+          option reaches its rule; the pawn table inside an `i16` at its
+          largest limit (16,384); per-node code reads the seeds by
           reference as now; the parity test keeps `Seeds::DONOR`; debug
           and release tests, `fmt --check`, clippy with all features and
           targets, the `texel` and `tune` library suites.
@@ -3151,10 +3163,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           *Inputs:* D.7.11.1's commit, a clean tree.
           - `./tools/build_test.ps1 -Suffix d711fit -Tune`; its sidecar's
             bench 3,320,355, its SHA-256 recorded.
-          - The activation read by RAR-S128's rule over all 253 options,
+          - The activation read by RAR-S128's rule over all 249 options,
             with its guards (the default bench, a positive control, every
-            `setoption` accepted). Expected: the nine inactive of the
-            record and the eleven new active. A new option that reads
+            `setoption` accepted). A seed that reproduces `bench 13` on
+            both sides is read again at `bench 17` before it is dropped.
+            Expected: eight inactive at both depths, `pick_check_piece`
+            active at 17, the seven new active. A new option that reads
             inactive is dropped and named; any other difference from the
             record is reported before going on.
           - `tools/spsa_configs/config_d711fit.json` (planned), generated
@@ -3293,6 +3307,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       maintainer's pull request. An adopted kernel releases as 2.8.0 once
       D.11 allows. The review of D.6 on the new kernel then opens, in the
       next pull request.
+      *On adoption, from D.7.11 (2026-11-20):* PROCESS's margin block is
+      restated in the kernel's seeds before any evaluation change is
+      registered: its fixed surface still names the classic kernel's
+      options, deleted by D.7.7, and `LazyMargin` stays in it. GUIDE's
+      obligation row for the constants not fitted on Rarog is reviewed,
+      and D.8.21 opens.
     - **D.7.15 If the kernel does not gain — `R3`.**
       Opens only on D.7.13's H0 or its cap without H1 (maintainer decision
       2026-11-19). The new kernel is discarded and the classic kernel
@@ -3436,6 +3456,29 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   themselves (all in use). Kept after review, with their records:
   `cpu_advice`, `crash_report`, `large_pages`, `wac`, the `diag` counters, the
   `tune` options and the `texel` trace in the engine crate.
+    - **D.8.21 P20: the kernel's seeds no search reaches — `V`.** Added
+      2026-11-20 from D.7.11's research (`analysis/d711_fit_2026-11-20.md`,
+      *The inactive seeds are not removed now*); opens after D.7.14.
+      Eight seeds change no decision on `bench 13` or on `bench 17` at
+      rule 7c's perturbation: `fds_singular`, `fds_singular_cap`,
+      `fds_singular_offset`, `nmp_min_16`, `rfp_min_16`,
+      `pick_check_base`, `tt_cut_fifty` and `window_stability_cap`. That
+      is a statement about forty positions, not about games
+      (`pick_check_piece` read inactive at depth 13 and active at 17), so
+      nothing is removed on it.
+      - *Screen, zero games:* a `probes` build over replayed gate games
+        counts how often each term binds: the two floors against their
+        margins, the cap against the two stability counts, the
+        fifty-move test, the reduction's singular term, and whether the
+        check offset ever changes an order.
+      - *Rule, frozen here:* a term that never binds in the replay is
+        deleted with its seed as a behaviour-neutral change, the
+        fingerprint and the replay its checks; one that binds stays,
+        its rate recorded. `tt_cut_fifty` stays whatever its rate: it
+        is a rule of the fifty-move clock.
+      - Not before D.7.14: a removal moves the fit's baseline, and the
+        gain is a few lines, not Elo or speed (maintainer decision
+        2026-11-19: compactness is secondary).
 - **D.9 Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — `R2`.** Root and interior probing depth and limits,
   WDL/DTZ use in conversion, interaction with the C.5 recognisers. Endgame-start
   cohort and conversion instrument decide.
@@ -4414,6 +4457,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   phase with it (H32): with piece-count phase weights the middlegame share
   in simplified endings is far above the donor's (double rook 33% against
   10%, R+B against R+N 25% against 3%, Q against Q 33% against 13%).
+  *From D.7.11 (2026-11-20):* this is the first evaluation change under
+  the fitted kernel, so its margin block (PROCESS, *Evaluation change
+  under a fitted search*, restated at D.7.14) is where `LazyMargin` is
+  refitted. It was last fitted with the classic search (RAR-S104, 423 to
+  475, no gradient past noise), and D.7.11 held it at 475 with the
+  kernel's margins fitted against it.
 ## Phase F — NNUE (own data only)
 
 **Rules.** Own data only, generated by Rarog's classical head and later by its
@@ -4601,6 +4650,10 @@ only once inference runs at speed (F.5, F.6).
       deep one, about thirty concepts regressed with score, material and piece
       count held fixed, |t| > 3 a signal) as a static screen on F.4's
       positions before the fit.
+      *From D.7.11 (2026-11-20):* as an evaluation change it runs
+      PROCESS's margin block on the kernel's seeds, `LazyMargin` in it.
+      If E.4 did not change the evaluation, this is that constant's
+      first refit on the kernel.
 - **F.5 Incremental and SIMD: same-net parity on every move type, tiers, pooled NPS attribution — `I2`, then `V`.** Same-net incremental parity
   on every move type, SIMD tiers (AVX2, PEXT builds, ARM NEON), scalar
   reference retained, pooled-PGO NPS attribution. Priors against (H36,
@@ -4649,6 +4702,22 @@ only once inference runs at speed (F.5, F.6).
   of RAR-S104's 82 coordinates). Tree size centred by a fixed-position node
   sweep before the SPSA. A tune taken at the control it is used at. The method
   changes are the maintainer's decision.
+  *From D.7.11 (2026-11-20; `analysis/d711_fit_2026-11-20.md`, What
+  stays unfitted):* this is the next fit of the kernel's whole seed
+  table, and it settles what D.7.11 left.
+  - The sixteen whole-unit seeds (depths, counts and
+    `see_noisy_square`) are owed a fit here: each read as a categorical
+    step, or given a finer unit first. A perturbation of whole units on
+    a seed of 3 to 7 is not repeated. The first fit found real
+    gradients on three (`singular_depth` z +3.54).
+  - The units stay held: three history limits and the pawn's exchange
+    value scale with families the surface holds.
+  - Rule 7c's shape is asked first whether 60 games an iteration serve
+    it: the slots were busy 79.3% of an iteration at 30 and would be
+    86.9% at 60, 10% more games an hour. Proven on a smoke before the
+    registration.
+  - `LazyMargin` has no successor on a network; with the HCE it is
+    refitted by PROCESS's margin block (E.4, F.4.1).
 - **F.7 Architecture ladder: output buckets, king buckets, relation/threat inputs; one axis at a time — `R3` with `I2`/`V` sub-steps.** Output buckets,
   king buckets with mirroring, then relation and threat inputs as in
   Reckless, one axis at a time; each net gated against the previous.
@@ -4701,6 +4770,15 @@ only once inference runs at speed (F.5, F.6).
   of one logical CPU per physical core Rarog's four threads keep 4.03 times
   one; hard affinity inside an engine fights the tester's mask, and no donor
   sets it.
+  *The thread spreads are owed a fit, on evidence* (from D.7.11,
+  2026-11-20). `lmr_spread_thread` (27) and `fds_spread_thread` (26) are
+  the donor's values. They multiply the thread index, so nothing at one
+  thread reads them and no fit has held them. A four-thread tune plays
+  about a fifth of the one-thread games an hour (three games at a time),
+  so it is registered only if D.13's or D.14's four-thread reads, or
+  RAR-M83's measure repeated on the adopted kernel, show a scaling
+  deficit to chase: then these two coordinates, at four threads with the
+  explicit placement (RAR-M82).
 - **G.2 Platform and product: Chess960 on demand and distributed testing — `I1`.** Chess960 on demand, and distributed
   testing when typical gains reach 1–3 Elo. The universal x86-64 binary
   was G.2's until 2026-11-04, when the maintainer moved it to E.3.3
@@ -4719,6 +4797,13 @@ only once inference runs at speed (F.5, F.6).
   single transplant shortened it; depth-dependent levers need a long-control
   fit, since short-control tunes never see depth beyond 15; its low-depth
   hash-move extension, which Rarog shares, lost at 40+0.4.
+  *From D.7.11 (2026-11-20):* every fit so far ran at `3+0.03`. RAR-S134
+  read the kernel's gain whole at `10+0.1` (1.02 of the `3+0.03` Elo), so
+  no long-control refit is owed on that evidence. What a short control
+  cannot fit is named, and is this step's first surface: the depth
+  thresholds that act near its horizon (`fp_depth` 14, `bnfp_depth` 11,
+  `nmp_verify_depth` 17, against a mean depth of 16.3 at `3+0.03` and
+  20.2 at `10+0.1`), and the clock's floors (H.3).
 
 ## Phase H — Refinements after the big gains
 
@@ -4828,6 +4913,35 @@ labels H1–H45.
   (TT-10). Each lever is read at the control it acts at, against an external
   engine (TT-3); TT-5 holds the negatives. D.1's record and retry triggers
   stay the base.
+  *The clock's constants are owed a fit* (from D.7.11, 2026-11-20;
+  `analysis/d711_fit_2026-11-20.md`, section 1). Since D.7.9.1 the clock
+  is Reckless's, and nothing in it was fitted on Rarog: the fifteen
+  soft-limit constants (`TmNodesBase` to `TmChangesScale`), the budget's
+  seven (`time.rs`, `TIME_OVERHEAD_MS` to `CYCLIC_HARD_SCALE`) and the
+  fail-high stop's multiple. D.7.11 held them out of the `3+0.03` search
+  fit. The fit opens here, or earlier if D.7.13's `10+0.1` companion
+  reads below its `3+0.03` reading by more than their combined
+  intervals, or a rated control's games show a factor at one end on more
+  than 90% of iterations. What its card starts from:
+  - *Its own registration at `10+0.1` or longer, never inside a search
+    fit.* The factors' population moves with the control: at the
+    stopping iteration the product of the five mean factors is 1.66 at
+    `3000+30` and 1.33 at `10000+100`, and 31% of sides live under
+    100 ms at `3+0.03`, none at `10+0.1`. A tune there plays about 1,300
+    games an hour, some 45 hours to a first checkpoint.
+  - *The coordinates active at that control,* read again there by
+    `tools/diag/tm_activation.py`. At `3+0.03` the three floors never
+    bind; `TmPvFloor` binds on 2.1% of iterations at `10+0.1`.
+  - *One scale, not six.* The four bases and the trend's two clamps
+    each scale the same product, and Rarog's one clock fit (RAR-R15)
+    found its only gradient on the scale.
+  - *The trend factor's form is asked first.* On Rarog it is a switch:
+    at a clamp on 79% of moves, its band 5.7 units wide against a
+    median move-to-move change of 11. Fitting its slope fits a form
+    that may not be the right one here.
+  - *No fixed fault limit* (PROCESS, *SPSA go/no-go*, item 11): the
+    clock's lowest forfeit slack is 54 ms, and an arm that spends more
+    lives there longer.
 - **H.4 Throughput at an identical tree on the network head — `R2`, then `I1`/`V`.**
   C.12's speed pass is closed and F.5 covers the network's inference. On the
   network head's profile, Triumviratus's board, SEE, picker, prefetch and

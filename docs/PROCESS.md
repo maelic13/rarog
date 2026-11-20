@@ -678,6 +678,13 @@ PLAN Phase C's cluster shape carries them for Phase C):
    whose meaning a new evaluation moves most directly; `LazyMargin` was
    added by the C.0 audit, 2026-10-06, before any block ran). Rule 2 holds:
    evaluation and search coordinates never share a tune.
+   *Stale since 2026-11-19, restated at PLAN D.7.14:* the names above
+   are the classic kernel's options, deleted with it (D.7.7). On the
+   compact kernel the block's surface is every seed compared with the
+   static evaluation or the score, the correction's update and limits,
+   the wrapper pair, and `LazyMargin`. `LazyMargin` is refitted only
+   here: it is the played evaluation's own constant, last fitted with
+   the classic search (RAR-S104), and D.7.11 held it at 475.
 5. **Gate 2.** The candidate with its retuned margins against the head,
    SPRT `[0,3]` at `3+0.03`. Gate 2 accepts. A unit that fails both gates
    is a worse function for this engine; one that fails gate 1 and passes
