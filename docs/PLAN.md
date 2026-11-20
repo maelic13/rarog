@@ -386,7 +386,7 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.10 | RESEARCH | V | The repaired kernel, with D.7.9.1's time manager, against `d7classic` at `3+0.03` and `10+0.1`, 2,000 games each: a diagnostic that sets the fit's control |
+| D.7.10 | READY_FOR_IMPLEMENTATION | V | Registered 2026-11-20 as RAR-S134, dry-run: the repaired kernel with D.7.9.1's time manager against `d7classic`, 2,000 games at `3+0.03` and at `10+0.1`, the maintainer's runs; sets the fit's control |
 | D.7.11.1 | RESEARCH | I1 | The finishing surface: the added seeds, the plies and counts left out, the activation read, the audit and the pilot |
 | D.7.11.2 | RESEARCH | V | The rule 7c run at D.7.10's control, the maintainer's; its theta baked |
 | D.7.11 | RESEARCH | V | Closes when D.7.11.2's theta is baked and the tune build at its defaults reproduces the new fingerprint |
@@ -3008,6 +3008,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
          of 3,000 iterations, its registration giving the hours;
       3. a `3+0.03` interval wholly below zero stops D.7 for the
          maintainer before any fit.
+      *Registered 2026-11-20 as RAR-S134*, before any game:
+      - `d710kern` (RAR-R34's candidate, `38e947c`) against `d7classic`
+        (`29f32fb`), both pext PGO builds. The kernel arm carries D.7.9.1's
+        time manager and the classic arm its hybrid clock, so use 1
+        measures the two together.
+      - 2,000 games at each control, seeds 20261129 and 20261130, both
+        dry-run.
+      - One command runs both (`run_s134.ps1`), about 1 hour 45 minutes.
+      - Predicted: +65 Elo at `3+0.03` and +45 at `10+0.1`, so the fit
+        runs at `3+0.03` (0.70).
     - **D.7.11 The finishing fit — `V`.**
       One rule 7c run on the repaired kernel from the baked centres, over
       a completed surface, the time manager's constants in it. The
