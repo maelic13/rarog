@@ -39,6 +39,9 @@ still `--check` in the block form (`--iterations`).
 
 ## `d14block1` — D.1.4's clock fit, registered by RAR-R15
 
+A record: D.7.9.1 (2026-11-20) replaced the clock these coordinates tuned
+with the donor's, so the engine no longer has their options.
+
 - **Surface:** the thirteen clock coordinates: the seven of 2.3.0, D.1.3's
   five and the cross-move slope `TmFallPrevSlope` (added 2026-10-22 before
   any game, RAR-R15's amendment). `value` is the engine default at
