@@ -264,6 +264,60 @@ game): eight inactive at both depths, `KPickCheckPiece` active at 17, the seven
 new options active, a surface of 225: the predicted outcome (0.75), with no
 option differing.
 
+## The pilot's result (2026-11-20; read from its files, before any tune game)
+
+`tools/results/d711-pilot`, one invocation (manifest
+`colosseum_spsa_d711-pilot_20261120_175215`), started 16:52:16 and ended
+17:17:17 UTC: 64 of 64 iterations, 1,920 games, the runner `completed` with no
+invalid iteration. The wrapper's read at 64: **FAULT** (`engine_b 1,
+time_losses_b 1`), so the run stopped there for the maintainer.
+
+| Pass criterion | Read |
+|---|---|
+| Every option accepted | **yes**: the wrapper verified 225 coordinates at N = 64; no refused or unknown option in `run.log` or the segment log |
+| No first arm clamped | **yes**: "clamped none"; arms clamped on over 1% of iterations: none |
+| No fault | **no**: one time loss, analysed below |
+| The move check on the resumed run under 1e-6 | **not tested**: the run was not interrupted (one manifest, no `interrupted` line, the run log one stream to 64). The reader's move check on the uninterrupted run is 8.8e-13 |
+| The rate recorded | **yes**: 23.43 s an iteration, 153.7 iterations an hour (4,610 games), slots busy 82.1% (`tune_journal.py`, `34035fca…`) |
+
+**The time loss is the host's, by the rule registered above.** Game 1,072
+(iteration 35, slot 8), the minus side forfeited at ply 52. By the runner's
+`failed-games` table, the search's own time was 24 ms and its last `info`
+came at 24.2 ms, but `bestmove` reached the runner at 125.5 ms against a
+77.1 ms deadline; 112.1 ms of that is charged as *held* (the engine's process
+not running). Without the hold the move took 13.5 ms. That is "the losing
+search held longer than its slack". Read beside the other slots
+(`pilot_fault.py`, `fd4bd5e4…`), it was a host-wide stall: all fifteen games
+in play held 66 to 670 ms in the same seconds, against a median of 0.9 ms a
+side for a whole game; 110 of the run's 111 sides held over 50 ms fall in
+iterations 35 and 36, between 17:05:55 and 17:06:43 UTC. By the same tool on
+RAR-S128's 60,000 games, the worst burst held 24 sides on 12 slots, the
+largest 178 ms; this one held 132 sides on all 15 slots, the largest
+670 ms. The host's scheduled task `\Microsoft\Windows\Shell\CreateObjectTask`
+ran at 17:05:41 UTC, and DCOM logged events 10016 from 17:05:56 to 17:06:08:
+a coincidence in time, not a proven cause. No session of this project ran
+anything in that window.
+
+**Re-audit (PROCESS, *SPSA go/no-go*, step 6), diagnostics only:** one
+coordinate over the familywise line at 64 iterations, `KQuietMalusCap`
+(z +3.81 against 3.69; with 225 coordinates one over the line is a chance
+reading about one time in twenty), then `KNoisyMalusSlope` (+3.20) and
+`KExchangeValue1` (−2.52); `Σ z² − n` +19.9 (+0.9 SD); no rail, no rail
+candidate, no clamped arm. Nothing in it argues for a change of the surface,
+and the pilot's theta is not used.
+
+### Amendment, 2026-11-20, before the tune's first game: the hours
+
+From the pilot's measured 153.7 iterations an hour, the stall included:
+**13.0 hours to the first checkpoint at 2,000, 6.5 for each further 1,000,
+39.0 to the ceiling of 6,000.** These replace the record's 13.5, 6.8 and
+40.5.
+
+*Calibration of item 2:* no fault (0.95): **missed**, one time loss in 1,920
+games, the host's; the miss is in the instrument's environment, not the
+engine (the search itself was inside its deadline). 140 to 155 iterations an
+hour (0.8): **hit**, 153.7.
+
 ## Use
 
 Theta, if kept by the read at the stop, is baked by D.7.11.8 (the tune
