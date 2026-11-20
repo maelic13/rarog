@@ -126,52 +126,49 @@ search_params! {
     /// evaluator's own seed and the margin `texel` fits use.
     lazy_margin = 475, "LazyMargin", 100..=2000;
 
-    // ── Time-management dynamic multipliers ──────────────────────────────────
-    // The clock-mode between-iteration soft-stop scales `optimum_ms` by
-    // falling-eval × best-move-instability × effort (`search_root` soft-stop block);
-    // seeded from Stockfish and exposed for the time-management tune.
-    // Stored in ten-thousandths so the float defaults reconstruct bit-exactly
-    // (`x / 10000.0` is correctly-rounded, identical to the original literal).
-    // TM affects only clock play, never the depth-limited `bench` fingerprint.
-    /// Overall multiplier on `optimum_ms` (10000 = ×1.0). The single
-    /// highest-leverage TM knob; lets SPSA scale base time allocation. The
-    /// range reaches 0.3, the value a harness wire check sets.
-    tm_opt_scale = 10_000, "TmOptScale", 2000..=20000;  // ×1.0
-    /// Falling-eval base term. Seed 1187 (0.1187).
-    tm_fall_base = 1_187, "TmFallBase", 0..=5000;  // 0.1187
-    /// Falling-eval slope on `(prev_avg_score - score)`. Seed 221 (0.0221).
-    tm_fall_slope = 221, "TmFallSlope", 0..=1000;  // 0.0221
-    /// Falling-eval slope on the fall across the move pair: this thread's
-    /// previous search's root score in the game less this iteration's. Both
-    /// donors read the previous move's score; the slope above reads only this
-    /// search. Seed 204 (0.0204, Stockfish's raw cross-move slope; its score
-    /// unit is not this engine's, so the fit sets the weight).
-    tm_fall_prev_slope = 204, "TmFallPrevSlope", 0..=1000;  // 0.0204
-    /// Best-move-instability base. Seed 11000 (1.10).
-    tm_instab_base = 11_000, "TmInstabBase", 8000..=16000;  // 1.10
-    /// Best-move-instability slope on `tot_best_move_changes`. Seed 22900 (2.29).
-    tm_instab_slope = 22_900, "TmInstabSlope", 0..=50000;  // 2.29
-    /// Effort factor at or below `TmEffortFloor` of the search's nodes on the
-    /// best move. Seed 9240 (0.924); the range reaches an extending shape.
-    tm_effort_high = 9_240, "TmEffortHigh", 6000..=20000;  // 0.924
-    /// Effort factor when the best move took all of the search's nodes. Seed
-    /// 7100 (0.71).
-    tm_effort_low = 7_100, "TmEffortLow", 4000..=10000;  // 0.71
-    /// Best-move node share at which the effort factor starts to fall from
-    /// `TmEffortHigh` toward `TmEffortLow`. Seed 7900 (0.79).
-    tm_effort_floor = 7_900, "TmEffortFloor", 0..=9500;  // 0.79
-    /// Moves to go assumed per second of clock below one second: the
-    /// sudden-death horizon is `min(50, clock_s * this)`, at least one move,
-    /// so a short clock stops counting increments it will not live to
-    /// receive. Plain moves per second. Seed 50.
-    tm_horizon_per_sec = 50, "TmHorizonPerSec", 20..=100;
-    /// Stability factor with the best move just changed. Seed 12881 (1.2881).
-    tm_stab_base = 12_881, "TmStabBase", 8000..=20000;  // 1.2881
-    /// Stability factor's fall per completed iteration the best move has
-    /// held. Seed 440 (0.0440).
-    tm_stab_slope = 440, "TmStabSlope", 0..=2000;  // 0.0440
-    /// Stability factor's floor. Seed 7160 (0.716).
-    tm_stab_floor = 7_160, "TmStabFloor", 4000..=10000;  // 0.716
+    // ── The clock's soft limit ──────────────────────────────────────────────
+    // Between iterations a clock search stops once its time passes the soft
+    // bound times five factors (`time::soft_stop`), the donor's form and
+    // seeds, tuned there with its search. Stored in ten-thousandths so each
+    // seed reconstructs exactly (`x / 10000.0`). The budget's own shape is a
+    // constant in `time.rs`, not a coordinate. The clock acts only in clock
+    // play, never in the depth-limited `bench`.
+    /// The node-share factor at no share: `base - slope * share`.
+    tm_nodes_base = 31_838, "TmNodesBase", 15000..=50000;  // 3.1838
+    /// The node-share factor's fall per unit of the best move's share.
+    tm_nodes_slope = 26_554, "TmNodesSlope", 10000..=40000;  // 2.6554
+    /// The node-share factor's floor.
+    tm_nodes_floor = 5_460, "TmNodesFloor", 2000..=9000;  // 0.546
+    /// The score-trend factor with the score where the previous search left
+    /// it: `base + slope * fall`, within the two clamps below.
+    tm_trend_base = 7_426, "TmTrendBase", 4000..=12000;  // 0.7426
+    /// The score-trend factor's rise per unit the score fell from the
+    /// previous search: the donor's 0.0480 a unit of its evaluation, in the
+    /// kernel's units (1024/2536 of the donor's).
+    tm_trend_slope = 1_189, "TmTrendSlope", 0..=3000;  // 0.1189
+    /// The score-trend factor's lower clamp.
+    tm_trend_low = 7_214, "TmTrendLow", 4000..=10000;  // 0.7214
+    /// The score-trend factor's upper clamp.
+    tm_trend_high = 14_031, "TmTrendHigh", 10000..=25000;  // 1.4031
+    /// The best-move stability factor with the move just changed: `base -
+    /// slope * iterations held`, never below the floor.
+    tm_pv_base = 12_881, "TmPvBase", 8000..=20000;  // 1.2881
+    /// Its fall per iteration the best move has held.
+    tm_pv_slope = 440, "TmPvSlope", 0..=2000;  // 0.0440
+    /// Its floor.
+    tm_pv_floor = 7_160, "TmPvFloor", 4000..=10000;  // 0.716
+    /// The score stability factor with the score just moved: `base - slope *
+    /// iterations held near the root's average`, never below the floor.
+    tm_eval_base = 12_664, "TmEvalBase", 8000..=20000;  // 1.2664
+    /// Its fall per iteration the score has held.
+    tm_eval_slope = 416, "TmEvalSlope", 0..=2000;  // 0.0416
+    /// Its floor.
+    tm_eval_floor = 8_642, "TmEvalFloor", 5000..=10000;  // 0.8642
+    /// The best-move change factor with no change in the iteration: `base +
+    /// ln(1 + scale * changes)`.
+    tm_changes_base = 11_500, "TmChangesBase", 7000..=18000;  // 1.15
+    /// The change count's scale inside the log.
+    tm_changes_scale = 2_526, "TmChangesScale", 0..=8000;  // 0.2526
     /// The multiple of the soft target past which a root fail-high ends the
     /// search on the move that failed high, in ten-thousandths: twice the
     /// target. A won ending's score can climb with every re-search, and
@@ -191,15 +188,10 @@ mod tests {
     fn search_params_defaults_are_sane() {
         let p = SearchParams::default();
         assert!(p.lazy_margin > 0);
-        assert!(p.tm_opt_scale > 0);
-        assert!(p.tm_fall_base > 0);
-        assert!(p.tm_fall_slope > 0);
-        assert!(p.tm_instab_base > 0);
-        assert!(p.tm_instab_slope > 0);
-        assert!(p.tm_effort_high > 0);
-        assert!(p.tm_effort_low > 0);
-        assert!(p.tm_effort_floor < 10_000);
-        assert!(p.tm_horizon_per_sec > 0);
-        assert!(p.tm_stab_floor <= p.tm_stab_base);
+        assert!(p.tm_nodes_floor < p.tm_nodes_base);
+        assert!(p.tm_trend_low < p.tm_trend_base && p.tm_trend_base < p.tm_trend_high);
+        assert!(p.tm_pv_floor <= p.tm_pv_base);
+        assert!(p.tm_eval_floor <= p.tm_eval_base);
+        assert!(p.tm_changes_base > 0 && p.tm_changes_scale >= 0);
     }
 }

@@ -76,12 +76,13 @@ pub(super) struct ThreadData {
     /// The compact kernel's rule counts for the rates line.
     #[cfg(feature = "probes")]
     pub(super) rates: super::compact::probes::Rates,
-    /// The root score this thread's previous search in the game ended on,
-    /// which the falling eval compares with this search's; none at a new
-    /// game, so the first move reads no fall across the pair.
-    pub(super) previous_search_score: Option<i32>,
-    /// The compact kernel's root score at the previous search's end, in its
-    /// own units: the next search's running average starts there.
+    /// Moves other than the first that raised alpha on line one in the
+    /// current iteration: the clock's best-move change count, cleared at
+    /// every iteration as in the donor.
+    pub(super) best_move_changes: u32,
+    /// The root score at the previous search's end in the game, zero at a
+    /// new game: the next search's running average starts there, and the
+    /// clock's score trend reads the fall from it.
     pub(super) compact_previous_score: i32,
     /// Moves made in the tree, for the test of the node count.
     #[cfg(test)]
@@ -128,7 +129,7 @@ impl Default for ThreadData {
             optimism: [0; 2],
             #[cfg(feature = "probes")]
             rates: super::compact::probes::Rates::default(),
-            previous_search_score: None,
+            best_move_changes: 0,
             compact_previous_score: 0,
             #[cfg(test)]
             moves_made: 0,

@@ -623,10 +623,8 @@ mod tests {
         );
         helper.search_root(board, &legal, false, &mut || SearchEvent::None);
         helper.td.compact_previous_score = 250;
-        helper.td.previous_search_score = Some(250);
         helper.reset_thread_for_new_game();
         assert_eq!(helper.td.compact_previous_score, 0);
-        assert_eq!(helper.td.previous_search_score, None);
     }
 
     struct Recorder(Arc<Mutex<Vec<String>>>);

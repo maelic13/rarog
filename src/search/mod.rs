@@ -437,7 +437,6 @@ impl Searcher {
     fn reset_thread_for_new_game(&mut self) {
         self.clear_history();
         self.td.evaluator.clear_pawn_table();
-        self.td.previous_search_score = None;
         self.td.compact_previous_score = 0;
     }
 
@@ -880,9 +879,6 @@ impl Searcher {
         let mut best_score = -INF_SCORE;
         let mut completed_depth = 0;
         let max_depth = self.cfg.limits.depth.min(MAX_DEPTH - 1);
-        let mut prev_avg_score = 0.0_f64; // EWMA of completed root scores (SF bestPreviousAverageScore)
-        let mut tot_best_move_changes = 0.0_f64; // decaying count of best-move changes
-        let mut stable_iterations = 0_u32;
         let mut mate_watch = MateWatch::default();
         let mut proved_win: Option<ProvedWin> = None;
         // The soft target the last completed iteration set; a root window
@@ -903,6 +899,8 @@ impl Searcher {
             // whole search the number reports a deeper earlier iteration and
             // never falls, which is not what a GUI plots against depth.
             self.td.seldepth = 0;
+            // The clock counts this iteration's best-move changes alone.
+            self.td.best_move_changes = 0;
             for root_move in &mut self.td.root_move_records {
                 root_move.begin_iteration();
             }
@@ -1102,44 +1100,12 @@ impl Searcher {
                 break;
             }
 
-            // Update best-move instability and score EWMA for the soft-stop
-            // formula. **This thread's own** best-move flips, deliberately:
-            // the POOL's deepest-Exact move measured −5.54 ± 8.15 Elo over
-            // 2,760 games at 4T, the noisier signal rather than the better one.
-            tot_best_move_changes /= 2.0;
             if bestmove != previous_bestmove {
-                tot_best_move_changes += 1.0;
                 crate::diag_count!(root_best_changes);
             }
             crate::diag_count!(root_iterations);
-            stable_iterations = if depth == 1 || bestmove != previous_bestmove {
-                0
-            } else {
-                stable_iterations + 1
-            };
 
-            // `falling_eval` compares this iteration's score against the
-            // average of the *prior* iterations. At this point `prev_avg_score`
-            // is still that prior average, so capture it here as the baseline
-            // BEFORE folding the current score in below; reading it after the
-            // update would attenuate the signal to two-thirds. On the first
-            // iteration there is no prior average, so the baseline is the
-            // current score → a neutral (zero) falling signal.
-            // The clock reads scores in Rarog's units.
-            let shown_score = best_score;
-            let falling_baseline = if completed_depth <= 1 {
-                f64::from(shown_score)
-            } else {
-                prev_avg_score
-            };
-            // Update the EWMA for the next iteration's baseline.
-            prev_avg_score = if completed_depth <= 1 {
-                f64::from(shown_score)
-            } else {
-                (prev_avg_score * 2.0 + f64::from(shown_score)) / 3.0
-            };
-
-            // SF-style between-iteration stop.
+            // The between-iteration stop.
             // movetime mode: no soft stop — count_node (every 2048 nodes) fires at maximum_ms.
             // clock mode: stop when elapsed exceeds the dynamically scaled optimum.
             let elapsed_ms = self.elapsed_ms();
@@ -1154,13 +1120,7 @@ impl Searcher {
                 break;
             }
             if !self.cfg.limits.movetime_mode {
-                let signals = IterationSignals {
-                    score_fall: falling_baseline - f64::from(shown_score),
-                    cross_move_fall: self.cross_move_fall(shown_score),
-                    best_move_changes: tot_best_move_changes,
-                    stable_iterations,
-                    effort_share: self.effort_share(bestmove),
-                };
+                let signals = self.iteration_signals(&iterations, bestmove, best_score);
                 let soft = time::soft_stop(&self.cfg.params, &self.cfg.limits, signals);
                 soft_target_ms = soft.target_ms;
                 #[cfg(feature = "diag")]
@@ -1258,7 +1218,6 @@ impl Searcher {
             self.notice(format_args!("{}", self.td.rates.line()));
         }
         let best_score = best_score;
-        self.remember_search_score(best_score);
         let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
         SearchResult {
             bestmove,
@@ -1279,6 +1238,26 @@ impl Searcher {
         }
     }
 
+    /// What the clock reads after a completed iteration ended on
+    /// `best_score` with `bestmove`: the best move's node share, the score's
+    /// fall from the previous search in the game, the two stability counts
+    /// the root window keeps, and this iteration's best-move changes. Each is
+    /// this thread's own, as in the donor.
+    fn iteration_signals(
+        &self,
+        iterations: &compact::window::Iterations,
+        bestmove: Move,
+        best_score: i32,
+    ) -> IterationSignals {
+        IterationSignals {
+            node_share: self.effort_share(bestmove),
+            score_fall: f64::from(self.td.compact_previous_score - best_score),
+            pv_stability: iterations.pv_stability(),
+            eval_stability: iterations.eval_stability(),
+            best_move_changes: self.td.best_move_changes,
+        }
+    }
+
     /// Whether `score`, from a completed iteration, is a mate within `go mate`'s
     /// limit, for either side. Only a completed iteration's score is exact.
     fn mate_limit_proved(&self, score: i32) -> bool {
@@ -1293,22 +1272,6 @@ impl Searcher {
     fn stop_the_pool(&self) {
         if let Some(shared) = self.shared.pool() {
             shared.request_stop();
-        }
-    }
-
-    /// The fall from this thread's previous search in the game to `score`,
-    /// the previous move's score both donors read; zero without one.
-    fn cross_move_fall(&self, score: i32) -> f64 {
-        self.td
-            .previous_search_score
-            .map_or(0.0, |previous| f64::from(previous - score))
-    }
-
-    /// Keep this search's root score for the next search's falling eval. A
-    /// search that completed no iteration leaves the previous one in place.
-    fn remember_search_score(&mut self, score: i32) {
-        if score > -INF_SCORE {
-            self.td.previous_search_score = Some(score);
         }
     }
 
@@ -1333,15 +1296,19 @@ impl Searcher {
         elapsed_ms: f64,
     ) {
         self.td.sink.line(&format!(
-            "info string tm depth {depth} k {} share {:.4} cross {:.1} fall {:.4} instab {:.4} \
-             stab {:.4} effort {:.4} optimum {:.1} target {:.1} elapsed {elapsed_ms:.1}",
-            signals.stable_iterations,
-            signals.effort_share,
-            signals.cross_move_fall,
-            soft.falling,
-            soft.instability,
-            soft.stability,
-            soft.effort,
+            "info string tm depth {depth} share {:.4} fall {:.1} pv {} eval {} changes {} \
+             nodes {:.4} trend {:.4} pvstab {:.4} evalstab {:.4} bms {:.4} optimum {:.1} \
+             target {:.1} elapsed {elapsed_ms:.1}",
+            signals.node_share,
+            signals.score_fall,
+            signals.pv_stability,
+            signals.eval_stability,
+            signals.best_move_changes,
+            soft.nodes,
+            soft.score_trend,
+            soft.pv_stability,
+            soft.eval_stability,
+            soft.best_move_stability,
             self.cfg.limits.optimum_ms,
             soft.target_ms,
         ));
@@ -1383,9 +1350,6 @@ impl Searcher {
         let mut best_score = -INF_SCORE;
         let mut completed_depth = 0;
         let max_depth = self.cfg.limits.depth.min(MAX_DEPTH - 1);
-        let mut prev_avg_score = 0.0_f64;
-        let mut tot_best_move_changes = 0.0_f64;
-        let mut stable_iterations = 0_u32;
         let mut mate_watch = MateWatch::default();
         let mut cast_stop_vote = false;
         // The lines of the last depth whose every line completed, best first.
@@ -1398,6 +1362,7 @@ impl Searcher {
         for depth in 1..=max_depth {
             // Per iteration, as in the single-line path above.
             self.td.seldepth = 0;
+            self.td.best_move_changes = 0;
             for root_move in &mut self.td.root_move_records {
                 root_move.begin_iteration();
             }
@@ -1568,29 +1533,10 @@ impl Searcher {
                 break;
             }
 
-            tot_best_move_changes /= 2.0;
             if bestmove != previous_bestmove {
-                tot_best_move_changes += 1.0;
                 crate::diag_count!(root_best_changes);
             }
             crate::diag_count!(root_iterations);
-            stable_iterations = if depth == 1 || bestmove != previous_bestmove {
-                0
-            } else {
-                stable_iterations + 1
-            };
-            // The clock reads scores in Rarog's units.
-            let shown_score = best_score;
-            let falling_baseline = if completed_depth <= 1 {
-                f64::from(shown_score)
-            } else {
-                prev_avg_score
-            };
-            prev_avg_score = if completed_depth <= 1 {
-                f64::from(shown_score)
-            } else {
-                (prev_avg_score * 2.0 + f64::from(shown_score)) / 3.0
-            };
             let elapsed_ms = self.elapsed_ms();
             if elapsed_ms >= self.cfg.limits.maximum_ms {
                 break;
@@ -1606,13 +1552,7 @@ impl Searcher {
                 break;
             }
             if !self.cfg.limits.movetime_mode {
-                let signals = IterationSignals {
-                    score_fall: falling_baseline - f64::from(shown_score),
-                    cross_move_fall: self.cross_move_fall(shown_score),
-                    best_move_changes: tot_best_move_changes,
-                    stable_iterations,
-                    effort_share: self.effort_share(bestmove),
-                };
+                let signals = self.iteration_signals(&iterations, bestmove, best_score);
                 let soft_target =
                     time::soft_stop(&self.cfg.params, &self.cfg.limits, signals).target_ms;
                 if self.td.pondering {
@@ -1650,7 +1590,6 @@ impl Searcher {
             self.td.compact_previous_score = best_score;
         }
         let best_score = best_score;
-        self.remember_search_score(best_score);
         let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
         SearchResult {
             bestmove,
@@ -2219,22 +2158,30 @@ mod tests {
             (2_000, 20, 0, 60),
             (30_000, 0, 20, 20),
         ];
-        // Early in a search, and late, with the best move long held and
-        // most of the nodes spent on it.
+        // Early in a search with the score inside the trend's clamps; late,
+        // with the best move and score long held, most of the nodes on the
+        // move and the score risen; and a spread search after a large fall.
         let signals = [
             IterationSignals {
-                score_fall: 25.0,
-                cross_move_fall: 15.0,
-                best_move_changes: 1.5,
-                stable_iterations: 3,
-                effort_share: 0.6,
+                node_share: 0.6,
+                score_fall: 2.0,
+                pv_stability: 3,
+                eval_stability: 2,
+                best_move_changes: 1,
             },
             IterationSignals {
+                node_share: 0.97,
                 score_fall: -10.0,
-                cross_move_fall: 0.0,
-                best_move_changes: 0.0,
-                stable_iterations: 20,
-                effort_share: 0.97,
+                pv_stability: 20,
+                eval_stability: 20,
+                best_move_changes: 0,
+            },
+            IterationSignals {
+                node_share: 0.3,
+                score_fall: 25.0,
+                pv_stability: 0,
+                eval_stability: 0,
+                best_move_changes: 3,
             },
         ];
         let clock = |options: &SearchOptions| -> Vec<u64> {
@@ -3260,10 +3207,12 @@ mod tests {
             .expect("a candidate fails high at the root");
         assert!(fail_high.depth >= 4);
 
-        // Half the optimum keeps every soft target below 99% of the maximum;
-        // the stop is read at the target itself, where it was registered.
+        // The score trend pinned at a half keeps every soft target below 99%
+        // of the maximum; the stop is read at the target itself, where it was
+        // registered.
         let mut options = EngineOptions::default();
-        options.search_params.tm_opt_scale = 5_000;
+        options.search_params.tm_trend_low = 5_000;
+        options.search_params.tm_trend_high = 5_000;
         options.search_params.tm_fail_high_target = 10_000;
         let board = Board::from_fen(fen).expect("valid fen");
         let clock = SearchLimits {
@@ -3412,13 +3361,14 @@ mod tests {
         assert!(written > 0, "the search never reached a castling move");
     }
 
-    /// Each search leaves its root score for the next one's falling eval; a
-    /// new game forgets it, and before any search there is no fall to read.
+    /// Each search leaves its root score for the next one's score trend; a
+    /// new game forgets it, and before any search the trend reads from zero,
+    /// as the donor's does.
     #[test]
     fn a_search_leaves_its_score_for_the_next_move_until_a_new_game() {
         let engine = EngineOptions::default();
         let mut searcher = Searcher::default();
-        assert_eq!(searcher.cross_move_fall(0), 0.0);
+        assert_eq!(searcher.td.compact_previous_score, 0);
         let depth_limited = SearchLimits {
             depth: Some(4),
             ..SearchLimits::default()
@@ -3427,20 +3377,17 @@ mod tests {
         let legal = board.generate_legal_moves();
         searcher.reset_search_state(&depth_limited, &engine, board.side_to_move(), 0, true);
         let first = searcher.search_root(board.clone(), &legal, false, &mut || SearchEvent::None);
-        assert_eq!(searcher.td.previous_search_score, Some(first.score));
-        assert_eq!(searcher.cross_move_fall(first.score - 25), 25.0);
-        assert_eq!(searcher.cross_move_fall(first.score + 40), -40.0);
+        assert_eq!(searcher.td.compact_previous_score, first.score);
 
         let mut next = board;
         next.make_move(first.bestmove);
         let legal = next.generate_legal_moves();
         searcher.reset_search_state(&depth_limited, &engine, next.side_to_move(), 1, true);
         let second = searcher.search_root(next, &legal, false, &mut || SearchEvent::None);
-        assert_eq!(searcher.td.previous_search_score, Some(second.score));
+        assert_eq!(searcher.td.compact_previous_score, second.score);
 
         searcher.new_game();
-        assert_eq!(searcher.td.previous_search_score, None);
-        assert_eq!(searcher.cross_move_fall(second.score), 0.0);
+        assert_eq!(searcher.td.compact_previous_score, 0);
     }
 
     /// `go` parsed 60 ms before the search starts, at a 150 ms clock: the

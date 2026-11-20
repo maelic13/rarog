@@ -53,6 +53,16 @@ impl Iterations {
         self.averages[line] = (self.averages[line] + score) / 2;
     }
 
+    /// Completed iterations in a row with the same best move.
+    pub(in crate::search) fn pv_stability(&self) -> i32 {
+        self.pv_stability
+    }
+
+    /// Completed iterations in a row whose score held near line 1's average.
+    pub(in crate::search) fn eval_stability(&self) -> i32 {
+        self.eval_stability
+    }
+
     /// An iteration ended with `best_score` on `best_move`: count how long
     /// the score and the move have held.
     pub(in crate::search) fn end_iteration(&mut self, best_score: i32, best_move: Move) {

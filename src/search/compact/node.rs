@@ -1126,6 +1126,11 @@ impl Searcher {
                 let move_nodes = self.td.nodes.saturating_sub(nodes_before);
                 let report_depth = self.td.root_report_depth.max(depth);
                 self.record_root_move_search(mv, report_depth, score, alpha, beta, move_nodes);
+                // The clock's best-move change: a move after the first raising
+                // alpha on line one.
+                if score > alpha && move_count > 1 && self.td.multipv_line == 0 {
+                    self.td.best_move_changes += 1;
+                }
             }
             if mv == tt_move {
                 tt_move_score = score;

@@ -93,22 +93,56 @@ impl Default for RuntimeLimits {
     }
 }
 
-/// The sudden-death horizon in moves: fifty, or `clock_s × TmHorizonPerSec`
-/// below one second of clock at the default, and at least one. Fifty moves at
-/// every clock counted increments a short clock never lives to receive, and
-/// drifted a `3+0.03` game down to the clock at which the optimum equals the
-/// increment (155 ms), where an OS hold longer than the clock forfeits.
-fn sudden_death_horizon(params: &SearchParams, time_ms: usize) -> f64 {
-    let horizon = time_ms as f64 / 1000.0 * f64::from(params.tm_horizon_per_sec);
-    horizon.floor().clamp(1.0, 50.0)
+/// What both bounds leave for the search to stop and answer, as the donor
+/// leaves it.
+const TIME_OVERHEAD_MS: f64 = 15.0;
+
+/// The budget's shape is the donor's, tuned with its search at `40+0.4` and
+/// at six threads. It is not a fit coordinate: a fit at a shorter control
+/// would move the long-control allocation without reading it. In sudden
+/// death the soft bound's share of the clock grows with the move number from
+/// about 1.2% towards [`SOFT_SCALE_LATE`].
+const SOFT_SCALE_LATE: f64 = 0.0594;
+const SOFT_SCALE_EARLY_CUT: f64 = 0.0492;
+const SOFT_SCALE_RATE: f64 = 0.0386;
+const HARD_SCALE: f64 = 0.7281;
+/// The share of the increment both bounds add.
+const INCREMENT_SHARE: f64 = 0.75;
+/// The hard bound's multiple of the per-move base under `movestogo`.
+const CYCLIC_HARD_SCALE: f64 = 5.0;
+
+/// The soft and hard bounds in milliseconds for a clock of `time` with
+/// `increment`, before Rarog's reserve: the donor's budget. `movestogo` 0 is
+/// sudden death; otherwise each of the moves to go gets the main clock's
+/// share. Both bounds stay within the main clock, the clock less Move
+/// Overhead, and are at least a millisecond.
+fn budget(time: f64, increment: f64, movestogo: usize, overhead: f64, fullmove: f64) -> (f64, f64) {
+    let main = (time - overhead).max(0.0);
+    let (soft, hard) = if movestogo > 0 {
+        let base = main / movestogo as f64 + INCREMENT_SHARE * increment;
+        (
+            base.min(main + increment),
+            (CYCLIC_HARD_SCALE * base).min(main + increment),
+        )
+    } else {
+        let soft_scale =
+            SOFT_SCALE_LATE - SOFT_SCALE_EARLY_CUT * (-SOFT_SCALE_RATE * fullmove).exp();
+        (
+            (soft_scale * main + INCREMENT_SHARE * increment).min(main),
+            (HARD_SCALE * main + INCREMENT_SHARE * increment).min(main),
+        )
+    };
+    (
+        (soft - TIME_OVERHEAD_MS).max(1.0),
+        (hard - TIME_OVERHEAD_MS).max(1.0),
+    )
 }
 
 /// Compute time limits for one search.
 ///
 /// `game_ply` is the number of half-moves played so far in the game
-/// (≈ `2*(fullmove - 1) + (side_to_move == Black) as u32`).
-/// It is used in Stockfish's clock formulas to allocate more time in the
-/// opening (ply 0) and gradually less as the game progresses.
+/// (`2*(fullmove - 1) + (side_to_move == Black) as u32`); the budget reads
+/// the full-move number it gives.
 pub(super) fn compute_runtime_limits(
     options: &SearchLimits,
     engine_options: &EngineOptions,
@@ -152,68 +186,27 @@ pub(super) fn compute_runtime_limits(
         };
         if let Some(time) = time {
             let overhead = engine_options.move_overhead;
-            let explicit_mtg = options.movestogo > 0;
-            let mtg = if explicit_mtg {
-                options.movestogo.min(50) as f64
-            } else {
-                sudden_death_horizon(&engine_options.search_params, time)
-            };
+            let fullmove = f64::from(game_ply / 2 + 1);
+            let (soft, hard) = budget(
+                time as f64,
+                increment as f64,
+                options.movestogo,
+                overhead,
+                fullmove,
+            );
 
-            // SF: timeLeft = max(1, time + inc*(mtg-1) - overhead*(2+mtg))
-            let time_left =
-                (time as f64 + increment as f64 * (mtg - 1.0) - overhead * (2.0 + mtg)).max(1.0);
-
-            let ply = game_ply as f64;
-
-            let (opt_scale, max_scale) = if explicit_mtg {
-                // Explicit movestogo branch (SF timeman.cpp)
-                let opt = ((0.88 + ply / 116.4) / mtg).min(0.88 * time as f64 / time_left);
-                let max = 1.3 + 0.11 * mtg;
-                (opt, max)
-            } else {
-                // Sudden death / increment (SF timeman.cpp)
-                let log_t = (time_left / 1000.0).max(1e-9).log10();
-                let opt_const = (0.0029869 + 0.00033554 * log_t).min(0.004905);
-                let max_const = (3.3744 + 3.0608 * log_t).max(3.1441);
-                let opt = (0.012112 + (ply + 3.22713_f64).max(0.0).powf(0.46866) * opt_const)
-                    .min(0.19404 * time as f64 / time_left);
-                let max = (6.873_f64).min(max_const + ply / 12.352);
-                (opt, max)
-            };
-
-            optimum_ms = (opt_scale * time_left).max(1.0);
-            // SF: maximum = max(optimum, min(0.8097*time - overhead, maxScale*optimum))
-            maximum_ms =
-                ((0.8097 * time as f64 - overhead).min(max_scale * optimum_ms)).max(optimum_ms);
-
-            // Time-safety reserve. The SF maximum above leaves
-            // only ~19% of the clock plus one Move Overhead unused; at low
-            // remaining time that slack is just a few ms. The clock is polled
-            // (and the iteration aborted) within ~1 ms of `maximum_ms`, but the
-            // wall time the GUI actually charges also includes the latency
-            // *before* our clock starts (`go` received → `self.cfg.start`) and the
-            // latency for `bestmove` to reach the GUI. Under a loaded gauntlet
-            // those spike well past the thin low-time slack and forfeit games.
-            //
-            // Guarantee an absolute reserve of `2*overhead` on top of the
-            // percentage reserve: never schedule a hard limit past
-            // `time - 2*overhead`. This only binds when
-            // `0.8097*time - overhead > time - 2*overhead`, below about 5.25
-            // overheads of clock (≈52 ms at the default 10 ms overhead) —
-            // i.e. only in genuine time scrambles, where playing a hair
-            // faster costs ~no Elo — and leaves normal-time allocation
-            // untouched.
-            // The reserve must also cover SCHEDULER STARVATION when
-            // running multi-threaded. Measured in real Threads=4 games
-            // (latency sidecar over an instrumented null match): the search's
-            // own 2048-node time poll, normally ≤1 ms apart, stretches to
-            // 50–100 ms under 12-threads-plus-runner contention, so the hard
-            // cap gets overrun by up to ~34 ms. With the 2·overhead = 20 ms
-            // reserve that is a time forfeit whenever the clock is low —
-            // ~1.3% of Threads=4 games, vs 0/3,460 at Threads=1. Reserve an
-            // extra 30 ms in multi-threaded searches only: Threads=1 keeps
-            // the tuned behaviour, and the extra only binds below ~250 ms of clock,
-            // where SMP strength is irrelevant next to not forfeiting.
+            // Rarog's reserve on top of the donor's bounds. The wall time the
+            // GUI charges includes the latency before the search's clock
+            // starts and after `bestmove` leaves, which spikes under a loaded
+            // match, so the hard bound never passes `time - 2*overhead`. With
+            // the donor's own 15 ms off a bound that is already below the main
+            // clock this binds at one thread only for an overhead above 15 ms.
+            // The reserve also covers scheduler starvation at several threads:
+            // in Threads=4 games the search's 2048-node poll stretched to
+            // 50-100 ms under contention and overran the hard bound by up to
+            // about 34 ms, a time forfeit in about 1.3% of games with the 20 ms
+            // reserve alone, against none in 3,460 at one thread. So
+            // multi-threaded searches keep 30 ms more.
             let smp_reserve = if engine_options.threads > 1 {
                 30.0
             } else {
@@ -223,8 +216,8 @@ pub(super) fn compute_runtime_limits(
             let hard_ceiling = (time as f64 - min_reserve).max(1.0);
             tb_extension_ms = Some(overhead / 2.0);
             tb_extension_latest_start_ms = hard_ceiling - TB_EXTENSION_SLACK_OVERHEADS * overhead;
-            maximum_ms = maximum_ms.min(hard_ceiling);
-            optimum_ms = optimum_ms.min(maximum_ms);
+            maximum_ms = hard.min(hard_ceiling);
+            optimum_ms = soft.min(maximum_ms);
             mate_stop = !analysis_mode
                 && options.depth.is_none()
                 && options.mate.is_none()
@@ -287,7 +280,8 @@ impl MateWatch {
 }
 
 /// The between-iteration soft stop as the last completed iteration left it:
-/// each factor on the optimum, and the target they make.
+/// each of the donor's five factors on the soft bound, and the target they
+/// make.
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
     not(feature = "diag"),
@@ -297,107 +291,85 @@ impl MateWatch {
     )
 )]
 pub(super) struct SoftStop {
-    pub(super) falling: f64,
-    pub(super) instability: f64,
-    pub(super) stability: f64,
-    pub(super) effort: f64,
+    pub(super) nodes: f64,
+    pub(super) score_trend: f64,
+    pub(super) pv_stability: f64,
+    pub(super) eval_stability: f64,
+    pub(super) best_move_stability: f64,
     pub(super) target_ms: f64,
 }
 
 /// What the soft stop reads from the completed iterations.
 #[derive(Copy, Clone, Debug)]
 pub(super) struct IterationSignals {
-    /// The prior iterations' average score less this one's: positive when the
-    /// score falls.
-    pub(super) score_fall: f64,
+    /// The best move's share of this thread's nodes in the search so far.
+    pub(super) node_share: f64,
     /// The previous search's root score in this game less this iteration's:
-    /// positive when the score fell across the move pair; zero without a
-    /// previous search.
-    pub(super) cross_move_fall: f64,
-    /// Best-move changes, halved every iteration.
-    pub(super) best_move_changes: f64,
-    /// Completed iterations since the best move last changed.
-    pub(super) stable_iterations: u32,
-    /// The best move's share of the search's nodes so far.
-    pub(super) effort_share: f64,
+    /// positive when the score fell.
+    pub(super) score_fall: f64,
+    /// Completed iterations in a row with the same best move.
+    pub(super) pv_stability: i32,
+    /// Completed iterations in a row whose score held near the running
+    /// average (the root window's count).
+    pub(super) eval_stability: i32,
+    /// Moves other than the first that raised alpha on line one in this
+    /// iteration.
+    pub(super) best_move_changes: u32,
 }
 
-/// The soft target: the optimum scaled by the falling-eval, instability,
-/// stability and effort factors, capped at the maximum. The multipliers are
-/// stored ×10000 in `SearchParams`, so `/ 10000.0` reconstructs each seed
-/// bit-exactly.
+/// A clock multiplier stored in ten-thousandths, as `SearchParams` holds it.
+fn ratio(value: i32) -> f64 {
+    f64::from(value) / 10_000.0
+}
+
+/// `value` clamped to the two ends in either order, so a fit that crosses
+/// them cannot panic `f64::clamp`.
+fn clamp_between(value: f64, a: f64, b: f64) -> f64 {
+    value.clamp(a.min(b), a.max(b))
+}
+
+/// The soft target: the soft bound scaled by the donor's five factors,
+/// capped at the hard bound. Each factor reads one signal:
+/// - the best move's node share: more time while the search is spread over
+///   several moves, less once one move takes nearly all of it;
+/// - the score's fall from the previous search: more time when it fell;
+/// - the best move's stability and the score's: less time the longer each
+///   has held, never below its floor;
+/// - this iteration's best-move changes: more time, growing as their log.
 pub(super) fn soft_stop(
     params: &SearchParams,
     limits: &RuntimeLimits,
     signals: IterationSignals,
 ) -> SoftStop {
-    let opt_scale = f64::from(params.tm_opt_scale) / 10_000.0;
-    let fall_base = f64::from(params.tm_fall_base) / 10_000.0;
-    let fall_slope = f64::from(params.tm_fall_slope) / 10_000.0;
-    let fall_prev_slope = f64::from(params.tm_fall_prev_slope) / 10_000.0;
-    // Falling eval: more time when the score falls, within this search and
-    // across the move pair.
-    let falling =
-        (fall_base + fall_slope * signals.score_fall + fall_prev_slope * signals.cross_move_fall)
-            .clamp(0.572, 1.708);
-    // Instability: more time when the best move changed recently.
-    let instability = tm_instability_factor(params, signals.best_move_changes);
-    // Stability: less time the longer the best move has held.
-    let stability = tm_stability_factor(params, signals.stable_iterations);
-    // Effort: the best move's share of the search's nodes.
-    let effort = tm_effort_factor(params, signals.effort_share);
-    let target_ms = limits.optimum_ms * opt_scale * falling * instability * stability * effort;
+    let nodes = (ratio(params.tm_nodes_base) - ratio(params.tm_nodes_slope) * signals.node_share)
+        .max(ratio(params.tm_nodes_floor));
+    let score_trend = clamp_between(
+        ratio(params.tm_trend_base) + ratio(params.tm_trend_slope) * signals.score_fall,
+        ratio(params.tm_trend_low),
+        ratio(params.tm_trend_high),
+    );
+    let pv_stability = (ratio(params.tm_pv_base)
+        - ratio(params.tm_pv_slope) * f64::from(signals.pv_stability))
+    .max(ratio(params.tm_pv_floor));
+    let eval_stability = (ratio(params.tm_eval_base)
+        - ratio(params.tm_eval_slope) * f64::from(signals.eval_stability))
+    .max(ratio(params.tm_eval_floor));
+    let best_move_stability = ratio(params.tm_changes_base)
+        + (ratio(params.tm_changes_scale) * f64::from(signals.best_move_changes)).ln_1p();
+    let target_ms = limits.optimum_ms
+        * nodes
+        * score_trend
+        * pv_stability
+        * eval_stability
+        * best_move_stability;
     SoftStop {
-        falling,
-        instability,
-        stability,
-        effort,
+        nodes,
+        score_trend,
+        pv_stability,
+        eval_stability,
+        best_move_stability,
         target_ms: target_ms.min(limits.maximum_ms),
     }
-}
-
-/// Effort normalised to `0.0..=1.0`: 0 at or below `TmEffortFloor` of the
-/// search's nodes spent on the best move, 1 at all of them.
-fn effort_term(params: &SearchParams, effort: f64) -> f64 {
-    let floor = f64::from(params.tm_effort_floor) / 10_000.0;
-    ((effort - floor) / (1.0 - floor)).clamp(0.0, 1.0)
-}
-
-/// Interpolate a clock multiplier from `high` at `t = 0` to `low` at `t = 1`.
-///
-/// Clamped to the ordered pair so an SPSA-crossed (`low > high`) setting cannot
-/// panic `f64::clamp`; for the effort endpoints this is `clamp(0.71, 0.924)`.
-fn tm_interpolate(high: f64, low: f64, t: f64) -> f64 {
-    (high + t * (low - high)).clamp(low.min(high), low.max(high))
-}
-
-/// Effort factor: `TmEffortHigh` while the best move holds at most
-/// `TmEffortFloor` of the search's nodes, falling to `TmEffortLow` as it
-/// takes all of them. At the seeds it is a cut for concentrated effort only
-/// (with the share read per iteration it sat at its high end on 91% of bench
-/// iterations); the ranges also reach a continuous extender.
-fn tm_effort_factor(params: &SearchParams, effort: f64) -> f64 {
-    tm_interpolate(
-        f64::from(params.tm_effort_high) / 10_000.0,
-        f64::from(params.tm_effort_low) / 10_000.0,
-        effort_term(params, effort),
-    )
-}
-
-/// Best-move-instability factor: rises when the best move changed recently.
-fn tm_instability_factor(params: &SearchParams, instability: f64) -> f64 {
-    f64::from(params.tm_instab_base) / 10_000.0
-        + f64::from(params.tm_instab_slope) / 10_000.0 * instability
-}
-
-/// Stability factor: `TmStabBase` with the best move just changed, falling by
-/// `TmStabSlope` per completed iteration it has held, never below
-/// `TmStabFloor`.
-fn tm_stability_factor(params: &SearchParams, stable_iterations: u32) -> f64 {
-    let base = f64::from(params.tm_stab_base) / 10_000.0;
-    let slope = f64::from(params.tm_stab_slope) / 10_000.0;
-    let floor = f64::from(params.tm_stab_floor) / 10_000.0;
-    (base - slope * f64::from(stable_iterations)).max(floor)
 }
 
 #[cfg(test)]
@@ -419,21 +391,94 @@ mod tests {
     /// nothing here.
     fn seeds() -> SearchParams {
         SearchParams {
-            tm_opt_scale: 10_000,
-            tm_fall_base: 1_187,
-            tm_fall_slope: 221,
-            tm_fall_prev_slope: 204,
-            tm_instab_base: 11_000,
-            tm_instab_slope: 22_900,
-            tm_effort_high: 9_240,
-            tm_effort_low: 7_100,
-            tm_effort_floor: 7_900,
-            tm_horizon_per_sec: 50,
-            tm_stab_base: 12_881,
-            tm_stab_slope: 440,
-            tm_stab_floor: 7_160,
+            tm_nodes_base: 31_838,
+            tm_nodes_slope: 26_554,
+            tm_nodes_floor: 5_460,
+            tm_trend_base: 7_426,
+            tm_trend_slope: 1_189,
+            tm_trend_low: 7_214,
+            tm_trend_high: 14_031,
+            tm_pv_base: 12_881,
+            tm_pv_slope: 440,
+            tm_pv_floor: 7_160,
+            tm_eval_base: 12_664,
+            tm_eval_slope: 416,
+            tm_eval_floor: 8_642,
+            tm_changes_base: 11_500,
+            tm_changes_scale: 2_526,
             ..SearchParams::default()
         }
+    }
+
+    fn close(a: f64, b: f64) -> bool {
+        (a - b).abs() < 1e-9
+    }
+
+    /// The donor's sudden-death bounds at `fullmove`, before the reserve,
+    /// written out from its formula: 0.0594 - 0.0492 * e^(-0.0386 * fullmove)
+    /// of the main clock plus three quarters of the increment, 0.7281 of it
+    /// plus the same, each within the main clock, less 15 ms.
+    fn donor_bounds(time: f64, increment: f64, overhead: f64, fullmove: f64) -> (f64, f64) {
+        let main = time - overhead;
+        let scale = 0.0594 - 0.0492 * (-0.0386 * fullmove).exp();
+        (
+            (scale * main + 0.75 * increment).min(main) - 15.0,
+            (0.7281 * main + 0.75 * increment).min(main) - 15.0,
+        )
+    }
+
+    #[test]
+    fn a_sudden_death_clock_gets_the_donors_bounds() {
+        let clock = |time: usize, increment: usize, game_ply: u32| {
+            limits(
+                game_ply,
+                &SearchLimits {
+                    white_time: Some(time),
+                    white_increment: increment,
+                    ..SearchLimits::default()
+                },
+            )
+        };
+        // `3+0.03` at the first move, ply 0 being full move 1.
+        let (soft, hard) = donor_bounds(3_000.0, 30.0, 10.0, 1.0);
+        let first = clock(3_000, 30, 0);
+        assert!(close(first.optimum_ms, soft), "{}", first.optimum_ms);
+        assert!(close(first.maximum_ms, hard), "{}", first.maximum_ms);
+        assert!((43.0..44.0).contains(&soft), "{soft}");
+        // The share grows with the move number: ply 120 is full move 61.
+        let (late_soft, _) = donor_bounds(3_000.0, 30.0, 10.0, 61.0);
+        assert!(close(clock(3_000, 30, 120).optimum_ms, late_soft));
+        assert!(late_soft > 3.0 * soft);
+        // CCRL's Blitz control.
+        let (soft, hard) = donor_bounds(120_000.0, 1_000.0, 10.0, 21.0);
+        let blitz = clock(120_000, 1_000, 40);
+        assert!(close(blitz.optimum_ms, soft) && close(blitz.maximum_ms, hard));
+    }
+
+    #[test]
+    fn movestogo_gives_each_move_its_share_of_the_main_clock() {
+        let options = SearchLimits {
+            black_time: Some(10_000),
+            black_increment: 0,
+            movestogo: 10,
+            ..SearchLimits::default()
+        };
+        let lim = compute_runtime_limits(&options, &EngineOptions::default(), Color::Black, 0, 64);
+        // A tenth of the 9,990 ms main clock, and five times it, less 15 ms.
+        assert!(close(lim.optimum_ms, 999.0 - 15.0), "{}", lim.optimum_ms);
+        assert!(close(lim.maximum_ms, 4_995.0 - 15.0), "{}", lim.maximum_ms);
+        // On the last move before the control the donor allows the main
+        // clock and its increment (1,050 and 1,075 ms here), which passes the
+        // clock; the reserve holds both at `time - 2 * overhead`.
+        let last = SearchLimits {
+            black_time: Some(1_000),
+            black_increment: 100,
+            movestogo: 1,
+            ..SearchLimits::default()
+        };
+        let lim = compute_runtime_limits(&last, &EngineOptions::default(), Color::Black, 0, 64);
+        assert!(close(lim.maximum_ms, 980.0), "{}", lim.maximum_ms);
+        assert!(close(lim.optimum_ms, 980.0), "{}", lim.optimum_ms);
     }
 
     #[test]
@@ -554,33 +599,12 @@ mod tests {
     }
 
     #[test]
-    fn movestogo_uses_explicit_clock_horizon() {
-        let options = SearchLimits {
-            black_time: Some(10_000),
-            black_increment: 0,
-            movestogo: 10,
-            ..SearchLimits::default()
-        };
-        let lim = compute_runtime_limits(&options, &EngineOptions::default(), Color::Black, 0, 64);
-
-        // mtg=10, timeLeft≈9880, optScale≈0.088 → optimum≈869
-        assert!(
-            (800.0..=950.0).contains(&lim.optimum_ms),
-            "optimum_ms={}",
-            lim.optimum_ms
-        );
-        assert!(lim.maximum_ms <= 10_000.0);
-    }
-
-    #[test]
     fn clock_maximum_reserves_two_move_overheads_at_low_time() {
-        // At low remaining time the percentage reserve in the SF maximum
-        // formula is only a few ms; the absolute `2*overhead` reserve must
-        // keep maximum_ms at or below `time - 2*overhead` so startup/output
-        // latency under load cannot flag. Chosen so the reserve actually
-        // binds (low time, sizeable optimum via a large increment).
+        // The wall time charged includes latency outside the search, so the
+        // hard bound never passes `time - 2*overhead`. With a 20 ms overhead
+        // the donor's bound, 15 ms under a 30 ms main clock, would pass it.
         let engine = EngineOptions {
-            move_overhead: 10.0,
+            move_overhead: 20.0,
             ..EngineOptions::default()
         };
         let options = SearchLimits {
@@ -590,62 +614,68 @@ mod tests {
         };
         let lim = compute_runtime_limits(&options, &engine, Color::White, 2, 64);
 
-        let hard_ceiling = 50.0 - 2.0 * 10.0;
         assert!(
-            lim.maximum_ms <= hard_ceiling,
-            "maximum_ms={} exceeds hard_ceiling={}",
-            lim.maximum_ms,
-            hard_ceiling
+            close(lim.maximum_ms, 50.0 - 2.0 * 20.0),
+            "{}",
+            lim.maximum_ms
         );
         assert!(lim.optimum_ms <= lim.maximum_ms);
     }
 
     #[test]
-    fn clock_normal_time_allocation_is_not_throttled_by_reserve() {
-        // At normal remaining time the `2*overhead` reserve must NOT bind:
-        // maximum_ms stays at the SF percentage cap (0.8097*time - overhead),
-        // which is the smaller (binding) limit above about 5.25 overheads.
-        let engine = EngineOptions {
-            move_overhead: 10.0,
-            ..EngineOptions::default()
-        };
-        let options = SearchLimits {
-            white_time: Some(3_000),
-            white_increment: 30,
-            ..SearchLimits::default()
-        };
-        let lim = compute_runtime_limits(&options, &engine, Color::White, 20, 64);
-
-        let percentage_cap = 0.8097 * 3_000.0 - 10.0;
-        let reserve_cap = 3_000.0 - 2.0 * 10.0;
-        // The percentage cap is far below the reserve cap here, so it binds.
-        assert!(percentage_cap < reserve_cap);
-        assert!(
-            lim.maximum_ms <= percentage_cap,
-            "maximum_ms={} exceeds percentage_cap={}",
-            lim.maximum_ms,
-            percentage_cap
-        );
+    fn at_one_thread_the_donors_bound_lies_inside_the_reserve() {
+        // At the default overhead the donor's own 15 ms off a bound already
+        // within the main clock keeps the hard bound under `time - 20`, at a
+        // normal clock and at a scramble alike.
+        for (time, increment, game_ply) in [(3_000, 30, 20), (50, 300, 126), (100, 30, 80)] {
+            let lim = limits(
+                game_ply,
+                &SearchLimits {
+                    white_time: Some(time),
+                    white_increment: increment,
+                    ..SearchLimits::default()
+                },
+            );
+            let (soft, hard) = donor_bounds(
+                time as f64,
+                increment as f64,
+                10.0,
+                f64::from(game_ply / 2 + 1),
+            );
+            assert!(close(lim.maximum_ms, hard), "{time}: {}", lim.maximum_ms);
+            assert!(
+                close(lim.optimum_ms, soft.min(hard)),
+                "{time}: {}",
+                lim.optimum_ms
+            );
+            assert!(lim.maximum_ms <= time as f64 - 20.0);
+        }
     }
 
     #[test]
-    fn the_reserve_decides_the_hard_limit_only_below_about_five_overheads() {
-        // An increment large enough that the optimum, and the maximum it
-        // scales, reach both caps at any horizon.
-        let clock = |time: usize| {
-            limits(
-                126,
+    fn several_threads_keep_thirty_milliseconds_more() {
+        let clock = |time: usize, threads: usize| {
+            compute_runtime_limits(
                 &SearchLimits {
                     white_time: Some(time),
                     white_increment: 300,
                     ..SearchLimits::default()
                 },
+                &EngineOptions {
+                    threads,
+                    ..EngineOptions::default()
+                },
+                Color::White,
+                126,
+                64,
             )
         };
-        // Overhead 10: the reserve cap is `time - 20`, the percentage cap
-        // `0.8097 * time - 10`; they cross near 52 ms.
-        assert_eq!(clock(50).maximum_ms, 30.0);
-        assert!(clock(60).maximum_ms < 40.0, "{}", clock(60).maximum_ms);
+        // The donor's hard bound at 300 ms is the 290 ms main clock less 15.
+        assert!(close(clock(300, 1).maximum_ms, 275.0));
+        // Four threads stop 50 ms before the clock.
+        assert!(close(clock(300, 4).maximum_ms, 250.0));
+        // At a normal clock the reserve does not bind at four threads either.
+        assert_eq!(clock(3_000, 4).maximum_ms, clock(3_000, 1).maximum_ms);
     }
 
     #[test]
@@ -716,64 +746,115 @@ mod tests {
         assert_eq!(no_overhead.tb_extension(0.0), TbExtension::Skip);
     }
 
-    #[test]
-    fn the_horizon_contracts_below_one_second_and_keeps_one_move() {
-        let params = seeds();
-        assert_eq!(sudden_death_horizon(&params, 60_000), 50.0);
-        assert_eq!(sudden_death_horizon(&params, 1_000), 50.0);
-        assert_eq!(sudden_death_horizon(&params, 999), 49.0);
-        assert_eq!(sudden_death_horizon(&params, 500), 25.0);
-        assert_eq!(sudden_death_horizon(&params, 10), 1.0);
-        let wide = SearchParams {
-            tm_horizon_per_sec: 100,
-            ..seeds()
-        };
-        assert_eq!(sudden_death_horizon(&wide, 500), 50.0);
+    fn signals(
+        node_share: f64,
+        score_fall: f64,
+        pv_stability: i32,
+        eval_stability: i32,
+        best_move_changes: u32,
+    ) -> IterationSignals {
+        IterationSignals {
+            node_share,
+            score_fall,
+            pv_stability,
+            eval_stability,
+            best_move_changes,
+        }
     }
 
     #[test]
-    fn a_half_second_clock_gets_the_contracted_optimum_and_a_second_the_old_one() {
-        let clock = |time: usize, per_sec: i32| {
-            let mut engine = EngineOptions::default();
-            engine.search_params.tm_horizon_per_sec = per_sec;
-            compute_runtime_limits(
-                &SearchLimits {
-                    white_time: Some(time),
-                    white_increment: 30,
-                    ..SearchLimits::default()
-                },
-                &engine,
-                Color::White,
-                40,
-                64,
-            )
+    fn the_soft_target_is_the_soft_bound_times_the_five_factors_capped_at_the_hard_bound() {
+        let params = seeds();
+        let mut clock = RuntimeLimits {
+            optimum_ms: 1_000.0,
+            maximum_ms: 5_000.0,
+            ..RuntimeLimits::default()
         };
-        // The sudden-death optimum at `mtg` moves to go, overhead 10, ply 40.
-        let optimum = |time: f64, mtg: f64| {
-            let time_left = (time + 30.0 * (mtg - 1.0) - 10.0 * (2.0 + mtg)).max(1.0);
-            let log_t = (time_left / 1000.0).log10();
-            let opt_const = (0.0029869 + 0.00033554 * log_t).min(0.004905);
-            let scale =
-                (0.012112 + 43.22713_f64.powf(0.46866) * opt_const).min(0.19404 * time / time_left);
-            scale * time_left
+        let read = signals(0.6, 3.0, 3, 2, 2);
+        let soft = soft_stop(&params, &clock, read);
+        assert!(close(soft.nodes, 3.1838 - 2.6554 * 0.6));
+        assert!(close(soft.score_trend, 0.7426 + 0.1189 * 3.0));
+        assert!(close(soft.pv_stability, 1.2881 - 0.0440 * 3.0));
+        assert!(close(soft.eval_stability, 1.2664 - 0.0416 * 2.0));
+        assert!(close(
+            soft.best_move_stability,
+            1.15 + (0.2526_f64 * 2.0).ln_1p()
+        ));
+        let product = soft.nodes
+            * soft.score_trend
+            * soft.pv_stability
+            * soft.eval_stability
+            * soft.best_move_stability;
+        assert!(close(soft.target_ms, 1_000.0 * product));
+        clock.maximum_ms = 1_200.0;
+        assert_eq!(soft_stop(&params, &clock, read).target_ms, 1_200.0);
+    }
+
+    #[test]
+    fn each_factor_stops_at_its_floor_or_clamp() {
+        let params = seeds();
+        let clock = RuntimeLimits {
+            optimum_ms: 1_000.0,
+            maximum_ms: f64::INFINITY,
+            ..RuntimeLimits::default()
         };
-        let close = |a: f64, b: f64| (a - b).abs() < 1e-9;
-        // A hundred moves a second reaches fifty from half a second up, so it
-        // is the old horizon at both clocks.
-        let short = clock(500, 50);
-        let old_short = clock(500, 100);
-        assert!(
-            close(short.optimum_ms, optimum(500.0, 25.0)),
-            "{}",
-            short.optimum_ms
+        let soft = |read: IterationSignals| soft_stop(&params, &clock, read);
+        // A search spent on one move is cut to the floor; spread over several
+        // it is extended, past three times at none.
+        assert!(close(soft(signals(1.0, 0.0, 0, 0, 0)).nodes, 0.546));
+        assert!(close(soft(signals(0.0, 0.0, 0, 0, 0)).nodes, 3.1838));
+        // A fall buys time up to 1.4031, a rise cuts it to 0.7214.
+        assert!(close(
+            soft(signals(0.5, 100.0, 0, 0, 0)).score_trend,
+            1.4031
+        ));
+        assert!(close(
+            soft(signals(0.5, -100.0, 0, 0, 0)).score_trend,
+            0.7214
+        ));
+        // Long-held moves and scores cut to their floors.
+        assert!(close(
+            soft(signals(0.5, 0.0, 100, 0, 0)).pv_stability,
+            0.716
+        ));
+        assert!(close(
+            soft(signals(0.5, 0.0, 0, 100, 0)).eval_stability,
+            0.8642
+        ));
+        // No change keeps the base; changes add their log.
+        assert!(close(
+            soft(signals(0.5, 0.0, 0, 0, 0)).best_move_stability,
+            1.15
+        ));
+        assert!(soft(signals(0.5, 0.0, 0, 0, 9)).best_move_stability < 1.15 + 9.0 * 0.2526);
+    }
+
+    #[test]
+    fn crossed_trend_clamps_from_a_fit_do_not_panic() {
+        let crossed = SearchParams {
+            tm_trend_low: 15_000,
+            tm_trend_high: 7_000,
+            ..seeds()
+        };
+        let clock = RuntimeLimits {
+            optimum_ms: 1_000.0,
+            maximum_ms: f64::INFINITY,
+            ..RuntimeLimits::default()
+        };
+        let trend = soft_stop(&crossed, &clock, signals(0.5, 1_000.0, 0, 0, 0)).score_trend;
+        assert!(close(trend, 1.5));
+    }
+
+    #[test]
+    fn the_score_trend_slope_is_the_donors_in_rarogs_units() {
+        // The donor reads 0.0480 a unit of its evaluation; the kernel's unit
+        // is 1024/2536 of it, so a per-unit slope is divided by that.
+        let folded = (0.0480_f64 * 2536.0 / 1024.0 * 10_000.0).round();
+        assert_eq!(f64::from(SearchParams::default().tm_trend_slope), folded);
+        assert_eq!(
+            seeds().tm_trend_slope,
+            SearchParams::default().tm_trend_slope
         );
-        assert!(close(old_short.optimum_ms, optimum(500.0, 50.0)));
-        assert!(short.optimum_ms < old_short.optimum_ms);
-        assert!(short.maximum_ms < old_short.maximum_ms);
-        let second = clock(1_000, 50);
-        assert!(close(second.optimum_ms, optimum(1_000.0, 50.0)));
-        assert_eq!(second.optimum_ms, clock(1_000, 100).optimum_ms);
-        assert_eq!(second.maximum_ms, clock(1_000, 100).maximum_ms);
     }
 
     #[test]
@@ -851,122 +932,6 @@ mod tests {
         // A loss in two plies has nothing left to find; one in three has.
         assert!(MateWatch::default().completed(e2e4, -MATE_SCORE + 2));
         assert!(!MateWatch::default().completed(e2e4, -MATE_SCORE + 3));
-    }
-
-    #[test]
-    fn the_stability_factor_falls_per_stable_iteration_to_its_floor() {
-        let params = seeds();
-        let close = |a: f64, b: f64| (a - b).abs() < 1e-12;
-        assert!(close(tm_stability_factor(&params, 0), 1.2881));
-        assert!(close(tm_stability_factor(&params, 10), 1.2881 - 0.44));
-        assert!(close(
-            tm_stability_factor(&params, 13),
-            1.2881 - 13.0 * 0.044
-        ));
-        assert!(close(tm_stability_factor(&params, 14), 0.716));
-        assert!(close(tm_stability_factor(&params, 1_000), 0.716));
-    }
-
-    #[test]
-    fn the_effort_factor_falls_from_its_floor_coordinate_to_a_whole_search() {
-        let params = seeds();
-        let close = |a: f64, b: f64| (a - b).abs() < 1e-12;
-        assert!(close(tm_effort_factor(&params, 0.3), 0.924));
-        assert!(close(tm_effort_factor(&params, 0.79), 0.924));
-        assert!(close(tm_effort_factor(&params, 1.0), 0.71));
-        let open = SearchParams {
-            tm_effort_floor: 0,
-            ..seeds()
-        };
-        assert!(close(tm_effort_factor(&open, 0.5), (0.924 + 0.71) / 2.0));
-        // The range reaches an extender: dispersed effort buys time.
-        let extending = SearchParams {
-            tm_effort_floor: 0,
-            tm_effort_high: 20_000,
-            tm_effort_low: 5_000,
-            ..seeds()
-        };
-        assert!(close(tm_effort_factor(&extending, 0.0), 2.0));
-        assert!(close(tm_effort_factor(&extending, 1.0), 0.5));
-    }
-
-    #[test]
-    fn the_soft_target_is_the_optimum_times_every_factor_capped_at_the_maximum() {
-        let params = seeds();
-        let mut clock = RuntimeLimits {
-            optimum_ms: 1_000.0,
-            maximum_ms: 5_000.0,
-            ..RuntimeLimits::default()
-        };
-        let signals = IterationSignals {
-            score_fall: 30.0,
-            cross_move_fall: 10.0,
-            best_move_changes: 0.5,
-            stable_iterations: 3,
-            effort_share: 0.9,
-        };
-        let soft = soft_stop(&params, &clock, signals);
-        let product = soft.falling * soft.instability * soft.stability * soft.effort;
-        assert!((soft.target_ms - 1_000.0 * product).abs() < 1e-9);
-        assert!((soft.falling - (0.1187 + 0.0221 * 30.0 + 0.0204 * 10.0)).abs() < 1e-12);
-        assert!((soft.instability - (1.10 + 2.29 * 0.5)).abs() < 1e-12);
-        assert!((soft.stability - (1.2881 - 3.0 * 0.044)).abs() < 1e-12);
-        clock.maximum_ms = 1_200.0;
-        assert_eq!(soft_stop(&params, &clock, signals).target_ms, 1_200.0);
-    }
-
-    #[test]
-    fn the_falling_factor_reads_the_fall_across_the_move_pair_within_its_clamps() {
-        let params = seeds();
-        let clock = RuntimeLimits {
-            optimum_ms: 1_000.0,
-            maximum_ms: 5_000.0,
-            ..RuntimeLimits::default()
-        };
-        let falling = |score_fall: f64, cross_move_fall: f64| {
-            soft_stop(
-                &params,
-                &clock,
-                IterationSignals {
-                    score_fall,
-                    cross_move_fall,
-                    best_move_changes: 0.0,
-                    stable_iterations: 0,
-                    effort_share: 0.0,
-                },
-            )
-            .falling
-        };
-        let close = |a: f64, b: f64| (a - b).abs() < 1e-12;
-        // Without a previous search the factor is the within-search one.
-        assert!(close(falling(30.0, 0.0), 0.1187 + 0.0221 * 30.0));
-        // A fall across the move pair alone lifts it off the lower clamp from
-        // about 22 cp; a rise never pushes it under the clamp.
-        assert!(close(falling(0.0, 20.0), 0.572));
-        assert!(close(falling(0.0, 30.0), 0.1187 + 0.0204 * 30.0));
-        assert!(close(falling(0.0, -300.0), 0.572));
-        // Both falls add, and the upper clamp holds.
-        assert!(close(
-            falling(30.0, 30.0),
-            0.1187 + 0.0221 * 30.0 + 0.0204 * 30.0
-        ));
-        assert!(close(falling(60.0, 60.0), 1.708));
-        let off = SearchParams {
-            tm_fall_prev_slope: 0,
-            ..seeds()
-        };
-        let without = soft_stop(
-            &off,
-            &clock,
-            IterationSignals {
-                score_fall: 30.0,
-                cross_move_fall: 500.0,
-                best_move_changes: 0.0,
-                stable_iterations: 0,
-                effort_share: 0.0,
-            },
-        );
-        assert!(close(without.falling, 0.1187 + 0.0221 * 30.0));
     }
 
     #[test]
