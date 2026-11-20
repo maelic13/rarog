@@ -293,8 +293,12 @@ quotes what that version reports at the end of a run:
 - how the counted games ended, overall and per engine;
 - faults and time losses by engine;
 - each engine's search: depth with and without mate scores, nodes and time
-  a move, nodes per second, and the harness hold (`h=`) as p50 to p999 and
-  max with the moves over the margin;
+  a move, nodes per second, and the harness overhead (`h=`) as p50 to p999
+  and max with the moves over the margin. The manifest labels it
+  `harness_hold_ms`, but it is the charged time less the time in the
+  engine's last `info` line (RAR-R30), so it includes any search the engine
+  reported nothing for, such as an interrupted iteration. The process's hold
+  is the journal's `held_ns`, the charged time less its CPU time (D.7.9);
 - for a tournament, every pair's W/D/L, Elo with its interval and
   pentanomial, and the standings;
 - for a tune, the arms clamped at a range end per coordinate (`arm_clamps:`)

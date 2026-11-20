@@ -386,7 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.9 | RESEARCH | R2 | Clock use, moved from D.6.28: the screen on the repaired kernel's games, the low-clock horizon's card and field read, the constants to the fit's surface |
 | D.7.10 | RESEARCH | V | The repaired kernel against `d7classic` at `3+0.03` and `10+0.1`, 2,000 games each: a diagnostic that sets the fit's control |
 | D.7.11.1 | RESEARCH | I1 | The finishing surface: the added seeds, the plies and counts left out, the activation read, the audit and the pilot |
 | D.7.11.2 | RESEARCH | V | The rule 7c run at D.7.10's control, the maintainer's; its theta baked |
@@ -2801,14 +2800,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           prefetch nothing, which the profile's line share did not
           foresee: once the table's line is hidden, the correction and
           pawn loads were not on the critical path.
-    - **D.7.9 Clock use on the new kernel — `R2`.**
+    - **D.7.9 Clock use on the new kernel — `R2`, DONE 2026-11-20.**
       Moved here from D.6.28 on 2026-11-19 (maintainer decision): it is the
       largest known lever beside the kernel (the donor's search led by 22.5
       at equal clock and 3.5 at equal work, RAR-O08 and RAR-O09), and a
       time manager changed after the fit would move the fit's baseline. Its
-      constants were fitted to the classic kernel and read the kernel's
-      score per unit (`tm_fall_slope`, `tm_fall_prev_slope`), which the
-      fitted wrapper shrank (the audit's A3).
+      constants are the donors' seeds, never fitted on Rarog (corrected
+      2026-11-20: D.1.5 kept the clock pieces at their seeds, RAR-R28, and
+      RAR-R15's block 1 was never baked), and read the kernel's score per
+      unit (`tm_fall_slope`, `tm_fall_prev_slope`), which the fitted wrapper
+      shrank (the audit's A3).
       1. *Screen, zero games,* on the repaired kernel's own games (D.7.8's
          reads): the unspent share of the budget by move number and game
          length, the clock at the game's end, and the share of undecided
@@ -2857,6 +2858,37 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       its range widened past 100), read against a field, not head to
       head, the forfeit count its invariant. Evidence layer: a post-hoc
       split of game outcomes, which chooses and does not accept.
+      *Done 2026-11-20* (`analysis/d79_clock_2026-11-20.md`, zero games; its
+      instrument reproduces RAR-M87's end clocks exactly):
+      1. On D.7.8's three reads the kernel spends 85.1–85.9% of its budget
+         and ends on about 620 ms of clock, as the classic did head to head
+         (84.3–84.5%, about 630), but it spends less early. In RAR-S126's
+         games it spends 0.622 of the base in its first twenty moves against
+         the classic's 0.696, and 83.8 ms a move against 96.0 above a second
+         of clock; the time is still on the clock at move 40 (about 900 to
+         1,040 ms against 600 to 660). Undecided moves under 500 ms fell to
+         4.5–6.8% (the classic's 11.6–13.9% head to head, 18.8% against the
+         field). On the kernel `h=`'s tail is search time after the last
+         completed iteration under 300 ms of clock, not a hold: the journal's
+         hold is the classic's.
+      2. **The horizon's field read is not registered** (`NO_CHANGE`, low
+         expected value). RAR-R17's direct read is −0.9 ± 8.0 Elo. The
+         horizon acts only at `3+0.03`: at `10+0.1`, `60+0.6` and CCRL's
+         `2'+1"` the optimum's cap binds first, and 40/15 sends
+         `movestogo`. It is Stockfish's current rule, its domain halved on
+         the kernel, and a ±5 Elo read costs about 8 hours. Retry trigger:
+         a direct read of the horizon wholly below zero, or a rated control
+         with an increment under about 50 ms.
+      3. Thirteen `tm_*` coordinates join D.7.11.1's surface.
+         `TmHorizonPerSec` stays at 50 and out of it: it is the forfeit
+         guard, it acts only at `3+0.03`, and the fit stops on a forfeit.
+         Their activation read is the clock's (`tm_activation.py`), since
+         none changes a bench decision.
+      Calibration: predictions 1–3 and 7 held; 4 and 5 missed low and 6 in
+      sign, because the kernel keeps clock longer, which they did not
+      foresee. Trigger for the donor's whole time manager as a form
+      candidate in D.7's review: the fit raising `TmOptScale` by 15% or
+      more.
     - **D.7.10 The pre-fit read: the repaired kernel against the classic — `V`.**
       One registration, two fixed matches of 2,000 games, the repaired
       kernel (pext, PGO) against `d7classic`: `3+0.03` and `10+0.1`. A
@@ -2885,8 +2917,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
             stored-PV term given its own per-ply coefficient (A10);
             `probcut_see_scale` (D.7.8.1) and `q_see_correction_scale`,
             the two conversions into exchange units, which the fitted
-            wrapper has moved off their folded values; and the fourteen
-            `tm_*` coordinates (D.7.9);
+            wrapper has moved off their folded values; and thirteen `tm_*`
+            coordinates, `TmHorizonPerSec` held at 50 (D.7.9);
           - *not coordinates, named in the registration:* a seed the rules
             compare with a ply, a depth or a count, which a fit moves in
             whole units and a readout rounds (`singular_depth`,
@@ -2900,13 +2932,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           - *the activation read* (RAR-S128's rule) on the new build drops
             what changes no bench decision, the sparse PV-only seeds among
             them if they still read inactive, and proves each new option
-            reaches its rule;
+            reaches its rule. The clock coordinates, which no bench decision
+            reads, take the clock's read instead: `tools/diag/tm_activation.py`
+            on a `diag` build, a factor at one end on more than 90% of
+            iterations inert (D.7.9);
           - `tools/audit_spsa_coverage.ps1`, the config files and PROCESS's
             pilot (128 iterations) before the run: every option accepted,
             no arm clamped, no forfeit.
         - **D.7.11.2 The run and its theta — `V`.**
           Registered before any game: the control D.7.10 set, 30 games an
-          iteration on 15 slots, the perturbation two steps, `r_end`
+          iteration on 15 slots, `--max-time-losses 0` so that a forfeit
+          stops the run (D.7.9), the perturbation two steps, `r_end`
           0.00155, the ceiling 6,000 iterations (3,000 at `10+0.1`),
           checkpoints at 2,000 and every 1,000, the stop by rule 7c. The
           maintainer starts it and may ask for a read of the centres at a
