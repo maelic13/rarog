@@ -135,6 +135,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [ ] **D.12.3** Rebuild behind the board contract — **RESEARCH / I2**
     - [ ] **D.12.4** Board speed read and gate — **RESEARCH / V**
 - [ ] **D.13** Correction tables shared between threads — **RESEARCH / R2**
+- [ ] **D.14** The donor's thread vote on the new clock — **RESEARCH / R2**
 
 ## Phase E — Classical checkpoint and release
 

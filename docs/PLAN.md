@@ -452,6 +452,7 @@ request. The rows below are D.7's, then D.6's in number order.
 | D.12.3 | RESEARCH | I2 | After D.12.2: the accepted components, one commit each, behind the contract, exact fingerprint while the generation order is unchanged |
 | D.12.4 | RESEARCH | V | After D.12.3: pooled-PGO NPS of the rebuilt board, the microbenchmark per component beside it; a component that does not pay returns to Rarog's form |
 | D.13 | RESEARCH | R2 | Moved from D.7.8.7 2026-11-20: opens after D.7.14; built only if one thread reproduces the fingerprint, then the NPS and four-thread reads |
+| D.14 | RESEARCH | R2 | Added 2026-11-20 (maintainer request): the donor's soft-stop vote on the fitted clock, after D.7.14 beside D.13; a four-thread withdrawal screen at zero games first, 2% floor |
 
 ## Phase D — Clock, threads, robustness
 
@@ -2959,7 +2960,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
              old clock's 11 (D.7.8.5). The thread vote stays Rarog's strict
              majority, a measured multi-thread contract (two threads
              exempted cost −15.85 Elo) that the one-thread reads cannot
-             test. *Shape replaced:* the budget and its horizon, and the
+             test; the donor's vote is tried again on the fitted clock
+             in D.14. *Shape replaced:* the budget and its horizon, and the
              five factors.
           2. *Units:* the score trend's slope is the donor's 0.0480 folded to
              0.1189 a unit. The score-stability count is the root window's
@@ -3887,6 +3889,39 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   *Decided 2026-11-20 (maintainer):* after D.7, as recommended, if
   one thread plays the same; a moved one-thread fingerprint returns
   the step to `RESEARCH` before any game.
+- **D.14 The donor's thread vote on the new clock — `R2` screen, then `I1`/`V`.**
+  (maintainer request 2026-11-20) D.7.9.1 took Reckless's time manager
+  whole except its soft-stop vote, which stayed Rarog's. Rarog's is a
+  measured strict majority: exempting two threads cost −15.85 Elo
+  (`shared.rs`, `votes_needed`). The one-thread reads cannot test a vote,
+  but much has changed under it since that measurement: the kernel, and a
+  soft limit whose factors move far more from one iteration to the next
+  (the node-share factor alone runs from 0.55 to 3.18). So the donor's
+  form may now work better.
+  - *The difference:* the donor needs 65% of the threads, rounded up,
+    and a thread whose soft limit stops being met withdraws its vote
+    (Reckless `search.rs:264-279`). Rarog's thread votes once and keeps
+    the vote. At one thread the two are the same rule; at two, three,
+    four and six threads the thresholds are equal, so at the rated four
+    threads only withdrawal differs. At five threads (4 against 3) and
+    at eight and more the donor's threshold is higher.
+  - *Why after the fit:* the fit and D.7.13's gate run at one thread,
+    where the votes are identical, so neither can see this. The vote
+    reads the soft limits the fit sets, so it is read on the fitted
+    clock. It opens after D.7.14, beside D.13; the two are read
+    separately, so that each four-thread result names its cause.
+  - *Screen, zero games, its rule frozen here:* a `diag` counter at
+    four threads, on 300 book positions at `3000+30` with the explicit
+    placement, counting the searches in which a thread that voted would
+    have withdrawn (its soft limit no longer met at a later iteration)
+    before the pool stopped. Under 2% of searches: `NO_CHANGE`, since
+    withdrawal is too rare to move a result. At 2% or more, the
+    donor's vote is built behind an option.
+  - *The read if built:* both arms at four threads, `3+0.03`, the
+    explicit placement, three games at a time. A no-harm read (case 2,
+    2,000 games) takes about 1 hour 45 minutes. A gain needs an SPRT,
+    priced in the card as D.13's was (`[0,5]` about 13 to 18 hours).
+    One thread must reproduce the fingerprint and play the same.
 
 ## Phase E — Classical checkpoint and release
 
