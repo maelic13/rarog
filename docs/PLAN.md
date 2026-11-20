@@ -386,9 +386,15 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.11.1 | RESEARCH | I1 | The finishing surface: the added seeds, the plies and counts left out, the activation read, the audit and the pilot |
-| D.7.11.2 | RESEARCH | V | The rule 7c run at `3+0.03` (D.7.10, RAR-S134), the maintainer's; its theta baked |
-| D.7.11 | RESEARCH | V | Closes when D.7.11.2's theta is baked and the tune build at its defaults reproduces the new fingerprint |
+| D.7.11.1 | READY_FOR_IMPLEMENTATION | I1 | The tune build: four history limits and the singular margin's stored-PV coefficient as seeds, `q_see_correction_scale` an option; 3,320,355 unchanged |
+| D.7.11.2 | READY_FOR_IMPLEMENTATION | V | The surface files and the activation read on the registered tune build: 223 coordinates expected, the coverage audit clean |
+| D.7.11.3 | READY_FOR_IMPLEMENTATION | M | RAR-S135 registered before any game: surface, shape, fault rule, reads, the frozen prediction |
+| D.7.11.4 | READY_FOR_IMPLEMENTATION | V | The drivers for the pilot, the tune and a read, each run once through its dry path; the pilot's command handed over |
+| D.7.11.5 | READY_FOR_IMPLEMENTATION | V | The pilot, the maintainer's: 64 iterations, interrupted once and resumed; then the one command that starts the tune |
+| D.7.11.6 | READY_FOR_IMPLEMENTATION | V | The rule 7c run at `3+0.03`, the maintainer's; it stops only by its rules |
+| D.7.11.7 | READY_FOR_IMPLEMENTATION | V | The read at the stop: theta against the start, 2,000 games on the tune build; baked unless wholly below zero |
+| D.7.11.8 | READY_FOR_IMPLEMENTATION | I1 | Theta baked; the tune build at its defaults and the default build reproduce the new fingerprint |
+| D.7.11 | READY_FOR_IMPLEMENTATION | V | Researched 2026-11-20 (`analysis/d711_fit_2026-11-20.md`); closes when D.7.11.8 bakes theta or D.7.11.7 keeps the start |
 | D.7.12 | RESEARCH | I1 | `score cp` calibrated on the fitted kernel's games, output only; the fitting tool |
 | D.7.13 | RESEARCH | V | The one gate: the fitted, repaired kernel against `d7classic` on `[0,3]`, with `10+0.1` and four-thread reads beside it |
 | D.7.14 | RESEARCH | V | Adoption by the maintainer's decision on D.7.13; the meters, the changelog, D.11's disclosure, the squash |
@@ -449,7 +455,7 @@ request. The rows below are D.7's, then D.6's in number order.
 | D.12.3 | RESEARCH | I2 | After D.12.2: the accepted components, one commit each, behind the contract, exact fingerprint while the generation order is unchanged |
 | D.12.4 | RESEARCH | V | After D.12.3: pooled-PGO NPS of the rebuilt board, the microbenchmark per component beside it; a component that does not pay returns to Rarog's form |
 | D.13 | RESEARCH | R2 | Moved from D.7.8.7 2026-11-20: opens after D.7.14; built only if one thread reproduces the fingerprint, then the NPS and four-thread reads |
-| D.14 | RESEARCH | R2 | Added 2026-11-20 (maintainer request): the donor's soft-stop vote on the fitted clock, after D.7.14 beside D.13; a four-thread withdrawal screen at zero games first, 2% floor |
+| D.14 | RESEARCH | R2 | Added 2026-11-20 (maintainer request): the donor's soft-stop vote on the new clock, after the fit and D.7.14, beside D.13; a four-thread withdrawal screen at zero games first, 2% floor |
 
 ## Phase D — Clock, threads, robustness
 
@@ -2993,7 +2999,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
             inside an iteration at any of its three clocks.
           - Evidence layer: fixed reads inside D.7's cluster; D.7.13 gates
             it. The fifteen coordinates join D.7.11.1, and D.7.10 reads
-            the kernel with the port.
+            the kernel with the port. *Superseded 2026-11-20 by D.7.11's
+            research:* the fifteen are held at the donor's values and
+            are not fitted at `3+0.03`.
     - **D.7.10 The pre-fit read: the repaired kernel against the classic — `V`, DONE 2026-11-20.**
       One registration, two fixed matches of 2,000 games, the repaired
       kernel (pext, PGO) against `d7classic`: `3+0.03` and `10+0.1`. A
@@ -3024,58 +3032,200 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
         runs at `3+0.03`. Use 3 does not fire.
       - At `3+0.03` 31% of the kernel's sides fall under 100 ms at some
         move (the classic's none), without a time loss; D.7.11.2's
-        `--max-time-losses 0` stops a fit that forfeits.
+        `--max-time-losses 0` stops a fit that forfeits. *Withdrawn
+        2026-11-20 by D.7.11's research:* that limit ends a tune for
+        good, so the fit runs on the runner's own allowance.
       - Predicted +45 at `10+0.1`: a miss in magnitude; the kernel's gain
         holds whole at the longer control.
     - **D.7.11 The finishing fit — `V`.**
-      One rule 7c run on the repaired kernel from the baked centres, over
-      a completed surface, the time manager's constants in it. The
-      curvature sweep is not repeated: the first fit stopped live (`sum z²
-      − n` at +3.4 SD over its last 500 iterations), which is the evidence
-      rule 4 asks for. The step closes when D.7.11.2's theta is baked.
-        - **D.7.11.1 The surface — `I1`.**
-          The tune build's options, generated as now from the seed table by
-          one range rule round the kernel's values:
-          - *added, each reproducing the fingerprint at its seed:* the
-            four history limits as seeds (A9: 8,192 quiet, 12,800 noisy,
-            8,192 pawn, 15,320 continuation); the singular margin's
-            stored-PV term given its own per-ply coefficient (A10);
-            `probcut_see_scale` (D.7.8.1) and `q_see_correction_scale`,
-            the two conversions into exchange units, which the fitted
-            wrapper has moved off their folded values; and the clock's
-            fifteen soft-limit coordinates (`TmNodesBase` to
-            `TmChangesScale`, D.7.9.1), the budget staying constants;
-          - *not coordinates, named in the registration:* a seed the rules
-            compare with a ply, a depth or a count, which a fit moves in
-            whole units and a readout rounds (`singular_depth`,
-            `singular_tt_depth`, `singular_exact_div`, `probcut_depth_base`,
-            `tt_cut_typed_depth`, `tt_bonus_parent_moves`,
-            `eval_bonus_depth`, `hp_depth`, `ldse_depth`, `fp_depth`,
-            `bnfp_depth`, `nmp_verify_depth`, `q_move_limit`,
-            `negative_extension`, `window_stability_cap`,
-            `pick_late_good`): each keeps its baked value; and the thread
-            spreads and the two escape entries excluded before;
-          - *the activation read* (RAR-S128's rule) on the new build drops
-            what changes no bench decision, the sparse PV-only seeds among
-            them if they still read inactive, and proves each new option
-            reaches its rule. The clock coordinates, which no bench decision
-            reads, take the clock's read instead: `tools/diag/tm_activation.py`
-            on a `diag` build, a factor at one end on more than 90% of
-            iterations inert (D.7.9);
-          - `tools/audit_spsa_coverage.ps1`, the config files and PROCESS's
-            pilot (128 iterations) before the run: every option accepted,
-            no arm clamped, no forfeit.
-        - **D.7.11.2 The run and its theta — `V`.**
-          Registered before any game: the control D.7.10 set (`3+0.03`), 30 games an
-          iteration on 15 slots, `--max-time-losses 0` so that a forfeit
-          stops the run (D.7.9), the perturbation two steps, `r_end`
-          0.00155, the ceiling 6,000 iterations (3,000 at `10+0.1`),
-          checkpoints at 2,000 and every 1,000, the stop by rule 7c. The
-          maintainer starts it and may ask for a read of the centres at a
-          checkpoint against the start (the tune build on both sides, as
-          RAR-S128's interim read); such a read changes nothing in the
-          run. At the stop the theta is baked as D.7.6.2 baked the first,
-          the tune build at its defaults reproducing the new fingerprint.
+      One rule 7c run on the repaired kernel from the baked centres, at
+      `3+0.03` (D.7.10). Researched 2026-11-20 at zero games
+      (`analysis/d711_fit_2026-11-20.md`): that record holds the evidence,
+      the exact surface and the frozen prediction, and the sub-steps below
+      run in order, one at a time. The curvature sweep is not repeated: the
+      first fit stopped live (`sum z² − n` at +3.4 SD over its last 500
+      iterations), which is the evidence rule 4 asks for.
+      *Decided by the research, replacing this step's earlier text:*
+      1. *The clock is not fitted here.* The fifteen soft-limit coordinates
+         (`TmNodesBase` to `TmChangesScale`) stay at the donor's values.
+         - Three are inert at `3+0.03`: no iteration of 4,200 sits at
+           `TmNodesFloor`, `TmPvFloor` or `TmEvalFloor`, and `TmPvFloor`
+           binds on 2.1% at `10+0.1`.
+         - Six are one scale, the four bases and the trend's two clamps.
+         - The scale's gradient belongs to the control: 31% of the
+           kernel's sides fall under 100 ms at `3+0.03` and none at
+           `10+0.1`.
+         - Rarog's one clock fit (RAR-R15) found a gradient on the scale
+           alone.
+         - *Retry trigger:* D.7.13's `10+0.1` companion below its
+           `3+0.03` reading by more than their combined intervals, or a
+           rated control's games showing a factor at one end on more than
+           90% of iterations. The fit is then its own registration at
+           `10+0.1` or longer; until then H.3 holds clock refinements.
+      2. *The surface is 223 coordinates:* 217 of the kernel's 242 seed
+         options and six new ones (D.7.11.1), each by the engine's range
+         rule, step range/16, the full two steps (the least room is 5.0
+         steps).
+         - *Out, a seed a fit moves in whole units (16):*
+           `singular_depth`, `singular_tt_depth`, `singular_exact_div`,
+           `probcut_depth_base`, `tt_cut_typed_depth`,
+           `tt_bonus_parent_moves`, `eval_bonus_depth`, `hp_depth`,
+           `ldse_depth`, `fp_depth`, `bnfp_depth`, `nmp_verify_depth`,
+           `q_move_limit`, `negative_extension`, `pick_late_good` and
+           `see_noisy_square`. The first fit's gradients on three of them
+           are banked in the bake (`singular_depth` 5 to 7,
+           `tt_cut_typed_depth` and `hp_depth` 5 to 6); the next unit on
+           those is what the exclusion gives up.
+         - *Out, inactive on the current kernel's bench (9):*
+           `fds_singular`, `fds_singular_cap`, `fds_singular_offset`,
+           `nmp_min_16`, `rfp_min_16`, `pick_check_base`,
+           `pick_check_piece`, `tt_cut_fifty`, `window_stability_cap`.
+         - *Out, by construction (4):* the two thread spreads and
+           `pick_escape[0]` and `[5]`.
+         - *Not coordinates:* `LazyMargin` (the frozen evaluation's own
+           constant, rule 2), `AspMaxFails` and `TmFailHighTarget`
+           (guards).
+      3. *Rule 7c's shape is kept whole:* 30 games an iteration on 15
+         slots, two steps, `r_end` 0.00155, ceiling 6,000, checkpoints at
+         2,000 and every 1,000, window 1,000. About 13.5 hours to the
+         first checkpoint, 6.8 for each further 1,000 iterations and 40.5
+         to the ceiling, restated from the pilot's rate. Sixty games an
+         iteration would play 10% more games an hour (the slots are busy
+         79.3% of an iteration at 30): a candidate amendment to rule 7c
+         before F.6's refit, not this run's.
+      4. *No fixed fault limit.* On the pinned runner a tune that passes
+         `--max-time-losses` ends on an invalid iteration and cannot be
+         resumed. The new clock's lowest forfeit slack is 54 ms, and the
+         first fit's journal holds 19 harness stalls longer. The tune
+         runs on the runner's own allowance; a time loss reads FAULT at
+         the next checkpoint and stops the tune there for the maintainer
+         (rule 7c). A time loss whose `failed-games` table shows the
+         losing search held longer than its slack is the host's and is
+         accepted; one that overran its own deadline with no hold returns
+         D.7 to the clock.
+      5. *The tune never pauses for a read.* One interrupt in its
+         terminal pauses it at a whole iteration and the same command
+         resumes it, seed, schedule and checkpoints unchanged (PROCESS,
+         *SPSA go/no-go*, item 10). A read plays the tune build on both
+         sides, the rounded centres at a completed iteration against the
+         start, with the tune paused or stopped, and changes nothing in
+         the run. No forecast is made from a read, two reads never rank
+         two checkpoints, and theta is never chosen by one.
+      The step closes when D.7.11.8 bakes theta, or D.7.11.7's rule keeps
+      the start.
+        - **D.7.11.1 The tune build — `I1`.**
+          *Inputs:* the record's *In: six new options*. Engine only.
+          - `Seeds` gains the four history limits (`quiet_history_max`
+            8,192, `noisy_history_max` 12,800, `pawn_history_max` 8,192,
+            `cont_history_max` 15,320, the same in both tables), read by
+            `history.rs` in place of its literals, and
+            `singular_pv_per_ply_1024`, seeded at each table's
+            `singular_per_ply_1024`, for the stored-PV term of
+            `singular_margin`.
+          - `q_see_correction_scale` leaves `tune.rs`'s exclusions: 252
+            seed fields, 248 options.
+          - Nothing else: no clock change, no range rule, no other seed.
+          *Checks:* `bench 13` 3,320,355 / EBF 2.317 on the default build
+          and on the tune build at its defaults; a test that each new
+          option reaches its rule; every table inside an `i16` at the
+          largest limit (30,640); per-node code reads the seeds by
+          reference as now; the parity test keeps `Seeds::DONOR`; debug
+          and release tests, `fmt --check`, clippy with all features and
+          targets, the `texel` and `tune` library suites.
+          *Done:* its engine commit, every fingerprint reproduced.
+        - **D.7.11.2 The surface files and the activation read — `V`.**
+          *Inputs:* D.7.11.1's commit, a clean tree.
+          - `./tools/build_test.ps1 -Suffix d711fit -Tune`; its sidecar's
+            bench 3,320,355, its SHA-256 recorded.
+          - The activation read by RAR-S128's rule over all 248 options,
+            with its guards (the default bench, a positive control, every
+            `setoption` accepted). Expected: the nine inactive of the
+            record and the six new active. A new option that reads
+            inactive is dropped and named; any other difference from the
+            record is reported before going on.
+          - `tools/spsa_configs/config_d711fit.json` (planned), generated
+            from the binary's own listing, never typed: each coordinate's default,
+            the listing's range, `step` range/16 and at least 1;
+            `fixed_d711fit.json` (Hash 64, Threads 1, MultiPV 1);
+            `d711pilot`, the same surface. Converted `--rule7c --ceiling
+            6000` and `--ceiling 64`, the room report empty.
+          - `d76fit`, `d76pilot` and `d14block1` are listed in
+            `historical.txt`: the first two were baked (D.7.6.2) and the
+            third's options went with the old clock (D.7.9.1). Unlisted,
+            they give the audit its 797 findings today.
+          *Checks:* `./tools/audit_spsa_coverage.ps1 -TuneEngine <the
+          build>` ends `RESULT: clean`; `--check` passes on both groups;
+          the surface's count equals the read's.
+          *Done:* the files committed with the read's result.
+        - **D.7.11.3 The registration — `M`.**
+          RAR-S135, `docs/experiments/RAR-S135.md` (planned) with its
+          index row, before any game, the pilot's included. It states: the hypothesis;
+          the binary, its hash and fingerprint; the surface as the files
+          hold it, with what is out and why; the shape and the hours; the
+          stop by rule 7c; the fault rule of item 4; the pilot and its
+          pass criteria (D.7.11.5); the read at the stop with its keep
+          rule and the optional interim read (D.7.11.7); the seeds; and
+          the record's prediction, copied as frozen.
+          *Done:* committed, with `tools/spsa_configs/README.md`'s entry.
+        - **D.7.11.4 The drivers and their dry runs — `V`.**
+          In `analysis/artifacts/d711-fit-2026-11-20/`, each run from the
+          machine's own terminal, showing the harness's live output:
+          - the pilot's: `colosseum.ps1 -Mode spsa -ConfigGroup d711pilot
+            -Ceiling 64 -AllowShortRun -FirstCheckpoint 64 -Window 64`;
+          - the tune's: `-ConfigGroup d711fit -Ceiling 6000`, no fault
+            limit; it starts or resumes, and retries only while the
+            harness refuses a busy host before any game;
+          - a read's: `-At <K>` and `-Games <N>`; the centres from `spsa
+            history` with nothing written into the run directory, the
+            count checked against the surface, `colosseum.ps1 -Mode match
+            -CategoricalTuneBuild`, refused while a runner is alive.
+          *Checks:* each driver's `-DryRun` path executed once; the
+          wrapper's dry run verifies the surface at the ceiling and lists
+          no rail warning.
+          *Done:* the pilot's one command handed to the maintainer.
+        - **D.7.11.5 The pilot — `V`, the maintainer's.**
+          64 iterations of 30 games, about 26 minutes, not PROCESS's
+          default 128: its uses are the run proved end to end on the new
+          build, the rate, the spread of an iteration's score at the first
+          perturbations and the pause, and each is settled inside 64.
+          The maintainer interrupts it once (Ctrl+C) and runs the command
+          again.
+          *Pass:* every option accepted; no first arm clamped; no fault;
+          the reader's move check on the resumed run under 1e-6; the
+          rate recorded and the registration's hours restated from it
+          before the tune's first game.
+          Its theta is never used. PROCESS's re-audit follows it.
+          *Done:* the maintainer has the one command that starts the tune.
+        - **D.7.11.6 The run — `V`, the maintainer's.**
+          It stops only by its rules: quiet, a rail, a fault, the ceiling,
+          or the maintainer's `STOP` at a checkpoint. Nothing waits for a
+          read. While it runs the host is the tune's: file reads only.
+        - **D.7.11.7 The read at the stop — `V`.**
+          Theta (`theta-<K>.toml`, the checkpoint the maintainer names)
+          against the start, the tune build on both sides, 2,000 games at
+          `3+0.03`, about 27 minutes, registered in RAR-S135.
+          - *Its use:* the only measurement of this fit's own
+            contribution. D.7.13's gate would pass on the pre-fit kernel
+            (+63.8 Elo against the classic, about 600 pairs to H1), so a
+            fit that cost 10 Elo would pass with it.
+          - *The rule:* theta is baked unless the interval lies wholly
+            below zero, D.7.8's keep rule. At 2,000 games that catches a
+            true −15 Elo nine times in ten and a true −10 a little over
+            half: "baked" means no harm beyond about −15 shown, not a
+            gain.
+          - *An interim read* is optional and the maintainer's: 1,000
+            games, the tune paused or already stopped. Wholly below zero
+            is reported, and the maintainer may then place `STOP`.
+        - **D.7.11.8 The theta baked — `I1`.**
+          As D.7.6.2 baked the first: `tools/spsa_theta_audit.py <run>
+          <config> --at <K>` first, each named coordinate given its line
+          in the record; the values taken from the theta file by script;
+          `Seeds::FITTED` and the tests that pin fitted numbers updated.
+          *Checks:* the tune binary's `bench 13` with theta set, the tune
+          build at its defaults and the default build are one count, the
+          new fingerprint, recorded in GUIDE's checkpoint; debug and
+          release tests, `fmt`, clippy, the `texel` and `tune` suites;
+          `d711fit` and `d711pilot` listed in `historical.txt`.
     - **D.7.12 The reported score calibrated — `I1`.**
       (A3; `analysis/d7_audit_2026-11-19.md`, *The score scale*) `score cp`
       has never been calibrated: the classic kernel won half its games at
@@ -3099,9 +3249,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
         calibrated score; a test holds `bench 13`'s node count and every
         best move equal with the calibration replaced by the identity.
       - *The tool:* `tools/wdl_fit.py` (planned) fits `a(m)` from a
-        Colosseum PGN and writes the constants; it runs on D.7.11.2's
-        checkpoint games or a 2,000-game self-play match of the fitted
-        kernel, and again after any later fit.
+        Colosseum PGN and writes the constants; it runs on theta's side
+        of D.7.11.7's read at the stop, or on a 2,000-game self-play
+        match of the baked kernel, and again after any later fit. Not
+        on the tune's own games: each arm there plays a perturbed
+        wrapper, so its scores sit on another scale (corrected
+        2026-11-20).
       - `CHANGELOG.md` gets the user's sentence; the tests that pin a
         printed score follow; Phase F reads its note (F.6).
     - **D.7.13 The gate: the kernel against the classic — `V`.**
@@ -3112,6 +3265,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       registered with it and deciding nothing alone: 2,000 games at
       `10+0.1`, and 2,000 at four threads with the explicit placement list
       (RAR-M82). H1 opens D.7.14. H0, or the cap without H1, opens D.7.15.
+      At D.7.10's reading the SPRT reaches H1 in about 600 pairs and
+      cannot see the finishing fit; that is D.7.11.7's read. The
+      `10+0.1` companion is also the clock's check (D.7.11, item 1).
     - **D.7.14 Adoption and checkpoint — `V`, then `M`.**
       The maintainer's decision on D.7.13. On adoption: the pre-NNUE meter
       read again (RAR-M89's field, the gap to Stockfish 16 with `Use
@@ -3943,8 +4099,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     at eight and more the donor's threshold is higher.
   - *Why after the fit:* the fit and D.7.13's gate run at one thread,
     where the votes are identical, so neither can see this. The vote
-    reads the soft limits the fit sets, so it is read on the fitted
-    clock. It opens after D.7.14, beside D.13; the two are read
+    reads soft limits whose factors read the search the fit moves
+    (the clock's own constants are held, D.7.11), so it is read
+    after the fit. It opens after D.7.14, beside D.13; the two are read
     separately, so that each four-thread result names its cause.
   - *Screen, zero games, its rule frozen here:* a `diag` counter at
     four threads, on 300 book positions at `3000+30` with the explicit

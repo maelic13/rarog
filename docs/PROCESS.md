@@ -759,6 +759,24 @@ Before any SPSA:
    mis-scaled input, a rail hiding a wanted value. The analysis never
    changes theta; a finding becomes a registration of its own
    (maintainer decision 2026-11-02).
+10. A tune is paused by one interrupt (Ctrl+C) in its terminal and
+   resumed by its own command. The runner starts no new game, gives the
+   games in flight 30 seconds and counts only whole iterations, so the
+   iteration in flight is replayed; the run directory keeps the seed,
+   the schedule, the horizon and the checkpoints, so the stop rule is
+   unchanged. The wrapper never pauses a tune for a read. A read of
+   the centres against the start plays on the tune build with the tune
+   paused or stopped, takes its values from `spsa history` without
+   writing into the run directory, and decides nothing in the run; its
+   game count comes from its own rule (PLAN D.7.11,
+   `analysis/d711_fit_2026-11-20.md`).
+11. A tune sets no fixed fault limit (`--max-engine-faults`,
+   `--max-time-losses`). The runner ends a tune that passes one on an
+   invalid iteration, and a run directory holding one cannot be resumed
+   (CLI 0.5.0, `spsa_driver.rs`, `TerminalCheckpoint`), so a fault the
+   maintainer accepted could not be played past. The runner's own
+   allowance stays, and any fault reads FAULT at the next checkpoint
+   (rule 7c).
 
 ### Branches and pull requests
 

@@ -226,3 +226,8 @@ settled.
 Evidence layer: two 2,000-game fixed reads, a diagnostic inside D.7's
 cluster. They keep the form and accept nothing; D.7.13 gates the
 cluster.
+
+**Superseded in one point, 2026-11-20** (PLAN D.7.11,
+`analysis/d711_fit_2026-11-20.md`): the fifteen coordinates do not join
+the finishing fit's surface. They stay at the donor's values, which are
+the clock these reads measured.
