@@ -1,7 +1,7 @@
 //! Move-ordering histories: threat-aware quiet and noisy tables, pawn-structure
 //! and continuation tables, their gravity update and the interim update rules.
 
-use crate::board::{Bitboard, Board, Color, Move, Piece, Square};
+use crate::board::{Bitboard, Board, Color, FixedList, Move, Piece, Square};
 
 use super::Searcher;
 
@@ -296,29 +296,24 @@ impl Searcher {
     }
 }
 
-/// Up to 32 moves of one class a node searched without raising alpha.
-pub(super) struct SearchedMoves {
-    moves: [Move; 32],
-    len: usize,
-}
+/// Up to 32 moves of one class a node searched without raising alpha; the
+/// moves past 32 are not kept. Nothing is written until a move is pushed, as
+/// every node makes two.
+pub(super) struct SearchedMoves(FixedList<Move, 32>);
 
 impl SearchedMoves {
     pub(super) const fn new() -> Self {
-        Self {
-            moves: [Move::NULL; 32],
-            len: 0,
-        }
+        Self(FixedList::new())
     }
 
     pub(super) fn push(&mut self, mv: Move) {
-        if self.len < self.moves.len() {
-            self.moves[self.len] = mv;
-            self.len += 1;
+        if self.0.len() < 32 {
+            self.0.push(mv);
         }
     }
 
     pub(super) fn as_slice(&self) -> &[Move] {
-        &self.moves[..self.len]
+        self.0.as_slice()
     }
 }
 

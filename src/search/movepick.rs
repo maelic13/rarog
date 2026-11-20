@@ -1,9 +1,6 @@
 //! The root's move picker, the scored list every picker fills, and the
 //! per-node context of quiet ordering.
 
-use std::mem::MaybeUninit;
-use std::slice;
-
 use crate::board::attacks::{knight_attacks_of, pawn_attacks_of};
 use crate::board::{ATTACKS, Bitboard, Board, CheckInfo, Color, Move, Piece, Threats};
 
@@ -27,39 +24,13 @@ pub(crate) struct ScoredMove {
     pub score: i32,
 }
 
-// See MoveList in board/moves.rs: plain initialized arrays cost -10% NPS.
-// Unsafe confined to the slice accessors with a local prefix-initialization
-// invariant.
-pub(super) struct ScoredMoveList {
-    moves: [MaybeUninit<ScoredMove>; 256],
-    len: usize,
-}
+/// A node's moves with their ordering scores, at most 256.
+pub(super) type ScoredMoveList = crate::board::FixedList<ScoredMove, 256>;
 
 impl ScoredMoveList {
     #[inline(always)]
-    pub fn new() -> Self {
-        Self {
-            moves: [const { MaybeUninit::uninit() }; 256],
-            len: 0,
-        }
-    }
-
-    #[inline(always)]
-    pub(super) fn push(&mut self, mv: Move, score: i32) {
-        debug_assert!(self.len < self.moves.len());
-        self.moves[self.len].write(ScoredMove { mv, score });
-        self.len += 1;
-    }
-
-    #[inline(always)]
-    pub fn len(&self) -> usize {
-        self.len
-    }
-
-    #[inline(always)]
-    pub(crate) fn as_mut_slice(&mut self) -> &mut [ScoredMove] {
-        // SAFETY: only the initialized prefix below `len` is exposed.
-        unsafe { slice::from_raw_parts_mut(self.moves.as_mut_ptr().cast::<ScoredMove>(), self.len) }
+    pub(super) fn push_scored(&mut self, mv: Move, score: i32) {
+        self.push(ScoredMove { mv, score });
     }
 }
 
@@ -278,9 +249,9 @@ mod tests {
         let mut list = ScoredMoveList::new();
         let mv = Move::from_uci("e2e4").expect("valid UCI move shape");
         for _ in 0..256 {
-            list.push(mv, 0);
+            list.push_scored(mv, 0);
         }
         assert_eq!(list.as_mut_slice().len(), 256);
-        list.push(mv, 0);
+        list.push_scored(mv, 0);
     }
 }

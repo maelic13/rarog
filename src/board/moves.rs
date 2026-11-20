@@ -12,74 +12,79 @@ use super::square::Square;
 pub struct Move(pub u16);
 
 // KEEP-UNSAFE (measured): a plain `[Move; 256]` with `Move::NULL` init
-// (and the analogous ScoredMove/BadCapture lists) was tried on 2026-07-19 and
-// cost −10% NPS on both the pext and magic builds — the per-node
-// initialization of ~5 KB of list memory is exactly what the MaybeUninit
-// pattern avoids. The unsafe is confined to `as_slice`, whose invariant is
-// local: only the `..len` prefix is exposed and every element below `len` was
-// written by `push`.
-pub struct MoveList {
-    moves: [MaybeUninit<Move>; 256],
+// (and the analogous scored lists) was tried on 2026-07-19 and cost −10% NPS
+// on both the pext and magic builds: the per-node initialization of list
+// memory is exactly what the `MaybeUninit` pattern avoids. The unsafe is
+// confined to `as_slice` and `as_mut_slice`, whose invariant is local: only
+// the `..len` prefix is exposed and every element below `len` was written by
+// `push` or `retain`.
+/// A list of at most `N` items on the stack, nothing written until pushed:
+/// the move lists, the scored lists and a node's searched moves.
+pub struct FixedList<T: Copy, const N: usize> {
+    items: [MaybeUninit<T>; N],
     len: usize,
 }
 
-impl MoveList {
+impl<T: Copy, const N: usize> FixedList<T, N> {
     #[inline(always)]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
-            moves: [const { MaybeUninit::uninit() }; 256],
+            items: [const { MaybeUninit::uninit() }; N],
             len: 0,
         }
     }
 
     #[inline(always)]
-    pub fn push(&mut self, mv: Move) {
-        debug_assert!(self.len < self.moves.len());
-        self.moves[self.len].write(mv);
+    pub fn push(&mut self, item: T) {
+        debug_assert!(self.len < N);
+        self.items[self.len].write(item);
         self.len += 1;
     }
 
-    /// Reset the list to empty without touching any element.
-    ///
-    /// Only `len` moves; the `MaybeUninit` prefix contract is preserved
-    /// because nothing below the new `len` is ever read. This is what makes a
-    /// caller-owned list reusable across generations at no cost.
+    /// Reset the list to empty without touching any element: nothing below
+    /// the new `len` is read, so a caller-owned list is reusable at no cost.
     #[inline(always)]
     pub fn clear(&mut self) {
         self.len = 0;
     }
 
     #[inline(always)]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.len
     }
 
     #[inline(always)]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.len == 0
     }
 
     #[inline(always)]
-    pub fn iter(&self) -> slice::Iter<'_, Move> {
+    pub fn iter(&self) -> slice::Iter<'_, T> {
         self.as_slice().iter()
     }
 
     #[inline(always)]
-    pub fn as_slice(&self) -> &[Move] {
+    pub fn as_slice(&self) -> &[T] {
         // SAFETY: only the prefix below `len` is exposed and each element
-        // below `len` was initialized by `push`.
-        unsafe { slice::from_raw_parts(self.moves.as_ptr().cast::<Move>(), self.len) }
+        // below `len` was initialized by `push` or `retain`.
+        unsafe { slice::from_raw_parts(self.items.as_ptr().cast::<T>(), self.len) }
     }
 
-    /// Keep the moves `keep` accepts, in their order, without allocating.
-    pub fn retain(&mut self, mut keep: impl FnMut(Move) -> bool) {
+    #[inline(always)]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        // SAFETY: only the initialized prefix below `len` is exposed.
+        unsafe { slice::from_raw_parts_mut(self.items.as_mut_ptr().cast::<T>(), self.len) }
+    }
+
+    /// Keep the items `keep` accepts, in their order, without allocating.
+    pub fn retain(&mut self, mut keep: impl FnMut(T) -> bool) {
         let mut kept = 0;
         for read in 0..self.len {
-            let mv = self.as_slice()[read];
-            if keep(mv) {
-                // `kept <= read`, so every slot below the new `len` holds a
-                // move written by `push` or by this loop.
-                self.moves[kept].write(mv);
+            let item = self.as_slice()[read];
+            if keep(item) {
+                // `kept <= read`, so every slot below the new `len` holds an
+                // item written by `push` or by this loop.
+                self.items[kept].write(item);
                 kept += 1;
             }
         }
@@ -87,33 +92,36 @@ impl MoveList {
     }
 }
 
-impl Clone for MoveList {
+impl<T: Copy, const N: usize> Clone for FixedList<T, N> {
     #[inline(always)]
     fn clone(&self) -> Self {
         let mut cloned = Self::new();
-        for &mv in self.as_slice() {
-            cloned.push(mv);
+        for &item in self.as_slice() {
+            cloned.push(item);
         }
         cloned
     }
 }
 
-impl Default for MoveList {
+impl<T: Copy, const N: usize> Default for FixedList<T, N> {
     #[inline(always)]
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'a> IntoIterator for &'a MoveList {
-    type Item = &'a Move;
-    type IntoIter = slice::Iter<'a, Move>;
+impl<'a, T: Copy, const N: usize> IntoIterator for &'a FixedList<T, N> {
+    type Item = &'a T;
+    type IntoIter = slice::Iter<'a, T>;
 
     #[inline(always)]
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
+
+/// The moves of one generation, at most 256.
+pub type MoveList = FixedList<Move, 256>;
 
 // Move flag constants (upper 4 bits of a Move)
 pub(crate) const QUIET: u16 = 0;

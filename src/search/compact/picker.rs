@@ -121,7 +121,7 @@ impl CompactPicker {
                     for &mv in noisy.as_slice() {
                         if mv != self.tt_move {
                             let score = searcher.compact_noisy_score(board, threats, mv);
-                            self.moves.push(mv, score);
+                            self.moves.push_scored(mv, score);
                         }
                     }
                     self.noisy_len = self.moves.len();
@@ -217,14 +217,14 @@ impl Searcher {
     ) {
         debug_assert_eq!(out.len(), 0, "the root's list starts empty");
         if !tt_move.is_null() && keep(tt_move) {
-            out.push(tt_move, ROOT_TT_SCORE);
+            out.push_scored(tt_move, ROOT_TT_SCORE);
         }
         let mut generated = MoveList::new();
         let pinned = board.generate_legal_noisy_staged_into(threats, &mut generated);
         let mut noisy_list = ScoredMoveList::new();
         for &mv in generated.as_slice() {
             if mv != tt_move {
-                noisy_list.push(mv, self.compact_noisy_score(board, threats, mv));
+                noisy_list.push_scored(mv, self.compact_noisy_score(board, threats, mv));
             }
         }
         let tt_quiet = is_quiet_move(tt_move);
@@ -247,7 +247,7 @@ impl Searcher {
             .iter()
             .filter(|entry| good_tier(entry.score) && keep(entry.mv))
         {
-            out.push(entry.mv, entry.score);
+            out.push_scored(entry.mv, entry.score);
         }
         generated = MoveList::new();
         board.generate_legal_quiets_staged_into(pinned, threats, &mut generated);
@@ -265,13 +265,13 @@ impl Searcher {
                 let score =
                     compact_quiet_score(self.seeds(), board, threats, &ctx, &self.td.hist, mv);
                 debug_assert!(score.abs() < ROOT_ORDER_SPAN, "{score}");
-                quiet_list.push(mv, score);
+                quiet_list.push_scored(mv, score);
             }
             let quiet = quiet_list.as_mut_slice();
             for index in 0..quiet.len() {
                 let picked = pick_next(quiet, index);
                 if keep(picked.mv) {
-                    out.push(picked.mv, picked.score);
+                    out.push_scored(picked.mv, picked.score);
                 }
             }
         }
@@ -279,7 +279,7 @@ impl Searcher {
             .iter()
             .filter(|entry| !good_tier(entry.score) && keep(entry.mv))
         {
-            out.push(entry.mv, entry.score);
+            out.push_scored(entry.mv, entry.score);
         }
     }
 
@@ -327,7 +327,7 @@ impl Searcher {
                 continue;
             }
             probe!(self, PickQuiet, true);
-            out.push(
+            out.push_scored(
                 mv,
                 compact_quiet_score(self.seeds(), board, threats, &ctx, hist, mv),
             );
