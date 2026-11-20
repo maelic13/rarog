@@ -386,8 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.9.1 | LOCAL_QUALIFIED | R2 | Reckless's time manager whole, Rarog's guards kept (maintainer decision 2026-11-20): ported (`38e947c`), qualified at zero games; RAR-R34's three reads registered and dry-run, the maintainer's; kept unless an interval is wholly below zero |
-| D.7.9 | RESEARCH | R2 | Screen and decision done 2026-11-20; closes when D.7.9.1 does |
 | D.7.10 | RESEARCH | V | The repaired kernel, with D.7.9.1's time manager, against `d7classic` at `3+0.03` and `10+0.1`, 2,000 games each: a diagnostic that sets the fit's control |
 | D.7.11.1 | RESEARCH | I1 | The finishing surface: the added seeds, the plies and counts left out, the activation read, the audit and the pilot |
 | D.7.11.2 | RESEARCH | V | The rule 7c run at D.7.10's control, the maintainer's; its theta baked |
@@ -2803,7 +2801,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           prefetch nothing, which the profile's line share did not
           foresee: once the table's line is hidden, the correction and
           pawn loads were not on the critical path.
-    - **D.7.9 Clock use on the new kernel — `R2`; closes when D.7.9.1 does.**
+    - **D.7.9 Clock use on the new kernel — `R2`, DONE 2026-11-20.**
       Moved here from D.6.28 on 2026-11-19 (maintainer decision): it is the
       largest known lever beside the kernel (the donor's search led by 22.5
       at equal clock and 3.5 at equal work, RAR-O08 and RAR-O09), and a
@@ -2894,7 +2892,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       foresee. The donor's whole time manager, which a trigger here would
       have opened after the fit, is D.7.9.1 by maintainer decision the same
       day.
-        - **D.7.9.1 Reckless's time manager, whole — `R2` card, `I2` port, `V` reads.**
+        - **D.7.9.1 Reckless's time manager, whole — `R2` card, `I2` port, `V` reads, DONE 2026-11-20.**
           (maintainer decision 2026-11-20: one donor's time manager, not a
           hybrid, as the search showed; Reckless's.) Rarog's clock is a
           hybrid never fitted on Rarog. It has Stockfish's budget in an
@@ -2907,11 +2905,13 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           clock), past D.1's 3% trigger for `increaseDepth`
           (`analysis/artifacts/d79-clock-2026-11-20/over_optimum.py`).
           *Why Reckless:* its budget and all five factors were tuned
-          together with its search parameters, in an SPSA of 160,000 games
-          at `40+0.4` (Reckless pull request 956, 2026-05-01) and a
-          six-thread one of 200,000 (pull request 1072, 2026-06-06). Its
-          search is the kernel's (D.7.4's parity), and its tuning control is
-          nearer CCRL's than `3+0.03`. Stockfish's time manager is the more
+          together with its search parameters, in an "LTC" SPSA of 160,000
+          games (Reckless pull request 956, 2026-05-01, verified by SPRTs at
+          `8+0.08` and `40+0.4`) and a six-thread one of 200,000 (pull
+          request 1072, 2026-06-06, verified at `40+0.4`). The pull requests
+          do not state the tunes' own control (corrected 2026-11-20). Its
+          search is the kernel's (D.7.4's parity), and every control it was
+          checked at is longer than `3+0.03`. Stockfish's time manager is the more
           mature and the more widely tested, but it was tuned with
           Stockfish's search, depth rate and score scale; Stockfish's search
           on Rarog's evaluation trailed Reckless's by 88.7 ± 7.7 (RAR-O08,
@@ -2934,7 +2934,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
              slope and the evaluation-stability window of 12, are in its
              network's units. They are folded into the kernel's units by the
              measured scale, as D.7.4.1 folded the search's.
-          3. The donor's constants were tuned at `40+0.4`, and the fit runs at
+          3. The donor's constants were tuned in a long-control session, and the fit runs at
              D.7.10's control. The card says which clock coordinates the fit
              takes, so that a `3+0.03` fit cannot move the long-control
              allocation unread.
@@ -2978,6 +2978,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
              - The three reads are registered and dry-run (RAR-R34): 2,000
                games at `3+0.03`, 2,000 at `10+0.1`, and 200 at four
                threads for faults.
+          *Read 2026-11-20 (RAR-R34): kept.*
+          - **+30.0 ± 8.8 Elo** (nElo +51.9 ± 15.2) at `3+0.03` and
+            **+18.6 ± 8.2** (nElo +34.6 ± 15.2) at `10+0.1`, against the
+            hybrid; no fault or time loss in either, nor in 200 games at
+            four threads.
+          - The port spends 0.75 of the base in the first twenty moves
+            against the hybrid's 0.60, at both controls, and plays the late
+            game on a lower floor (a median of 226 against 436 ms at
+            `3+0.03`).
+          - Predicted +4 and +3: a miss in magnitude. The hybrid's early
+            under-spend cost far more than RAR-R17's null horizon read
+            suggested.
+          - D.7.8.5's trigger is re-read and not fired: no search stopped
+            inside an iteration at any of its three clocks.
+          - Evidence layer: fixed reads inside D.7's cluster; D.7.13 gates
+            it. The fifteen coordinates join D.7.11.1, and D.7.10 reads
+            the kernel with the port.
     - **D.7.10 The pre-fit read: the repaired kernel against the classic — `V`.**
       One registration, two fixed matches of 2,000 games, the repaired
       kernel (pext, PGO) against `d7classic`: `3+0.03` and `10+0.1`. A
@@ -3006,9 +3023,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
             stored-PV term given its own per-ply coefficient (A10);
             `probcut_see_scale` (D.7.8.1) and `q_see_correction_scale`,
             the two conversions into exchange units, which the fitted
-            wrapper has moved off their folded values; and the clock
-            coordinates D.7.9.1 leaves (D.7.9's thirteen `tm_*`, with
-            `TmHorizonPerSec` held at 50, if the port does not land);
+            wrapper has moved off their folded values; and the clock's
+            fifteen soft-limit coordinates (`TmNodesBase` to
+            `TmChangesScale`, D.7.9.1), the budget staying constants;
           - *not coordinates, named in the registration:* a seed the rules
             compare with a ply, a depth or a count, which a fit moves in
             whole units and a readout rounds (`singular_depth`,
