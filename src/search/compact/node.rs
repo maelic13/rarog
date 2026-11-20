@@ -15,7 +15,7 @@ use super::super::pricing::{ReSearch, Rule, Verdict};
 use super::super::{MAX_PLY, SearchEvent, Searcher};
 use super::picker::{CompactPicker, Stage};
 use super::rules::{self, is_decisive};
-use super::{KERNEL_SEE_VALUES, bounded_raw, is_quiet_move, kernel_material};
+use super::{bounded_raw, is_quiet_move, kernel_material};
 
 /// A score at or beyond the tablebase loss band.
 const fn is_loss(score: i32) -> bool {
@@ -239,7 +239,7 @@ impl Searcher {
         let threats = board.threats();
         self.td.stack[ply].threats = threats.all;
         // Read by the evaluation and the null-move gate.
-        let material = kernel_material(board);
+        let material = kernel_material(board, self.exchange_values());
         let (raw, eval, correction) = if in_check {
             (VALUE_NONE, VALUE_NONE, self.compact_correction(board, ply))
         } else if has_excluded {
@@ -368,10 +368,11 @@ impl Searcher {
             material,
             tt_capture_refutes: tt_bound == Some(Bound::Lower)
                 && tt_move.is_capture()
-                && board.captured_piece(tt_move).is_some_and(|piece| {
-                    KERNEL_SEE_VALUES.as_array()[piece as usize]
-                        >= KERNEL_SEE_VALUES.as_array()[Piece::Knight as usize]
-                }),
+                // At least a knight, by type: a perturbed exchange value
+                // cannot change which captures count.
+                && board
+                    .captured_piece(tt_move)
+                    .is_some_and(|piece| piece != Piece::Pawn),
         };
         // The probes count each of the three gates at every node that reaches
         // them, so there all three are asked before any acts; otherwise a gate
@@ -880,7 +881,7 @@ impl Searcher {
                     && !board.see_ge_exchange_with_values(
                         mv,
                         rules::see_threshold(self.seeds(), is_quiet, depth, history),
-                        KERNEL_SEE_VALUES,
+                        self.exchange_values(),
                     );
                 probe!(self, SeeMargin, see_prune);
                 if see_prune {

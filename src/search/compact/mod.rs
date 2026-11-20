@@ -7,7 +7,7 @@
 //!
 //! The kernel works in Rarog's evaluation units: its seeds are the donor's
 //! fitted values converted by their dimension ([`rules::Seeds`]). Its
-//! exchange values stay the donor's.
+//! exchange values are seeds too, in the donor's units.
 
 /// Count one asking of the rule `kind` and whether it fired, in a build with
 /// the `probes` feature; nothing otherwise, where `fired` is not evaluated.
@@ -43,10 +43,15 @@ use super::Searcher;
 use super::history::cont_context;
 use rules::{Seeds, WrapperInput, wrapped_eval};
 
-/// The kernel's exchange values, the donor's: every SEE threshold and victim
-/// term the seeds hold was fitted with them, and the material its evaluation
-/// wrapper reads is counted in them. The exchange algorithm stays Rarog's.
-pub(super) const KERNEL_SEE_VALUES: SeeValues = SeeValues::new(109, 403, 435, 679, 1242, 20_000);
+/// A seed table's exchange values, the king's a sentinel no legal exchange
+/// captures. The exchange algorithm stays Rarog's.
+pub(super) const fn exchange_values_of(seeds: &Seeds) -> SeeValues {
+    let [pawn, knight, bishop, rook, queen] = seeds.exchange_value;
+    SeeValues::new(pawn, knight, bishop, rook, queen, 20_000)
+}
+
+/// The kernel's own exchange values, built at compile time.
+pub(super) const KERNEL_SEE_VALUES: SeeValues = exchange_values_of(rules::SEEDS);
 
 /// A raw evaluation kept out of the decisive band.
 pub(super) fn bounded_raw(raw: i32) -> i32 {
@@ -62,8 +67,8 @@ pub(super) fn is_quiet_move(mv: Move) -> bool {
 }
 
 /// The material on the board in the kernel's exchange values, kings at zero.
-fn kernel_material(board: &Board) -> i32 {
-    let values = KERNEL_SEE_VALUES.as_array();
+fn kernel_material(board: &Board, values: SeeValues) -> i32 {
+    let values = values.as_array();
     [
         Piece::Pawn,
         Piece::Knight,
@@ -132,6 +137,19 @@ impl Searcher {
         seeds
     }
 
+    /// The exchange values of [`Self::seeds`], fixed for a search: built
+    /// when the search begins or at compile time, never at a node.
+    #[inline(always)]
+    pub(super) fn exchange_values(&self) -> SeeValues {
+        #[cfg(feature = "pricing")]
+        let values = self.pricing_exchange_values();
+        #[cfg(all(feature = "tune", not(feature = "pricing")))]
+        let values = self.cfg.compact_exchange;
+        #[cfg(not(any(feature = "pricing", feature = "tune")))]
+        let values = KERNEL_SEE_VALUES;
+        values
+    }
+
     /// The compact kernel's corrected evaluation from a raw evaluation and
     /// the board's `material` in exchange values, and the
     /// correction it includes. A draw verdict is a classification, not an
@@ -184,7 +202,7 @@ mod tests {
         let mut searcher = Searcher::default();
         let board = Board::starting_position();
         // 200 * (16385 + 10296) / 32596, no correction trained.
-        let material = kernel_material(&board);
+        let material = kernel_material(&board, searcher.exchange_values());
         assert_eq!(searcher.compact_eval(&board, 200, material, 0), (163, 0));
         searcher.td.optimism = [10, -10];
         // (200 * 26681 + 10 * (1539 + 10296)) / 32596.
@@ -197,8 +215,26 @@ mod tests {
     fn the_start_position_counts_the_donors_material() {
         let board = Board::starting_position();
         assert_eq!(
-            kernel_material(&board),
+            kernel_material(&board, KERNEL_SEE_VALUES),
             16 * 109 + 4 * 403 + 4 * 435 + 4 * 679 + 2 * 1242
+        );
+    }
+
+    #[test]
+    fn the_exchange_values_are_the_seed_tables() {
+        assert_eq!(
+            KERNEL_SEE_VALUES.as_array(),
+            [109, 403, 435, 679, 1242, 20_000]
+        );
+        let mut seeds = Seeds::FITTED;
+        seeds.exchange_value = [100, 300, 310, 500, 900];
+        assert_eq!(
+            exchange_values_of(&seeds).as_array(),
+            [100, 300, 310, 500, 900, 20_000]
+        );
+        assert_eq!(
+            kernel_material(&Board::starting_position(), exchange_values_of(&seeds)),
+            16 * 100 + 4 * 300 + 4 * 310 + 4 * 500 + 2 * 900
         );
     }
 }

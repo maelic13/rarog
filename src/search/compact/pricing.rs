@@ -14,15 +14,15 @@
 
 use std::sync::OnceLock;
 
-use crate::board::{Board, Move, Piece};
+use crate::board::{Board, Move, Piece, SeeValues};
 
 use super::super::node::{NodeType, NonPv, Pv};
 use super::super::pricing::{
     Changed, Decision, NodeKind, ProbeKind, QCapture, ReSearch, Rule, Verdict,
 };
 use super::super::{SearchEvent, Searcher};
-use super::is_quiet_move;
 use super::rules::{SEED_FIELDS, SEEDS, Seeds};
+use super::{KERNEL_SEE_VALUES, exchange_values_of, is_quiet_move};
 
 /// A compact node as it was entered, for a probe that searches it again.
 pub(super) struct CompactEntry {
@@ -94,6 +94,17 @@ impl Searcher {
             SEEDS
         } else {
             planted()
+        }
+    }
+
+    /// The exchange values of the table [`Self::pricing_seeds`] reads, the
+    /// planted ones built once.
+    pub(super) fn pricing_exchange_values(&self) -> SeeValues {
+        static PLANTED: OnceLock<SeeValues> = OnceLock::new();
+        if self.td.pricing.confined_probe() {
+            KERNEL_SEE_VALUES
+        } else {
+            *PLANTED.get_or_init(|| exchange_values_of(planted()))
         }
     }
 

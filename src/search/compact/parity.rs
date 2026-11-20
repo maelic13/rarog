@@ -1455,6 +1455,36 @@ const UNDETECTABLE: &[(&str, &str)] = &[
         "pick_escape[5]",
         "a king escapes nothing: the donor maps no threat to kings",
     ),
+    (
+        "pawn_history_max",
+        "the pawn table's limit acts only through the table's entries, which the \
+         trace records as inputs",
+    ),
+    (
+        "exchange_value[0]",
+        "the exchange values act through an exchange's result and the board's \
+         material, which the trace records as inputs, never in a rule's arithmetic",
+    ),
+    (
+        "exchange_value[1]",
+        "the exchange values act through an exchange's result and the board's \
+         material, which the trace records as inputs, never in a rule's arithmetic",
+    ),
+    (
+        "exchange_value[2]",
+        "the exchange values act through an exchange's result and the board's \
+         material, which the trace records as inputs, never in a rule's arithmetic",
+    ),
+    (
+        "exchange_value[3]",
+        "the exchange values act through an exchange's result and the board's \
+         material, which the trace records as inputs, never in a rule's arithmetic",
+    ),
+    (
+        "exchange_value[4]",
+        "the exchange values act through an exchange's result and the board's \
+         material, which the trace records as inputs, never in a rule's arithmetic",
+    ),
 ];
 
 #[derive(Default)]

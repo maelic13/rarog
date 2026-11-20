@@ -17,7 +17,9 @@ pub(super) const CONT_PLY_BACK: [usize; 4] = [1, 2, 4, 6];
 
 const QUIET_MAX: i32 = 8_192;
 const NOISY_MAX: i32 = 12_800;
-const PAWN_MAX: i32 = 8_192;
+/// The pawn table's limit, the kernel's seed; a tuning or pricing build
+/// sets it for each search.
+const PAWN_MAX: i32 = super::compact::rules::SEEDS.pawn_history_max;
 const CONT_MAX: i32 = 15_320;
 const PAWN_HISTORY_SIZE: usize = 512;
 /// Captured-type slots of the noisy table: the six piece types and "none",
@@ -82,6 +84,9 @@ pub(super) struct HistoryTables {
     /// `[context][coloured piece and destination]`, flat; a context is a row
     /// base from [`cont_context`].
     cont: Box<[i16; CONT_SIZE]>,
+    /// The pawn table's limit, set from the seed table for each search.
+    #[cfg(any(feature = "tune", feature = "pricing"))]
+    pawn_max: i32,
     /// Set while a pricing probe runs: no update writes, so the measured
     /// search finds the tables as it left them.
     #[cfg(feature = "pricing")]
@@ -98,6 +103,8 @@ impl Default for HistoryTables {
             noisy: Box::new(EMPTY_NOISY),
             pawn: zeroed(),
             cont: zeroed(),
+            #[cfg(any(feature = "tune", feature = "pricing"))]
+            pawn_max: PAWN_MAX,
             #[cfg(feature = "pricing")]
             frozen: false,
             #[cfg(feature = "probes")]
@@ -107,6 +114,12 @@ impl Default for HistoryTables {
 }
 
 impl HistoryTables {
+    /// The pawn table's limit for the next search.
+    #[cfg(any(feature = "tune", feature = "pricing"))]
+    pub(super) fn set_pawn_max(&mut self, max: i32) {
+        self.pawn_max = max;
+    }
+
     /// Forget everything, for a new game.
     pub(super) fn clear(&mut self) {
         *self.quiet = EMPTY_QUIET;
@@ -212,10 +225,14 @@ impl HistoryTables {
         {
             self.updates += 1;
         }
+        #[cfg(any(feature = "tune", feature = "pricing"))]
+        let max = self.pawn_max;
+        #[cfg(not(any(feature = "tune", feature = "pricing")))]
+        let max = PAWN_MAX;
         apply_bonus(
             &mut self.pawn[pawn_row + piece_to(color, piece, to)],
             bonus,
-            PAWN_MAX,
+            max,
         );
     }
 
@@ -327,7 +344,9 @@ mod tests {
     /// less than an empty one.
     #[test]
     fn every_table_is_bounded_and_updates_by_gravity() {
-        for max in [QUIET_MAX, NOISY_MAX, PAWN_MAX, CONT_MAX] {
+        // The pawn table's largest limit a tuning option reaches is twice
+        // its seed, 16,384, inside an `i16`.
+        for max in [QUIET_MAX, NOISY_MAX, PAWN_MAX, 2 * PAWN_MAX, CONT_MAX] {
             let mut entry = 0i16;
             let mut previous = 0;
             for _ in 0..200 {

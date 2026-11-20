@@ -268,6 +268,9 @@ struct SearchConfig {
     /// The compact kernel's seeds as the tuning options set them.
     #[cfg(feature = "tune")]
     compact_seeds: &'static compact::rules::Seeds,
+    /// Their exchange values, built when they change.
+    #[cfg(all(feature = "tune", not(feature = "pricing")))]
+    compact_exchange: crate::board::SeeValues,
     limits: RuntimeLimits,
     start: Instant,
     /// The search's node count past which a failed root window prints its
@@ -282,6 +285,8 @@ impl Default for SearchConfig {
             params: SearchParams::default(),
             #[cfg(feature = "tune")]
             compact_seeds: compact::rules::SEEDS,
+            #[cfg(all(feature = "tune", not(feature = "pricing")))]
+            compact_exchange: compact::KERNEL_SEE_VALUES,
             limits: RuntimeLimits::default(),
             start: Instant::now(),
             bound_lines_from_nodes: BOUND_LINES_FROM_NODES,
@@ -752,7 +757,15 @@ impl Searcher {
         #[cfg(feature = "tune")]
         if *self.cfg.compact_seeds != engine_options.compact_seeds {
             self.cfg.compact_seeds = Box::leak(Box::new(engine_options.compact_seeds.clone()));
+            #[cfg(not(feature = "pricing"))]
+            {
+                self.cfg.compact_exchange = compact::exchange_values_of(self.cfg.compact_seeds);
+            }
         }
+        // In a build whose seed table can change, the pawn history's limit
+        // follows it, set once a search as the seeds are.
+        #[cfg(any(feature = "tune", feature = "pricing"))]
+        self.td.hist.set_pawn_max(self.seeds().pawn_history_max);
         self.td.nmp_min_ply = 0;
         self.shared.syzygy.largest = syzygy::largest().min(self.shared.syzygy.probe_limit);
         self.td.tb_root_scores.clear();
@@ -2663,6 +2676,34 @@ mod tests {
             );
             assert_ne!(searcher.raw_eval(&board), low_margin_score);
         }
+    }
+
+    /// A search takes the tuning options' exchange values and pawn-table
+    /// limit when it begins.
+    #[cfg(all(feature = "tune", not(feature = "pricing")))]
+    #[test]
+    fn a_search_takes_the_exchange_values_and_pawn_limit_from_the_options() {
+        use crate::board::{Piece, Square};
+
+        let mut searcher = Searcher::default();
+        let mut options = EngineOptions::default();
+        options.compact_seeds.pawn_history_max = 4_096;
+        options.compact_seeds.exchange_value[3] = 600;
+        searcher.reset_search_state(&SearchLimits::default(), &options, Color::White, 0, false);
+        assert_eq!(searcher.exchange_values().as_array()[3], 600);
+        let row = history::HistoryTables::pawn_row(0);
+        searcher
+            .td
+            .hist
+            .update_pawn(row, Color::White, Piece::Knight, Square::F3, 100_000);
+        assert_eq!(
+            searcher
+                .td
+                .hist
+                .pawn(row, Color::White, Piece::Knight, Square::F3),
+            4_096,
+            "one clamped bonus saturates the table at its limit"
+        );
     }
 
     #[test]

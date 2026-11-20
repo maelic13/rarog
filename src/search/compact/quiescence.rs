@@ -12,7 +12,7 @@ use super::super::pricing::Rule;
 use super::super::{MAX_PLY, SearchEvent, Searcher};
 use super::picker::CompactPicker;
 use super::rules;
-use super::{KERNEL_SEE_VALUES, bounded_raw, is_quiet_move, kernel_material};
+use super::{bounded_raw, is_quiet_move, kernel_material};
 
 /// The depth a quiescence result is stored at: the table's.
 pub(super) const Q_DEPTH: i32 = crate::tt::QUIESCENCE_DEPTH;
@@ -76,7 +76,8 @@ impl Searcher {
             } else {
                 ev.raw_static_eval
             };
-            let (eval, correction) = self.compact_eval(board, raw, kernel_material(board), ply);
+            let material = kernel_material(board, self.exchange_values());
+            let (eval, correction) = self.compact_eval(board, raw, material, ply);
             (raw, eval, correction)
         };
         let mut best_score = rules::stand_pat(in_check, NODE::PV, eval, ev.score, ev.bound);
@@ -153,7 +154,7 @@ impl Searcher {
                     && !board.see_ge_exchange_with_values(
                         mv,
                         rules::q_see_threshold(self.seeds(), alpha, eval, correction, history),
-                        KERNEL_SEE_VALUES,
+                        self.exchange_values(),
                     );
                 probe!(self, QSee, see_prune);
                 if see_prune {
@@ -254,7 +255,8 @@ mod tests {
         let fen = "4k3/8/8/3q4/8/8/3R4/4K3 w - - 0 1";
         let (mut searcher, board, score) = search::<Pv>(fen, -INF_SCORE, INF_SCORE);
         let raw = bounded_raw(searcher.raw_eval(&board));
-        let (stand_pat, _) = searcher.compact_eval(&board, raw, kernel_material(&board), 1);
+        let material = kernel_material(&board, searcher.exchange_values());
+        let (stand_pat, _) = searcher.compact_eval(&board, raw, material, 1);
         // The capture wins the queen: a lost position becomes a won one, a
         // swing well past the deficit, whatever scale the wrapper gives.
         assert!(
@@ -278,7 +280,8 @@ mod tests {
         let fen = "k7/8/8/8/8/8/2QQ4/4K3 w - - 0 1";
         let (mut searcher, board, score) = search::<NonPv>(fen, -101, -100);
         let raw = bounded_raw(searcher.raw_eval(&board));
-        let (stand_pat, _) = searcher.compact_eval(&board, raw, kernel_material(&board), 1);
+        let material = kernel_material(&board, searcher.exchange_values());
+        let (stand_pat, _) = searcher.compact_eval(&board, raw, material, 1);
         assert_eq!(
             score,
             rules::q_stand_pat_value(rules::SEEDS, stand_pat, -100)

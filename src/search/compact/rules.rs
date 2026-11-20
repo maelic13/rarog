@@ -102,12 +102,14 @@ pub(crate) struct Seeds {
     /// the raised beta: the evaluation's units into the exchange values.
     pub(crate) probcut_see_scale: i32,
 
-    // Singular search: the candidate, the margin per ply of its span, the
+    // Singular search: the candidate, the margin per ply of its span and
+    // per ply of depth at a PV-line node searched with a null window, the
     // extension bars in sixteenths and the multi-cut's return.
     pub(crate) singular_depth: i32,
     pub(crate) singular_tt_depth: i32,
     pub(crate) singular_exact_div: i32,
     pub(crate) singular_per_ply_1024: i32,
+    pub(crate) singular_pv_per_ply_1024: i32,
     pub(crate) double_pv_16: i32,
     pub(crate) double_new_pv_16: i32,
     pub(crate) double_quiet_16: i32,
@@ -330,6 +332,16 @@ pub(crate) struct Seeds {
     pub(crate) pick_see_divisor: i32,
     pub(crate) pick_see_offset: i32,
     pub(crate) pick_late_good: i32,
+
+    // The pawn history's limit. That table is written with the quiet
+    // table's amounts, so its limit against the quiet one is how long it
+    // remembers.
+    pub(crate) pawn_history_max: i32,
+
+    // The exchange values, pawn to queen: every exchange test, the victim
+    // term and the material the wrapper and the null move read count in
+    // them. The pawn's is their unit.
+    pub(crate) exchange_value: [i32; 5],
 }
 
 impl Seeds {
@@ -401,6 +413,7 @@ impl Seeds {
         singular_tt_depth: 3,
         singular_exact_div: 4,
         singular_per_ply_1024: 413,
+        singular_pv_per_ply_1024: 413,
         double_pv_16: 1_260,
         double_new_pv_16: 310,
         double_quiet_16: 103,
@@ -600,6 +613,9 @@ impl Seeds {
         pick_see_divisor: 47,
         pick_see_offset: 116,
         pick_late_good: 2,
+
+        pawn_history_max: 8_192,
+        exchange_value: [109, 403, 435, 679, 1_242],
     };
 
     /// The values the kernel searches with: the donor's, fitted as one
@@ -668,6 +684,7 @@ impl Seeds {
         singular_tt_depth: 3,
         singular_exact_div: 4,
         singular_per_ply_1024: 405,
+        singular_pv_per_ply_1024: 405,
         double_pv_16: 1_276,
         double_new_pv_16: 282,
         double_quiet_16: 100,
@@ -867,6 +884,9 @@ impl Seeds {
         pick_see_divisor: 46,
         pick_see_offset: 116,
         pick_late_good: 2,
+
+        pawn_history_max: 8_192,
+        exchange_value: [109, 403, 435, 679, 1_242],
     };
 }
 
@@ -946,6 +966,7 @@ pub(crate) const SEED_FIELDS: &[SeedField] = seed_fields!(
     singular_tt_depth,
     singular_exact_div,
     singular_per_ply_1024,
+    singular_pv_per_ply_1024,
     double_pv_16,
     double_new_pv_16,
     double_quiet_16,
@@ -1139,6 +1160,12 @@ pub(crate) const SEED_FIELDS: &[SeedField] = seed_fields!(
     pick_see_divisor,
     pick_see_offset,
     pick_late_good,
+    pawn_history_max,
+    exchange_value[0],
+    exchange_value[1],
+    exchange_value[2],
+    exchange_value[3],
+    exchange_value[4],
 );
 
 #[inline(always)]
@@ -1690,8 +1717,9 @@ pub(crate) fn singular_candidate(
 }
 
 /// How far below the stored score the exclusion search's beta sits: a step
-/// per ply of the depth (a quarter of it, rounded up, when exact), and per ply
-/// again at a PV-line node searched with a null window, rounded to a unit.
+/// per ply of the depth (a quarter of it, rounded up, when exact), and a
+/// step of its own per ply at a PV-line node searched with a null window,
+/// rounded to a unit.
 #[inline(always)]
 pub(crate) fn singular_margin(s: &Seeds, depth: i32, exact: bool, tt_pv_off_pv: bool) -> i32 {
     let span = if exact {
@@ -1699,7 +1727,10 @@ pub(crate) fn singular_margin(s: &Seeds, depth: i32, exact: bool, tt_pv_off_pv: 
     } else {
         depth
     };
-    ((span + depth * i32::from(tt_pv_off_pv)) * s.singular_per_ply_1024 + 512) / 1024
+    (span * s.singular_per_ply_1024
+        + depth * i32::from(tt_pv_off_pv) * s.singular_pv_per_ply_1024
+        + 512)
+        / 1024
 }
 
 /// The exclusion search's result and the node it was asked at.

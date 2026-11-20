@@ -7,14 +7,15 @@ use super::rules::{SEED_FIELDS, Seeds};
 /// Seeds no fit can move: the thread spreads multiply the thread index, zero
 /// with one thread; a pawn has no cheaper attacker, so its escape never
 /// fires; the king's escape is 0 at its natural floor, where a perturbation
-/// would clamp; and the correction's scale into exchange units is the unit
-/// conversion itself, a coefficient the donor's form does not have.
+/// would clamp; and the pawn's exchange value is the unit of the other
+/// four and of every exchange margin, which move together with it without
+/// changing a decision.
 const EXCLUDED: [&str; 5] = [
     "lmr_spread_thread",
     "fds_spread_thread",
     "pick_escape[0]",
     "pick_escape[5]",
-    "q_see_correction_scale",
+    "exchange_value[0]",
 ];
 
 /// Seeds whose range is declared rather than the rule's, each for a value
@@ -103,8 +104,8 @@ mod tests {
     #[test]
     fn every_seed_but_the_five_is_an_option_inside_its_range() {
         let lines = uci_option_strings();
-        assert_eq!(SEED_FIELDS.len(), 247);
-        assert_eq!(lines.len(), 242);
+        assert_eq!(SEED_FIELDS.len(), 254);
+        assert_eq!(lines.len(), 249);
         for (name, field, min, max) in tunables() {
             let mut seeds = Seeds::FITTED;
             let value = *field(&mut seeds);
@@ -119,7 +120,7 @@ mod tests {
         let mut names: Vec<String> = tunables().map(|(name, ..)| name.to_lowercase()).collect();
         names.sort();
         names.dedup();
-        assert_eq!(names.len(), 242, "option names are unique");
+        assert_eq!(names.len(), 249, "option names are unique");
         for seed in EXCLUDED {
             assert!(
                 SEED_FIELDS.iter().any(|(name, _)| *name == seed),
@@ -155,6 +156,59 @@ mod tests {
             seeds.probcut_see_scale, 1_024,
             "the unconverted bar is reachable"
         );
+    }
+
+    #[test]
+    fn each_new_option_reaches_its_rule() {
+        use super::super::exchange_values_of;
+        use super::super::rules::{q_see_threshold, singular_margin};
+
+        let lines = uci_option_strings();
+        for line in [
+            "option name KPawnHistoryMax type spin default 8192 min 4096 max 16384",
+            "option name KSingularPvPerPly1024 type spin default 405 min 202 max 810",
+            "option name KQSeeCorrectionScale type spin default 2536 min 1268 max 5072",
+            "option name KExchangeValue1 type spin default 403 min 201 max 806",
+            "option name KExchangeValue2 type spin default 435 min 217 max 870",
+            "option name KExchangeValue3 type spin default 679 min 339 max 1358",
+            "option name KExchangeValue4 type spin default 1242 min 621 max 2484",
+        ] {
+            assert!(lines.contains(&String::from(line)), "{line}");
+        }
+        assert!(
+            !lines.iter().any(|line| line.contains(" KExchangeValue0 ")),
+            "the pawn's value is the unit"
+        );
+        let base = Seeds::FITTED;
+
+        let mut seeds = Seeds::FITTED;
+        assert!(set_uci_option(&mut seeds, "KPawnHistoryMax", "20000"));
+        assert_eq!(seeds.pawn_history_max, 16_384, "clamped inside an i16");
+
+        let mut seeds = Seeds::FITTED;
+        assert!(set_uci_option(&mut seeds, "KSingularPvPerPly1024", "600"));
+        assert_eq!(
+            singular_margin(&seeds, 10, false, false),
+            singular_margin(&base, 10, false, false),
+            "off the stored-PV case the coefficient is not read"
+        );
+        assert!(singular_margin(&seeds, 10, false, true) > singular_margin(&base, 10, false, true));
+
+        let mut seeds = Seeds::FITTED;
+        assert!(set_uci_option(&mut seeds, "KQSeeCorrectionScale", "1300"));
+        assert!(q_see_threshold(&seeds, 0, 0, 20, 0) > q_see_threshold(&base, 0, 0, 20, 0));
+
+        for index in 1..5 {
+            let mut seeds = Seeds::FITTED;
+            assert!(set_uci_option(
+                &mut seeds,
+                &format!("KExchangeValue{index}"),
+                "700"
+            ));
+            let mut expected = exchange_values_of(&base).as_array();
+            expected[index] = 700;
+            assert_eq!(exchange_values_of(&seeds).as_array(), expected);
+        }
     }
 
     #[test]

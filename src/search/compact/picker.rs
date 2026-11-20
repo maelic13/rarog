@@ -8,10 +8,10 @@ use crate::board::{Bitboard, Board, Move, MoveList, Piece, Threats};
 use super::super::Searcher;
 use super::super::history::HistoryTables;
 use super::super::movepick::{QuietContext, ROOT_TT_SCORE, ScoredMoveList, pick_next};
+use super::is_quiet_move;
 use super::rules::{
     NoisyOrderInput, QuietOrderInput, Seeds, good_noisy_threshold, noisy_order, quiet_order,
 };
-use super::{KERNEL_SEE_VALUES, is_quiet_move};
 
 /// The root's tiers below the table move and the pool's searched moves
 /// (`apply_shared_root_scores`, from 25,000,000): the good noisy moves,
@@ -142,7 +142,11 @@ impl CompactPicker {
                                 self.good_emitted,
                             )
                         });
-                        if board.see_ge_exchange_with_values(picked.mv, bar, KERNEL_SEE_VALUES) {
+                        if board.see_ge_exchange_with_values(
+                            picked.mv,
+                            bar,
+                            searcher.exchange_values(),
+                        ) {
                             self.noisy_index += 1;
                             self.good_emitted += 1;
                             return Some(picked.mv);
@@ -234,7 +238,8 @@ impl Searcher {
             let picked = pick_next(noisy, index);
             debug_assert!(picked.score.abs() < ROOT_ORDER_SPAN, "{}", picked.score);
             let bar = good_noisy_threshold(self.seeds(), picked.score, tt_quiet, good);
-            let tier = if board.see_ge_exchange_with_values(picked.mv, bar, KERNEL_SEE_VALUES) {
+            let tier = if board.see_ge_exchange_with_values(picked.mv, bar, self.exchange_values())
+            {
                 good += 1;
                 ROOT_GOOD_NOISY
             } else {
@@ -291,7 +296,7 @@ impl Searcher {
         noisy_order(
             self.seeds(),
             &NoisyOrderInput {
-                victim: captured.map_or(0, |p| KERNEL_SEE_VALUES.as_array()[p as usize]),
+                victim: captured.map_or(0, |p| self.exchange_values().as_array()[p as usize]),
                 history: self.td.hist.noisy(
                     threats.all,
                     board.side_to_move(),
