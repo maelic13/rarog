@@ -386,7 +386,7 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.9.1 | RESEARCH | R2 | Reckless's time manager whole, Rarog's guards kept (maintainer decision 2026-11-20): the guard and shape inventory, the units, the fail-high stop, the fit's clock coordinates, the port and its two reads |
+| D.7.9.1 | LOCAL_QUALIFIED | R2 | Reckless's time manager whole, Rarog's guards kept (maintainer decision 2026-11-20): ported (`38e947c`), qualified at zero games; RAR-R34's three reads registered and dry-run, the maintainer's; kept unless an interval is wholly below zero |
 | D.7.9 | RESEARCH | R2 | Screen and decision done 2026-11-20; closes when D.7.9.1 does |
 | D.7.10 | RESEARCH | V | The repaired kernel, with D.7.9.1's time manager, against `d7classic` at `3+0.03` and `10+0.1`, 2,000 games each: a diagnostic that sets the fit's control |
 | D.7.11.1 | RESEARCH | I1 | The finishing surface: the added seeds, the plies and counts left out, the activation read, the audit and the pilot |
@@ -2948,6 +2948,34 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           carried: Stockfish's per-control scale, its cut when behind and
           `increaseDepth`. Choosing one donor's form closes those gaps by not
           combining forms.
+          *The card answered and the port built, 2026-11-20* (engine
+          `38e947c`, tooling `c86bb60`; RAR-R34):
+          1. *Guards kept with their tests:* the reserve under Move Overhead
+             and its four-thread extra, the proved-mate stop, the
+             first-iteration guard, the tablebase box, the single-move
+             shortcut, and the `movetime`, `nodes`, `depth`, ponder and
+             `infinite` semantics. The fail-high stop is a guard too: on the
+             new clock it ends 10 of 300 searches at `3000+30`, against the
+             old clock's 11 (D.7.8.5). The thread vote stays Rarog's strict
+             majority, a measured multi-thread contract (two threads
+             exempted cost −15.85 Elo) that the one-thread reads cannot
+             test. *Shape replaced:* the budget and its horizon, and the
+             five factors.
+          2. *Units:* the score trend's slope is the donor's 0.0480 folded to
+             0.1189 a unit. The score-stability count is the root window's
+             own, already folded.
+          3. *Fit coordinates:* the five factors' fifteen constants
+             (`TmNodesBase` to `TmChangesScale`). The budget is constants in
+             `time.rs` and is not fitted.
+          4. *Checks:*
+             - `bench 13` 3,320,355 / EBF 2.317, unchanged; tests in debug,
+               release, `texel` and `tune`, clippy and `fmt` all clean.
+             - The clock activation read: every factor moves and none is
+               inert. The score trend is at a clamp on 98% of iterations;
+               in a fresh game it reads the fall from zero.
+             - The three reads are registered and dry-run (RAR-R34): 2,000
+               games at `3+0.03`, 2,000 at `10+0.1`, and 200 at four
+               threads for faults.
     - **D.7.10 The pre-fit read: the repaired kernel against the classic — `V`.**
       One registration, two fixed matches of 2,000 games, the repaired
       kernel (pext, PGO) against `d7classic`: `3+0.03` and `10+0.1`. A
