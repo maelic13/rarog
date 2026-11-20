@@ -3149,10 +3149,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
             `fixed_d711fit.json` (Hash 64, Threads 1, MultiPV 1);
             `d711pilot`, the same surface. Converted `--rule7c --ceiling
             6000` and `--ceiling 64`, the room report empty.
-          - `d76fit`, `d76pilot` and `d14block1` are listed in
-            `historical.txt`: the first two were baked (D.7.6.2) and the
-            third's options went with the old clock (D.7.9.1). Unlisted,
-            they give the audit its 797 findings today.
+          - `d76fit`, `d76pilot` and `d14block1` were listed in
+            `historical.txt` on 2026-11-20: the first two were baked
+            (D.7.6.2) and the third's options went with the old clock
+            (D.7.9.1). That took the audit from 797 findings to clean;
+            `d711fit` and its pilot are then the only live groups.
           *Checks:* `./tools/audit_spsa_coverage.ps1 -TuneEngine <the
           build>` ends `RESULT: clean`; `--check` passes on both groups;
           the surface's count equals the read's.

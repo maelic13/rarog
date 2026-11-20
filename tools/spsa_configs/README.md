@@ -3,10 +3,12 @@
 This directory holds the SPSA surface of a **registered** tune, one
 `config_<group>.json` per group, read by `tools/spsa.ps1` and checked by
 `tools/audit_spsa_coverage.ps1`. An optional `fixed_<group>.json` holds UCI
-options applied to both sides at fixed values. **Prepared:
-`d76fit`** (PLAN D.7.6, the compact kernel's fit, registered by RAR-S128)
-and `d14block1` (PLAN D.1.4's clock fit, registered by RAR-R15). A tune
-build of the current head is `./tools/build_test.ps1 -Suffix <name> -Tune`.
+options applied to both sides at fixed values. **No live group is
+prepared.** `d76fit` and its pilot (PLAN D.7.6, the compact kernel's fit,
+registered by RAR-S128) and `d14block1` (PLAN D.1.4's clock fit,
+registered by RAR-R15) are records, listed in `historical.txt`; PLAN
+D.7.11.2 adds `d711fit`. A tune build of the current head is
+`./tools/build_test.ps1 -Suffix <name> -Tune`.
 The groups that named the classic kernel's options were deleted with it
 (PLAN D.7.7); their records keep their surfaces' recipes.
 
@@ -20,6 +22,10 @@ tools/results/<run>` plays it to each checkpoint and reads it there with
 still `--check` in the block form (`--iterations`).
 
 ## `d76fit` — D.7.6's fit of the compact kernel, registered by RAR-S128
+
+A record: D.7.6.2 (2026-11-19) baked this tune's centres at 2,000 as the
+kernel's seeds, so its `value`s are the registration's, no longer the
+engine's defaults.
 
 - **Surface:** 230 compact-kernel seeds, the active candidates of
   `analysis/d76_surface_2026-11-18.md` (246 seeds, 5 excluded by

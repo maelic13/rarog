@@ -1,3 +1,6 @@
 # Groups whose tune has been baked into the engine. Their seeds are the
 # registration's and are kept as evidence, so audit_spsa_coverage.ps1 does not
 # compare them with the engine's defaults. One group per line.
+d76fit      # RAR-S128, baked by PLAN D.7.6.2 (2026-11-19)
+d76pilot    # RAR-S128's pilot, the same surface
+d14block1   # RAR-R15; its options went with the old clock (PLAN D.7.9.1, 2026-11-20)
