@@ -57,7 +57,6 @@ impl Searcher {
         }
 
         let hash = board.hash();
-        self.prefetch_eval_inputs(board);
         let entry = self.tt_probe(hash);
         let ev = TtProbe::from_entry(entry, ply, board.halfmove_clock());
         let tt_pv = ev.pv_line(NODE::PV);

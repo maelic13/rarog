@@ -46,55 +46,6 @@ pub(crate) fn to_usize(x: i32) -> usize {
 /// threads get the same budget from `RUST_MIN_STACK` in `.cargo/config.toml`.
 pub const THREAD_STACK_SIZE: usize = 16 * 1024 * 1024;
 
-/// Ask for the cache line at `ptr` ahead of its load. A hint only: it reads
-/// nothing, so any address is sound.
-#[inline(always)]
-pub(crate) fn prefetch<T>(ptr: *const T) {
-    // SAFETY: `_mm_prefetch` is a pure cache hint — it never dereferences the
-    // pointer, so ANY address (dangling or null) is sound. It is `unsafe` only
-    // because `std::arch` intrinsics require the target feature, and SSE is
-    // baseline on every x86_64 target we build.
-    #[cfg(target_arch = "x86_64")]
-    unsafe {
-        core::arch::x86_64::_mm_prefetch(ptr.cast::<i8>(), core::arch::x86_64::_MM_HINT_T0);
-    }
-
-    // The ARM64 spelling of the SAME hint, so the ARM64 assets prefetch as the
-    // x86 ones do. A hint pays only when work runs between it and the load:
-    // the table's is issued before the child move is made, from the key the
-    // move will produce, and again after, so the make runs while the line
-    // arrives.
-    //
-    // `pldl1keep` is the ARM analogue of `_MM_HINT_T0`: prefetch for load, into
-    // L1, temporal (keep). Written as inline `asm!` because
-    // `core::arch::aarch64::_prefetch` is still unstable, and stable AArch64
-    // inline assembly is available on the pinned toolchain.
-    //
-    // The two arms are `cfg`-exclusive, so any single compiled target contains
-    // one unsafe block here: an intrinsic-class cache hint, not a new
-    // mechanism, and no rise in the frozen unsafe floor.
-    //
-    // SAFETY: `prfm` is an architectural cache hint. It does not dereference
-    // `ptr` as a Rust memory access, so any address is sound — and the callers
-    // derive theirs from a live table allocation regardless. The instruction writes no
-    // memory, modifies no flags and uses no stack.
-    #[cfg(target_arch = "aarch64")]
-    unsafe {
-        core::arch::asm!(
-            "prfm pldl1keep, [{address}]",
-            address = in(reg) ptr,
-            options(readonly, nostack, preserves_flags)
-        );
-    }
-
-    // Rarog is 64-bit-only; retained as a correctness-first fallback for any
-    // future target that is neither x86-64 nor AArch64.
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-    {
-        let _ = ptr;
-    }
-}
-
 /// Flush stdout, dropping the error: a failed flush means the GUI closed the
 /// pipe, which ends a UCI session normally and must not abort the process.
 pub(crate) fn flush_stdout() {

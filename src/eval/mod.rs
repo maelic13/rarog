@@ -222,13 +222,6 @@ impl Evaluator {
         }
     }
 
-    /// Ask for the pawn table's entry for `board` ahead of the evaluation.
-    #[inline(always)]
-    pub fn prefetch_pawn_entry(&self, board: &Board) {
-        let slot = infra::index(board.pawn_key()) & (PAWN_TABLE_SIZE - 1);
-        infra::prefetch(self.pawn_table.as_ptr().wrapping_add(slot));
-    }
-
     pub fn evaluate(&mut self, board: &Board) -> i32 {
         // Endgame-family occurrence in the search tree, counted BEFORE the cache lookup: a
         // cache hit is still the search reaching that family, and counting
