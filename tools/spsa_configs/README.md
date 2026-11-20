@@ -3,11 +3,12 @@
 This directory holds the SPSA surface of a **registered** tune, one
 `config_<group>.json` per group, read by `tools/spsa.ps1` and checked by
 `tools/audit_spsa_coverage.ps1`. An optional `fixed_<group>.json` holds UCI
-options applied to both sides at fixed values. **No live group is
-prepared.** `d76fit` and its pilot (PLAN D.7.6, the compact kernel's fit,
-registered by RAR-S128) and `d14block1` (PLAN D.1.4's clock fit,
-registered by RAR-R15) are records, listed in `historical.txt`; PLAN
-D.7.11.2 adds `d711fit`. A tune build of the current head is
+options applied to both sides at fixed values. **The live group is
+`d711fit`** and its pilot `d711pilot` (PLAN D.7.11, the finishing fit,
+registered by RAR-S135). `d76fit` and its pilot (PLAN D.7.6, the compact
+kernel's first fit, registered by RAR-S128) and `d14block1` (PLAN D.1.4's
+clock fit, registered by RAR-R15) are records, listed in
+`historical.txt`. A tune build of the current head is
 `./tools/build_test.ps1 -Suffix <name> -Tune`.
 The groups that named the classic kernel's options were deleted with it
 (PLAN D.7.7); their records keep their surfaces' recipes.
@@ -20,6 +21,30 @@ tools/results/<run>` plays it to each checkpoint and reads it there with
 `tools/spsa_read.py`. `d14block1` was registered and run as blocks; its
 `-Iterations` and `-TotalGames` lines are history, and its committed files
 still `--check` in the block form (`--iterations`).
+
+## `d711fit` — D.7.11's finishing fit, registered by RAR-S135
+
+- **Surface:** 225 coordinates of the repaired kernel, the record's
+  (`analysis/d711_fit_2026-11-20.md`, appendix): the 249 seed options of
+  `rarog-d711fit-tune.exe` less sixteen whole-unit seeds and eight
+  inactive on `bench 13` and `bench 17`. `value` is the engine's
+  default (the first fit's baked centres), `min_value` and `max_value`
+  the listing's range, `step` range/16 and at least 1. Generated from
+  the binary's own listing and the activation read by
+  `analysis/artifacts/d711-fit-2026-11-20/gen_config.py`, which fails
+  on any difference from the record; audit with
+  `./tools/audit_spsa_coverage.ps1 -TuneEngine
+  tools/test_engines/rarog-d711fit-tune.exe`.
+- **`fixed_d711fit.json`:** Hash 64, Threads 1, MultiPV 1.
+- **`d711pilot`:** the same surface, converted for the pilot's ceiling
+  of 64 iterations.
+- **Run:** `python tools/spsa_config_to_colosseum.py d711fit --rule7c
+  --ceiling 6000` and `d711pilot --rule7c --ceiling 64` wrote the
+  Colosseum files. The pilot, the tune and the reads are run by
+  RAR-S135's three drivers, `run_pilot.ps1`, `run_tune.ps1` and
+  `run_read.ps1` in `analysis/artifacts/d711-fit-2026-11-20/`, which
+  call `./tools/colosseum.ps1 -Mode spsa` (seed 2026113502,
+  `tools/results/d711-fit`) and `-Mode match -CategoricalTuneBuild`.
 
 ## `d76fit` — D.7.6's fit of the compact kernel, registered by RAR-S128
 

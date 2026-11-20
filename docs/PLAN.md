@@ -386,7 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.11.3 | READY_FOR_IMPLEMENTATION | M | RAR-S135 registered before any game: surface, shape, fault rule, reads, the frozen prediction |
 | D.7.11.4 | READY_FOR_IMPLEMENTATION | V | The drivers for the pilot, the tune and a read, each run once through its dry path; the pilot's command handed over |
 | D.7.11.5 | READY_FOR_IMPLEMENTATION | V | The pilot, the maintainer's: 64 iterations, interrupted once and resumed; then the one command that starts the tune |
 | D.7.11.6 | READY_FOR_IMPLEMENTATION | V | The rule 7c run at `3+0.03`, the maintainer's; it stops only by its rules |
@@ -3211,7 +3210,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           for name with the same seeds and ranges. The room report is empty
           at both ceilings, `--check` passes on both groups, and the audit
           ends `RESULT: clean`.
-        - **D.7.11.3 The registration — `M`.**
+        - **D.7.11.3 The registration — `M`, DONE 2026-11-20.**
           RAR-S135, `docs/experiments/RAR-S135.md` (planned) with its
           index row, before any game, the pilot's included. It states: the hypothesis;
           the binary, its hash and fingerprint; the surface as the files
@@ -3221,6 +3220,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           rule and the optional interim read (D.7.11.7); the seeds; and
           the record's prediction, copied as frozen.
           *Done:* committed, with `tools/spsa_configs/README.md`'s entry.
+          *Result (2026-11-20):* `docs/experiments/RAR-S135.md`, before any
+          game, with its index row and the README's entry; seeds
+          2026113501 (pilot), 2026113502 (tune), 2026113503 (the read at
+          the stop) and 2026113504 (an interim read), none used before.
         - **D.7.11.4 The drivers and their dry runs — `V`.**
           In `analysis/artifacts/d711-fit-2026-11-20/`, each run from the
           machine's own terminal, showing the harness's live output:
