@@ -539,53 +539,6 @@ impl TranspositionTable {
     }
 }
 
-#[inline(always)]
-fn prefetch_ptr<T>(ptr: *const T) {
-    // SAFETY: `_mm_prefetch` is a pure cache hint — it never dereferences the
-    // pointer, so ANY address (dangling or null) is sound. It is `unsafe` only
-    // because `std::arch` intrinsics require the target feature, and SSE is
-    // baseline on every x86_64 target we build.
-    #[cfg(target_arch = "x86_64")]
-    unsafe {
-        core::arch::x86_64::_mm_prefetch(ptr.cast::<i8>(), core::arch::x86_64::_MM_HINT_T0);
-    }
-
-    // The ARM64 spelling of the SAME hint, so the ARM64 assets prefetch as the
-    // x86 ones do. Rarog issues the hint before making the child move, from
-    // the key the move will produce, and again after, so the make runs while
-    // the line arrives; with the hint after the make alone the child's probe
-    // stalled on it.
-    //
-    // `pldl1keep` is the ARM analogue of `_MM_HINT_T0`: prefetch for load, into
-    // L1, temporal (keep). Written as inline `asm!` because
-    // `core::arch::aarch64::_prefetch` is still unstable, and stable AArch64
-    // inline assembly is available on the pinned toolchain.
-    //
-    // The two arms are `cfg`-exclusive, so any single compiled target contains
-    // one unsafe block here: an intrinsic-class cache hint, not a new
-    // mechanism, and no rise in the frozen unsafe floor.
-    //
-    // SAFETY: `prfm` is an architectural cache hint. It does not dereference
-    // `ptr` as a Rust memory access, so any address is sound — and this one is
-    // derived from the live TT allocation regardless. The instruction writes no
-    // memory, modifies no flags and uses no stack.
-    #[cfg(target_arch = "aarch64")]
-    unsafe {
-        core::arch::asm!(
-            "prfm pldl1keep, [{address}]",
-            address = in(reg) ptr,
-            options(readonly, nostack, preserves_flags)
-        );
-    }
-
-    // Rarog is 64-bit-only; retained as a correctness-first fallback for any
-    // future target that is neither x86-64 nor AArch64.
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-    {
-        let _ = ptr;
-    }
-}
-
 /// Low 16 bits of the hash — the cluster-entry verification tag. The cluster
 /// comes from the high bits ([`cluster_index`]), so the two stay independent.
 /// The truncation IS the design (a 16-bit tag), hence the scoped allow.
@@ -879,7 +832,7 @@ fn clear_in_parallel<T: Send>(chunks: impl Iterator<Item = T>, clear: impl Fn(T)
 
 #[inline(always)]
 fn prefetch_cluster<T>(clusters: &[T], key: u64) {
-    prefetch_ptr(
+    crate::infra::prefetch(
         clusters
             .as_ptr()
             .wrapping_add(cluster_index(key, clusters.len())),

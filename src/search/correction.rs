@@ -107,6 +107,23 @@ impl Searcher {
         }
     }
 
+    /// Ask for the cache lines a static evaluation of `board` reads, ahead
+    /// of the table probe that comes first: the pawn and both non-pawn
+    /// correction slots, and the evaluator's pawn entry. The continuation
+    /// slots are left out; they come from the stack's last moves.
+    #[inline(always)]
+    pub(super) fn prefetch_eval_inputs(&self, board: &Board) {
+        let stm = board.side_to_move();
+        let bucket = rule50_bucket(board);
+        let tables = &self.td.corr;
+        infra::prefetch(&raw const tables.pawn[keyed_index(bucket, stm, board.pawn_key())]);
+        for color in [Color::White, Color::Black] {
+            let slot = keyed_index(bucket, stm, board.non_pawn_key(color));
+            infra::prefetch(&raw const tables.non_pawn[color as usize][slot]);
+        }
+        self.td.evaluator.prefetch_pawn_entry(board);
+    }
+
     /// The compact kernel's correction for the position at `ply`: the plain
     /// sum of the pawn, both non-pawn and two continuation
     /// readings, over the table scale. Its non-pawn keys include the kings,
