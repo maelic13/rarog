@@ -1,0 +1,706 @@
+diff --git a/src/diag.rs b/src/diag.rs
+index 66edb95..968ffa3 100644
+--- a/src/diag.rs
++++ b/src/diag.rs
+@@ -353,6 +353,10 @@ pub mod counters {
+         root_stop_partial_new_best,
+         root_stop_after_fail_high_new,
+         root_stop_discards,
++        // Root re-scores with two moves or more left in their tier, and
++        // those that change the move picked next.
++        root_rescores,
++        root_rescore_changes,
+         // Clock stops: a proved mate held for three iterations (or a loss in
+         // two plies), a root fail-high past the soft target, and hard-limit
+         // polls held because no iteration had completed.
+diff --git a/src/search/compact/node.rs b/src/search/compact/node.rs
+index 51322d2..7f24273 100644
+--- a/src/search/compact/node.rs
++++ b/src/search/compact/node.rs
+@@ -8,12 +8,12 @@ use crate::infra;
+ use crate::tt::{Bound, TB_WIN_SCORE, TtProbe, TtStore};
+ 
+ use super::super::history::{HistoryTables, SearchedMoves};
+-use super::super::movepick::{MovePicker, ScoredMoveList, diversify_root_scores};
++use super::super::movepick::{ScoredMoveList, diversify_root_scores};
+ use super::super::node::{NodeType, NonPv, Pv, TbVerdict, tb_verdict};
+ #[cfg(feature = "pricing")]
+ use super::super::pricing::{ReSearch, Rule, Verdict};
+ use super::super::{MAX_PLY, SearchEvent, Searcher};
+-use super::picker::{CompactPicker, Stage};
++use super::picker::{CompactPicker, RootPicker, Stage};
+ use super::rules::{self, is_decisive};
+ use super::{KERNEL_SEE_VALUES, bounded_raw, is_quiet_move, kernel_material};
+ 
+@@ -22,9 +22,10 @@ const fn is_loss(score: i32) -> bool {
+     score <= -TB_WIN_SCORE
+ }
+ 
+-/// The node's moves: the root's whole scored list, or the staged picker.
++/// The node's moves: the root's picker over its whole list, or the staged
++/// picker.
+ enum Moves {
+-    Root(MovePicker),
++    Root(RootPicker),
+     Staged(CompactPicker),
+ }
+ 
+@@ -705,12 +706,13 @@ impl Searcher {
+         }
+ 
+         let mut moves = if NODE::ROOT {
+-            Moves::Root(MovePicker::new(tt_move))
++            Moves::Root(RootPicker::new(tt_move))
+         } else {
+             Moves::Staged(CompactPicker::new(tt_move, None, ply))
+         };
++        let mut narrowed = false;
+         if let Moves::Root(picker) = &mut moves {
+-            self.compact_root_moves(board, &threats, tt_move, picker.scored_mut());
++            narrowed = self.compact_root_moves(board, &threats, tt_move, picker.scored_mut());
+         }
+         let mut check_info: Option<CheckInfo> = None;
+         let mut best_score = -INF_SCORE;
+@@ -726,10 +728,15 @@ impl Searcher {
+ 
+         loop {
+             let (mv, bad_stage) = match &mut moves {
+-                Moves::Root(picker) => match picker.next() {
+-                    Some(picked) => (picked.mv, false),
+-                    None => break,
+-                },
++                Moves::Root(picker) => {
++                    let root_moves = &self.td.root_moves;
++                    match picker.next(self, board, &threats, |mv| {
++                        !narrowed || root_moves.contains(&mv)
++                    }) {
++                        Some(picked) => (picked.mv, false),
++                        None => break,
++                    }
++                }
+                 Moves::Staged(picker) => match picker.next(self, board, &threats, skip_quiets) {
+                     Some(mv) => (mv, picker.stage() == Stage::BadNoisy),
+                     None => break,
+@@ -1255,25 +1262,21 @@ impl Searcher {
+         threats: &crate::board::Threats,
+         tt_move: Move,
+         scored: &mut ScoredMoveList,
+-    ) {
++    ) -> bool {
+         let mut legal = MoveList::new();
+         board.generate_legal_movelist_into(&mut legal);
+         let root_moves = &self.td.root_moves;
+         let narrowed = !root_moves.is_empty() && legal.iter().any(|mv| root_moves.contains(mv));
+-        self.score_root_moves(
+-            board,
+-            threats,
+-            |mv| !narrowed || root_moves.contains(&mv),
+-            tt_move,
+-            scored,
+-        );
++        self.score_root_moves(board, threats, tt_move, scored);
+         if scored.len() > 1 {
+             self.apply_shared_root_scores(scored);
+         }
+-        if self.td.root_move_offset > 0 && scored.len() > 1 {
+-            let offset = self.td.root_move_offset % scored.len();
+-            diversify_root_scores(scored.as_mut_slice(), offset);
++        if self.td.root_move_offset > 0 {
++            diversify_root_scores(scored.as_mut_slice(), self.td.root_move_offset, |mv| {
++                !narrowed || root_moves.contains(&mv)
++            });
+         }
++        narrowed
+     }
+ 
+     /// The reduction inputs read off the stack and the board after the move
+diff --git a/src/search/compact/picker.rs b/src/search/compact/picker.rs
+index 1798f6c..cdc05a5 100644
+--- a/src/search/compact/picker.rs
++++ b/src/search/compact/picker.rs
+@@ -7,20 +7,37 @@ use crate::board::{Bitboard, Board, Move, MoveList, Piece, Threats};
+ 
+ use super::super::Searcher;
+ use super::super::history::HistoryTables;
+-use super::super::movepick::{QuietContext, ROOT_TT_SCORE, ScoredMoveList, pick_next};
++use super::super::movepick::{
++    QuietContext, ROOT_TT_SCORE, ScoredMove, ScoredMoveList, pick_next,
++};
+ use super::rules::{
+     NoisyOrderInput, QuietOrderInput, Seeds, good_noisy_threshold, noisy_order, quiet_order,
+ };
+ use super::{KERNEL_SEE_VALUES, is_quiet_move};
+ 
+-/// The root's tiers below the table move and the pool's searched moves
+-/// (`apply_shared_root_scores`, from 25,000,000): the good noisy moves,
+-/// the quiets round zero, the bad noisy moves. Every ordering score lies
+-/// within `ROOT_ORDER_SPAN` of zero, so no tier reaches the next.
+-const ROOT_GOOD_NOISY: i32 = 20_000_000;
++/// The root's tiers. From `ROOT_FIXED` up, the moves placed by the table,
++/// the pool's searched moves (`apply_shared_root_scores`, from 25,000,000)
++/// and a helper's rotation, never re-scored; below them the noisy moves not
++/// yet classed, the quiets round zero, and the noisy moves that failed the
++/// good-noisy bar. Every ordering score lies within `ROOT_ORDER_SPAN` of
++/// zero, so no tier reaches the next.
++pub(in crate::search) const ROOT_FIXED: i32 = 24_000_000;
++const ROOT_NOISY: i32 = 20_000_000;
+ const ROOT_BAD_NOISY: i32 = -20_000_000;
+ const ROOT_ORDER_SPAN: i32 = 4_000_000;
+ 
++const fn is_root_fixed(score: i32) -> bool {
++    score >= ROOT_FIXED
++}
++
++const fn is_root_noisy(score: i32) -> bool {
++    !is_root_fixed(score) && score > ROOT_NOISY - ROOT_ORDER_SPAN
++}
++
++const fn is_root_quiet(score: i32) -> bool {
++    score.abs() < ROOT_ORDER_SPAN
++}
++
+ /// The picker's stages, visited in this order and never revisited.
+ #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+ pub(in crate::search) enum Stage {
+@@ -195,60 +212,252 @@ impl CompactPicker {
+     }
+ }
+ 
++/// The root's picker over its whole list, in the staged picker's stages:
++/// the table move, the moves the pool or a helper's rotation placed, the
++/// noisy moves that clear the good-noisy bar, the quiets, the noisy moves
++/// that failed it. As in the donor's root, the noisy moves left are
++/// re-scored each time a good one is handed over and the quiets left before
++/// each quiet, so a pick reads the histories that the moves searched before
++/// it trained; a noisy move is classed when it is picked, on its current
++/// score. On histories that do not change between picks the order is the
++/// staged picker's, ties included.
++///
++/// The list is one array: handed entries below `index`, the remaining ones
++/// from it. The noisy moves that failed the bar are swapped down into the
++/// handed slots from `bad_start`, in the order they failed.
++pub(in crate::search) struct RootPicker {
++    moves: ScoredMoveList,
++    index: usize,
++    bad_start: usize,
++    bad_len: usize,
++    bad_index: usize,
++    noisy_left: usize,
++    good_emitted: i32,
++    tt_move: Move,
++    stage: RootStage,
++}
++
++#[derive(Copy, Clone, PartialEq, Eq, Debug)]
++enum RootStage {
++    TtMove,
++    /// The noisy moves are scored once the table move's search is done, as
++    /// the staged picker generates them only then.
++    ScoreNoisy,
++    Ranked,
++    BadNoisy,
++}
++
++impl RootPicker {
++    /// An empty picker that hands over `tt_move` first; its list is filled
++    /// in place, as the list is too large to move by value once a window.
++    #[inline(always)]
++    pub(in crate::search) fn new(tt_move: Move) -> Self {
++        Self {
++            moves: ScoredMoveList::new(),
++            index: 0,
++            bad_start: 0,
++            bad_len: 0,
++            bad_index: 0,
++            noisy_left: 0,
++            good_emitted: 0,
++            tt_move,
++            stage: RootStage::TtMove,
++        }
++    }
++
++    /// The list to fill before the first move is taken.
++    pub(in crate::search) fn scored_mut(&mut self) -> &mut ScoredMoveList {
++        &mut self.moves
++    }
++
++    /// The next move `keep` admits, with its score's tier. A move `keep`
++    /// refuses is passed over once it is reached, as the donor's root skips
++    /// a move outside its lines, so it still counts toward the bar.
++    pub(in crate::search) fn next(
++        &mut self,
++        searcher: &Searcher,
++        board: &mut Board,
++        threats: &Threats,
++        keep: impl Fn(Move) -> bool,
++    ) -> Option<ScoredMove> {
++        loop {
++            match self.stage {
++                RootStage::TtMove => {
++                    self.stage = RootStage::ScoreNoisy;
++                    if !self.tt_move.is_null() {
++                        return Some(ScoredMove {
++                            mv: self.tt_move,
++                            score: ROOT_TT_SCORE,
++                        });
++                    }
++                }
++                RootStage::ScoreNoisy => {
++                    self.noisy_left = self.moves.as_mut_slice()[self.index..]
++                        .iter()
++                        .filter(|entry| is_root_noisy(entry.score))
++                        .count();
++                    self.rescore_noisy(searcher, board, threats);
++                    self.stage = RootStage::Ranked;
++                }
++                RootStage::Ranked => {
++                    if self.index == self.moves.len() {
++                        self.stage = RootStage::BadNoisy;
++                        continue;
++                    }
++                    if self.noisy_left == 0 {
++                        self.rescore_quiets(searcher, board, threats);
++                    }
++                    let picked = pick_next(self.moves.as_mut_slice(), self.index);
++                    if !is_root_noisy(picked.score) {
++                        self.index += 1;
++                        if picked.mv != self.tt_move && keep(picked.mv) {
++                            return Some(picked);
++                        }
++                        continue;
++                    }
++                    if self.good_emitted == 0 && self.bad_len == 0 {
++                        // Every entry below is a fixed one, handed over.
++                        self.bad_start = self.index;
++                    }
++                    self.noisy_left -= 1;
++                    let ordered = picked.score - ROOT_NOISY;
++                    let bar = good_noisy_threshold(
++                        searcher.seeds(),
++                        ordered,
++                        is_quiet_move(self.tt_move),
++                        self.good_emitted,
++                    );
++                    if board.see_ge_exchange_with_values(picked.mv, bar, KERNEL_SEE_VALUES) {
++                        self.index += 1;
++                        self.good_emitted += 1;
++                        self.rescore_noisy(searcher, board, threats);
++                        if keep(picked.mv) {
++                            return Some(picked);
++                        }
++                        continue;
++                    }
++                    let moves = self.moves.as_mut_slice();
++                    moves[self.index].score = ROOT_BAD_NOISY + ordered;
++                    moves.swap(self.index, self.bad_start + self.bad_len);
++                    self.bad_len += 1;
++                    self.index += 1;
++                }
++                RootStage::BadNoisy => {
++                    while self.bad_index < self.bad_len {
++                        let entry = self.moves.as_mut_slice()[self.bad_start + self.bad_index];
++                        self.bad_index += 1;
++                        if keep(entry.mv) {
++                            return Some(entry);
++                        }
++                    }
++                    return None;
++                }
++            }
++        }
++    }
++
++    /// The noisy moves left, scored on the histories as they are now.
++    fn rescore_noisy(&mut self, searcher: &Searcher, board: &Board, threats: &Threats) {
++        if self.noisy_left == 0 {
++            return;
++        }
++        #[cfg(feature = "diag")]
++        let before = self.best_left(is_root_noisy);
++        for entry in &mut self.moves.as_mut_slice()[self.index..] {
++            if is_root_noisy(entry.score) {
++                let score = searcher.compact_noisy_score(board, threats, entry.mv);
++                debug_assert!(score.abs() < ROOT_ORDER_SPAN, "{score}");
++                entry.score = ROOT_NOISY + score;
++            }
++        }
++        #[cfg(feature = "diag")]
++        self.count_rescore(before, is_root_noisy);
++    }
++
++    /// The quiets left, scored on the histories as they are now.
++    fn rescore_quiets(&mut self, searcher: &Searcher, board: &Board, threats: &Threats) {
++        let left = &mut self.moves.as_mut_slice()[self.index..];
++        if !left.iter().any(|entry| is_root_quiet(entry.score)) {
++            return;
++        }
++        #[cfg(feature = "diag")]
++        let before = self.best_left(is_root_quiet);
++        let ctx = searcher.quiet_context(board, threats, 0, &mut None);
++        for entry in &mut self.moves.as_mut_slice()[self.index..] {
++            if is_root_quiet(entry.score) {
++                let score = compact_quiet_score(
++                    searcher.seeds(),
++                    board,
++                    threats,
++                    &ctx,
++                    &searcher.td.hist,
++                    entry.mv,
++                );
++                debug_assert!(score.abs() < ROOT_ORDER_SPAN, "{score}");
++                entry.score = score;
++            }
++        }
++        #[cfg(feature = "diag")]
++        self.count_rescore(before, is_root_quiet);
++    }
++
++    /// The move the selection step would take next among the entries left
++    /// in a tier, and how many there are.
++    #[cfg(feature = "diag")]
++    fn best_left(&mut self, tier: fn(i32) -> bool) -> (Option<Move>, usize) {
++        let mut best: Option<ScoredMove> = None;
++        let mut count = 0;
++        for entry in &self.moves.as_mut_slice()[self.index..] {
++            if tier(entry.score) {
++                count += 1;
++                if best.is_none_or(|b| entry.score > b.score) {
++                    best = Some(*entry);
++                }
++            }
++        }
++        (best.map(|b| b.mv), count)
++    }
++
++    /// Count a re-score with two moves or more left in its tier, and
++    /// whether it changed the move taken next.
++    #[cfg(feature = "diag")]
++    fn count_rescore(&mut self, before: (Option<Move>, usize), tier: fn(i32) -> bool) {
++        if before.1 < 2 {
++            return;
++        }
++        crate::diag_count!(root_rescores);
++        if self.best_left(tier).0 != before.0 {
++            crate::diag_count!(root_rescore_changes);
++        }
++    }
++}
++
+ impl Searcher {
+-    /// The root's moves, written into `out` in the order the staged picker
+-    /// hands them over at any other node, ties included: the table move, the
+-    /// noisy moves that clear the good-noisy bar, the quiets, the noisy moves
+-    /// that failed it. The moves come from the staged picker's generators and
+-    /// are put in order by its selection step, so a tie falls as it does
+-    /// there, and the bar is decided in that order, so its count of good
+-    /// moves so far is the same. The whole list is ordered and then narrowed
+-    /// to the moves `keep` admits, as the donor's root skips a move outside
+-    /// its lines once its picker hands it over. The scores never rise along
+-    /// the list, so the root's picker takes it in place until the pool's
+-    /// scores reorder it.
++    /// The root's whole list, written into `out` for `RootPicker`: the table
++    /// move, the noisy moves and the quiets, from the staged picker's
++    /// generators and in their order, so a tie falls as it does there. The
++    /// noisy moves are classed and every score refreshed as the picker
++    /// hands moves over.
+     pub(in crate::search) fn score_root_moves(
+         &self,
+         board: &mut Board,
+         threats: &Threats,
+-        keep: impl Fn(Move) -> bool,
+         tt_move: Move,
+         out: &mut ScoredMoveList,
+     ) {
+         debug_assert_eq!(out.len(), 0, "the root's list starts empty");
+-        if !tt_move.is_null() && keep(tt_move) {
++        if !tt_move.is_null() {
+             out.push(tt_move, ROOT_TT_SCORE);
+         }
+         let mut generated = MoveList::new();
+         let pinned = board.generate_legal_noisy_staged_into(threats, &mut generated);
+-        let mut noisy_list = ScoredMoveList::new();
+         for &mv in generated.as_slice() {
+             if mv != tt_move {
+-                noisy_list.push(mv, self.compact_noisy_score(board, threats, mv));
++                let score = self.compact_noisy_score(board, threats, mv);
++                debug_assert!(score.abs() < ROOT_ORDER_SPAN, "{score}");
++                out.push(mv, ROOT_NOISY + score);
+             }
+         }
+-        let tt_quiet = is_quiet_move(tt_move);
+-        let mut good = 0;
+-        let noisy = noisy_list.as_mut_slice();
+-        for index in 0..noisy.len() {
+-            let picked = pick_next(noisy, index);
+-            debug_assert!(picked.score.abs() < ROOT_ORDER_SPAN, "{}", picked.score);
+-            let bar = good_noisy_threshold(self.seeds(), picked.score, tt_quiet, good);
+-            let tier = if board.see_ge_exchange_with_values(picked.mv, bar, KERNEL_SEE_VALUES) {
+-                good += 1;
+-                ROOT_GOOD_NOISY
+-            } else {
+-                ROOT_BAD_NOISY
+-            };
+-            noisy[index].score = tier + picked.score;
+-        }
+-        let good_tier = |score: i32| score > ROOT_GOOD_NOISY - ROOT_ORDER_SPAN;
+-        for entry in noisy
+-            .iter()
+-            .filter(|entry| good_tier(entry.score) && keep(entry.mv))
+-        {
+-            out.push(entry.mv, entry.score);
+-        }
+         generated = MoveList::new();
+         board.generate_legal_quiets_staged_into(pinned, threats, &mut generated);
+         // The quiet generator's queen pushes are the noisy generator's too.
+@@ -259,28 +468,14 @@ impl Searcher {
+             .peekable();
+         if quiets.peek().is_some() {
+             let ctx = self.quiet_context(board, threats, 0, &mut None);
+-            let mut quiet_list = ScoredMoveList::new();
+             for mv in quiets {
+                 probe!(self, PickQuiet, true);
+                 let score =
+                     compact_quiet_score(self.seeds(), board, threats, &ctx, &self.td.hist, mv);
+                 debug_assert!(score.abs() < ROOT_ORDER_SPAN, "{score}");
+-                quiet_list.push(mv, score);
+-            }
+-            let quiet = quiet_list.as_mut_slice();
+-            for index in 0..quiet.len() {
+-                let picked = pick_next(quiet, index);
+-                if keep(picked.mv) {
+-                    out.push(picked.mv, picked.score);
+-                }
++                out.push(mv, score);
+             }
+         }
+-        for entry in noisy
+-            .iter()
+-            .filter(|entry| !good_tier(entry.score) && keep(entry.mv))
+-        {
+-            out.push(entry.mv, entry.score);
+-        }
+     }
+ 
+     /// A noisy move's ordering score in the compact kernel.
+@@ -371,7 +566,6 @@ fn compact_quiet_score(
+ 
+ #[cfg(test)]
+ mod tests {
+-    use super::super::super::movepick::MovePicker;
+     use super::*;
+     use crate::board::Board;
+     use crate::search::{EngineOptions, SearchEvent, SearchLimits};
+@@ -496,21 +690,91 @@ mod tests {
+     ) -> Vec<(Move, Stage)> {
+         let mut board = board.clone();
+         let threats = board.threats();
+-        let mut picker = MovePicker::new(tt_move);
+-        searcher.score_root_moves(&mut board, &threats, keep, tt_move, picker.scored_mut());
+-        std::iter::from_fn(|| picker.next())
+-            .map(|picked| {
+-                let stage = match picked.score {
+-                    _ if picked.mv == tt_move => Stage::TtMove,
+-                    s if s > ROOT_GOOD_NOISY - ROOT_ORDER_SPAN => Stage::GoodNoisy,
+-                    s if s < ROOT_BAD_NOISY + ROOT_ORDER_SPAN => Stage::BadNoisy,
+-                    _ => Stage::Quiets,
+-                };
+-                (picked.mv, stage)
+-            })
++        let mut picker = root_picker(searcher, &mut board, tt_move);
++        std::iter::from_fn(|| picker.next(searcher, &mut board, &threats, &keep))
++            .map(|picked| (picked.mv, root_stage(picked, tt_move)))
+             .collect()
+     }
+ 
++    fn root_picker(searcher: &Searcher, board: &mut Board, tt_move: Move) -> RootPicker {
++        let threats = board.threats();
++        let mut picker = RootPicker::new(tt_move);
++        searcher.score_root_moves(board, &threats, tt_move, picker.scored_mut());
++        picker
++    }
++
++    /// The stage a handed-over move's score stands for.
++    fn root_stage(picked: ScoredMove, tt_move: Move) -> Stage {
++        match picked.score {
++            _ if picked.mv == tt_move => Stage::TtMove,
++            s if is_root_noisy(s) => Stage::GoodNoisy,
++            s if s < ROOT_BAD_NOISY + ROOT_ORDER_SPAN => Stage::BadNoisy,
++            _ => Stage::Quiets,
++        }
++    }
++
++    /// The donor's root: a quiet's history raised after the first quiet is
++    /// searched moves it ahead of the quiets left at the next pick.
++    #[test]
++    fn a_quiet_whose_history_rose_is_picked_next() {
++        let mut searcher = Searcher::default();
++        let board = Board::from_fen(crate::board::STARTING_FEN).expect("a legal FEN");
++        let order: Vec<Move> = root_order(&searcher, &board, Move::NULL, |_| true)
++            .into_iter()
++            .map(|(mv, _)| mv)
++            .collect();
++        let last = *order.last().expect("moves");
++        let mut board = board.clone();
++        let threats = board.threats();
++        let mut picker = root_picker(&searcher, &mut board, Move::NULL);
++        let first = picker.next(&searcher, &mut board, &threats, |_| true);
++        assert_eq!(first.map(|p| p.mv), Some(order[0]));
++        for _ in 0..64 {
++            searcher
++                .td
++                .hist
++                .update_quiet(threats.all, board.side_to_move(), last, 8_192);
++        }
++        let next = picker.next(&searcher, &mut board, &threats, |_| true);
++        assert_eq!(next.map(|p| p.mv), Some(last), "unraised, {} came second", order[1]);
++    }
++
++    /// The noisy moves are scored once the table move's search is done: a
++    /// capture's history raised then decides the first noisy pick.
++    #[test]
++    fn the_noisy_moves_are_scored_after_the_table_moves_search() {
++        let mut searcher = Searcher::default();
++        // Two knights the pawn takes, an equal exchange each: a tie.
++        let board = Board::from_fen("4k3/8/8/8/2n1n3/3P4/8/4K3 w - - 0 1").expect("a legal FEN");
++        let tt_move = Move::from_uci("e1f1").expect("a move shape");
++        let tt_move = board.legal_move(tt_move).expect("legal");
++        let order = root_order(&searcher, &board, tt_move, |_| true);
++        let noisy: Vec<Move> = order
++            .iter()
++            .filter(|(_, stage)| *stage == Stage::GoodNoisy)
++            .map(|&(mv, _)| mv)
++            .collect();
++        assert_eq!(noisy.len(), 2, "{order:?}");
++        let mut board = board.clone();
++        let threats = board.threats();
++        let mut picker = root_picker(&searcher, &mut board, tt_move);
++        let first = picker.next(&searcher, &mut board, &threats, |_| true);
++        assert_eq!(first.map(|p| p.mv), Some(tt_move));
++        let second = noisy[1];
++        for _ in 0..64 {
++            searcher.td.hist.update_noisy(
++                threats.all,
++                board.side_to_move(),
++                board.moving_piece(second),
++                second.to_sq(),
++                board.captured_piece(second),
++                12_800,
++            );
++        }
++        let next = picker.next(&searcher, &mut board, &threats, |_| true);
++        assert_eq!(next.map(|p| p.mv), Some(second));
++    }
++
+     /// Every legal move once and the table move first, with and without
+     /// one, in check and with promotions.
+     #[test]
+diff --git a/src/search/movepick.rs b/src/search/movepick.rs
+index 4aa4303..c795087 100644
+--- a/src/search/movepick.rs
++++ b/src/search/movepick.rs
+@@ -1,5 +1,5 @@
+-//! The root's move picker, the scored list every picker fills, and the
+-//! per-node context of quiet ordering.
++//! The scored list every picker fills, the root's rotation for a helper,
++//! and the per-node context of quiet ordering.
+ 
+ use std::mem::MaybeUninit;
+ use std::slice;
+@@ -80,84 +80,20 @@ pub(super) fn pick_next(moves: &mut [ScoredMove], index: usize) -> ScoredMove {
+     tail[0]
+ }
+ 
+-pub(super) fn diversify_root_scores(moves: &mut [ScoredMove], offset: usize) {
+-    moves.sort_unstable_by_key(|m| std::cmp::Reverse(m.score));
+-    if offset < moves.len() {
+-        moves[offset].score = moves[0].score.saturating_add(1_000_000);
++/// A helper's rotation: the move `offset` places down the root's order,
++/// counted over the moves `keep` admits, goes first, above the table move.
++pub(super) fn diversify_root_scores(
++    moves: &mut [ScoredMove],
++    offset: usize,
++    keep: impl Fn(Move) -> bool,
++) {
++    let kept = moves.iter().filter(|m| keep(m.mv)).count();
++    if kept < 2 {
++        return;
+     }
+-}
+-
+-/// The root picker's stages, visited in declaration order and never
+-/// revisited.
+-///
+-/// Contract, covered by the tests below: the TT move first, at most once
+-/// (the caller validates it), then every other generated legal move once,
+-/// best first.
+-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+-pub(super) enum Stage {
+-    TtMove,
+-    /// Everything except the TT move, best first.
+-    AllRemaining,
+-    Done,
+-}
+-
+-/// The root's picker: its whole scored list.
+-pub(super) struct MovePicker {
+-    scored: ScoredMoveList,
+-    index: usize,
+-    tt_move: Move,
+-    stage: Stage,
+-}
+-
+-impl MovePicker {
+-    /// An empty picker that hands over `tt_move` first; its list is filled
+-    /// in place, as the list is too large to move by value once a window.
+-    #[inline(always)]
+-    pub(super) fn new(tt_move: Move) -> Self {
+-        Self {
+-            scored: ScoredMoveList::new(),
+-            index: 0,
+-            tt_move,
+-            stage: Stage::TtMove,
+-        }
+-    }
+-
+-    /// The list the picker hands over, best first, to fill before the first
+-    /// move is taken.
+-    pub(super) fn scored_mut(&mut self) -> &mut ScoredMoveList {
+-        &mut self.scored
+-    }
+-
+-    /// Yield the next move.
+-    pub(super) fn next(&mut self) -> Option<ScoredMove> {
+-        loop {
+-            match self.stage {
+-                Stage::TtMove => {
+-                    self.stage = Stage::AllRemaining;
+-                    if !self.tt_move.is_null() {
+-                        return Some(tt_scored_move(self.tt_move));
+-                    }
+-                }
+-                Stage::AllRemaining => {
+-                    while self.index < self.scored.len() {
+-                        let picked = pick_next(self.scored.as_mut_slice(), self.index);
+-                        self.index += 1;
+-                        if picked.mv != self.tt_move {
+-                            return Some(picked);
+-                        }
+-                    }
+-                    self.stage = Stage::Done;
+-                }
+-                Stage::Done => return None,
+-            }
+-        }
+-    }
+-}
+-
+-fn tt_scored_move(mv: Move) -> ScoredMove {
+-    ScoredMove {
+-        mv,
+-        score: ROOT_TT_SCORE,
++    moves.sort_unstable_by_key(|m| std::cmp::Reverse(m.score));
++    if let Some(rotated) = moves.iter_mut().filter(|m| keep(m.mv)).nth(offset % kept) {
++        rotated.score = ROOT_TT_SCORE + 1_000_000;
+     }
+ }
+ 

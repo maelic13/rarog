@@ -386,8 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.8.11 | RESEARCH | R2 | Card 2026-11-20: the root's remaining moves re-scored as each is searched, the donor's form; the zero-game screen, then a case-2 read if it fires |
-| D.7.8 | RESEARCH | R2 | Nine of ten sub-steps closed, D.7.8.7 moved to D.13 (2026-11-20); closes with the table after D.7.8.11 |
 | D.7.9 | RESEARCH | R2 | Clock use, moved from D.6.28: the screen on the repaired kernel's games, the low-clock horizon's card and field read, the constants to the fit's surface |
 | D.7.10 | RESEARCH | V | The repaired kernel against `d7classic` at `3+0.03` and `10+0.1`, 2,000 games each: a diagnostic that sets the fit's control |
 | D.7.11.1 | RESEARCH | I1 | The finishing surface: the added seeds, the plies and counts left out, the activation read, the audit and the pilot |
@@ -2273,7 +2271,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       tests, the three groups' `--check` and the coverage audit with the
       tune build clean. Records and logs:
       `analysis/artifacts/d77/` (ignored).
-    - **D.7.8 Repairs from the audit — `R2` cards, `I1`/`I2`/`V` sub-steps.**
+    - **D.7.8 Repairs from the audit — `R2` cards, `I1`/`I2`/`V` sub-steps, DONE 2026-11-20.**
       The audit's findings (`analysis/d7_audit_2026-11-19.md`, A1 to A8),
       one sub-step each, in order, worked as D.7's *How the open steps are
       worked* states. The step closes after the last of them, with a table:
@@ -2325,7 +2323,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       than the classic: 185 against 210 at 25,000 nodes a position, 201
       against 232 at 50,000, 219 against 243 at 100,000. Tactics, not
       Elo; the WAC band now reads 50,000 nodes and is calibrated at 201.
-      *The table, as of 2026-11-20* (the fingerprint after the last is
+      *The table, final 2026-11-20* (the fingerprint after the last is
       3,320,355 / EBF 2.317):
 
       | Step | What changed | Read | Commits |
@@ -2340,7 +2338,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       | D.7.8.8 | Nothing: the divergence is the pickers' tie rule, recorded | zero games | `66fd73b` |
       | D.7.8.9 | The king-keyed non-pawn keys kept, the gates asked lazily, the root list filled in place | pooled NPS +0.95% (+0.37 to +1.54) | `80eec20`, `e68d245`, `b88700a` |
       | D.7.8.10 | Nothing: a unit half the size | RAR-S133, −4.9 ± 15.2, `NO_CHANGE` | `f92abf0` (registration) |
-      | D.7.8.11 | Open | — | — |
+      | D.7.8.11 | Nothing: the root's live re-scoring changed the next move in 0.96% of re-scores, under the frozen 1% | zero games, `NO_CHANGE` | recipe `1bbab9f-d7811-root-rescore.patch` |
 
         - **D.7.8.1 ProbCut's exchange bar in exchange units — `I1`, DONE 2026-11-19.**
           (A1) ProbCut's picker holds captures to `probcut_beta − eval`,
@@ -2640,7 +2638,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           2.311 against 3,320,355 / 2.317. 2,000 games at 100,000 nodes a
           move: nElo −4.9 ± 15.2, the interval [−20.1, +10.3] not wholly
           above zero. The kernel keeps its fitted unit.
-        - **D.7.8.11 The root's remaining moves re-scored as each is searched — `R2`, then `I2`.**
+        - **D.7.8.11 The root's remaining moves re-scored as each is searched — `R2`, then `I2`, NO_CHANGE 2026-11-20.**
           (the question after RAR-S132, added 2026-11-20 by the maintainer's
           decision) **The defect or opportunity.** The donor's root picker
           re-scores the noisy moves still to come each time it hands over a
@@ -2692,6 +2690,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           2026-11-20, before the counters ran):** the share 20%, 80% band
           5% to 45%; `bench 13` moves, by under 15% with P 0.7; the read's
           prediction is frozen in its registration.
+          *NO_CHANGE 2026-11-20* (`analysis/d7811_root_rescore_2026-11-20.md`;
+          recipe `analysis/arm_patches/1bbab9f-d7811-root-rescore.patch`):
+          the donor's root built in Rarog's root list, the table move, the
+          pool's moves and a helper's rotation above the re-scored tiers;
+          the root's order tests passed unchanged, and two new tests (a
+          quiet or a capture whose history rose is picked next) passed and
+          failed with the re-scoring planted off. `bench 13` 3,369,926 /
+          EBF 2.326 (+1.5%). The screen: 319 of 33,313 re-scores changed
+          the next move, **0.96%**, under the frozen 1%: no games, the code
+          reverted. Calibration: a miss in magnitude by a factor of twenty;
+          the histories trained over earlier iterations and the quiet
+          order's static terms dominate what one root move's subtree adds.
+          Retry trigger: a change that makes the root's histories move
+          faster between root moves (a root-specific history, or D.7.11's
+          fit raising the quiet order's history weights), then this screen
+          again on the recipe.
     - **D.7.9 Clock use on the new kernel — `R2`.**
       Moved here from D.6.28 on 2026-11-19 (maintainer decision): it is the
       largest known lever beside the kernel (the donor's search led by 22.5
