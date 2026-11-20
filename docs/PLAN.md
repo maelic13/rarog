@@ -386,8 +386,8 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.11.1 | READY_FOR_IMPLEMENTATION | I1 | The tune build: four history limits and the singular margin's stored-PV coefficient as seeds, `q_see_correction_scale` an option; 3,320,355 unchanged |
-| D.7.11.2 | READY_FOR_IMPLEMENTATION | V | The surface files and the activation read on the registered tune build: 223 coordinates expected, the coverage audit clean |
+| D.7.11.1 | READY_FOR_IMPLEMENTATION | I1 | The tune build: four history limits, five exchange values and the singular margin's stored-PV coefficient as seeds, `q_see_correction_scale` an option; 3,320,355 unchanged |
+| D.7.11.2 | READY_FOR_IMPLEMENTATION | V | The surface files and the activation read on the registered tune build: 228 coordinates expected, the coverage audit clean |
 | D.7.11.3 | READY_FOR_IMPLEMENTATION | M | RAR-S135 registered before any game: surface, shape, fault rule, reads, the frozen prediction |
 | D.7.11.4 | READY_FOR_IMPLEMENTATION | V | The drivers for the pilot, the tune and a read, each run once through its dry path; the pilot's command handed over |
 | D.7.11.5 | READY_FOR_IMPLEMENTATION | V | The pilot, the maintainer's: 64 iterations, interrupted once and resumed; then the one command that starts the tune |
@@ -3062,10 +3062,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
            rated control's games showing a factor at one end on more than
            90% of iterations. The fit is then its own registration at
            `10+0.1` or longer; until then H.3 holds clock refinements.
-      2. *The surface is 223 coordinates:* 217 of the kernel's 242 seed
-         options and six new ones (D.7.11.1), each by the engine's range
-         rule, step range/16, the full two steps (the least room is 5.0
-         steps).
+      2. *The surface is 228 coordinates:* 217 of the kernel's 242 seed
+         options and eleven new ones (D.7.11.1), each by the engine's
+         range rule, step range/16, the full two steps (the least room
+         is 5.0 steps). The kernel's five exchange values joined the
+         same day, when the maintainer asked what was still unfitted:
+         the first scan had missed `compact/mod.rs`.
          - *Out, a seed a fit moves in whole units (16):*
            `singular_depth`, `singular_tt_depth`, `singular_exact_div`,
            `probcut_depth_base`, `tt_cut_typed_depth`,
@@ -3111,10 +3113,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
          start, with the tune paused or stopped, and changes nothing in
          the run. No forecast is made from a read, two reads never rank
          two checkpoints, and theta is never chosen by one.
+      6. *What stays unfitted after this fit* is tabled in the record,
+         each with its owner: the clock (item 1's trigger, H.3), the
+         thread constants (D.13, D.14, G.1), `LazyMargin` (the
+         evaluation's freeze), and the whole-unit seeds with the whole
+         surface again at F.6's refit.
       The step closes when D.7.11.8 bakes theta, or D.7.11.7's rule keeps
       the start.
         - **D.7.11.1 The tune build — `I1`.**
-          *Inputs:* the record's *In: six new options*. Engine only.
+          *Inputs:* the record's *In: eleven new options*. Engine only.
           - `Seeds` gains the four history limits (`quiet_history_max`
             8,192, `noisy_history_max` 12,800, `pawn_history_max` 8,192,
             `cont_history_max` 15,320, the same in both tables), read by
@@ -3122,8 +3129,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
             `singular_pv_per_ply_1024`, seeded at each table's
             `singular_per_ply_1024`, for the stored-PV term of
             `singular_margin`.
-          - `q_see_correction_scale` leaves `tune.rs`'s exclusions: 252
-            seed fields, 248 options.
+          - The kernel's five exchange values (109, 403, 435, 679, 1,242:
+            `KERNEL_SEE_VALUES` in `compact/mod.rs`, the donor's fitted
+            piece values) become seeds, `exchange_value[0]` to `[4]`,
+            read once a search and never rebuilt at a node. In the same
+            commit the test "a captured piece at least a knight"
+            compares piece types, not values, so a perturbed bishop
+            cannot flip it.
+          - `q_see_correction_scale` leaves `tune.rs`'s exclusions: 257
+            seed fields, 253 options.
           - Nothing else: no clock change, no range rule, no other seed.
           *Checks:* `bench 13` 3,320,355 / EBF 2.317 on the default build
           and on the tune build at its defaults; a test that each new
@@ -3137,10 +3151,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           *Inputs:* D.7.11.1's commit, a clean tree.
           - `./tools/build_test.ps1 -Suffix d711fit -Tune`; its sidecar's
             bench 3,320,355, its SHA-256 recorded.
-          - The activation read by RAR-S128's rule over all 248 options,
+          - The activation read by RAR-S128's rule over all 253 options,
             with its guards (the default bench, a positive control, every
             `setoption` accepted). Expected: the nine inactive of the
-            record and the six new active. A new option that reads
+            record and the eleven new active. A new option that reads
             inactive is dropped and named; any other difference from the
             record is reported before going on.
           - `tools/spsa_configs/config_d711fit.json` (planned), generated
