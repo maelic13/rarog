@@ -97,9 +97,9 @@ impl Default for RuntimeLimits {
 /// leaves it.
 const TIME_OVERHEAD_MS: f64 = 15.0;
 
-/// The budget's shape is the donor's, tuned with its search at `40+0.4` and
-/// at six threads. It is not a fit coordinate: a fit at a shorter control
-/// would move the long-control allocation without reading it. In sudden
+/// The budget's shape is the donor's, tuned with its search in a long-control
+/// session and a six-thread one. It is not a fit coordinate: a fit at a
+/// shorter control would move the long-control allocation without reading it. In sudden
 /// death the soft bound's share of the clock grows with the move number from
 /// about 1.2% towards [`SOFT_SCALE_LATE`].
 const SOFT_SCALE_LATE: f64 = 0.0594;
