@@ -386,7 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.11.1 | READY_FOR_IMPLEMENTATION | I1 | The tune build: the pawn table's limit, the five exchange values and the singular margin's stored-PV coefficient as seeds, `q_see_correction_scale` an option; 3,320,355 unchanged |
 | D.7.11.2 | READY_FOR_IMPLEMENTATION | V | The surface files and the activation read on the registered tune build, at `bench 13` and `bench 17`: 225 coordinates expected, the coverage audit clean |
 | D.7.11.3 | READY_FOR_IMPLEMENTATION | M | RAR-S135 registered before any game: surface, shape, fault rule, reads, the frozen prediction |
 | D.7.11.4 | READY_FOR_IMPLEMENTATION | V | The drivers for the pilot, the tune and a read, each run once through its dry path; the pilot's command handed over |
@@ -3132,7 +3131,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
          reaches at D.8.21. GUIDE's obligations hold one row for them.
       The step closes when D.7.11.8 bakes theta, or D.7.11.7's rule keeps
       the start.
-        - **D.7.11.1 The tune build — `I1`.**
+        - **D.7.11.1 The tune build — `I1`, DONE 2026-11-20.**
           *Inputs:* the record's *In: seven new options*. Engine only.
           - `Seeds` gains `pawn_history_max` (8,192 in both tables), read
             by `history.rs` in place of its literal, and
@@ -3159,6 +3158,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           and release tests, `fmt --check`, clippy with all features and
           targets, the `texel` and `tune` library suites.
           *Done:* its engine commit, every fingerprint reproduced.
+          *Result (2026-11-20, `6843b16`):* 254 seed fields, 249 tuning
+          options; `bench 13` 3,320,355 / EBF 2.317 on the default build
+          and on the tune build at its defaults. The exchange values are
+          built once a search in the tune build, at compile time in the
+          default one; the pawn table's limit is read from the seeds once
+          a search where a build can change them, a constant otherwise.
+          Debug and release tests, `fmt --check`, clippy with all features
+          and targets at zero warnings, the `texel` and `tune` library
+          suites pass; the parity test on D.7.4's trace passes with the
+          pawn limit and the five exchange values named among the seeds no
+          record detects (no rule's arithmetic reads them), and it detects
+          `singular_pv_per_ply_1024`.
         - **D.7.11.2 The surface files and the activation read — `V`.**
           *Inputs:* D.7.11.1's commit, a clean tree.
           - `./tools/build_test.ps1 -Suffix d711fit -Tune`; its sidecar's
