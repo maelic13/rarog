@@ -551,9 +551,10 @@ fn prefetch_ptr<T>(ptr: *const T) {
     }
 
     // The ARM64 spelling of the SAME hint, so the ARM64 assets prefetch as the
-    // x86 ones do. Rarog issues the hint after making the child move, so there
-    // is useful work between it and the child's TT probe, which is what makes a
-    // prefetch worth issuing.
+    // x86 ones do. Rarog issues the hint before making the child move, from
+    // the key the move will produce, and again after, so the make runs while
+    // the line arrives; with the hint after the make alone the child's probe
+    // stalled on it.
     //
     // `pldl1keep` is the ARM analogue of `_MM_HINT_T0`: prefetch for load, into
     // L1, temporal (keep). Written as inline `asm!` because

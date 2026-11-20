@@ -172,6 +172,7 @@ impl Searcher {
                 }
             }
 
+            self.shared.tt.prefetch(board.key_after_hint(mv));
             self.compact_push_move(board, ply, mv, piece, move_count);
             board.make_move(mv);
             self.shared.tt.prefetch(board.hash());

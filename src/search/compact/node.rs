@@ -530,6 +530,7 @@ impl Searcher {
                     continue;
                 }
                 let piece = board.moving_piece(mv);
+                self.shared.tt.prefetch(board.key_after_hint(mv));
                 self.compact_push_move(board, ply, mv, piece, 0);
                 board.make_move(mv);
                 self.shared.tt.prefetch(board.hash());
@@ -905,6 +906,9 @@ impl Searcher {
             }
 
             let nodes_before = self.td.nodes;
+            // The child's cluster is asked for before the make, so it arrives
+            // while the move is made; the exact key is asked for after.
+            self.shared.tt.prefetch(board.key_after_hint(mv));
             self.compact_push_move(board, ply, mv, piece, move_count);
             board.make_move(mv);
             self.shared.tt.prefetch(board.hash());
