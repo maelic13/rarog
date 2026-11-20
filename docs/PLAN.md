@@ -386,7 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.11.4 | READY_FOR_IMPLEMENTATION | V | The drivers for the pilot, the tune and a read, each run once through its dry path; the pilot's command handed over |
 | D.7.11.5 | READY_FOR_IMPLEMENTATION | V | The pilot, the maintainer's: 64 iterations, interrupted once and resumed; then the one command that starts the tune |
 | D.7.11.6 | READY_FOR_IMPLEMENTATION | V | The rule 7c run at `3+0.03`, the maintainer's; it stops only by its rules |
 | D.7.11.7 | READY_FOR_IMPLEMENTATION | V | The read at the stop: theta against the start, 2,000 games on the tune build; baked unless wholly below zero |
@@ -3224,7 +3223,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           game, with its index row and the README's entry; seeds
           2026113501 (pilot), 2026113502 (tune), 2026113503 (the read at
           the stop) and 2026113504 (an interim read), none used before.
-        - **D.7.11.4 The drivers and their dry runs — `V`.**
+        - **D.7.11.4 The drivers and their dry runs — `V`, DONE 2026-11-20.**
           In `analysis/artifacts/d711-fit-2026-11-20/`, each run from the
           machine's own terminal, showing the harness's live output:
           - the pilot's: `colosseum.ps1 -Mode spsa -ConfigGroup d711pilot
@@ -3240,6 +3239,13 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           wrapper's dry run verifies the surface at the ceiling and lists
           no rail warning.
           *Done:* the pilot's one command handed to the maintainer.
+          *Result (2026-11-20):* `run_pilot.ps1`, `run_tune.ps1` and
+          `run_read.ps1`, their SHA-256 in RAR-S135. Each dry path ran once
+          through the wrapper's dry run with every guard passed: the
+          surface verified at N = 64 and N = 6,000 with no rail warning, no
+          fault limit passed, and the read's extraction, run on RAR-S128's
+          stopped run, equal to that run's own theta line for line, its
+          directory unchanged. The pilot's command handed over.
         - **D.7.11.5 The pilot — `V`, the maintainer's.**
           64 iterations of 30 games, about 26 minutes, not PROCESS's
           default 128: its uses are the run proved end to end on the new

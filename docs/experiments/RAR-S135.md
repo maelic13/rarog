@@ -202,9 +202,40 @@ directory's `resolved-config.json` (checked 2026-11-20).
 
 ## Drivers (D.7.11.4)
 
-Three drivers in `analysis/artifacts/d711-fit-2026-11-20/` (ignored): the pilot's, the
-tune's and a read's. Their SHA-256 are recorded here by D.7.11.4, after each
-has run once through its dry path and before the pilot's first game.
+Three drivers in `analysis/artifacts/d711-fit-2026-11-20/` (ignored), each
+run from the machine's own terminal, where the harness's live output shows.
+Each checks the binary's SHA-256 before anything else and passes
+`-ExpectBench 3320355 -ExpectRevision 3233da2` to `colosseum.ps1`. The pilot's
+and the tune's retry their start once a minute only while the harness
+refuses the host as busy, which it does before any game; any other failure
+ends them. A run directory that exists keeps its recorded seed.
+
+| Driver | SHA-256 | What it runs |
+|---|---|---|
+| `run_pilot.ps1` | `7f5bae34e790992fa3f12ac0499e3bb6d2d2981bc2ea3316011a70d3cf3636a3` | `colosseum.ps1 -Mode spsa -ConfigGroup d711pilot -Ceiling 64 -AllowShortRun -FirstCheckpoint 64 -Window 64`, seed 2026113501, `tools/results/d711-pilot` |
+| `run_tune.ps1` | `b62eea210359cbe0976dd29d95bcc686221e9c036cacf758308482bd1c03bda5` | `colosseum.ps1 -Mode spsa -ConfigGroup d711fit -Ceiling 6000`, seed 2026113502, `tools/results/d711-fit`; no fault limit; starts or resumes |
+| `run_read.ps1` | `435c6079f8a4a07460ae24f543b15b747293768ab363ef28bef7fe4a0f8cc99d` | `-At <K> -Games 2000` (the stop, seed 2026113503, only on an ended tune) or `-Games 1000` (interim, seed 2026113504); the centres from `tools/spsa_read.py` without `--record`, checked name for name against the surface; refused while any `colosseum-cli` is alive; `colosseum.ps1 -Mode match -CategoricalTuneBuild` |
+
+*Dry runs (2026-11-20, before any game):* each driver's `-DryRun` path ran
+once to the wrapper's own dry run, every guard passed and no game was
+played (manifests `tools/results/colosseum_spsa_d711-pilot_20261120_174734`,
+`colosseum_spsa_d711-fit_20261120_174749` and
+`colosseum_match_rar-s135-dryrun-2000-2000_20261120_174903`, each
+`.manifest.txt`). The pilot's and the tune's verified the surface at their
+ceilings (225 coordinates at N = 64 and N = 6000), the files current and no
+rail warning; the runner's resolved configuration holds seeds 2026113501
+and 2026113502, 30 games an iteration in two waves of 15, `r_end` 0.00155,
+and its own fault allowance (3, or 5 per mille of the games), no limit
+passed. Neither created its run directory. The read's ran on RAR-S128's
+stopped run (`-RunDir tools/results/d76-fit -ConfigGroup d76fit -At 2000`),
+the only tune with a history before the pilot: its 230 centres equal that
+run's `theta-2000.txt` line for line, its run directory was unchanged, and
+the match resolved at seed 2026113503 on this binary. Its first dry run
+stopped at its "ended tune" guard, which read only the last verdict; the
+guard was corrected to the wrapper's own rule (a last verdict other than
+CONTINUE, or that checkpoint's theta written), which RAR-S128's maintainer
+stop meets, and the passing dry run and the hash above are the corrected
+file's.
 
 ## PRE-REGISTERED PREDICTION (frozen 2026-11-20 in the record, before the tune build existed; copied unchanged)
 
