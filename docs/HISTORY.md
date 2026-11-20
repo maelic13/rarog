@@ -67,6 +67,7 @@ leaf continues here, this is the mapping; everything else is history.
 | E.3.0 (the originality disclosure, numbered so from 2026-10-23 to 2026-11-13) | D.11 | moved 2026-11-13 (maintainer decision) into Phase D as its last leaf; `analysis/originality_review_2.6.0_2026-10-22.md`, `analysis/pst_orientation_2026-10-23.md` and `analysis/triumviratus_review_2026-11-03.md` keep the old number |
 | D.7.7 (the gate), D.7.8 (the problem review), D.7.9 (adoption), D.7.10 (Stockfish's form), as numbered from 2026-11-13 to 2026-11-19 | D.7.13; D.7.8's repairs and the review of D.6 after D.7; D.7.14, the classic kernel's deletion being D.7.7; D.7.15 | renumbered 2026-11-19 (maintainer decisions on `analysis/d7_audit_2026-11-19.md`) so that D.7's open steps run in ascending order: the deletion, the audit's repairs, clock use, the pre-fit read, the finishing fit, the score's calibration, the gate, adoption, the fallback; records written before that date keep the old numbers |
 | D.6.28 (clock use) | D.7.9 | moved 2026-11-19 with its text (maintainer decision): a time manager changed after the fit would move the fit's baseline, and its constants join the fit's surface |
+| D.7.8.7 (correction tables shared between threads) | D.13 | moved 2026-11-20 with its card (maintainer decision): thread work that leaves one thread's play unchanged, built after D.7; the number is retired |
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 

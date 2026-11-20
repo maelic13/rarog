@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.7.8.7** (`R2`): Correction tables shared between threads.
+**Now: D.7.8.11** (`R2`): The root's remaining moves re-scored as each is searched.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -86,10 +86,10 @@ field, about 3,475 on CCRL's Blitz scale.
         - [x] **D.7.8.4** Bound lines in short searches — DONE 2026-11-19
         - [x] **D.7.8.5** The interrupted iteration — NO_CHANGE 2026-11-19
         - [x] **D.7.8.6** A helper's previous score at a new game — DONE 2026-11-19
-        - [ ] **D.7.8.7** Correction tables shared between threads — **RESEARCH / R2**
         - [x] **D.7.8.8** Position 305's second divergence from the donor — DONE 2026-11-19
         - [x] **D.7.8.9** The speed register — DONE 2026-11-20
         - [x] **D.7.8.10** A finer kernel unit: the screen — NO_CHANGE 2026-11-20
+        - [ ] **D.7.8.11** The root's remaining moves re-scored as each is searched — **RESEARCH / R2**
     - [ ] **D.7.9** Clock use on the new kernel — **RESEARCH / R2**
     - [ ] **D.7.10** The pre-fit read: the repaired kernel against the classic — **RESEARCH / V**
     - [ ] **D.7.11** The finishing fit — **RESEARCH / V**
@@ -132,6 +132,7 @@ field, about 3,475 on CCRL's Blitz scale.
         - [ ] **D.12.2.2** Unmake restoring the derived keys from its record — **RESEARCH / I1**
     - [ ] **D.12.3** Rebuild behind the board contract — **RESEARCH / I2**
     - [ ] **D.12.4** Board speed read and gate — **RESEARCH / V**
+- [ ] **D.13** Correction tables shared between threads — **RESEARCH / R2**
 
 ## Phase E — Classical checkpoint and release
 

@@ -386,8 +386,8 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.8.7 | RESEARCH | R2 | Card written 2026-11-19: build after D.7 (recommended) or before D.7.13's four-thread read; the maintainer decides |
-| D.7.8 | RESEARCH | R2 | Nine of ten sub-steps closed (table below, 2026-11-20); closes with the table once the maintainer decides D.7.8.7 |
+| D.7.8.11 | RESEARCH | R2 | Card 2026-11-20: the root's remaining moves re-scored as each is searched, the donor's form; the zero-game screen, then a case-2 read if it fires |
+| D.7.8 | RESEARCH | R2 | Nine of ten sub-steps closed, D.7.8.7 moved to D.13 (2026-11-20); closes with the table after D.7.8.11 |
 | D.7.9 | RESEARCH | R2 | Clock use, moved from D.6.28: the screen on the repaired kernel's games, the low-clock horizon's card and field read, the constants to the fit's surface |
 | D.7.10 | RESEARCH | V | The repaired kernel against `d7classic` at `3+0.03` and `10+0.1`, 2,000 games each: a diagnostic that sets the fit's control |
 | D.7.11.1 | RESEARCH | I1 | The finishing surface: the added seeds, the plies and counts left out, the activation read, the audit and the pilot |
@@ -452,6 +452,7 @@ request. The rows below are D.7's, then D.6's in number order.
 | D.12.2.2 | RESEARCH | I1 | After D.12.1.1: unmake restoring the derived keys from its record instead of recomputing them; stops at the replay under its floor |
 | D.12.3 | RESEARCH | I2 | After D.12.2: the accepted components, one commit each, behind the contract, exact fingerprint while the generation order is unchanged |
 | D.12.4 | RESEARCH | V | After D.12.3: pooled-PGO NPS of the rebuilt board, the microbenchmark per component beside it; a component that does not pay returns to Rarog's form |
+| D.13 | RESEARCH | R2 | Moved from D.7.8.7 2026-11-20: opens after D.7.14; built only if one thread reproduces the fingerprint, then the NPS and four-thread reads |
 
 ## Phase D — Clock, threads, robustness
 
@@ -2276,8 +2277,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       The audit's findings (`analysis/d7_audit_2026-11-19.md`, A1 to A8),
       one sub-step each, in order, worked as D.7's *How the open steps are
       worked* states. The step closes after the last of them, with a table:
-      each sub-step, what it changed, its read and its commit. The steps
-      this one replaces left three records, kept here.
+      each sub-step, what it changed, its read and its commit. On
+      2026-11-20 (maintainer decisions) D.7.8.7 moved to D.13 with its
+      card, its number retired, and D.7.8.11 was added from the question
+      RAR-S132's read left: whether the donor's live re-scoring of the
+      root is the better form. The steps this one replaces left three
+      records, kept here.
       *From D.7.4 (text of 2026-11-18):* position 305's second divergence
       from its donor is D.7.8.8. The pricing identity's null-move and
       razoring misses (0.70% and 0.42%, cause unknown) are found before any
@@ -2331,10 +2336,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       | D.7.8.4 | A failed window's bound line only past 10,000,000 nodes | none: play unchanged, info lines 16.0 against the donor's 15.8 | `1b153dd` |
       | D.7.8.5 | Nothing: 0 of 300 searches at `3000+30` discard a move | the frozen screen, `NO_CHANGE` | `927063c` (counters) |
       | D.7.8.6 | One per-thread reset at a new game, helpers included | none: one thread exact | `60424e5` |
-      | D.7.8.7 | Nothing yet: the card, the maintainer's decision | — | `31dede4` (card) |
+      | D.7.8.7 | Moved to D.13 with its card (2026-11-20) | — | `31dede4` (card) |
       | D.7.8.8 | Nothing: the divergence is the pickers' tie rule, recorded | zero games | `66fd73b` |
       | D.7.8.9 | The king-keyed non-pawn keys kept, the gates asked lazily, the root list filled in place | pooled NPS +0.95% (+0.37 to +1.54) | `80eec20`, `e68d245`, `b88700a` |
       | D.7.8.10 | Nothing: a unit half the size | RAR-S133, −4.9 ± 15.2, `NO_CHANGE` | `f92abf0` (registration) |
+      | D.7.8.11 | Open | — | — |
 
         - **D.7.8.1 ProbCut's exchange bar in exchange units — `I1`, DONE 2026-11-19.**
           (A1) ProbCut's picker holds captures to `probcut_beta − eval`,
@@ -2555,60 +2561,6 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           debug 541 and release 543 passed; the `tune` and `texel`
           libraries 293 each; parity without a mismatch. No changelog
           entry: a helper's first window is not something a user sees.
-        - **D.7.8.7 Correction tables shared between threads — `R2`.**
-          (A7, inventory C-6) The donor shares its pawn and non-pawn
-          correction tables between threads; Rarog's are per thread, and
-          four threads were worth 1.37 doublings of Rarog's time against
-          Reckless's 1.49 (RAR-M83). *Card only:* what sharing needs (an
-          atomic read and write a node is the exception AGENTS' per-node
-          rule asks a reason and an NPS read for), its one-thread cost,
-          and the four-thread read that would accept it with its cost in
-          hours. The maintainer decides from the card whether it is built
-          before D.7.13's four-thread read or left to the thread work
-          after D.7. One thread plays the same either way, so the fit does
-          not wait for it.
-          *Card (2026-11-19).* **The donor's form:** `SharedCorrectionHistory`
-          (Reckless `thread.rs`, at `0756957`) holds the pawn table and the
-          two non-pawn tables, each `[16 buckets][2 sides][65,536]` of
-          `AtomicI16`, one copy per NUMA node; a read is a relaxed load,
-          an update a relaxed load and a relaxed store (no read-modify-
-          write, so a racing update may be lost, never torn). The
-          continuation correction stays per thread. Rarog's three tables
-          have the same shape (`correction.rs`), per thread, 12 MB each.
-          **What sharing needs:** the three tables move to the search's
-          shared state, their entries `AtomicI16`; the node reads them
-          through the reference it already holds to the shared state (no
-          `Arc` touched per node) and trains them with the same gravity
-          formula as a relaxed load and store. It is the exception AGENTS'
-          per-node rule asks a reason and an NPS read for; the atomic
-          signals one search's evaluation residuals to every thread of
-          that search, and a new game clears it once rather than per
-          thread. **One thread:** on x86-64 a relaxed 16-bit load or store
-          is the same `mov` as today's, so one thread plays the same
-          (`bench 13` exact) and the expected cost is an extra pointer
-          load a node, within PROCESS's NPS read (four PGO builds an arm,
-          step 1 about 6 minutes, ±0.4%, after about 15 minutes of
-          builds). Memory: 12 MB less a helper. **Four threads:** RAR-M83
-          read four threads worth 1.33 (1.16 to 1.49) doublings of the
-          classic kernel's own time against Reckless's 1.51 and
-          Stockfish's 1.55, NOT DEFICIENT; how much of the gap sharing
-          closes is unmeasured. **The read that would accept it:** both
-          arms at four threads, `3+0.03`, the explicit one-CPU-per-core
-          placement, three games at a time (RAR-S132's smoke played 200 in
-          10.6 minutes). A gain needs an SPRT: `[0,3]` at a true +4 nElo
-          takes about 47,000 games, about 41 hours; `[0,5]`, widened for a
-          prior of +5 to +10 at four threads, about 15,000 to 20,000,
-          13 to 18 hours. A no-harm read only (case 2, 2,000 games) takes
-          about 1 hour 45 minutes. **Recommendation: build it after D.7,
-          in the thread work.** The fit and the gate are one-thread, which
-          sharing does not change; built before D.7.13 it would sit in the
-          four-thread read beside the gate with the kernel's other
-          changes, and that read could not say which moved it; its own
-          acceptance read costs half a day to two days of four-thread
-          games. What would change the recommendation: D.7.13's
-          four-thread read showing the kernel scaling worse than
-          `d7classic`, which makes sharing its first candidate. **The
-          maintainer decides** (asked 2026-11-20).
         - **D.7.8.8 Position 305's second divergence from the donor — `R2`, DONE 2026-11-19.**
           (from D.7.4) With the promotion push put through the exchange,
           position 305 equals the twin at depths 1 and 2 and diverges from
@@ -2688,6 +2640,58 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           2.311 against 3,320,355 / 2.317. 2,000 games at 100,000 nodes a
           move: nElo −4.9 ± 15.2, the interval [−20.1, +10.3] not wholly
           above zero. The kernel keeps its fitted unit.
+        - **D.7.8.11 The root's remaining moves re-scored as each is searched — `R2`, then `I2`.**
+          (the question after RAR-S132, added 2026-11-20 by the maintainer's
+          decision) **The defect or opportunity.** The donor's root picker
+          re-scores the noisy moves still to come each time it hands over a
+          good noisy move, and the quiets still to come before each quiet
+          it hands over, from the histories the searched moves' subtrees
+          have just updated; a noisy move is classed good or bad when it is
+          picked, on the bar of its current score and the good moves so far
+          (Reckless `movepick.rs`, the `NODE::ROOT` branches, at
+          `0756957`). Rarog's root scores its whole list once at each root
+          search (D.7.8.3) and classes every noisy move then. Stockfish does
+          neither; it keeps a history for the first plies. Move ordering
+          never reads the evaluation, so the donor's NNUE enters only
+          through the histories it trained. **Mechanism:** every root move
+          after the first is searched in a null window and reduced by its
+          place in the list, so the order decides which moves get depth; a
+          refutation found under one root move raises the histories of the
+          moves that share it, and the donor's root reads that at once.
+          **Evidence it is active here:** the root's tie order alone moved
+          `bench 13` by a third (D.7.8.3's first form); on position 305 the
+          donor's re-scoring changed nothing to depth 6 and changed the
+          depth-14 tree from 184 million nodes to 530,420 (D.7.8.8), so it
+          acts, with no sign. **Competing explanations of any effect:** tie
+          order (chaotic, D.7.8.8), and the noisy class moving with the
+          score rather than the ordering itself. **Interactions:** the
+          good-noisy bar reads the score and the count of good moves, so
+          the class of a capture can change; the root's reductions read the
+          move's place; the pool's lifted moves and a helper's rotation
+          (Rarog's Lazy SMP) stay above the re-scored tiers, untouched;
+          MultiPV's later lines and `searchmoves` skip a move outside the
+          root's lines once it is handed over, the donor's rule, so it still
+          counts toward the bar; the histories themselves are not changed.
+          **Invariants and their tests:** every legal move once, the table
+          move first; a narrowed root hands over exactly the moves it
+          admits, in the whole list's order; on histories that do not
+          change between picks the root's order is the staged picker's,
+          ties included (re-scoring on the same tables moves nothing);
+          after a history changes between picks, the next pick is the
+          staged picker's on the new tables over the moves left; root-only
+          code, the node's unchanged. **The cheapest test,** zero games:
+          two counters in the `diag` build over `bench 13`, the root's picks
+          from the noisy and quiet stages that a re-score precedes, and
+          those whose next move the re-score changes. **Falsifier and stop
+          rule (frozen 2026-11-20, before the counters ran):** a share
+          below 1% closes the step `NO_CHANGE`, the code reverted, no
+          games; otherwise the fingerprint moves and the step takes a
+          registered 2,000-game read against D.7.8.10's state, AGENTS'
+          case 2 (reverted below −13 nElo), with 200 games at four threads
+          read for faults alone, as RAR-S132. **Prediction (frozen
+          2026-11-20, before the counters ran):** the share 20%, 80% band
+          5% to 45%; `bench 13` moves, by under 15% with P 0.7; the read's
+          prediction is frozen in its registration.
     - **D.7.9 Clock use on the new kernel — `R2`.**
       Moved here from D.6.28 on 2026-11-19 (maintainer decision): it is the
       largest known lever beside the kernel (the donor's search led by 22.5
@@ -3586,6 +3590,70 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       Rarog's form. A component that changes the generation order, and
       so the tree, is registered and gated as AGENTS' *Gating* requires.
       Nanoseconds an operation are not NPS and not Elo.
+
+- **D.13 Correction tables shared between threads — `R2` card, then `I1`/`V`.**
+  Moved here from D.7.8.7 on 2026-11-20 with its card (maintainer
+  decision): it is thread work, and one thread plays the same, so
+  nothing in D.7's one-thread fit or gate waits for it. It opens after
+  D.7.14 and is built only if `bench 13` reproduces the fingerprint at
+  one thread; then the NPS read and the four-thread read the card
+  prices. The card, as written on 2026-11-19:
+  (A7, inventory C-6) The donor shares its pawn and non-pawn
+  correction tables between threads; Rarog's are per thread, and
+  four threads were worth 1.37 doublings of Rarog's time against
+  Reckless's 1.49 (RAR-M83). *Card only:* what sharing needs (an
+  atomic read and write a node is the exception AGENTS' per-node
+  rule asks a reason and an NPS read for), its one-thread cost,
+  and the four-thread read that would accept it with its cost in
+  hours. The maintainer decides from the card whether it is built
+  before D.7.13's four-thread read or left to the thread work
+  after D.7. One thread plays the same either way, so the fit does
+  not wait for it.
+  *Card (2026-11-19).* **The donor's form:** `SharedCorrectionHistory`
+  (Reckless `thread.rs`, at `0756957`) holds the pawn table and the
+  two non-pawn tables, each `[16 buckets][2 sides][65,536]` of
+  `AtomicI16`, one copy per NUMA node; a read is a relaxed load,
+  an update a relaxed load and a relaxed store (no read-modify-
+  write, so a racing update may be lost, never torn). The
+  continuation correction stays per thread. Rarog's three tables
+  have the same shape (`correction.rs`), per thread, 12 MB each.
+  **What sharing needs:** the three tables move to the search's
+  shared state, their entries `AtomicI16`; the node reads them
+  through the reference it already holds to the shared state (no
+  `Arc` touched per node) and trains them with the same gravity
+  formula as a relaxed load and store. It is the exception AGENTS'
+  per-node rule asks a reason and an NPS read for; the atomic
+  signals one search's evaluation residuals to every thread of
+  that search, and a new game clears it once rather than per
+  thread. **One thread:** on x86-64 a relaxed 16-bit load or store
+  is the same `mov` as today's, so one thread plays the same
+  (`bench 13` exact) and the expected cost is an extra pointer
+  load a node, within PROCESS's NPS read (four PGO builds an arm,
+  step 1 about 6 minutes, ±0.4%, after about 15 minutes of
+  builds). Memory: 12 MB less a helper. **Four threads:** RAR-M83
+  read four threads worth 1.33 (1.16 to 1.49) doublings of the
+  classic kernel's own time against Reckless's 1.51 and
+  Stockfish's 1.55, NOT DEFICIENT; how much of the gap sharing
+  closes is unmeasured. **The read that would accept it:** both
+  arms at four threads, `3+0.03`, the explicit one-CPU-per-core
+  placement, three games at a time (RAR-S132's smoke played 200 in
+  10.6 minutes). A gain needs an SPRT: `[0,3]` at a true +4 nElo
+  takes about 47,000 games, about 41 hours; `[0,5]`, widened for a
+  prior of +5 to +10 at four threads, about 15,000 to 20,000,
+  13 to 18 hours. A no-harm read only (case 2, 2,000 games) takes
+  about 1 hour 45 minutes. **Recommendation: build it after D.7,
+  in the thread work.** The fit and the gate are one-thread, which
+  sharing does not change; built before D.7.13 it would sit in the
+  four-thread read beside the gate with the kernel's other
+  changes, and that read could not say which moved it; its own
+  acceptance read costs half a day to two days of four-thread
+  games. What would change the recommendation: D.7.13's
+  four-thread read showing the kernel scaling worse than
+  `d7classic`, which makes sharing its first candidate. **The
+  maintainer decides** (asked 2026-11-20).
+  *Decided 2026-11-20 (maintainer):* after D.7, as recommended, if
+  one thread plays the same; a moved one-thread fingerprint returns
+  the step to `RESEARCH` before any game.
 
 ## Phase E — Classical checkpoint and release
 
