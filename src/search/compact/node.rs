@@ -739,6 +739,10 @@ impl Searcher {
             if mv == excluded {
                 continue;
             }
+            // The child's cluster is asked for as soon as the move is known, so
+            // it arrives while the pruning rules and the make run; the exact key
+            // is asked for again after the make.
+            self.shared.tt.prefetch(board.key_after_hint(mv));
             search_count = 0;
             move_count += 1;
             let is_quiet = is_quiet_move(mv);
@@ -906,9 +910,6 @@ impl Searcher {
             }
 
             let nodes_before = self.td.nodes;
-            // The child's cluster is asked for before the make, so it arrives
-            // while the move is made; the exact key is asked for after.
-            self.shared.tt.prefetch(board.key_after_hint(mv));
             self.compact_push_move(board, ply, mv, piece, move_count);
             board.make_move(mv);
             self.shared.tt.prefetch(board.hash());

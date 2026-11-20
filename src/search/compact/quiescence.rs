@@ -113,6 +113,7 @@ impl Searcher {
             &threats,
             !in_check || best_score > -crate::tt::TB_WIN_SCORE,
         ) {
+            self.shared.tt.prefetch(board.key_after_hint(mv));
             move_count += 1;
             let piece = board.moving_piece(mv);
             if best_score > -crate::tt::TB_WIN_SCORE {
@@ -172,7 +173,6 @@ impl Searcher {
                 }
             }
 
-            self.shared.tt.prefetch(board.key_after_hint(mv));
             self.compact_push_move(board, ply, mv, piece, move_count);
             board.make_move(mv);
             self.shared.tt.prefetch(board.hash());
