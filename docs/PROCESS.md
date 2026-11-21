@@ -663,28 +663,52 @@ PLAN Phase C's cluster shape carries them for Phase C):
    before the first game. The surface is the same for every unit so that
    gate-2 results are comparable and the block's movement is itself a
    reading of how far the evaluation's shape moved:
-   `AspirationDelta`, `QsSeeMargin`, `QsFutilityMargin`, `QsDeltaMargin`,
-   `CoreEvalMaterialScale`, `CoreRazorBase`, `CoreRazorSquare`,
-   `CoreRfpSquare`, `CoreRfpLinear`, `CoreRfpImprovement`,
-   `CoreRfpCorrection`, `CoreRfpThreat`, `CoreRfpConstant`,
-   `CoreHindsightReduceMargin`, `CoreFpBase`, `CoreFpLinear`,
-   `CoreFpEvalAboveBeta`, `CoreFpCorrection`, `CoreBnfpBase`,
-   `CoreBnfpLinear`, `CoreSeeQuietConstant`, `CoreSeeNoisyConstant`,
-   `CoreNmpBase`, `CoreProbcutBase`, `CoreProbcutImproving`,
-   `CoreCorrUpdateSlope`, `CoreCorrUpdateMax`, `LazyMargin` (28 coordinates:
-   every search coordinate that is compared with the static evaluation or
-   the score in centipawns, the correction's update scale, and the lazy
-   gate, whose threshold is compared with the running evaluation sum and
-   whose meaning a new evaluation moves most directly; `LazyMargin` was
-   added by the C.0 audit, 2026-10-06, before any block ran). Rule 2 holds:
-   evaluation and search coordinates never share a tune.
-   *Stale since 2026-11-19, restated at PLAN D.7.14:* the names above
-   are the classic kernel's options, deleted with it (D.7.7). On the
-   compact kernel the block's surface is every seed compared with the
-   static evaluation or the score, the correction's update and limits,
-   the wrapper pair, and `LazyMargin`. `LazyMargin` is refitted only
-   here: it is the played evaluation's own constant, last fitted with
-   the classic search (RAR-S104), and D.7.11 held it at 475.
+   the compact kernel's options (restated 2026-11-21 at PLAN D.7.14; the
+   classic kernel's 28, from `AspirationDelta` to `LazyMargin`, were
+   deleted with it at D.7.7). It holds every seed whose value is compared
+   with, or multiplies, a quantity in score units (the static evaluation,
+   the estimate, alpha, beta, a search score or the correction), the
+   correction's update and limits, the wrapper pair and `LazyMargin`: 69
+   coordinates.
+   - The evaluation's wrapper and optimism: `KWrapRawBase`,
+     `KWrapDivisor`, `KOptimismScale`, `KOptimismOffset`.
+   - Before the moves: `KHindsightRise`; `KRazorBase16`,
+     `KRazorSquare16`, `KRazorAlphaLimit`; `KRfpSquare16`,
+     `KRfpImprovement`, `KRfpLinear16`, `KRfpCorrection`,
+     `KRfpUnthreatened16`, `KRfpConstant16`; `KNmpDepth16`, `KNmpTtPv16`,
+     `KNmpImprovement`, `KNmpCutoffs16`, `KNmpBase16`, `KNmpRSurplus`,
+     `KNmpRSurplusCap`; `KProbcutMargin`, `KProbcutImproving`,
+     `KProbcutDepthPer`, `KProbcutRaise16`, `KProbcutSeeScale`.
+   - The singular search: `KSingularPerPly1024`, `KSingularPvPerPly1024`,
+     `KDoublePv16`, `KDoubleNewPv16`, `KDoubleQuiet16`,
+     `KDoubleCorrection`, `KTriplePv16`, `KTripleNewPv16`,
+     `KTripleQuiet16`, `KTripleCorrection`, `KTripleBase16`;
+     `KLdseMargin`.
+   - The move loop: `KFpLinear16`, `KFpHistory16`, `KFpAboveBeta16`,
+     `KFpCorrection`, `KFpConstant16`; `KBnfpLinear16`, `KBnfpHistory16`,
+     `KBnfpConstant16`; `KLmrCorrection`, `KLmrAlphaGap`,
+     `KLmrAlphaGapMin`, `KLmrAlphaGapMax`, `KFdsCorrection`;
+     `KResearchDeeper16`, `KResearchShallower16`.
+   - After the moves: `KRewardBelowEvalMargin`,
+     `KRewardBelowParentMargin`, `KEvalBonusScale`; the correction's
+     `KCorrSlope`, `KCorrMin`, `KCorrMax`, `KCorrKeyedMax`,
+     `KCorrContMax`.
+   - Quiescence: `KQSeeScale`, `KQSeeCorrectionScale`,
+     `KQSeeCorrectionCap`.
+   - The root window: `KWindowBase1024`, `KWindowStability1024`,
+     `KWindowSquare`, `KWindowStable16`.
+   - `LazyMargin`, the played evaluation's own constant: refitted only
+     here, last fitted with the classic search (RAR-S104), held at 475
+     by D.7.11.
+
+   Out: the fractions toward beta (the `T` seeds), plies, depths, move
+   counts and amounts in history units; the SEE thresholds and the
+   exchange values, which compare exchange units, not scores; the two
+   seeds no bench reaches, `KRfpMin16` and `KNmpMin16` (D.8.21). Each
+   name is one of D.7.11's 225 fitted options
+   (`analysis/d711_fit_2026-11-20.md`, *Appendix*). Rule 2 holds:
+   evaluation and search coordinates never share a tune, `LazyMargin`
+   excepted as before.
 5. **Gate 2.** The candidate with its retuned margins against the head,
    SPRT `[0,3]` at `3+0.03`. Gate 2 accepts. A unit that fails both gates
    is a worse function for this engine; one that fails gate 1 and passes

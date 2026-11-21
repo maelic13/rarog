@@ -109,6 +109,7 @@ pages off without removing the right.
 | `Clear Hash` | — | Empties the transposition table. |
 | `Threads` | `1` | Search threads. Set to the number of cores you want to use. |
 | `MultiPV` | `1` | Best lines reported per depth, `1` to `256`. For analysis; leave it at `1` for play. |
+| `UCI_ShowWDL` | `false` | Adds the chances of a win, a draw and a loss to each `info` line. |
 | `Ponder` | `false` | Think while the opponent moves. Enabled by the GUI. |
 | `Move Overhead` | `10` | Milliseconds reserved for GUI and network delay. Raise it if you lose on time. |
 | `SyzygyPath` | empty | Folders holding Syzygy tablebases. Empty disables probing. |
@@ -129,6 +130,9 @@ Every `info` line carries `depth`, `seldepth`, `multipv`, `score`, `nodes`,
 
 - `seldepth` is the deepest ply the current iteration reached, counting the
   root as ply one, and it starts again at each depth.
+- `score cp` is scaled so that +100 is the advantage with which Rarog wins
+  about half its games. With `UCI_ShowWDL` on, `wdl` follows the score with
+  the chances of a win, a draw and a loss, in thousandths.
 - A score still being narrowed by an aspiration re-search is marked
   `lowerbound` or `upperbound`; the line that closes an iteration is exact.
 - With `Threads` above one the engine picks its move by a vote across threads

@@ -18,6 +18,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Changed
 
+- **A new search.** Rarog's search has been rebuilt and refitted on its own
+  games. It plays clearly stronger, at short and longer time controls and
+  on several threads, and it manages its time differently.
 - **Scores mean the same thing in every position.** A score of +1.00 is now
   the advantage with which Rarog wins about half its games, with many pieces
   on the board or few, as Stockfish's scores do. Scores read differently

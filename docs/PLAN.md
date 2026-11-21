@@ -386,7 +386,7 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.14 | RESEARCH | V | Opened 2026-11-21 by D.7.13's H1: adoption by the maintainer's decision; the meters, the changelog, D.11's disclosure, the squash |
+| D.7.14 | RESEARCH | V | Adopted 2026-11-21 (maintainer decision on RAR-S136); the changelog, the margin block and D.11's facts done the same day; left: RAR-M90, the meter (the maintainer's run), the checkpoint rows, the squash |
 | D.7.15 | RESEARCH | R3 | Opens only if D.7.13 does not gain: the kernel discarded, the classic restored, then Rarog's own forms and Stockfish's form |
 | D.6.1 | RESEARCH | R2 | Review on the new kernel after D.7: the kernel's partition counts castling quiet (`is_quiet_move`); confirm it in pruning, the histories and SEE |
 | D.6.2 | RESEARCH | R2 | Review after D.7: a queen push is noisy in the kernel's partition; confirm quiescence and ProbCut generate and search it |
@@ -432,7 +432,7 @@ request. The rows below are D.7's, then D.6's in number order.
 | D.8.18 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.19 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.20 | READY_FOR_IMPLEMENTATION | I1 | Its census has no dependency |
-| D.8.21 | RESEARCH | V | Added 2026-11-20 from D.7.11: opens after D.7.14; a count on replayed gate games of how often each of eight seeds' terms binds, a seed deleted only if its term never does |
+| D.8.21 | RESEARCH | V | Added 2026-11-20 from D.7.11, open since D.7.14's adoption (2026-11-21); a count on replayed gate games of how often each of eight seeds' terms binds, a seed deleted only if its term never does |
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11 | RESEARCH | R2 | The originality disclosure, moved from E.3.0; its hold is lifted for 2.7.0 (maintainer decision 2026-11-13) and stands for the release after it |
@@ -3439,6 +3439,27 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       options, deleted by D.7.7, and `LazyMargin` stays in it. GUIDE's
       obligation row for the constants not fitted on Rarog is reviewed,
       and D.8.21 opens.
+      *Adopted 2026-11-21* (maintainer decision, on RAR-S136's H1). Done
+      the same day, in one documentation commit:
+      - the margin block restated in the kernel's options, 69
+        coordinates (PROCESS, *Evaluation change under a fitted
+        search*);
+      - `CHANGELOG.md`'s entry for the new search, and the README's
+        `UCI_ShowWDL` row and score scale, which D.7.12 left out;
+      - D.11's facts for the kernel named (D.11, *Named at D.7.14*);
+      - GUIDE's two obligation rows reviewed; D.8.21 open;
+      - the fingerprint record stands: 3,390,842 / EBF 2.317, D.7.11.8's,
+        in AGENTS, GUIDE and PLAN's checkpoint row;
+      - the pre-NNUE meter and the conversion registered as RAR-M90, a
+        7,800-game gauntlet against RAR-M89's field, the maintainer's
+        run (about 1 hour 40 minutes). Speed is recorded from the
+        games, RAR-S136's and RAR-M90's: Colosseum's nodes a second at
+        equal time. A pooled bench read is not run, since bench's
+        nodes are two different trees for the two kernels and no
+        decision reads it; D.13 and D.14 each register their own
+        baseline.
+      Left: RAR-M90's read and its rows in GUIDE's checkpoint, then the
+      squash.
     - **D.7.15 If the kernel does not gain — `R3`.**
       Opens only on D.7.13's H0 or its cap without H1 (maintainer decision
       2026-11-19). The new kernel is discarded and the classic kernel
@@ -3783,6 +3804,31 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   notices, and the disclosure closes before the release after it. A
   kernel rebuilt in Reckless's form (D.7) makes it heavier for that
   release.
+  *Named at D.7.14 (2026-11-21), on adoption:* the release after 2.7.0
+  ships the new kernel, so the disclosure also names:
+  - **The search's shape:** Reckless's (`0756957`), rebuilt from
+    D.7.0's inventory in Rarog's own code and structure (D.7,
+    *Independence*). Reckless's move ordering, history, correction and
+    TT-cutoff updates, the second group above, are now part of that
+    shape.
+  - **The clock:** Reckless's time manager whole (D.7.9.1, `38e947c`),
+    its constants the donor's, with Rarog's guards. Stockfish's time
+    budget, the first group above, left the code with the classic
+    kernel.
+  - **The places transcribed,** each named in its commit: the
+    interpolation toward beta in single precision with a fused
+    multiply-add, truncated toward zero (`3bda2c3`), and the
+    upcoming-repetition table by van Kervinck's method (`efbbb69`),
+    which has one natural form.
+  - **The constants:** the donor's seeds converted by dimension
+    (D.7.4.1) and fitted on Rarog's own games twice (RAR-S128,
+    RAR-S135). Those still at the donor's values are listed in
+    `analysis/d711_fit_2026-11-20.md`, *What stays unfitted*: the
+    clock's twenty-three, the two thread spreads and the eight seeds
+    no bench reaches.
+  - **The reported score:** Stockfish's win-rate form and its
+    `UCI_ShowWDL` option, with Rarog's own constants (D.7.12).
+  Step 1's rerun reads the release head with these in it.
 - **D.12 Board review and rebuild: the contract audited, each component read against the donors' boards, rebuilt where another form measures better — `R2`, then `I2`/`V`.**
   Added 2026-11-14 (maintainer: the board implementation is revisited in
   depth), on the model of Basilisk's B.7 (audit and instruments, review,
