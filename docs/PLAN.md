@@ -386,7 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.12 | RESEARCH | I1 | `score cp` calibrated on the fitted kernel's games, output only; the fitting tool |
 | D.7.13 | RESEARCH | V | The one gate: the fitted, repaired kernel against `d7classic` on `[0,3]`, with `10+0.1` and four-thread reads beside it |
 | D.7.14 | RESEARCH | V | Adoption by the maintainer's decision on D.7.13; the meters, the changelog, D.11's disclosure, the squash |
 | D.7.15 | RESEARCH | R3 | Opens only if D.7.13 does not gain: the kernel discarded, the classic restored, then Rarog's own forms and Stockfish's form |
@@ -3357,7 +3356,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           `bench 13` **3,390,842 / EBF 2.317** on the tune binary with
           theta set, the tune build at its defaults and the default
           build.
-    - **D.7.12 The reported score calibrated — `I1`.**
+    - **D.7.12 The reported score calibrated — `I1`, DONE 2026-11-21.**
       (A3; `analysis/d7_audit_2026-11-19.md`, *The score scale*) `score cp`
       has never been calibrated: the classic kernel won half its games at
       about +120 with nearly all material on the board and at +244 in
@@ -3388,6 +3387,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
         2026-11-20).
       - `CHANGELOG.md` gets the user's sentence; the tests that pin a
         printed score follow; Phase F reads its note (F.6).
+      - *Added 2026-11-21* (maintainer decision): the same model's
+        win, draw and loss rates on `info` lines behind
+        `UCI_ShowWDL`, Stockfish's option and placement; Reckless has
+        no such output.
+      *Result (2026-11-21, `analysis/d712_score_2026-11-21.md`):*
+      `tools/wdl_fit.py` (`78d4681`) fitted on the fitted side of
+      RAR-S135's read at the stop, 97,741 positions: the internal
+      score of an even chance is 83 to 84 with most material on the
+      board and 136 at material 20; the even chance falls at a
+      printed +100. `61c9c51` prints through it and adds
+      `UCI_ShowWDL`; every suite passes and `bench 13` stays
+      3,390,842 / EBF 2.317.
     - **D.7.13 The gate: the kernel against the classic — `V`.**
       The fitted, repaired kernel (pext, PGO) against `d7classic` by SPRT
       on the gain bracket `[0,3]` at `3+0.03` (maintainer decision

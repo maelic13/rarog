@@ -10,8 +10,18 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ## [Unreleased]
 
+### Added
+
+- **Win, draw and loss rates.** With the new option `UCI_ShowWDL` on, each
+  info line also shows the engine's chances of winning, drawing and losing,
+  as GUIs that support it display beside the score.
+
 ### Changed
 
+- **Scores mean the same thing in every position.** A score of +1.00 is now
+  the advantage with which Rarog wins about half its games, with many pieces
+  on the board or few, as Stockfish's scores do. Scores read differently
+  from earlier versions; mates and tablebase results are unchanged.
 - **Fewer info lines in short searches.** A search no longer prints a
   bound line each time its window fails; those lines appear only in long
   searches, so a GUI shows one line per depth.
