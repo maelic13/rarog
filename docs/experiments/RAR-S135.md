@@ -351,6 +351,54 @@ Maintainer decisions the same day, after the pilot's result.
 - The pilot's other criteria stand as read above; with this amendment
   D.7.11.5 is done and the tune is cleared to start.
 
+## The tune's result (2026-11-21; read from its files, before the read at the stop)
+
+`tools/results/d711-fit`, two invocations (manifests
+`colosseum_spsa_d711-fit_20261120_215413`, paused after three iterations,
+and `colosseum_spsa_d711-fit_20261120_215833`, resumed at 3 of 6,000):
+2,000 iterations, 60,000 games, no fault of either kind, no arm clamped.
+**The read at 2,000: STOP_QUIET** (`spsa-read.txt`, `spsa-read.jsonl`
+`E3BFDD7C…`): over 225 coordinates the largest |z| is 3.09 against the
+familywise line of 3.69 (`KContBonusSlope` +3.09, `KRewardBelowParentMargin`
+−3.07, `KNoisyBonusSlope` +2.92), none over it; `Σ z² − n` +23.0 (+1.1 SD,
+line 42.4); no rail, no rail candidate. The tune's own read of its gain
+since iteration 0: +15.8 Elo (null SD 9.0); its forecast for 2,000 to
+4,000, at most +5.0 ± 4.6, decides nothing. The tune stopped by its rule
+and is not extended.
+
+- **Theta:** `theta-2000.txt`, 225 coordinates. The read driver's
+  extraction (`tools/spsa_read.py --at 2000`, without `--record`) equals it
+  name for name and value for value, 225 of 225 (checked 2026-11-21).
+- **Moves against the start**, in steps of a sixteenth of the range:
+  median 0.26, 90th percentile 0.69, largest 1.33 (`KQSeeHistory` 49 to
+  55, `KPickVictim` 14,397 to 16,016, `KContBonusSlope` 87 to 97,
+  `KDoubleQuiet16` 100 to 89); four over one step, none within a step of a
+  bound. RAR-S128 at its stop, from the donor's seeds: median 0.32,
+  largest 2.36, seventeen over one step.
+- **The pause (the amendment above): passed.** Paused after 3 iterations
+  (90 games), the wrapper's `interrupted` line written; the move check on
+  the paused run 0.0 over its three iterations, all 225 coordinates moved,
+  the run directory's hashes unchanged by the read; resumed at 3 of 6,000
+  with the stored horizon, seed 2026113502; the move check on the resumed
+  run at 2,000, 1.2e-12, under 1e-6.
+
+*Calibration of item 3:* quiet at 2,000 (0.50): **hit**. A FAULT read from
+a time loss (0.35): none occurred.
+*Calibration of item 4:* +10 Elo, band −8 to +30: **inside the band**,
++15.8 (a read on the tune's own scores, not Elo measured against the
+start).
+*Calibration of item 6:* `KLmrQuietHistory` up: **hit** (207 to 223). The
+wrapper pair small: **hit** (−0.17 and +0.21 step). The pawn table's limit
+within noise: **hit** (8,192 to 8,401, z +1.78). The ProbCut family and
+`KProbcutSeeScale` down: **missed**, in mechanism and magnitude. Only
+`KProbcutMargin` moved down (−0.70 step), `KProbcutSeeScale` went up
+(2,536 to 2,630) and the rest stayed within half a step, every |z| in the
+family at most 1.40. The assumption that failed: that the ProbCut seeds,
+fitted against a bar 0.40 of the donor's, had compensated for it and
+would fall back against the repaired one; at this resolution nothing in
+the family is distinguishable from its seed. None of the furthest movers
+was named (`KQSeeHistory`, `KPickVictim`, `KContBonusSlope`).
+
 ## Use
 
 Theta, if kept by the read at the stop, is baked by D.7.11.8 (the tune

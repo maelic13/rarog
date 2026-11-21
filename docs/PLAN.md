@@ -386,7 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.11.6 | READY_FOR_IMPLEMENTATION | V | The rule 7c run at `3+0.03`, the maintainer's; it stops only by its rules |
 | D.7.11.7 | READY_FOR_IMPLEMENTATION | V | The read at the stop: theta against the start, 2,000 games on the tune build; baked unless wholly below zero |
 | D.7.11.8 | READY_FOR_IMPLEMENTATION | I1 | Theta baked; the tune build at its defaults and the default build reproduce the new fingerprint |
 | D.7.11 | READY_FOR_IMPLEMENTATION | V | Researched 2026-11-20 (`analysis/d711_fit_2026-11-20.md`); closes when D.7.11.8 bakes theta or D.7.11.7 keeps the start |
@@ -3267,10 +3266,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           host). The run was not interrupted, so the pause is tested in
           the tune's opening minutes by an amendment (maintainer decision
           the same day). The tune's command handed over.
-        - **D.7.11.6 The run — `V`, the maintainer's.**
+        - **D.7.11.6 The run — `V`, the maintainer's, DONE 2026-11-21.**
           It stops only by its rules: quiet, a rail, a fault, the ceiling,
           or the maintainer's `STOP` at a checkpoint. Nothing waits for a
           read. While it runs the host is the tune's: file reads only.
+          *Result (2026-11-21, RAR-S135):* quiet at its first checkpoint,
+          2,000 iterations and 60,000 games, no fault: the largest |z|
+          3.09 against the line of 3.69, no rail, no clamped arm. Theta is
+          `theta-2000.txt`; the moves are small (median 0.26 of a step,
+          largest 1.33). The pause tested in its opening minutes passed:
+          the move check 0.0 on the paused run and 1.2e-12 on the resumed
+          one.
         - **D.7.11.7 The read at the stop — `V`.**
           Theta (`theta-<K>.toml`, the checkpoint the maintainer names)
           against the start, the tune build on both sides, 2,000 games at
