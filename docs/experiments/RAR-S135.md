@@ -399,6 +399,73 @@ would fall back against the repaired one; at this resolution nothing in
 the family is distinguishable from its seed. None of the furthest movers
 was named (`KQSeeHistory`, `KPickVictim`, `KContBonusSlope`).
 
+### Was the stop right? (2026-11-21, after the tune, from its files; decides nothing)
+
+The maintainer asked whether any coordinate still had leverage at the stop.
+Read with `tools/spsa_read.py`'s own functions (`halves.py`, ignored, beside
+the drivers):
+
+- **The z at 2,000 are what noise gives:** mean −0.001, SD 1.05; a KS
+  test against the standard normal D = 0.044, under the 5% value of 0.091;
+  |z| of 2 or more 13 times against 10.2 expected, of 3 or more twice
+  against 0.6; a largest |z| of 3.09 or more has chance 0.36. The pilot's
+  `KQuietMalusCap` (z +3.81 at 64) reads +0.96.
+- **The instrument is live:** the same reader and rule read RAR-S128 at
+  2,000 as CONTINUE, `KLmrQuietHistory` over the line (3.90 against 3.69)
+  and its own gain +67 Elo (null SD 14); that fit read +56.8 against its
+  start. Here `KLmrQuietHistory` reads +1.08 and the gain +15.8 (null SD
+  9.0).
+- **No gradient persists:** z over iterations 0 to 1,000 against 1,000 to
+  2,000, disjoint games and perturbations, correlate at −0.033 across the
+  225 coordinates (noise SD 0.067); their signs agree 112 times of 225
+  (49.8%); of the twenty largest |z| in the second window, nine share the
+  first's sign (noise 10 ± 2.2). Pooled over 0 to 2,000 the largest |z| is
+  3.34 against 3.69, `Σ z² − n` +17.3 (+0.8 SD). The largest pooled
+  coordinates are pushed early and quiet late (`KQSeeHistory` +3.71 then
+  +0.96, `KPickVictim` +2.67 then +1.61, `KDoubleQuiet16` −3.01 then
+  −0.75), the shape of a gradient the tune followed and used up.
+- **What continuing could buy:** from 2,000 to the ceiling the
+  perturbation shrinks only by ×0.89 and the gain by ×0.57 (α 0.601,
+  γ 0.102, A 600), so a window keeps about its sensitivity (4.5 Elo across
+  a perturbation, SE 1.2) and the centres' jitter falls by about a
+  quarter. A gradient too small for this test, about 1.5 Elo across a
+  perturbation, could show only by pooling to the ceiling, 26 more hours,
+  and would be worth a fraction of that; the reader's forecast for 2,000
+  to 4,000 is at most +5.0 ± 4.6.
+
+The quiet stop is supported: no evidence of a gradient left, by the
+registered test or by the two that pool it. That is insufficient evidence of
+leverage, not proof of none below about 1.5 Elo a coordinate. No
+continuation is registered; one would need a new registration naming the
+coordinates and their evidence first.
+
+## The read at the stop (D.7.11.7, 2026-11-21)
+
+`tools/results/rar-s135-read2000-2000` (manifest
+`colosseum_match_rar-s135-read2000-2000_20261121_112249`, `results.txt`
+`AE3AB2E9…`), `run_read.ps1 -At 2000 -Games 2000`, seed 2026113503: the tune
+build on both sides, `d711at2000` with the 225 values of `theta-2000.txt`
+(the runner's resolved options for side A equal it value for value; 204
+differ from the start), `d711start` at the engine's defaults. 2,000 games,
+completed, no fault, no time loss, no abnormal game.
+
+| Result | Value |
+|---|---|
+| Elo | **+7.8 ± 9.1** (−1.3 to +16.9) |
+| nElo | +13.1 ± 15.2 |
+| W / D / L | 550 / 945 / 505 |
+| Pentanomial | [27, 218, 475, 243, 37] |
+| Mean depth, nodes a move | 17.29 against 17.47; 98,020 against 97,708 |
+
+**By the rule: theta is baked.** The interval does not lie wholly below
+zero. That means no harm beyond about −15 Elo shown; it is not a gain
+shown, since the interval includes zero.
+
+*Calibration of item 5:* +8 Elo, band −3 to +20: **hit**, +7.8. Wholly
+above zero (0.40): not. Wholly below zero (0.03): not. The record's most
+likely failure, a quiet stop at 2,000 with a read inside ±9 Elo, is what
+happened: theta is baked on the keep rule alone.
+
 ## Use
 
 Theta, if kept by the read at the stop, is baked by D.7.11.8 (the tune

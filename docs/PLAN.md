@@ -386,7 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.11.7 | READY_FOR_IMPLEMENTATION | V | The read at the stop: theta against the start, 2,000 games on the tune build; baked unless wholly below zero |
 | D.7.11.8 | READY_FOR_IMPLEMENTATION | I1 | Theta baked; the tune build at its defaults and the default build reproduce the new fingerprint |
 | D.7.11 | READY_FOR_IMPLEMENTATION | V | Researched 2026-11-20 (`analysis/d711_fit_2026-11-20.md`); closes when D.7.11.8 bakes theta or D.7.11.7 keeps the start |
 | D.7.12 | RESEARCH | I1 | `score cp` calibrated on the fitted kernel's games, output only; the fitting tool |
@@ -3277,7 +3276,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           largest 1.33). The pause tested in its opening minutes passed:
           the move check 0.0 on the paused run and 1.2e-12 on the resumed
           one.
-        - **D.7.11.7 The read at the stop — `V`.**
+        - **D.7.11.7 The read at the stop — `V`, DONE 2026-11-21.**
           Theta (`theta-<K>.toml`, the checkpoint the maintainer names)
           against the start, the tune build on both sides, 2,000 games at
           `3+0.03`, about 27 minutes, registered in RAR-S135.
@@ -3293,6 +3292,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           - *An interim read* is optional and the maintainer's: 1,000
             games, the tune paused or already stopped. Wholly below zero
             is reported, and the maintainer may then place `STOP`.
+          *Result (2026-11-21, RAR-S135):* `theta-2000` against the
+          start **+7.8 ± 9.1 Elo** (nElo +13.1 ± 15.2) over 2,000 games, no
+          fault: not wholly below zero, so theta is baked; no gain shown.
+          The quiet stop checked afterwards: no gradient persists across
+          the tune's two windows (their z correlate at −0.03).
         - **D.7.11.8 The theta baked — `I1`.**
           As D.7.6.2 baked the first: `tools/spsa_theta_audit.py <run>
           <config> --at <K>` first, each named coordinate given its line
