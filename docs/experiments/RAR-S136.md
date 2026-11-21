@@ -7,6 +7,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Kind:** PLAN D.7.13, the one strength gate of the D.7 cluster
   (maintainer decisions 2026-11-16 and 2026-11-19: the new kernel must
   gain). Its uses are PLAN's, copied below.
+- Disposition: accepted — H1 2026-11-21 at 520 pairs; +67.0 ± 8.1 Elo at `10+0.1` and +73.3 ± 8.1 at four threads beside it.
 - **What it compares:** everything D.7 built against what it replaces.
   - `d713kern`: the compact kernel; D.7.8's repairs and
     speed pass; Reckless's time manager (D.7.9.1); the first fit baked

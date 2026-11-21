@@ -4,6 +4,7 @@ Indexed under *3. Search and selectivity › Search-oracle observations* in [`do
 
 - **Date / owner:** registered 2026-11-15 (PLAN D.7.2.4), before any game. Preparation is the agent's; the night command is the maintainer's (about four hours).
 - **Kind:** observation. It replaces RAR-O11's withdrawn equal-node reads (its (d2), (d4) and the 150,000-node columns of (a)) and decides nothing by itself; with RAR-O11's clock reads and D.7.2.3 it is an input to the maintainer's decision on D.7's donor.
+- Disposition: observation — read 2026-11-16: the start level at equal work (+0.5 ± 11.9); Basilisk's search programme gained 55.2 ± 16.6 more per move made.
 - **Why:** RAR-O11 compared engines at equal *reported* nodes, which are not equal work. Each engine was measured this time.
 - **The unit and its measurement (2026-11-15, zero games):**
   - *The unit.* A position the search tree reaches by a move or a null move, Rarog's head contract since D.6.8 (RAR-S124).

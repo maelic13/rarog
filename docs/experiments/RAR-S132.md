@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 
 - **Date / owner:** registered 2026-11-19, before any game. Both runs are
   the maintainer's commands.
-- **Disposition:** read 2026-11-19: nElo +4.1 ± 15.2, above the −13 harm
+- Disposition: retained — read 2026-11-19: nElo +4.1 ± 15.2, above the −13 harm
   line, and no fault or time loss in the 200 four-thread games, so the
   change is kept; fingerprint 3,320,355 / EBF 2.317. Inside the
   prediction's 80% band.

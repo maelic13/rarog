@@ -5,7 +5,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Date / owner:** registered 2026-11-20, before any game. Run by the
   agent overnight on the maintainer's delegation of 2026-11-19 ("you are
   allowed to run long matches and reads during this night").
-- **Disposition:** read 2026-11-20: nElo −4.9 ± 15.2, the interval
+- Disposition: no-change — read 2026-11-20: nElo −4.9 ± 15.2, the interval
   [−20.1, +10.3] not wholly above zero: D.7.8.10 closes `NO_CHANGE`.
   Inside the prediction's 80% band.
 - **Kind:** PLAN D.7.8.10, a `V` screen inside D.7's cluster, its rule

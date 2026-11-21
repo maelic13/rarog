@@ -1,4 +1,4 @@
-# RAR-S135 — D.7.11: the finishing fit, one rule 7c run over 225 coordinates of the repaired kernel — REGISTERED 2026-11-20, before any game
+# RAR-S135 — D.7.11: the finishing fit, one rule 7c run over 225 coordinates of the repaired kernel — REGISTERED 2026-11-20, before any game; READ 2026-11-21: theta baked
 
 Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -11,6 +11,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   its baked centres. Research and decisions:
   `analysis/d711_fit_2026-11-20.md` (the record), frozen; this registration
   states them and adds the binary, the files, the seeds and the drivers.
+- Disposition: retained — quiet at its first checkpoint 2026-11-21 (2,000 iterations); theta +7.8 ± 9.1 Elo against the start, not wholly below zero, baked (`16f93cb`).
 - **Inherits:** RAR-S128 (the first fit, stopped live at 2,000 and baked,
   `73966eb`), D.7.8's repairs (ProbCut's bar at the donor's scale, the
   quiescence and evaluation-only table depth, the root's own order), D.7.9.1

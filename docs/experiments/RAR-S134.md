@@ -6,6 +6,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   the maintainer's commands.
 - **Kind:** PLAN D.7.10, a diagnostic and not a gate (D.7.13 gates the
   cluster). Its three uses are frozen in PLAN and copied below.
+- Disposition: observation — read 2026-11-20: +63.8 ± 9.1 Elo at `3+0.03` and +65.0 ± 8.3 at `10+0.1` against the classic; the fit runs at `3+0.03`.
 - **What it compares:** the whole of what D.7 has built so far against
   what it replaces:
   - the compact kernel, with its first fit baked (RAR-S128), D.7.8's

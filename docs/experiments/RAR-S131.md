@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 
 - **Date / owner:** registered 2026-11-19, before any game. The run is the
   maintainer's command.
-- **Disposition:** read 2026-11-19: nElo +1.2 ± 15.2, above the −13 harm
+- Disposition: retained — read 2026-11-19: nElo +1.2 ± 15.2, above the −13 harm
   line, so the change is kept; fingerprint 3,348,508 / EBF 2.329. Inside
   the prediction's 80% band.
 - **Kind:** PLAN D.7.8.2, a repair inside D.7's one cluster: no gate of its

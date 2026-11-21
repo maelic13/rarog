@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 
 - **Date / owner:** registered 2026-11-19, before any game. The run is the
   maintainer's command.
-- **Disposition:** read 2026-11-19: nElo −7.2 ± 15.2, the interval
+- Disposition: retained — read 2026-11-19: nElo −7.2 ± 15.2, the interval
   [−22.4, +8.0] not wholly below zero, so by the frozen reading the donor's
   2,536 is the fitted table's seed (`e63b652`); the fingerprint moves to
   3,278,226 / EBF 2.313. Inside the prediction's 80% band.

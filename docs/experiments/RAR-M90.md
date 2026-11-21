@@ -6,6 +6,7 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
   maintainer's command.
 - **Kind:** a measurement at a checkpoint (PLAN rule 10; PLAN D.7.14: "the
   pre-NNUE meter read again"). It accepts and rejects nothing.
+- Disposition: observation — read 2026-11-21: 3,508.1 ± 8.2 with the field pinned, 96.6 below Stockfish 16 HCE and −100.6 head to head; it decides nothing.
 - **Why now:** the maintainer adopted the new kernel on 2026-11-21 after
   RAR-S136's H1. The meter (PLAN section 1) is Rarog's gap to Stockfish 16
   with `Use NNUE=false`, read head to head and in a rated field; its last

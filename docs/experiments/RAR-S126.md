@@ -4,7 +4,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 
 - **Date / owner:** registered 2026-11-18, before any game. The run is the
   maintainer's command.
-- **Disposition:** read 2026-11-18: nElo −11.1 ± 15.2, the interval
+- Disposition: observation — read 2026-11-18: nElo −11.1 ± 15.2, the interval
   [−26.3, +4.1] not wholly below zero, so not clearly negative by the
   frozen reading; recorded, and D.7.6's fit is next. Outside the
   prediction's 80% band.

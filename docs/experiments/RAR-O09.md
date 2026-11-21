@@ -4,6 +4,7 @@ Indexed under *3. Search and selectivity › Search-oracle observations* in [`do
 
 - **Date / owner:** registered 2026-11-13, before any game and before the arms are built. Preparation is D.7.2's; the run is the maintainer's command (four fixed matches, about three hours).
 - **Kind:** observation with a frozen use: PLAN D.7's decision rule reads match (1).
+- Disposition: observation — match (1) read 2026-11-14: the donor's hybrid +3.47 ± 8.37 over the head at equal work; PLAN D.7's rule does not fire; matches (2) to (4) not played.
 - **Inherits:** [RAR-O08](RAR-O08.md) match (5): `reckless-hce` **+22.50 ± 7.85** over `rarog-head` at `3+0.03` with the bridge returned as time odds. That figure bundles tree shape, kernel speed and clock use.
 - **Revisions:** Rarog engine source `112eb14` (bench **8,935,848 / EBF 2.480**). Reckless `0756957` with `tools/oracle-hybrids/reckless-0756957-rarog-hce.patch` (`c546d2c4…`), linking the same Rarog source. The evaluation is frozen, so a later engine head changes the arms' names and hashes, not the question; the result names what was built.
 - **Arms** (built in D.7.2 by `tools/oracle-hybrids/README.md`'s recipes; SHA-256, `id name` and bench go in the result):

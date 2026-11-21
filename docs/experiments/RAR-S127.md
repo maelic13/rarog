@@ -6,7 +6,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   ("diagnose mates first") after RAR-S126 and before D.7.6's registration.
 - **Kind:** a zero-game diagnosis of D.7.4.1's open item, position 202's
   class (`analysis/d741_fold_2026-11-18.md`).
-- **Disposition:** no port defect found. The trees grow because lines run
+- Disposition: observation — no port defect found. The trees grow because lines run
   to whatever ply cap exists once a mate is in view; ordinary lines are the
   donor's length; the one containment, Rarog's line bound, reshapes the whole
   kernel (bench −36%). Nothing is changed before D.7.6; the item stays in

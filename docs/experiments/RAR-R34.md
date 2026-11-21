@@ -8,6 +8,7 @@ Indexed under *4. Root search, time management and SMP* in [`docs/EXPERIMENTS.md
   maintainer decision (one donor's time manager, not a hybrid). It has no
   gate of its own: D.7.13 gates the cluster. These are harm reads, with the
   forfeit count as the invariant.
+- Disposition: retained — read 2026-11-20: +30.0 ± 8.8 Elo at `3+0.03` and +18.6 ± 8.2 at `10+0.1`, no fault or time loss; the time manager kept (`38e947c`).
 - **Inherits:** `analysis/d79_clock_2026-11-20.md`. Rarog's clock was a
   hybrid never fitted on Rarog. On the kernel it spent 0.59–0.61 of the
   base in its first twenty moves, where the donor's spent 0.84–0.87

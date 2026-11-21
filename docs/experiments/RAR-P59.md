@@ -17,6 +17,7 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
   exception.
 - **Kind:** an observation. Nothing was registered and no prediction was
   frozen, so it accepts and rejects nothing.
+- Disposition: observation — stopped 2026-11-20 at 9,495 of 14,400 games; 2.7.0 fourth of nine, 137.5 below Stockfish 16 HCE on this host; not a gate.
 
 ## The field: native and emulated
 
