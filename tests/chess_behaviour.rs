@@ -67,11 +67,14 @@ const fn mated(moves: i32) -> i32 {
 }
 
 /// Mates with Stockfish's shortest distance and a depth that finds it, two
-/// plies or more past the first depth that does.
+/// plies or more past the first depth that does. That first depth moves
+/// with the search's seeds, so it is measured on them: on the fitted seeds
+/// of 2026-11-21 KRK's mate first shows at depth 6 and KQK's at 20 (at 5
+/// and 8 on the seeds before them).
 const MATES: [(&str, i32, u32); 3] = [
     ("6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1", 1, 3),
-    ("k7/8/2K5/8/8/8/8/7R w - - 0 1", 2, 5),
-    ("8/k7/8/8/3K4/8/8/1Q6 w - - 2 2", 3, 10),
+    ("k7/8/2K5/8/8/8/8/7R w - - 0 1", 2, 8),
+    ("8/k7/8/8/3K4/8/8/1Q6 w - - 2 2", 3, 22),
 ];
 
 /// Plays `line` from `fen` and returns its length in moves of the side to
@@ -148,6 +151,8 @@ fn a_mated_side_reports_the_distance_to_its_mate() {
 /// the line reported. The search re-derives such a mate, so a mate stored
 /// under the wrong plies does not show here; the table's round-trip test
 /// (`decisive_scores_round_trip_through_the_table_at_any_ply`) catches that.
+/// The table is read: one ply deep, the warm searcher reports a mate that
+/// a cold one cannot see that shallow.
 #[test]
 fn two_plies_down_its_line_a_mate_is_nearer() {
     let (fen, _, depth) = MATES[2];
@@ -158,19 +163,24 @@ fn two_plies_down_its_line_a_mate_is_nearer() {
     assert_eq!(first.score, mating(moves));
     let position = after(&after(&start, first.pv[0]), first.pv[1]);
     let next = position.to_fen();
+    let glance = search_with(&mut searcher, &position, Some(1), 0);
+    let cold_glance = search_with(&mut Searcher::default(), &position, Some(1), 0);
+    assert!(
+        glance.score >= mating(moves),
+        "{next}: the warm table holds the mate ({})",
+        glance.score
+    );
+    assert!(
+        cold_glance.score < mating(moves),
+        "{next}: one ply sees no mate without the table ({})",
+        cold_glance.score
+    );
     let warm = search_with(&mut searcher, &position, Some(depth - 2), 0);
-    let cold = search_with(&mut Searcher::default(), &position, Some(depth - 2), 0);
     let read = mating_line_moves(&next, &warm.pv).expect("the warm line is a mate");
     assert_eq!(warm.score, mating(read), "{next}: the score is its line");
     assert!(
         read < moves,
         "{next}: mate in {read} two plies after a mate in {moves}"
-    );
-    assert!(
-        warm.nodes < cold.nodes,
-        "the warm table is read: {} vs {}",
-        warm.nodes,
-        cold.nodes
     );
 }
 
