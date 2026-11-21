@@ -1,4 +1,4 @@
-# RAR-S136 — D.7.13: the gate, the fitted, repaired kernel against the classic kernel by SPRT `[0,3]` at `3+0.03`, with 2,000 games at `10+0.1` and 2,000 at four threads beside it — REGISTERED 2026-11-21, before any game
+# RAR-S136 — D.7.13: the gate, the fitted, repaired kernel against the classic kernel by SPRT `[0,3]` at `3+0.03`, with 2,000 games at `10+0.1` and 2,000 at four threads beside it — READ 2026-11-21: H1 at 520 pairs, +67.0 Elo at `10+0.1` and +73.3 at four threads
 
 Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -142,3 +142,86 @@ at its cap), 80 minutes for `10+0.1` and 2 hours for four threads: about
 - The failure that would surprise: a four-thread read far below the
   one-thread gain. That would point at the shared table or the clock under
   threads, which no D.7 read has measured.
+
+## Results (read 2026-11-21)
+
+All three runs completed, every game a rules result, no fault and no time
+loss by either arm (each manifest's `run_status`, `pentanomial`, `faults`
+and `time_losses` lines; the pentanomial recount of `games.pgn` agrees).
+The host read 4.1%, 1.7% and 1.2% busy at the three starts; no waiver.
+
+| Run | Manifest | Games | Elo | nElo | Pentanomial |
+| --- | --- | --- | --- | --- | --- |
+| Gate, `3+0.03` | `colosseum_sprt_rar-s136-gate_20261121_135534` | 1,040 | +79.9 ± 12.3 | +142.2 ± 21.1 | 1, 52, 217, 211, 39 |
+| `10+0.1` | `colosseum_match_rar-s136-ltc_20261121_140723` | 2,000 | **+67.0 ± 8.1** | +128.3 ± 15.2 | 6, 98, 437, 427, 32 |
+| Four threads | `colosseum_match_rar-s136-4t_20261121_152211` | 2,000 | **+73.3 ± 8.1** | +141.6 ± 15.2 | 2, 95, 426, 439, 38 |
+
+- **The gate: H1 accepted** at 520 pairs, LLR 2.947 against 2.944
+  ("the gain is at least 3.00 normalized Elo"). Its Elo is read at a
+  boundary stop and overstates the effect; the two fixed reads do not.
+
+Search lines (each `results.txt`), `d713kern` against `d7classic`:
+- `3+0.03`: depth 16.05 against 14.40 mean; 124,327 against 120,472
+  nodes a move; 1.83M against 1.82M nodes a second.
+- `10+0.1`: depth 19.74 against 18.13; 422,684 against 426,899 nodes a
+  move; 1.91M against 1.97M nodes a second.
+- Four threads: depth 17.60 against 15.43; 543,122 against 512,472 nodes
+  a move; 8.26M against 8.00M nodes a second.
+
+Four-thread placement: the manifest and the resolved configuration hold
+the explicit list, 4 CPUs a game, and the journal's three slots played
+669, 663 and 668 games. Each side's four-thread rate is 4.51 (`d713kern`)
+and 4.39 (`d7classic`) times its one-thread rate in the gate, against
+2.65 when Windows packs a game's threads on SMT siblings and 4.03 on one
+logical CPU a core (RAR-M82), so no slot was packed. The rest of the
+ratio is likely three games sharing the memory instead of fourteen.
+
+Clock profile at `10+0.1` (`clock_screen.py`, output `clock_ltc.log` in
+`analysis/artifacts/d713-gate-2026-11-21/`):
+- Spend of the budget, pooled: 0.920 against 0.901. The first twenty
+  moves take 0.737 of the base against 0.678.
+- The kernel's clock goes lower: its floor's median is 332 ms against
+  504, and 45.4% of its sides fall under 200 ms at some move against
+  34.4%; neither arm's sides fall under 100 ms. Of its undecided moves,
+  8.8% are played under 500 ms against 3.7%.
+- The process's hold, the charged time less its CPU time, is the same for
+  both: the per-game maximum's p99 is 24.0 ms against 23.3. The
+  manifest's `harness_hold_ms`, larger for the kernel (p999 1,005 ms
+  against 341), is the charged time less the time in the last `info`
+  line, so it counts the interrupted iteration the kernel's driver
+  discards (PROCESS, *Harness*); it is not a hold.
+
+### Uses
+
+1. **H1: D.7.14 opens**, adoption by the maintainer's decision. D.7.15
+   does not open.
+2. **The reads beside it:** +67.0 ± 8.1 Elo at `10+0.1` and +73.3 ± 8.1
+   at four threads, both wholly above zero. They decide nothing alone.
+3. **The clock's check** (PLAN D.7.11, item 1's retry trigger): the
+   `10+0.1` read is 12.9 Elo below the gate's estimate, inside their
+   combined intervals (±20.4), and above RAR-S134's fixed `3+0.03` read
+   (+63.8 ± 9.1), so the trigger's first clause does not fire. Its second
+   clause, a factor at one end on more than 90% of iterations, needs the
+   time manager's factors, which the game records do not carry; it is not
+   read here. The clock stays with H.3. Its lower clock at `10+0.1` lost
+   no game on time.
+
+### Calibration
+
+- Gate: H1 (0.97) at 520 pairs, inside 300 to 900 pairs (0.75); +79.9
+  at the stop against +70, inside the band of +50 to +95.
+- `10+0.1`: +67.0 against +68, a hit.
+- Four threads: +73.3 against +55 (band +25 to +85), inside the band but
+  a miss in magnitude of +18. The assumption that failed: that the
+  kernel's narrow windows and the time manager, with no four-thread read
+  against the classic, would keep less of the one-thread gain under
+  threads. The gain holds whole at four threads, and the surprising
+  failure did not happen.
+- No time loss by `d713kern` (0.75): none in any run.
+- The `10+0.1` read played its registered 2,000 games; when the maintainer
+  asked during it whether 1,000 would do, the registered length was kept
+  (2026-11-21).
+
+Evidence layer: the SPRT on the gain bracket at `3+0.03` is the one
+acceptance; the fixed reads are Elo at `10+0.1` and at four threads; the
+clock profile is not Elo.
