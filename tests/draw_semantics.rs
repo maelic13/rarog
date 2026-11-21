@@ -118,7 +118,10 @@ fn a_stored_win_never_answers_a_position_repeating_the_game_history() {
 
     let mut after_d1d2 = Board::from_fen(START).unwrap();
     after_d1d2.make_move(mv(&after_d1d2, "d1d2"));
-    let stored = search(&mut searcher, &after_d1d2, None, 12);
+    // Two plies past the first depth whose search stores the win: 13 on
+    // the fitted seeds of 2026-11-21 (12 on the seeds before them, at
+    // -1,113 there, so with no margin).
+    let stored = search(&mut searcher, &after_d1d2, None, 15);
     assert!(
         stored <= -1_000,
         "the warm-up must store a win for White, got {stored}"
