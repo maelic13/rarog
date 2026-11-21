@@ -32,6 +32,9 @@ hand-crafted evaluation: get as close to it as possible, and beat it if it
 can be done. The meter is Rarog's gap to it, read head to head and in a
 rated field. On 2026-11-18 Rarog 2.7.0 is **160 below** it in a 13-engine
 field and **−164.8** [−187.1, −143.6] head to head at `3+0.03` 1T (RAR-M89).
+On 2026-11-21 the adopted kernel is **96.6 below** it in the same field,
+pinned at RAR-M89's ratings, and **−100.6** [−119.4, −82.3] head to head
+(RAR-M90).
 The maintainer may change the target later. It sets the direction; E.2's
 gate below is unchanged until the maintainer replaces it.
 
@@ -80,7 +83,7 @@ classical stage.
 | B search | 251 equal-time (247.97, RAR-O03) | 120–200 | selectivity explains 272; a Reckless-shaped stack fitted locally. **Measured at B.9: 272 ± 14 recovered**, G(0) −247.97 → +24.24 ± 8.01 (RAR-O04): above the band, the head beats the oracle |
 | C evaluation | 182 same-search at equal nodes, 266 at equal time (RAR-O05; RAR-O02's 329 was the 2.3.2 evaluation); 129 at equal nodes after C.3 (RAR-O06); **99 at C.11 (RAR-O07)** | 100–160 | six families, whole-surface refits, endgame conversion. **C.0 (2026-10-05):** C.0's screen supports two family clusters (king safety, winnability and scale), not six, and its prior for the family clusters together is 30–90 (`analysis/eval_programme_2026-10-05.md`). **C.3.6 (2026-10-09):** C.2's refit and C.3's king unit closed 52 ± 26 of the 182 in the same search (RAR-O06); one reading does not split them, and the refit is not a family cluster. The band is corrected at C.11 by RAR-O07's measurement (registered 2026-10-11), never by an estimate. **Measured at C.11 (RAR-O07, 2026-10-21): 82.5 ± 25.2 recovered at equal nodes**, +181.7 → +99.2 ± 16.6: below the planned 100–160 and in the upper half of C.0's 30–90 prior for the family clusters; Rarog's own strength gain over Phase C is read by C.11's pool gauntlet and E.1, not by this meter |
 | D clock, SMP, robustness | unmeasured | 15–40 | Reckless-shaped node-fraction TM; 4T quality |
-| D.7 search shape | 22.5 ± 7.9 at equal clock against Phase B's donor as it is (RAR-O08, match 5); tree shape at equal work +3.5 ± 8.4 (RAR-O09), so most of it is not shape; the speed and clock shares are unread | 0–70 | conditional on D.7.2's reads or the maintainer's decision: the kernel in the donor's whole form, seeded from the hybrid's configuration and fitted. Equal strength is accepted (maintainer decision 2026-11-13), so the band starts at 0. **2026-11-19:** built and fitted once, the kernel reads +56.8 ± 9.5 over its donor's seeds (RAR-S128) and about +50 over the classic by a sum of two reads; repairs, clock use and a finishing fit follow, and D.7.13 is its one gate. **2026-11-21:** the gate accepts (RAR-S136, H1 at 520 pairs), with +67.0 ± 8.1 at `10+0.1` and +73.3 ± 8.1 at four threads against the classic; adoption is D.7.14 |
+| D.7 search shape | 22.5 ± 7.9 at equal clock against Phase B's donor as it is (RAR-O08, match 5); tree shape at equal work +3.5 ± 8.4 (RAR-O09), so most of it is not shape; the speed and clock shares are unread | 0–70 | conditional on D.7.2's reads or the maintainer's decision: the kernel in the donor's whole form, seeded from the hybrid's configuration and fitted. Equal strength is accepted (maintainer decision 2026-11-13), so the band starts at 0. **2026-11-19:** built and fitted once, the kernel reads +56.8 ± 9.5 over its donor's seeds (RAR-S128) and about +50 over the classic by a sum of two reads; repairs, clock use and a finishing fit follow, and D.7.13 is its one gate. **2026-11-21:** the gate accepts (RAR-S136, H1 at 520 pairs), with +67.0 ± 8.1 at `10+0.1` and +73.3 ± 8.1 at four threads against the classic; adopted the same day (D.7.14), the kernel reads 3,508.1, 96.6 below Stockfish 16 HCE and +63.5 over 2.7.0 in RAR-M89's field (RAR-M90) |
 | Speed inside B and C | — | 10–30 | per-node cost of the new search and evaluation modules. **B.9:** the B head is 26.2% slower than 2.4.0 in pooled bench NPS (RAR-P35), after B.7 won back about 20% inside B (+35.5 Elo, RAR-S98); B's gates already include that cost and that recovery, so this row recorded nothing of B's separately and now applies to C. **C.12** owns the recovery (added 2026-10-13) |
 
 **Corrected at B.9:** the search programme alone recovered more than its
@@ -382,12 +385,10 @@ On 2026-11-19 (maintainer decisions, after the audit of D.7,
 to run in ascending order (D.7.7 to D.7.15; HISTORY's number map), D.6.28
 moved into them as D.7.9, and every step of D.6, closed or open, was
 reopened for a review on the new kernel after D.7, in the next pull
-request. The rows below are D.7's, then D.6's in number order.
+request. D.7 closed 2026-11-21; the rows below are D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.14 | RESEARCH | V | Adopted 2026-11-21 (maintainer decision on RAR-S136); the changelog, the margin block and D.11's facts done the same day; left: RAR-M90, the meter (the maintainer's run), the checkpoint rows, the squash |
-| D.7.15 | RESEARCH | R3 | Opens only if D.7.13 does not gain: the kernel discarded, the classic restored, then Rarog's own forms and Stockfish's form |
 | D.6.1 | RESEARCH | R2 | Review on the new kernel after D.7: the kernel's partition counts castling quiet (`is_quiet_move`); confirm it in pruning, the histories and SEE |
 | D.6.2 | RESEARCH | R2 | Review after D.7: a queen push is noisy in the kernel's partition; confirm quiescence and ProbCut generate and search it |
 | D.6.3 | RESEARCH | R2 | Review after D.7: the kernel types the null-move and ProbCut children as its donor does; confirm, and whether the classic's finding has an instance left |
@@ -1413,7 +1414,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   read as explosion.
   Evidence layer: counters and node counts choose and never accept; only the
   registered gate does (AGENTS, *Gating*).
-- **D.7 Search shape: the kernel against its donor on Rarog's evaluation, rebuilt whole in Reckless's form if the reads or the maintainer say so — `R3` investigation, `I1`/`I2`/`V`/`R2` sub-steps.**
+- **D.7 Search shape: the kernel against its donor on Rarog's evaluation, rebuilt whole in Reckless's form if the reads or the maintainer say so — `R3` investigation, `I1`/`I2`/`V`/`R2` sub-steps, DONE 2026-11-21.**
   Added 2026-11-13 from RAR-O08 and
   `analysis/search_shape_decision_2026-11-13.md` (maintainer decision the
   same day). Reckless's search, unchanged, on Rarog's evaluation is
@@ -3423,7 +3424,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       clock's check does not fire: the `10+0.1` read is 12.9 below the
       gate's, within their combined intervals, and above RAR-S134's
       `3+0.03` read, so the clock stays with H.3.
-    - **D.7.14 Adoption and checkpoint — `V`, then `M`.**
+    - **D.7.14 Adoption and checkpoint — `V`, then `M`, DONE 2026-11-21.**
       The maintainer's decision on D.7.13. On adoption: the pre-NNUE meter
       read again (RAR-M89's field, the gap to Stockfish 16 with `Use
       NNUE=false`); pooled NPS and conversion recorded; `CHANGELOG.md`'s
@@ -3458,9 +3459,19 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
         nodes are two different trees for the two kernels and no
         decision reads it; D.13 and D.14 each register their own
         baseline.
-      Left: RAR-M90's read and its rows in GUIDE's checkpoint, then the
-      squash.
-    - **D.7.15 If the kernel does not gain — `R3`.**
+      *Done 2026-11-21, RAR-M90 read:* the kernel 3,508.1 ± 8.2 in
+      RAR-M89's field pinned at its ratings, 96.6 below Stockfish 16
+      HCE and −100.6 [−119.4, −82.3] head to head; +63.5 over 2.7.0 in
+      the field and +78.3 [+60.6, +96.4] head to head; no fault or
+      time loss in 7,800 games. Conversion 20.6 draws and 2.8 losses a
+      piece up per 1,000 games against 2.7.0's 15.4 and 3.2, a count a
+      game and not a chance, so unresolved; 1.92 M nodes a second in
+      play against 2.7.0's 1.96 M, 2.2 plies deeper. GUIDE's
+      checkpoint rows carry them. `d7-kernel` reaches `master` as one
+      squash through the maintainer's pull request; the review of D.6
+      on the new kernel opens in the next.
+    - **D.7.15 If the kernel does not gain — `R3`, CLOSED 2026-11-21.**
+      *Not opened:* D.7.13's H1 (RAR-S136) adopted the kernel.
       Opens only on D.7.13's H0 or its cap without H1 (maintainer decision
       2026-11-19). The new kernel is discarded and the classic kernel
       restored from D.7.7's parent commit (`5d6f737`). Then, in this order and each by

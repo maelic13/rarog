@@ -1,4 +1,4 @@
-# RAR-M90 — D.7.14: the pre-NNUE meter read again, the adopted kernel against RAR-M89's field, a 7,800-game Colosseum gauntlet at `3+0.03` — REGISTERED 2026-11-21, before any game
+# RAR-M90 — D.7.14: the pre-NNUE meter read again, the adopted kernel against RAR-M89's field, a 7,800-game Colosseum gauntlet at `3+0.03` — READ 2026-11-21: 3,508.1 ± 8.2, 96.6 below Stockfish 16 HCE, −100.6 head to head
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -120,3 +120,105 @@ sibling usually shrinks against foreign engines.
 5. **Conversion:** fewer than 2.7.0's 18.6 thrown a thousand, probability
    0.6 (RAR-S126 saw won endings converted better by the kernel).
 6. **Faults:** no time loss by the kernel, 0.9.
+
+## Results (read 2026-11-21)
+
+Played 2026-11-21 17:41 to 19:08 UTC on the match host in one attempt, not
+interrupted; the host read 3.7% busy at the start, no waiver. 7,800 of 7,800
+games scored, status `completed` (manifest
+`colosseum_gauntlet_rar-m90-meter_20261121_184125`; `result.json`
+`9d6e02c1…66c5`, `results.txt` `16714a40…9f1f`, `games.pgn`
+`c658e545…4637`). Every game ended by the rules: 5,205 mates, 1,565
+repetitions, 610 insufficient material, 366 fifty-move draws, 54
+stalemates. **No fault and no time loss by any engine**, so nothing is
+removed.
+
+**1. The meter.** The kernel rates **3,508.1 ± 8.2** [3,499.9, 3,516.4]
+with the field pinned, so the gap to Stockfish 16 HCE is **96.6**. Head to
+head **−100.6** [−119.4, −82.3] (pentanomial; the trinomial interval is
+[−123.3, −78.6]). The interval is the kernel's alone: each pin carries
+RAR-M89's own, about ±7. Every pair, from the kernel's side, with
+Colosseum's pentanomial 95% interval:
+
+| Opponent | W-D-L | Elo |
+|---|---|---|
+| Stockfish 16 HCE | 103-225-272 | −100.6 [−119.4, −82.3] |
+| Berserk 4.7.0 HCE | 168-204-228 | −34.9 [−54.6, −15.3] |
+| Stockfish 11 | 151-216-233 | −47.8 [−67.3, −28.6] |
+| Ethereal 14.40 HCE | 236-209-155 | +47.2 [+26.4, +68.4] |
+| Houdini 6.03 | 207-223-170 | +21.5 [+1.7, +41.4] |
+| Rarog 2.7.0 | 229-275-96 | +78.3 [+60.6, +96.4] |
+| Dragon 3.3 HCE | 276-196-128 | +87.5 [+66.8, +108.8] |
+| Basilisk B.11.1 head | 289-210-101 | +112.7 [+93.1, +132.9] |
+| Ethereal 13.07 | 301-186-113 | +112.7 [+92.0, +134.1] |
+| Fire 8.3 | 301-188-111 | +113.9 [+93.6, +135.1] |
+| Rarog 2.5.0 | 368-193-39 | +214.0 [+192.9, +236.6] |
+| rofChade 2.3 | 401-154-45 | +237.2 [+214.0, +262.4] |
+| Koivisto 4.83 | 457-116-27 | +313.0 [+285.8, +343.6] |
+
+Fourth of fourteen: behind Stockfish 16 HCE, Berserk 4.7.0 HCE (35.5
+above) and Stockfish 11 (34.3 above), ahead of Ethereal 14.40 HCE (by 41.2)
+and Houdini 6.03 (by 46.4). Counted one version a family among the
+hand-crafted engines, Rarog is third, after Stockfish and Berserk.
+
+**2. The gain over the release:** **+63.5** in the field (3,508.1 less
+3,444.6) and **+78.3** [+60.6, +96.4] head to head.
+
+**3. Conversion** (`conversion_audit.py`, output `conversion_m90.log` and
+`.json` in `analysis/artifacts/d714-meter-2026-11-21/`), per 1,000 games
+after a persistent piece-up, Poisson 95%:
+
+| Engine and games | Draws | Losses | Thrown away |
+|---|---|---|---|
+| `d713kern`, RAR-M90 | **20.6** (161) [17.6, 24.1] | **2.8** (22) [1.8, 4.3] | 23.5 (183) |
+| 2.7.0, RAR-M89 | 15.4 (120) [12.8, 18.4] | 3.2 (25) [2.1, 4.7] | 18.6 (145) |
+
+Most of the rise is in the ending: 131 of the kernel's draws against 82.
+The kernel also wins more, 3,487 games against 2.7.0's 3,103, so it reaches
+more piece-up positions; the tool counts a game, not a chance, so a worse
+rate a chance is not shown. It is not resolved. RAR-S126 saw the unfitted
+kernel convert won endings better than the classic, a comparison of
+another kind.
+
+**4. Speed in games** (`results.txt`): the kernel 1.92 M nodes a second,
+depth 16.17 mean (16.33 without mate scores, median 14), 126,201 nodes and
+65.9 ms a move; 2.7.0 in the same games 1.96 M, 14.46 (14.14, median 13),
+128,838 nodes and 65.6 ms. The kernel searches 2.5% fewer nodes a second
+than the release's binary and goes 2.2 plies deeper at the same time a
+move. RAR-S136 read it level with `d7classic`, a local build of the
+classic, at `3+0.03` (1.83 M against 1.82 M); the release asset is another
+build, so the 2.5% is not attributed. The kernel's `harness_hold_ms` (p999
+260, max 1,405 ms, no move over the margin) is the interrupted iteration,
+as in RAR-S136.
+
+### Uses
+
+1. and 2. fill GUIDE's *Pre-NNUE goal* row and PLAN section 1's meter, and
+   are the strength sentence's source for the 2.8.0 release line.
+3. fills the *Conversion* row, as unresolved.
+4. fills the *Speed* row.
+
+None decides anything; with them D.7.14 is done.
+
+### Calibration
+
+- Rating 3,508.1 against 3,505 (80% band 3,480 to 3,530): a hit; the gap
+  96.6 against about 100.
+- Against Stockfish 16 HCE −100.6 against −105 (−135 to −75): a hit.
+- Against 2.7.0 head to head +78.3 against +65 (+45 to +85): inside the
+  band, 13 high in magnitude. The field gain +63.5 against +60: a hit. The
+  basis held: the gain against foreign engines is smaller than against
+  the sibling.
+- Place above Ethereal 14.40 HCE and Houdini and below Berserk and
+  Stockfish 11 (0.6): a hit.
+- Conversion under 18.6 thrown a thousand (0.6): **a miss**, 23.5. The
+  assumption that failed: that RAR-S126's better endings against the
+  classic would lower the meter's rate a game. The rate a game rose with
+  the wins, and the instrument cannot separate a rate from its exposure,
+  so the miss is in the instrument's reading; whether it is also in the
+  mechanism is not known.
+- No time loss by the kernel (0.9): none.
+
+Evidence layer: ratings on RAR-M89's scale with the field pinned, and
+head-to-head Elo, at `3+0.03` 1T; conversion counts and nodes a second are
+not Elo.
