@@ -8,7 +8,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
   (maintainer decisions 2026-11-16 and 2026-11-19: the new kernel must
   gain). Its uses are PLAN's, copied below.
 - **What it compares:** everything D.7 built against what it replaces.
-  - `d713kern`: the compact kernel in Reckless's form; D.7.8's repairs and
+  - `d713kern`: the compact kernel; D.7.8's repairs and
     speed pass; Reckless's time manager (D.7.9.1); the first fit baked
     (RAR-S128) and the finishing fit baked (RAR-S135, D.7.11.8); the score
     printed on its fitted scale (D.7.12, output only).

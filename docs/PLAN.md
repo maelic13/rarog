@@ -1414,7 +1414,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   read as explosion.
   Evidence layer: counters and node counts choose and never accept; only the
   registered gate does (AGENTS, *Gating*).
-- **D.7 Search shape: the kernel against its donor on Rarog's evaluation, rebuilt whole in Reckless's form if the reads or the maintainer say so — `R3` investigation, `I1`/`I2`/`V`/`R2` sub-steps, DONE 2026-11-21.**
+- **D.7 Search shape: the kernel against its donor on Rarog's evaluation, rebuilt whole as one compact kernel if the reads or the maintainer say so — `R3` investigation, `I1`/`I2`/`V`/`R2` sub-steps, DONE 2026-11-21.**
   Added 2026-11-13 from RAR-O08 and
   `analysis/search_shape_decision_2026-11-13.md` (maintainer decision the
   same day). Reckless's search, unchanged, on Rarog's evaluation is
@@ -1441,10 +1441,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   against the rule; the decision and its reason are recorded here.
 
   **Opened 2026-11-16 (maintainer decision, on RAR-O12 and D.7.2.3).**
-  The rebuild goes ahead in Reckless's form, with three conditions that
+  The rebuild goes ahead as one compact kernel in the donor's form, with
+  three conditions that
   replace the 2026-11-13 acceptance (equal strength on the
   loss-permitting bracket):
-  1. *Compact.* The kernel is Reckless's search as it is: Rarog's
+  1. *Compact.* The kernel is the donor's search as it is: Rarog's
      additions on top of that shape (D.7.0's departures, its seventeen
      Rarog-only forms among them) are not carried into it. An addition
      is tried again only on the adopted kernel, one at a time, each with
@@ -3813,7 +3814,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   a Phase D leaf. The 2.7.0 cut runs ahead of D.7, and the hold is lifted
   for it (maintainer decision 2026-11-13): 2.7.0 ships with 2.6.0's
   notices, and the disclosure closes before the release after it. A
-  kernel rebuilt in Reckless's form (D.7) makes it heavier for that
+  compact kernel (D.7), whose shape follows Reckless's, makes it heavier for that
   release.
   *Named at D.7.14 (2026-11-21), on adoption:* the release after 2.7.0
   ships the new kernel, so the disclosure also names:
