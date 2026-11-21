@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Read the clock's soft-stop signals over B.5's replay: which factors move.
 
-D.1.4's activation read (PLAN D.1.4 (b)). A `diag` build prints one
-`info string tm` line per completed iteration of a clock search: the
-iterations since the best move last changed (`k`), the best move's share of
-the search's nodes, and the falling-eval, instability, stability and effort
-factors. This drives such a build over B.5's replay (300 positions of the UHO
+D.1.4's activation read (PLAN D.1.4 (b)), on the donor's soft limit since
+D.7.9.1. A `diag` build prints one `info string tm` line per completed
+iteration of a clock search: the best move's share of the search's nodes,
+the score's fall from the previous search, the iterations the best move and
+the score have held (`pv`, `eval`), the iteration's best-move changes, and
+the five factors (`nodes`, `trend`, `pvstab`, `evalstab`, `bms`). This drives such a build over B.5's replay (300 positions of the UHO
 book at an even stride, a fresh game each, `3000+30` on both clocks, Hash 64,
 one thread) and reports, per factor, the share of iterations at each end of
 its range. A factor at one end on more than 90% of iterations is inert: it
@@ -20,7 +21,7 @@ Timing-dependent: run on an idle host. The ends are the seeds unless --set
 names another value, which is also sent to the engine (a `tune,diag` build).
 
   python tools/diag/tm_activation.py --engine target/release/rarog.exe \\
-      [--positions 300] [--set TmStabFloor=7000] [--json out.json]
+      [--positions 300] [--set TmPvFloor=7000] [--json out.json]
 """
 
 from __future__ import annotations
@@ -40,13 +41,14 @@ INFO_LINE = re.compile(r"^info depth \d+ .*? score \S+ \S+( lowerbound| upperbou
 COUNTERS = ("tm_mate_stop", "tm_fail_high_stop", "tm_first_iteration_guard", "root_iterations")
 # The seeds, in the engine's units (ten-thousandths).
 SEEDS = {
-    "TmStabBase": 12_881,
-    "TmStabFloor": 7_160,
-    "TmEffortHigh": 9_240,
-    "TmEffortLow": 7_100,
-    "TmInstabBase": 11_000,
+    "TmNodesBase": 31_838,
+    "TmNodesFloor": 5_460,
+    "TmTrendLow": 7_214,
+    "TmTrendHigh": 14_031,
+    "TmPvFloor": 7_160,
+    "TmEvalFloor": 8_642,
+    "TmChangesBase": 11_500,
 }
-FALL_RANGE = (0.572, 1.708)
 INERT_SHARE = 0.90
 # The log prints four decimals.
 TOLERANCE = 6e-5
@@ -85,14 +87,16 @@ def summarise(records: list[dict[str, float]], params: dict[str, int]) -> dict:
         raise ValueError("no iterations to summarise")
     unit = {name: value / 10_000 for name, value in params.items()}
     ends = {
-        "stab": ("k = 0 (TmStabBase)", lambda r: r["k"] == 0,
-                 "TmStabFloor", lambda r: at(r["stab"], unit["TmStabFloor"])),
-        "effort": ("TmEffortHigh", lambda r: at(r["effort"], unit["TmEffortHigh"]),
-                   "TmEffortLow", lambda r: at(r["effort"], unit["TmEffortLow"])),
-        "fall": (f"{FALL_RANGE[0]}", lambda r: at(r["fall"], FALL_RANGE[0]),
-                 f"{FALL_RANGE[1]}", lambda r: at(r["fall"], FALL_RANGE[1])),
-        "instab": ("TmInstabBase", lambda r: at(r["instab"], unit["TmInstabBase"]),
-                   "none", lambda r: False),
+        "nodes": ("TmNodesFloor", lambda r: at(r["nodes"], unit["TmNodesFloor"]),
+                  "share 0 (TmNodesBase)", lambda r: at(r["nodes"], unit["TmNodesBase"])),
+        "trend": ("TmTrendLow", lambda r: at(r["trend"], unit["TmTrendLow"]),
+                  "TmTrendHigh", lambda r: at(r["trend"], unit["TmTrendHigh"])),
+        "pvstab": ("pv = 0 (TmPvBase)", lambda r: r["pv"] == 0,
+                   "TmPvFloor", lambda r: at(r["pvstab"], unit["TmPvFloor"])),
+        "evalstab": ("eval = 0 (TmEvalBase)", lambda r: r["eval"] == 0,
+                     "TmEvalFloor", lambda r: at(r["evalstab"], unit["TmEvalFloor"])),
+        "bms": ("no change (TmChangesBase)", lambda r: at(r["bms"], unit["TmChangesBase"]),
+                "none", lambda r: False),
     }
     factors = {}
     for name, (low_name, low, high_name, high) in ends.items():
@@ -105,7 +109,7 @@ def summarise(records: list[dict[str, float]], params: dict[str, int]) -> dict:
         }
     k_hist: dict[str, int] = {}
     for r in records:
-        key = str(int(r["k"])) if r["k"] < 10 else "10+"
+        key = str(int(r["pv"])) if r["pv"] < 10 else "10+"
         k_hist[key] = k_hist.get(key, 0) + 1
     shares = sorted(r["share"] for r in records)
     quantiles = {f"p{int(q * 100)}": shares[min(n - 1, round(q * (n - 1)))]
@@ -198,14 +202,14 @@ def main(argv: list[str] | None = None) -> int:
         flag = "  INERT" if f["inert"] else ""
         print(f"  {name:7s} at {f['low_end']}: {f['low_share']:6.1%}   at {f['high_end']}: "
               f"{f['high_share']:6.1%}{flag}")
-    print("  k: " + ", ".join(f"{k}={v}" for k, v in sorted(summary["k_histogram"].items(),
+    print("  pv held: " + ", ".join(f"{k}={v}" for k, v in sorted(summary["k_histogram"].items(),
                                                             key=lambda kv: (len(kv[0]), kv[0]))))
     print("  best-move node share: " + ", ".join(f"{q}={v:.3f}" for q, v in summary["share_quantiles"].items()))
     ratios = sorted(counters.pop("stop_ratios"))
     last = counters.pop("last_records")
     mean = lambda key, rows: sum(r[key] for r in rows) / max(1, len(rows))
     factor_means = {key: (round(mean(key, records), 4), round(mean(key, last), 4))
-                    for key in ("fall", "instab", "stab", "effort")}
+                    for key in ("nodes", "trend", "pvstab", "evalstab", "bms")}
     print("  counters: " + ", ".join(f"{k}={v}" for k, v in counters.items()))
     print("  mean factor, all iterations / last completed iteration: "
           + ", ".join(f"{k} {a:.3f}/{b:.3f}" for k, (a, b) in factor_means.items()))

@@ -8,7 +8,8 @@ use std::fmt;
 
 use super::attacks::{ATTACKS, knight_attacks_of, pawn_attacks_of};
 use super::bitboard::Bitboard;
-use super::movegen::generate_legal_moves;
+use super::cuckoo::CUCKOO;
+use super::movegen::{between, generate_legal_moves};
 use super::moves::{
     CAPTURE, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, DOUBLE_PUSH, EN_PASSANT, Move, MoveList,
     PROMO_BISHOP, PROMO_CAPTURE_BISHOP, PROMO_CAPTURE_KNIGHT, PROMO_CAPTURE_QUEEN,
@@ -61,6 +62,18 @@ impl SeeValues {
 /// never captures a king. It deliberately remains separate from HCE values.
 pub const PRODUCTION_SEE_VALUES: SeeValues = SeeValues::new(100, 320, 330, 500, 900, 20_000);
 
+/// What a threshold exchange test does with a move that captures nothing.
+#[derive(Clone, Copy)]
+enum QuietSee {
+    /// Answered by its immediate gain: nothing, or a promotion's gain.
+    Gain,
+    /// Played through the exchange, the moved piece at risk; a promotion
+    /// push is answered by its gain.
+    ExchangeButPromotions,
+    /// Played through the exchange, a promotion push included.
+    Exchange,
+}
+
 /// Frozen `cross-engine-board-v1` comparison scale.
 pub const CROSS_ENGINE_SEE_VALUES: SeeValues = SeeValues::new(100, 300, 300, 500, 900, 20_000);
 
@@ -76,6 +89,7 @@ struct UnmakeInfo {
     ep_sq: u8, // 255 = no EP
     halfmove_clock: u8,
     fullmove: u16,
+    plies_from_null: u16,
     hash: u64,
     checkers: Bitboard,
 }
@@ -112,7 +126,7 @@ const DERIVED_KEY_MASKS: [[u64; 3]; 6] = [
     [0, u64::MAX, u64::MAX],
     [0, 0, u64::MAX],
     [0, 0, u64::MAX],
-    [0, 0, 0],
+    [0, 0, u64::MAX],
 ];
 
 const NO_PIECE: u8 = 255;
@@ -170,6 +184,10 @@ pub struct Board {
     ep_sq: u8,
     halfmove_clock: u8,
     fullmove: u16,
+    /// Moves made since the last null move or since the position was set
+    /// up: how far back the key history holds positions a move sequence
+    /// reached.
+    plies_from_null: u16,
     /// Incrementally updated Zobrist hash.
     hash: u64,
     pawn_hash: u64,
@@ -189,16 +207,11 @@ pub struct Threats {
     pub by_piece: [Bitboard; 6],
 }
 
-/// Per-node masks for O(1) "does this move give check?" tests — see
-/// [`Board::check_info`] / [`Board::gives_check_with`].
+/// Per-node masks for O(1) direct-check tests — see [`Board::check_info`].
 pub(crate) struct CheckInfo {
-    /// The opposing king's square at computation time.
-    their_king: Square,
     /// `check_squares[piece]`: squares from which OUR `piece` delivers a
     /// direct check, under pre-move occupancy. King entry is empty.
     check_squares: [Bitboard; 6],
-    /// Sole blockers sitting between one of our sliders and their king.
-    blockers: Bitboard,
 }
 
 impl CheckInfo {
@@ -231,6 +244,7 @@ impl Clone for Board {
             ep_sq: self.ep_sq,
             halfmove_clock: self.halfmove_clock,
             fullmove: self.fullmove,
+            plies_from_null: self.plies_from_null,
             hash: self.hash,
             pawn_hash: self.pawn_hash,
             minor_hash: self.minor_hash,
@@ -273,6 +287,7 @@ impl Board {
             ep_sq: 255,
             halfmove_clock,
             fullmove: 1,
+            plies_from_null: 0,
             hash: 0,
             pawn_hash: 0,
             minor_hash: 0,
@@ -318,6 +333,7 @@ impl Board {
             ep_sq: 255,
             halfmove_clock: 0,
             fullmove: 1,
+            plies_from_null: 0,
             hash: 0,
             pawn_hash: 0,
             minor_hash: 0,
@@ -839,13 +855,14 @@ impl Board {
     }
 
     /// [`Board::generate_legal_captures_pinned_into`] for a caller that holds
-    /// this node's [`Board::threats`]: its `all` decides every king move.
-    pub(crate) fn generate_legal_captures_staged_into(
+    /// this node's [`Board::threats`], with the legal non-capturing queen
+    /// promotions after the captures: its `all` decides every king move.
+    pub(crate) fn generate_legal_noisy_staged_into(
         &mut self,
         threats: &Threats,
         moves: &mut MoveList,
     ) -> Bitboard {
-        super::movegen::generate_captures_pinned_into(self, Some(threats.all), moves)
+        super::movegen::generate_noisy_pinned_into(self, Some(threats.all), moves)
     }
 
     /// [`Board::generate_legal_quiets_pinned_into`] for a caller that holds
@@ -875,12 +892,8 @@ impl Board {
         }
     }
 
-    /// Per-node check-detection masks.
-    ///
-    /// [`Board::gives_check`] costs an occupancy-xor plus up to two slider
-    /// lookups per move. These masks are computed once per node, so a normal
-    /// move's check test collapses to two bitboard membership tests
-    /// ([`Board::gives_check_with`]).
+    /// Per-node direct-check masks, computed once per node, so a move's
+    /// direct-check test is one bitboard membership test.
     pub(crate) fn check_info(&self) -> CheckInfo {
         crate::diag_count!(board_check_info_calls);
         let us = self.side_to_move;
@@ -899,26 +912,7 @@ impl Board {
         check_squares[Piece::Rook as usize] = rook_from_k;
         check_squares[Piece::Queen as usize] = bishop_from_k | rook_from_k;
         // King entry stays EMPTY: a king never gives direct check.
-
-        // Discovered-check blockers: any piece that is the SOLE occupant
-        // between one of our sliders and their king (empty-board x-ray scan).
-        let our_bq = self.pieces(us, Piece::Bishop) | self.pieces(us, Piece::Queen);
-        let our_rq = self.pieces(us, Piece::Rook) | self.pieces(us, Piece::Queen);
-        let mut snipers =
-            (atk.bishop(ksq, Bitboard::EMPTY) & our_bq) | (atk.rook(ksq, Bitboard::EMPTY) & our_rq);
-        let mut blockers = Bitboard::EMPTY;
-        while snipers.any() {
-            let sniper = snipers.pop_lsb();
-            let between_bb = crate::board::movegen::between(ksq, sniper) & occ;
-            if between_bb.count() == 1 {
-                blockers |= between_bb;
-            }
-        }
-        CheckInfo {
-            their_king: ksq,
-            check_squares,
-            blockers,
-        }
+        CheckInfo { check_squares }
     }
 
     /// The squares the side not to move attacks, by piece type and in total.
@@ -950,41 +944,6 @@ impl Board {
             .iter()
             .fold(Bitboard::EMPTY, |all, &attacks| all | attacks);
         Threats { all, by_piece }
-    }
-
-    /// Fast path of [`Board::gives_check`], faithful by construction and
-    /// debug-asserted against it (the debug test suite drives this through
-    /// full searches). Normal moves are two mask tests: direct check via
-    /// `check_squares[piece]`, discovered check via the blocker set — a
-    /// blocker leaving its king-ray discovers the slider behind it, unless
-    /// the destination stays on that same ray. Promotions, en passant and
-    /// castling change occupancy/piece identity in ways the pre-move masks
-    /// cannot express, so they take the full computation (they are rare).
-    ///
-    /// The pre-move `check_squares` are correct for direct checks even when
-    /// `from` lies on the `to`→king segment: the mover attacking through its
-    /// own vacated square would mean it already attacked the enemy king
-    /// before moving — an illegal position on our turn — so a *different*
-    /// blocker must exist on that segment, and it still blocks after the
-    /// move. (Promotions break this argument, which is one reason they fall
-    /// back.)
-    pub(crate) fn gives_check_with(&self, mv: Move, ci: &CheckInfo) -> bool {
-        crate::diag_count!(board_gives_check_fast_calls);
-        if mv.is_promo() || mv.is_en_passant() || mv.is_castling() {
-            return self.gives_check(mv);
-        }
-        let from = mv.from_sq();
-        let to = mv.to_sq();
-        let piece = self.moving_piece(mv);
-        let result = (ci.check_squares[piece as usize] & Bitboard::from(to)).any()
-            || ((ci.blockers & Bitboard::from(from)).any()
-                && !crate::board::movegen::on_same_ray(from, to, ci.their_king));
-        debug_assert_eq!(
-            result,
-            self.gives_check(mv),
-            "gives_check_with diverged from gives_check for {mv}"
-        );
-        result
     }
 
     pub fn gives_check(&self, mv: Move) -> bool {
@@ -1230,23 +1189,102 @@ impl Board {
         self.is_rule50_draw() || self.has_insufficient_material() || self.is_threefold_repetition()
     }
 
-    #[inline(always)]
-    pub fn can_declare_draw_in_search(&self) -> bool {
-        if self.halfmove_clock >= 100 {
-            return self.is_rule50_draw();
-        }
-        // Aggressive twofold: a single prior occurrence within the scan bound
-        // scores the position as a draw in search. This is a deliberate
-        // strength heuristic, NOT the arbiter's threefold rule — if a side can
-        // force one repetition it can usually force the claimable second, and
-        // pruning the repetition subtree early is worth Elo. A root-aware form
-        // (a single *pre-root* twofold no longer draws, as Stockfish's
-        // `repetition < ply`) measured −7.21 ± 6.03 Elo, so this one stays.
-        self.has_insufficient_material() || (self.halfmove_clock >= 4 && self.is_repetition(2))
-    }
-
     pub fn has_repeated_position(&self) -> bool {
         self.halfmove_clock >= 4 && self.is_repetition(2)
+    }
+
+    /// The search's draw at `ply` plies from the root: the fifty-move
+    /// rule (mate first), material neither side can mate with, or a
+    /// repetition, which needs one earlier occurrence inside the search or
+    /// two anywhere since the last irreversible or null move.
+    pub fn is_draw_at(&self, ply: usize) -> bool {
+        self.is_dead_material() || self.is_rule50_draw() || self.repetition_draw_at(ply)
+    }
+
+    /// No pawn, rook or queen, and: three men or fewer; a minor each, unless
+    /// a king stands in a corner, where a mate can still be forced; or two
+    /// bishops on one side that stand on squares of one colour.
+    pub fn is_dead_material(&self) -> bool {
+        let both = |piece| self.pieces(Color::White, piece) | self.pieces(Color::Black, piece);
+        if (both(Piece::Pawn) | both(Piece::Rook) | both(Piece::Queen)).any() {
+            return false;
+        }
+        let men = self.occupied_count();
+        if men != 4 {
+            return men < 4;
+        }
+        let stm = self.side_to_move;
+        if (self.pieces(stm, Piece::Knight) | self.pieces(stm, Piece::Bishop)).count() == 1 {
+            const CORNERS: Bitboard = Bitboard(0x8100_0000_0000_0081);
+            return (both(Piece::King) & CORNERS).is_empty();
+        }
+        if both(Piece::Knight).any() {
+            return false;
+        }
+        const ONE_SQUARE_COLOUR: Bitboard = Bitboard(0x55AA_55AA_55AA_55AA);
+        (both(Piece::Bishop) & ONE_SQUARE_COLOUR).count() != 1
+    }
+
+    /// How many plies back the key history holds positions this one could
+    /// repeat: none past an irreversible or a null move.
+    fn repetition_window(&self) -> usize {
+        usize::from(self.halfmove_clock)
+            .min(usize::from(self.plies_from_null))
+            .min(self.history.len())
+    }
+
+    /// The key of the position `plies` plies back, inside the history.
+    #[inline(always)]
+    fn key_back(&self, plies: usize) -> u64 {
+        self.history[self.history.len() - plies].hash
+    }
+
+    /// Whether the position `plies` back occurred again earlier inside
+    /// `window`.
+    fn repeats_back(&self, plies: usize, window: usize) -> bool {
+        let key = self.key_back(plies);
+        (plies + 4..=window)
+            .step_by(2)
+            .any(|older| self.key_back(older) == key)
+    }
+
+    /// A repetition draws when the nearest earlier occurrence lies inside the
+    /// search, fewer than `ply` plies back, or had itself occurred before.
+    fn repetition_draw_at(&self, ply: usize) -> bool {
+        let window = self.repetition_window();
+        (4..=window)
+            .step_by(2)
+            .find(|&plies| self.key_back(plies) == self.hash)
+            .is_some_and(|nearest| nearest < ply || self.repeats_back(nearest, window))
+    }
+
+    /// Whether the side to move has a move that repeats a position that
+    /// [`Board::is_draw_at`] would score as a draw: a reversible move joins
+    /// this position to one an odd number of plies back, the opponent's moves
+    /// since then cancel out, nothing stands between the move's squares, and
+    /// the earlier position lies inside the search or had itself occurred
+    /// before.
+    pub fn upcoming_repetition(&self, ply: usize) -> bool {
+        let window = self.repetition_window();
+        if window < 3 {
+            return false;
+        }
+        let side = ZOBRIST.side();
+        // The piece-square change of the opponent's moves since `plies` back.
+        let mut theirs = self.hash ^ self.key_back(1) ^ side;
+        let mut plies = 3;
+        while plies <= window {
+            theirs ^= self.key_back(plies - 1) ^ self.key_back(plies) ^ side;
+            if theirs == 0
+                && let Some((from, to)) = CUCKOO.reversible_move(self.hash ^ self.key_back(plies))
+                && (between(from, to) & self.all_occ).is_empty()
+                && (ply > plies || self.repeats_back(plies, window))
+            {
+                return true;
+            }
+            plies += 2;
+        }
+        false
     }
 
     /// The arbiter's draws a move can reach at the tablebase root: a
@@ -1335,8 +1373,9 @@ impl Board {
                     minor_hash ^= piece_key;
                     non_pawn_hash[color as usize] ^= piece_key;
                 }
-                Piece::Rook | Piece::Queen => non_pawn_hash[color as usize] ^= piece_key,
-                Piece::King => {}
+                Piece::Rook | Piece::Queen | Piece::King => {
+                    non_pawn_hash[color as usize] ^= piece_key;
+                }
             }
         }
 
@@ -1409,6 +1448,8 @@ impl Board {
         self.minor_hash
     }
 
+    /// `color`'s non-pawn key: the key over that colour's knights, bishops,
+    /// rooks, queens and king, kept as the pieces move.
     #[inline(always)]
     pub fn non_pawn_key(&self, color: Color) -> u64 {
         self.non_pawn_hash[color as usize]
@@ -1560,12 +1601,12 @@ impl Board {
     #[inline(always)]
     pub fn see_ge(&self, mv: Move, threshold: i32) -> bool {
         crate::diag_count!(board_see_threshold_calls);
-        self.see_ge_impl(mv, threshold, false, PRODUCTION_SEE_VALUES)
+        self.see_ge_impl(mv, threshold, QuietSee::Gain, PRODUCTION_SEE_VALUES)
     }
 
     #[inline(always)]
     pub fn see_ge_with_values(&self, mv: Move, threshold: i32, values: SeeValues) -> bool {
-        self.see_ge_impl(mv, threshold, false, values)
+        self.see_ge_impl(mv, threshold, QuietSee::Gain, values)
     }
 
     /// As [`Board::see_ge`], but a QUIET move is put through the full exchange
@@ -1583,7 +1624,12 @@ impl Board {
     /// right — nothing was won, and the moved piece is now the thing at risk.
     pub fn see_ge_quiet_aware(&self, mv: Move, threshold: i32) -> bool {
         crate::diag_count!(board_see_quiet_threshold_calls);
-        self.see_ge_impl(mv, threshold, true, PRODUCTION_SEE_VALUES)
+        self.see_ge_impl(
+            mv,
+            threshold,
+            QuietSee::ExchangeButPromotions,
+            PRODUCTION_SEE_VALUES,
+        )
     }
 
     pub fn see_ge_quiet_aware_with_values(
@@ -1592,17 +1638,26 @@ impl Board {
         threshold: i32,
         values: SeeValues,
     ) -> bool {
-        self.see_ge_impl(mv, threshold, true, values)
+        self.see_ge_impl(mv, threshold, QuietSee::ExchangeButPromotions, values)
     }
 
-    fn see_ge_impl(
-        &self,
-        mv: Move,
-        threshold: i32,
-        evaluate_quiet: bool,
-        values: SeeValues,
-    ) -> bool {
-        if !mv.is_capture() && !(evaluate_quiet && !mv.is_promo()) {
+    /// The compact kernel's exchange test, as its donor's: every move is
+    /// played through the exchange, a promotion push with the promoted piece
+    /// at risk. A queen pushed onto a defended square is taken, so the push
+    /// loses its pawn, where [`Board::see_ge_quiet_aware_with_values`]
+    /// credits it with the promotion's gain.
+    pub fn see_ge_exchange_with_values(&self, mv: Move, threshold: i32, values: SeeValues) -> bool {
+        self.see_ge_impl(mv, threshold, QuietSee::Exchange, values)
+    }
+
+    fn see_ge_impl(&self, mv: Move, threshold: i32, quiet: QuietSee, values: SeeValues) -> bool {
+        let answered_by_gain = !mv.is_capture()
+            && match quiet {
+                QuietSee::Gain => true,
+                QuietSee::ExchangeButPromotions => mv.is_promo(),
+                QuietSee::Exchange => false,
+            };
+        if answered_by_gain {
             let gain = if mv.is_promo() {
                 values.value(mv.promo_piece()) - values.value(Piece::Pawn)
             } else {
@@ -1759,11 +1814,10 @@ impl Board {
     ///
     /// `make_move` otherwise runs [`Board::calculate_checkers`] — four attack
     /// lookups, two of them slider lookups — on every single move, and the
-    /// overwhelming majority of moves produce `EMPTY`. The search computes
-    /// the same predicate anyway (cheaply, via [`Board::gives_check_with`]),
-    /// so passing it through turns the common case into a store of `EMPTY`.
-    /// Checking moves still take the exact computation, because the search
-    /// needs the precise checker set for evasion generation.
+    /// overwhelming majority of moves produce `EMPTY`. A caller that already
+    /// knows the answer turns the common case into a store of `EMPTY`.
+    /// Checking moves still take the exact computation, because evasion
+    /// generation needs the precise checker set.
     ///
     /// The hint is `debug_assert!`ed against the real computation, and
     /// `tests/board_differential.rs` independently rebuilds `checkers` after
@@ -1787,6 +1841,8 @@ impl Board {
         let old_ep_sq = self.ep_sq;
         let old_halfmove_clock = self.halfmove_clock;
         let old_fullmove = self.fullmove;
+        let old_plies_from_null = self.plies_from_null;
+        self.plies_from_null = self.plies_from_null.saturating_add(1);
         let old_hash = self.hash;
         let old_checkers = self.checkers;
         let mut captured = 255;
@@ -1922,6 +1978,7 @@ impl Board {
             ep_sq: old_ep_sq,
             halfmove_clock: old_halfmove_clock,
             fullmove: old_fullmove,
+            plies_from_null: old_plies_from_null,
             hash: old_hash,
             checkers: old_checkers,
         });
@@ -1951,6 +2008,8 @@ impl Board {
         let old_ep_sq = self.ep_sq;
         let old_halfmove_clock = self.halfmove_clock;
         let old_fullmove = self.fullmove;
+        let old_plies_from_null = self.plies_from_null;
+        self.plies_from_null = 0;
         let old_hash = self.hash;
         let old_checkers = self.checkers;
 
@@ -1977,6 +2036,7 @@ impl Board {
             ep_sq: old_ep_sq,
             halfmove_clock: old_halfmove_clock,
             fullmove: old_fullmove,
+            plies_from_null: old_plies_from_null,
             hash: old_hash,
             checkers: old_checkers,
         });
@@ -1995,6 +2055,7 @@ impl Board {
         self.ep_sq = info.ep_sq;
         self.halfmove_clock = info.halfmove_clock;
         self.fullmove = info.fullmove;
+        self.plies_from_null = info.plies_from_null;
         self.hash = info.hash;
         self.checkers = info.checkers;
     }
@@ -2019,6 +2080,7 @@ impl Board {
         self.ep_sq = info.ep_sq;
         self.halfmove_clock = info.halfmove_clock;
         self.fullmove = info.fullmove;
+        self.plies_from_null = info.plies_from_null;
         self.hash = info.hash;
         self.checkers = info.checkers;
 
@@ -2734,48 +2796,6 @@ mod tests {
         );
     }
 
-    /// `gives_check_with`, the search's fast check test, agrees with making
-    /// the move and asking whether the opponent is in check, for every legal
-    /// move of every position a depth-3 walk reaches from the standard perft
-    /// positions and two with promotions and en passant.
-    #[test]
-    fn the_fast_check_test_agrees_with_playing_the_move() {
-        fn walk(board: &mut Board, depth: u32, counts: &mut (u64, u64)) {
-            if depth == 0 {
-                return;
-            }
-            let ci = board.check_info();
-            for mv in board.generate_legal_moves() {
-                let fast = board.gives_check_with(mv, &ci);
-                board.make_move(mv);
-                let checks = board.is_in_check();
-                board.unmake_move(mv);
-                assert_eq!(fast, checks, "{mv} in {}", board.to_fen());
-                counts.0 += 1;
-                counts.1 += u64::from(checks);
-                board.make_move(mv);
-                walk(board, depth - 1, counts);
-                board.unmake_move(mv);
-            }
-        }
-        let mut counts = (0, 0);
-        for fen in [
-            STARTING_FEN,
-            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
-            "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
-            "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
-            "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
-            "8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1",
-            "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
-        ] {
-            let mut board = Board::from_fen(fen).expect("valid FEN");
-            walk(&mut board, 3, &mut counts);
-        }
-        // The walk is fixed, so its coverage is too.
-        assert_eq!(counts, (305_311, 6_433), "moves and checking moves seen");
-    }
-
     /// Shuffle both knights out and back: four plies that always exist from the
     /// starting position, so a walk of any even length can be built from them.
     const SHUFFLE: [&str; 4] = ["g1f3", "g8f6", "f3g1", "f6g8"];
@@ -3059,5 +3079,231 @@ mod tests {
             Board::from_placement(rookless, Color::White, CastlingRights(0xF), 0).is_err(),
             "castling rights without the rook"
         );
+    }
+
+    /// A queen pushed onto a defended square is taken: the compact kernel's
+    /// test plays that exchange, the classic forms credit the promotion's
+    /// gain, and a capture or an undefended push reads the same in all.
+    #[test]
+    fn the_exchange_test_puts_a_promotion_push_at_risk() {
+        let values = PRODUCTION_SEE_VALUES;
+        let pawn = values.value(Piece::Pawn);
+        let gain = values.value(Piece::Queen) - pawn;
+        let defended = Board::from_fen("1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let push = defended.parse_move("a7a8q").unwrap();
+        assert!(push.is_promo() && !push.is_capture());
+        assert!(defended.see_ge_exchange_with_values(push, -pawn, values));
+        assert!(!defended.see_ge_exchange_with_values(push, -pawn + 1, values));
+        assert!(defended.see_ge_quiet_aware_with_values(push, gain, values));
+        assert!(defended.see_ge_with_values(push, gain, values));
+
+        let free = Board::from_fen("4k3/P7/8/8/8/8/8/4K3 w - - 0 1").unwrap();
+        let push = free.parse_move("a7a8q").unwrap();
+        assert!(free.see_ge_exchange_with_values(push, gain, values));
+        assert!(!free.see_ge_exchange_with_values(push, gain + 1, values));
+
+        let taking = defended.parse_move("a7b8q").unwrap();
+        let rook_and_gain = values.value(Piece::Rook) + gain;
+        for see_ge in [
+            Board::see_ge_exchange_with_values,
+            Board::see_ge_quiet_aware_with_values,
+            Board::see_ge_with_values,
+        ] {
+            assert!(see_ge(&defended, taking, rook_and_gain, values));
+            assert!(!see_ge(&defended, taking, rook_and_gain + 1, values));
+        }
+    }
+}
+
+#[cfg(test)]
+mod repetition_tests {
+    use super::*;
+
+    fn played(fen: &str, moves: &[&str]) -> Board {
+        let mut board = Board::from_fen(fen).expect("a legal FEN");
+        for mv in moves {
+            assert!(board.play_uci(mv), "{mv} is legal");
+        }
+        board
+    }
+
+    fn start(moves: &[&str]) -> Board {
+        played(STARTING_FEN, moves)
+    }
+
+    #[test]
+    fn a_repetition_one_move_away_counts_inside_the_search_only() {
+        // Black's Ng8 would restore the starting position, three plies back.
+        let board = start(&["g1f3", "g8f6", "f3g1"]);
+        assert!(
+            board.upcoming_repetition(4),
+            "the earlier position is in the search"
+        );
+        assert!(!board.upcoming_repetition(3), "it is the root");
+        assert!(!board.upcoming_repetition(1));
+        // After a first cycle the starting position has occurred twice, so
+        // reaching it again draws wherever the root is.
+        let twice = start(&["g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1"]);
+        assert!(twice.upcoming_repetition(1));
+        // A pawn move cannot be undone.
+        let pawn = start(&["e2e3", "g8f6", "e3e4", "f6g8", "g1f3"]);
+        assert!(!pawn.upcoming_repetition(10));
+    }
+
+    #[test]
+    fn the_non_pawn_key_is_its_pieces_keys_king_included_xored() {
+        fn from_scratch(board: &Board, color: Color) -> u64 {
+            let mut key = 0;
+            for piece in [
+                Piece::Knight,
+                Piece::Bishop,
+                Piece::Rook,
+                Piece::Queen,
+                Piece::King,
+            ] {
+                for sq in board.pieces(color, piece) {
+                    key ^= ZOBRIST.piece(color, piece, sq);
+                }
+            }
+            key
+        }
+        fn check(board: &Board) {
+            for color in [Color::White, Color::Black] {
+                assert_eq!(
+                    board.non_pawn_key(color),
+                    from_scratch(board, color),
+                    "{color:?} in {}",
+                    board.to_fen()
+                );
+            }
+        }
+        for fen in [
+            STARTING_FEN,
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+            "r1bq1rk1/pP3ppp/2n2n2/2b5/8/2N2N2/PPP2PPP/R1BQKB1R w KQ - 0 9",
+            "4k3/8/8/8/8/8/8/4K3 b - - 0 1",
+        ] {
+            let mut board = Board::from_fen(fen).expect("a legal FEN");
+            check(&board);
+            // Every move, its key after it and after unmaking it: captures,
+            // castling, promotions and king moves change the key.
+            for mv in board.generate_legal_moves() {
+                let before = [Color::White, Color::Black].map(|c| board.non_pawn_key(c));
+                board.make_move(mv);
+                check(&board);
+                board.unmake_move(mv);
+                let after = [Color::White, Color::Black].map(|c| board.non_pawn_key(c));
+                assert_eq!(before, after, "{mv:?} in {fen}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_null_move_ends_the_window_and_unmaking_restores_it() {
+        let mut board = start(&["g1f3", "g8f6", "f3g1"]);
+        assert_eq!(board.plies_from_null, 3);
+        board.make_null_move();
+        assert_eq!(board.plies_from_null, 0);
+        assert!(!board.upcoming_repetition(10));
+        board.unmake_null_move();
+        assert_eq!(board.plies_from_null, 3);
+        assert!(board.upcoming_repetition(4));
+        let mv = board.parse_move("f6g8").expect("legal");
+        board.make_move(mv);
+        assert_eq!(board.plies_from_null, 4);
+        board.unmake_move(mv);
+        assert_eq!(board.plies_from_null, 3);
+    }
+
+    #[test]
+    fn every_legal_move_that_repeats_is_found() {
+        // Shuffle pieces so that cycles occur, and at every position compare
+        // the cuckoo test with trying each legal move. The cuckoo test does
+        // not check legality, so it may find more, never fewer.
+        let mut board = Board::starting_position();
+        let mut rng = 0x9E37_79B9_7F4A_7C15_u64;
+        let mut found = 0;
+        for _ in 0..4_000 {
+            let window = board.repetition_window();
+            let moves = board.generate_legal_moves();
+            if moves.is_empty() || board.halfmove_clock >= 90 {
+                board = Board::starting_position();
+                continue;
+            }
+            let repeats = moves.iter().any(|&mv| {
+                let mut child = board.clone();
+                child.make_move(mv);
+                (2..=window + 1).step_by(2).any(|plies| {
+                    plies <= child.history.len() && child.key_back(plies) == child.hash
+                })
+            });
+            if repeats {
+                found += 1;
+                assert!(
+                    board.upcoming_repetition(usize::MAX),
+                    "a repeating move is missed in {}",
+                    board.to_fen()
+                );
+            }
+            // Prefer moves that return pieces, so that cycles are common.
+            rng ^= rng << 13;
+            rng ^= rng >> 7;
+            rng ^= rng << 17;
+            let quiet: Vec<Move> = moves
+                .iter()
+                .copied()
+                .filter(|mv| !mv.is_capture() && board.moving_piece(*mv) != Piece::Pawn)
+                .collect();
+            let pool = if quiet.is_empty() { &moves } else { &quiet };
+            let pick = pool[infra::index(rng) % pool.len()];
+            board.make_move(pick);
+        }
+        assert!(found > 100, "only {found} repeating positions were tried");
+    }
+
+    #[test]
+    fn the_kernel_draw_needs_a_repetition_inside_the_search_or_two() {
+        let once = start(&["g1f3", "g8f6", "f3g1", "f6g8"]);
+        assert!(
+            once.is_draw_at(5),
+            "four plies back, inside a search five deep"
+        );
+        assert!(!once.is_draw_at(4), "four plies back is the root");
+        let twice = start(&[
+            "g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1", "f6g8",
+        ]);
+        assert!(twice.is_draw_at(1), "a third occurrence");
+        assert!(!Board::starting_position().is_draw_at(1));
+    }
+
+    #[test]
+    fn dead_material_is_the_kernel_rule() {
+        let dead = |fen: &str| {
+            Board::from_fen(fen)
+                .expect("a legal FEN")
+                .is_dead_material()
+        };
+        assert!(dead("8/8/4k3/8/8/4K3/8/8 w - - 0 1"), "bare kings");
+        assert!(dead("8/8/4k3/8/8/4K3/4N3/8 w - - 0 1"), "a knight");
+        assert!(dead("8/8/4k3/8/8/4K3/4B3/8 b - - 0 1"), "a bishop");
+        assert!(dead("8/4n3/4k3/8/8/4K3/4B3/8 w - - 0 1"), "a minor each");
+        assert!(
+            !dead("k7/4n3/8/8/8/4K3/4B3/8 w - - 0 1"),
+            "a king in a corner"
+        );
+        assert!(
+            !dead("8/8/4k3/8/8/4K3/3BN3/8 w - - 0 1"),
+            "bishop and knight"
+        );
+        assert!(
+            dead("8/8/4k3/8/8/4K3/2B1B3/8 w - - 0 1"),
+            "bishops on one colour"
+        );
+        assert!(
+            !dead("8/8/4k3/8/8/4K3/3BB3/8 w - - 0 1"),
+            "bishops on both colours"
+        );
+        assert!(!dead("8/8/4k3/8/8/4K3/4P3/8 w - - 0 1"), "a pawn");
     }
 }

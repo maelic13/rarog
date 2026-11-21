@@ -72,9 +72,9 @@ class Rule7cTests(unittest.TestCase):
         self.assertIn('option = ["Hash=64", "Threads=1"]', text)
 
     def test_the_block_form_and_rule_7c_are_exclusive(self):
-        for argv in (["b43", "--rule7c"], ["b43", "--iterations", "2000", "--ceiling", "6000"],
-                     ["b43", "--rule7c", "--ceiling", "6000", "--iterations", "2000"],
-                     ["c10long", "--rule7c", "--ceiling", "6000", "--check"]):
+        for argv in (["d76fit", "--rule7c"], ["d76fit", "--iterations", "2000", "--ceiling", "6000"],
+                     ["d76fit", "--rule7c", "--ceiling", "6000", "--iterations", "2000"],
+                     ["d14block1", "--rule7c", "--ceiling", "6000", "--check"]):
             with self.subTest(argv=argv):
                 process = subprocess.run([sys.executable, str(CONVERTER), *argv], capture_output=True, text=True)
                 self.assertNotEqual(process.returncode, 0)

@@ -93,6 +93,13 @@ that produced a rule are in the ledger rows it cites or in `docs/HISTORY.md`.
   delegated. Prepare and verify the command, inputs, configuration, artifacts
   and live wire, then hand over the runnable job. Cheap local qualification is
   the agent's job.
+- Get the information a use needs and no more. Before registering or
+  running a measurement, name what it is for: a decision, an analysis or
+  understanding a question. A read that feeds nothing is prepared or
+  left out, not run, and runs when a use is named; a decision is never
+  taken without the information it needs either (maintainer decision
+  2026-11-14, after RAR-O09's four matches were cut to the one PLAN's
+  rule reads).
 - When the user interrupts for a correction or scope change, finish and
   qualify that correction, report it and return control. Resume the earlier
   objective only when asked.
@@ -205,7 +212,7 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   value and require the numbers to move. Proving the engine responds is not
   proving the instrument reports it.
 - A behaviour-neutral engine change reproduces the immediate development
-  fingerprint (currently **9,077,016 / EBF 2.481**) plus targeted checks
+  fingerprint (currently **3,390,842 / EBF 2.317**) plus targeted checks
   for behaviour the suite does not reach: an identical bench does not prove a
   narrow feature neutral (RAR-E10). Investigate a cross-platform mismatch
   (RAR-P14, RAR-P16). Docs-only work verifies the diff has no engine inputs.
@@ -302,6 +309,8 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   2026-10-09). The tags kept are the releases (`v*`) and the oracle's three
   (`oracle/*`, a vendored Stockfish tree too large for a patch), which
   retire by the conditions their records state; an agent creates no tag.
+- `dragon_nnue` is kept, locally and on GitHub: never delete it, whatever a
+  review finds (maintainer decision 2026-11-18).
 - No mess: a throwaway work branch is deleted once its information is
   recorded, and at each phase close tags and branches are reviewed and any
   whose retirement condition fired are removed. Before

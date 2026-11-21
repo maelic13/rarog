@@ -461,23 +461,25 @@ fn parse_tier(value: &str) -> Result<cpu_tier::Tier> {
         .ok_or_else(|| format!("unknown tier `{value}`; expected base, sse42, avx2 or pext"))
 }
 
-/// The features of a build, each one a kind its name carries. A name word is
-/// lower-case letters, digits and `_`; cargo itself refuses an unknown one.
+/// The features of a build, each one a kind its name carries. A feature is
+/// lower-case letters, digits, `_` and `-`, which the kind writes as `_`
+/// (`probe-arm` is named `probe_arm`, as the engine's start-up line would
+/// name it); cargo itself refuses an unknown one.
 fn parse_features(value: &str) -> Result<Vec<String>> {
     value
         .split(',')
         .map(str::trim)
         .filter(|feature| !feature.is_empty())
         .map(|feature| {
-            let plain = feature
-                .bytes()
-                .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_');
+            let plain = feature.bytes().all(|byte| {
+                byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'_' | b'-')
+            });
             if plain && feature != "default" {
                 Ok(feature.to_string())
             } else {
                 Err(format!(
                     "feature `{feature}` cannot be named in a file: a build's features \
-                     are lower-case letters, digits and `_`, and not `default`"
+                     are lower-case letters, digits, `_` and `-`, and not `default`"
                 ))
             }
         })
@@ -1007,8 +1009,9 @@ fn check_isa(exe: &Path, arch: Arch, target: &str, default_cpu: bool) -> Result<
     }
     if judgement.runtime_instructions > 0 {
         println_flush(format_args!(
-            "  {} instructions of the static C runtime's own functions left out: it picks \
-             its variants (SSE, AVX, SVE) for the CPU at run time",
+            "  {} instructions of run-time-picked variants left out (the static C \
+             runtime's SSE, AVX and SVE ones, `compiler_builtins`' FMA): each runs \
+             only on a CPU with its instructions",
             judgement.runtime_instructions
         ));
     }
@@ -1102,6 +1105,28 @@ fn is_dispatched_runtime_function(name: &str) -> bool {
     VARIANT_TAGS.iter().any(|tag| name.contains(tag)) || GUARDED.contains(&name)
 }
 
+/// Is `label` one of the Rust sysroot's functions that run only on a CPU with
+/// their instructions?
+///
+/// `compiler_builtins`' `fmaf` and `fma`, which `f32::mul_add` calls where the
+/// tier has no FMA, pick a variant once from the CPU's features: `*_with_fma`
+/// (`vfmadd`) only when it has FMA, `*_with_fma4` only with FMA4, a software
+/// fallback otherwise (`libm/src/math/arch/x86/fma.rs` at Rust 1.100.0). Only
+/// those four variants are left out; the dispatcher and the fallback are
+/// checked like the engine.
+fn is_dispatched_sysroot_function(label: &str) -> bool {
+    const FMA_VARIANTS: [&str; 4] = [
+        "12fma_with_fma",
+        "13fmaf_with_fma",
+        "13fma_with_fma4",
+        "14fmaf_with_fma4",
+    ];
+    label.starts_with("_RNv")
+        && label.contains("17compiler_builtins")
+        && label.contains("4arch3x863fma")
+        && FMA_VARIANTS.iter().any(|variant| label.ends_with(variant))
+}
+
 /// The archives `path` stands for: itself, or the ones a GNU ld script
 /// names (Ubuntu's `libm.a` is `GROUP ( …/libm-2.39.a …/libmvec.a )`).
 fn archive_members(path: &Path) -> Result<Vec<PathBuf>> {
@@ -1156,14 +1181,16 @@ struct IsaJudgement {
     instructions: u64,
     counts: Vec<(&'static str, u64)>,
     tzcnt: u64,
-    /// Instructions of `runtime` functions, left out of the contract.
+    /// Instructions of `runtime` functions and of the sysroot's run-time-picked
+    /// variants ([`is_dispatched_sysroot_function`]), left out of the contract.
     runtime_instructions: u64,
     failures: Vec<String>,
 }
 
 /// Hold `disassembly` (`llvm-objdump -d` output) to the contract of `arch`,
 /// whose code generation enables `features`, leaving out the functions in
-/// `runtime` (see [`static_runtime_functions`]). Pure, so a planted
+/// `runtime` (see [`static_runtime_functions`]) and the sysroot's
+/// run-time-picked variants ([`is_dispatched_sysroot_function`]). Pure, so a planted
 /// instruction can be shown to fail.
 fn judge_disassembly(
     disassembly: &str,
@@ -1186,7 +1213,7 @@ fn judge_disassembly(
     let mut seen_in: Vec<Vec<&str>> = vec![Vec::new(); contract.classes.len()];
     for line in disassembly.lines() {
         if let Some(label) = function_label(line) {
-            in_runtime = runtime.contains(label);
+            in_runtime = runtime.contains(label) || is_dispatched_sysroot_function(label);
             function = label;
             continue;
         }
@@ -1534,7 +1561,7 @@ fn build_with_pgo(config: &Config, purpose: Purpose) -> Result<PathBuf> {
 
     let profdata = pgo_dir.join("rarog.profdata");
     merge_profiles(&llvm_profdata, &raw_dir, &profdata, &config.target)?;
-    check_kernel_trained(&llvm_profdata, &profdata)?;
+    check_kernel_trained(&llvm_profdata, &profdata, KERNEL_FUNCTIONS)?;
 
     let mut use_flags = vec![
         "-C".to_string(),
@@ -1786,7 +1813,7 @@ fn kill_child(child: &mut Child) {
 
 /// The search kernel's functions, as their mangled names spell them: every
 /// instantiation of each must have run in the training bench.
-const KERNEL_FUNCTIONS: [&str; 2] = ["Searcher7negamax", "Searcher10quiescence"];
+const KERNEL_FUNCTIONS: [&str; 2] = ["Searcher15compact_negamax", "Searcher18compact_quiescence"];
 
 /// Fail when a copy of the search kernel has a profile that never ran.
 ///
@@ -1795,7 +1822,7 @@ const KERNEL_FUNCTIONS: [&str; 2] = ["Searcher7negamax", "Searcher10quiescence"]
 /// missing-profile warning fires only for functions with no record at all.
 /// A kernel instantiated per caller once left every multi-thread search
 /// running untrained copies this way. The merged profile says which ran.
-fn check_kernel_trained(llvm_profdata: &Path, profdata: &Path) -> Result<()> {
+fn check_kernel_trained(llvm_profdata: &Path, profdata: &Path, functions: [&str; 2]) -> Result<()> {
     let output = Command::new(llvm_profdata)
         .args(["show", "--all-functions", "--counts"])
         .arg(profdata)
@@ -1807,7 +1834,7 @@ fn check_kernel_trained(llvm_profdata: &Path, profdata: &Path) -> Result<()> {
             output.status
         ));
     }
-    for line in kernel_verdict(&String::from_utf8_lossy(&output.stdout))? {
+    for line in kernel_verdict(&String::from_utf8_lossy(&output.stdout), functions)? {
         println_flush(format_args!("{line}"));
     }
     Ok(())
@@ -1815,10 +1842,10 @@ fn check_kernel_trained(llvm_profdata: &Path, profdata: &Path) -> Result<()> {
 
 /// The check's verdict on a dump: a line per kernel function when every copy
 /// ran, else the copies that did not.
-fn kernel_verdict(dump: &str) -> Result<Vec<String>> {
-    let copies = kernel_entry_counts(dump);
+fn kernel_verdict(dump: &str, functions: [&str; 2]) -> Result<Vec<String>> {
+    let copies = kernel_entry_counts(dump, functions);
     let mut lines = Vec::new();
-    for kernel in KERNEL_FUNCTIONS {
+    for kernel in functions {
         let trained = copies.iter().filter(|(name, _)| name.contains(kernel));
         let (mut seen, mut cold) = (0, Vec::new());
         for (name, entries) in trained {
@@ -1844,7 +1871,7 @@ fn kernel_verdict(dump: &str) -> Result<Vec<String>> {
 
 /// Each record of an `llvm-profdata show --all-functions --counts` dump
 /// naming a kernel function, with its entry count (its first block's).
-fn kernel_entry_counts(dump: &str) -> Vec<(String, u64)> {
+fn kernel_entry_counts(dump: &str, functions: [&str; 2]) -> Vec<(String, u64)> {
     let mut records = Vec::new();
     let mut name: Option<&str> = None;
     for line in dump.lines() {
@@ -1852,7 +1879,7 @@ fn kernel_entry_counts(dump: &str) -> Vec<(String, u64)> {
         if let Some(record) = line.strip_suffix(':')
             && !record.contains(' ')
         {
-            name = KERNEL_FUNCTIONS
+            name = functions
                 .iter()
                 .any(|kernel| record.contains(kernel))
                 .then_some(record);
@@ -2210,7 +2237,7 @@ mod tests {
     /// An excerpt of a real `llvm-profdata show --all-functions --counts`
     /// dump: two kernel copies trained, one not, and an unrelated record.
     const PROFILE_DUMP: &str = "Counters:
-  rarog.cgu.0;_RINvMs1_NtNtCs4_5rarog6search4nodeNtB8_8Searcher7negamaxNtB6_5NonPvE:
+  rarog.cgu.0;_RINvMNtNtNtCs4_5rarog6search7compact4nodeNtB7_8Searcher15compact_negamaxNtNtB7_4node5NonPvE:
     Hash: 0x033f7e9ac0d80e85
     Counters: 496
     Block counts: [12443005, 7727191, 400818, 0]
@@ -2218,11 +2245,11 @@ mod tests {
     Hash: 0x08c2aba3344fef37
     Counters: 6
     Block counts: [0, 0, 0]
-  rarog.cgu.0;_RINvMs1_NtNtCs4_5rarog6search4nodeNtB8_8Searcher7negamaxNtB6_2PvE:
+  rarog.cgu.0;_RINvMNtNtNtCs4_5rarog6search7compact4nodeNtB7_8Searcher15compact_negamaxNtNtB7_4node2PvE:
     Hash: 0x0e9dd448b466f90b
     Counters: 342
     Block counts: [0, 0, 10022]
-  rarog.cgu.0;_RINvMs1_NtNtCs4_5rarog6search4nodeNtB8_8Searcher10quiescenceE:
+  rarog.cgu.0;_RINvMNtNtNtCs4_5rarog6search7compact10quiescenceNtB7_8Searcher18compact_quiescenceNtNtB7_4node5NonPvE:
     Hash: 0x0bcf9b0838dc3c7a
     Counters: 203
     Block counts: [5, 3]
@@ -2231,10 +2258,14 @@ Instrumentation level: IR
 
     #[test]
     fn kernel_records_are_read_with_their_entry_counts() {
-        let records = super::kernel_entry_counts(PROFILE_DUMP);
+        let records = super::kernel_entry_counts(PROFILE_DUMP, super::KERNEL_FUNCTIONS);
         let counts: Vec<u64> = records.iter().map(|(_, entries)| *entries).collect();
         assert_eq!(counts, [12_443_005, 0, 5], "{records:?}");
-        assert!(records[1].0.contains("Searcher7negamaxNtB6_2Pv"));
+        assert!(
+            records[1]
+                .0
+                .contains("Searcher15compact_negamaxNtNtB7_4node2Pv")
+        );
         assert!(
             records
                 .iter()
@@ -2244,17 +2275,25 @@ Instrumentation level: IR
 
     #[test]
     fn an_untrained_kernel_copy_fails_the_build() {
-        let verdict = super::kernel_verdict(PROFILE_DUMP).expect_err("a copy never ran");
+        let verdict = super::kernel_verdict(PROFILE_DUMP, super::KERNEL_FUNCTIONS)
+            .expect_err("a copy never ran");
         assert!(
-            verdict.starts_with("1 of 2 `Searcher7negamax` copies never ran"),
+            verdict.starts_with("1 of 2 `Searcher15compact_negamax` copies never ran"),
             "{verdict}"
         );
         let trained =
             PROFILE_DUMP.replace("Block counts: [0, 0, 10022]", "Block counts: [7, 0, 10022]");
-        let lines = super::kernel_verdict(&trained).expect("every copy ran");
+        let lines =
+            super::kernel_verdict(&trained, super::KERNEL_FUNCTIONS).expect("every copy ran");
         assert_eq!(lines.len(), 2, "{lines:?}");
-        let missing = PROFILE_DUMP.replace("Searcher10quiescence", "Searcher10other_name");
-        assert!(super::kernel_verdict(&missing.replace("[0, 0, 10022]", "[1]")).is_err());
+        let missing = PROFILE_DUMP.replace("Searcher18compact_quiescence", "Searcher10other_name");
+        assert!(
+            super::kernel_verdict(
+                &missing.replace("[0, 0, 10022]", "[1]"),
+                super::KERNEL_FUNCTIONS
+            )
+            .is_err()
+        );
     }
 
     use super::*;
@@ -2619,6 +2658,13 @@ Instrumentation level: IR
         // A candidate arm's own feature is named after the engine's kinds.
         assert_eq!(parse_features("b2core").unwrap(), ["b2core"]);
         assert!(parse_features("B2-core").is_err());
+        assert!(parse_features("b2.core").is_err());
+        // A hyphen passes to cargo as written and is named with `_`.
+        assert_eq!(parse_features("probe-arm").unwrap(), ["probe-arm"]);
+        assert_eq!(
+            build_name::kinds(true, false, &["probe-arm"]),
+            ["probe_arm"]
+        );
         assert!(parse_features("default").is_err());
     }
 
@@ -2931,6 +2977,56 @@ Instrumentation level: IR
         let planted = disassembly.replace("  401000: \tmovq", "  401000: \tvmovdqu");
         let judgement = judge_disassembly(&planted, Arch::Base, &features, &runtime);
         assert!(fails_naming(&judgement.failures, "avx"));
+    }
+
+    /// `compiler_builtins`' FMA variants, which `f32::mul_add` reaches on a
+    /// tier without FMA, are picked at run time and left out by name; the
+    /// dispatcher and the same instruction in engine code are still checked.
+    #[test]
+    fn the_sysroots_fma_variants_are_left_out_and_only_they() {
+        let features = tier_features(Arch::Base, LINUX, false).unwrap();
+        let prefix = "_RNvNtNtNtNtNtCsaoqDdJB9WAk_17compiler_builtins4math9libm_math4arch3x863fma";
+        let disassembly = format!(
+            "
+0000000000401000 <_ZN5rarog6search7negamax>:
+  401000: \tmovq\t%rdi, %rax
+0000000000402000 <{prefix}13fmaf_with_fma>:
+  402000: \tvfmadd213ss\t%xmm2, %xmm1, %xmm0
+"
+        );
+        let none = HashSet::new();
+        let judgement = judge_disassembly(&disassembly, Arch::Base, &features, &none);
+        assert!(judgement.failures.is_empty(), "{:?}", judgement.failures);
+        assert_eq!(
+            (judgement.instructions, judgement.runtime_instructions),
+            (2, 1)
+        );
+        // The dispatcher is checked: it must not run FMA itself.
+        let dispatcher = disassembly.replace("13fmaf_with_fma>", "4fmaf>");
+        let judgement = judge_disassembly(&dispatcher, Arch::Base, &features, &none);
+        assert!(fails_naming(&judgement.failures, "avx"));
+        // The same instruction in an engine function still fails.
+        let planted = disassembly.replace("  401000: \tmovq", "  401000: \tvfmadd213ss");
+        let judgement = judge_disassembly(&planted, Arch::Base, &features, &none);
+        assert!(fails_naming(&judgement.failures, "avx"));
+        for variant in [
+            "12fma_with_fma",
+            "13fmaf_with_fma",
+            "13fma_with_fma4",
+            "14fmaf_with_fma4",
+        ] {
+            let name = format!("{prefix}{variant}");
+            assert!(is_dispatched_sysroot_function(&name), "{name}");
+        }
+        for name in [
+            format!("{prefix}4fmaf"),
+            format!("{prefix}13fmaf_fallback"),
+            "_RNvNtNtCsaoqDdJB9WAk_17compiler_builtins4math9libm_math3fma13fmaf_with_fma"
+                .to_string(),
+            "_ZN5rarog6search13fmaf_with_fma17h0123456789abcdefE".to_string(),
+        ] {
+            assert!(!is_dispatched_sysroot_function(&name), "{name}");
+        }
     }
 
     /// Only run-time-picked variants and the guarded unwinder and SME

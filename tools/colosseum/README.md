@@ -36,6 +36,7 @@ decision 2026-10-22) — and `calibrate-null.toml` is what runs it.
 | `sprt-wide.toml` | a genuinely large prior, stated in the registration | `[0, 10]` |
 | `match-fixed.toml` | a measurement with an interval, never an acceptance | 2,000 games |
 | `match-fixed-nodes.toml` | a fixed-node diagnostic (`-Mode match -Nodes <n>`): speed and time management removed, the equal-node companion of an equal-time read; never an acceptance | 2,000 games |
+| `match-fixed-movetime.toml` | a fixed time a move (`-Mode match -MoveTimeMs <ms>`): speed kept, time management removed; never an acceptance | 2,000 games |
 | `match-fixed-ltc.toml` | the same at the direction-check control `10+0.1` (with `-BaseMs 10000 -IncrementMs 100`) | 1,000 games |
 | `spsa-tune.toml` | a tune | horizon per registration |
 | `calibrate-null.toml` | the null pair, on its trigger | 30,000 games |
@@ -48,6 +49,14 @@ core with a game core left free, for a multi-thread read that must keep each
 thread on its own core), and engine processes kept per slot in every mode,
 gauntlets and datagen included (`colosseum.ps1` refuses anything else). Gates run 14 concurrent games;
 a tune runs 15, because both perturbation arms share one slot.
+
+Per-side limits and a foreign arm, `-Mode match` only: `-NodesB` gives arm B
+its own node budget beside `-Nodes` (equal work between kernels that count
+nodes differently), `-MoveTimeMsB` its own move time beside `-MoveTimeMs`.
+`-ForeignB` declares arm B an engine with no sidecar: its SHA-256 and `id name`
+go in the manifest, arm A's sidecar is required and carries `-ExpectBench` and
+`-ExpectRevision`. Without it, an arm with no sidecar is refused in a gate or
+a match.
 
 ## Running one
 
@@ -96,19 +105,18 @@ A registered surface lives in `tools/spsa_configs/config_<group>.json`. Convert
 it once per horizon, because `c_end` is the perturbation at the end of the run:
 
 ```powershell
-python tools/spsa_config_to_colosseum.py b23core --iterations 5000
+python tools/spsa_config_to_colosseum.py d76fit --rule7c --ceiling 6000
 ```
 
-That writes `tools/spsa_configs/colosseum/<group>.tune.toml`, the 82-coordinate
+That writes `tools/spsa_configs/colosseum/<group>.tune.toml`, the coordinate
 vector, and `<group>.run.toml`, which extends `spsa-tune.toml` and applies
 `fixed_<group>.json` to both arms. `--check` fails when either file no longer
 matches the JSON, so a surface cannot drift from its registration. Run a tune
 with:
 
 ```powershell
-./tools/colosseum.ps1 -Mode spsa -Engine tools/test_engines/rarog-b23core-tune.exe `
-  -ConfigGroup b23core -Iterations <N> -TotalGames <N*30> `
-  -Seed <n> -Dir tools/results/<experiment>
+./tools/colosseum.ps1 -Mode spsa -Engine tools/test_engines/rarog-d76fit-tune.exe `
+  -ConfigGroup d76fit -Ceiling 6000 -Seed <n> -Dir tools/results/<experiment>
 ```
 
 The wrapper re-runs `--check` before every tune, so a surface that has drifted
@@ -128,6 +136,11 @@ its `archive` entry carries the
 asset URL and the digest GitHub serves for it, checked on download, and the
 top-level `sha256` is checked on the extracted executable. Re-pinning to a
 later release is an edit to that one file.
+
+The CLI has its own repository, `maelic13/colosseum-cli`, since 2026-11-14;
+`maelic13/colosseum` is now the GUI. Releases there are tagged `v<version>`;
+the `cli-v` tags above are the old repository's names for the same builds,
+and 0.5.0 is the same asset, digest and size at the same revision.
 
 The released 0.1.0 reported the same version string as the local build that
 preceded it, so the hash is the only identity that separates builds; 0.2.0

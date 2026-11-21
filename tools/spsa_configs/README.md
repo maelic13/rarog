@@ -3,62 +3,75 @@
 This directory holds the SPSA surface of a **registered** tune, one
 `config_<group>.json` per group, read by `tools/spsa.ps1` and checked by
 `tools/audit_spsa_coverage.ps1`. An optional `fixed_<group>.json` holds UCI
-options applied to both sides at fixed values. **One group is prepared:
-`d14block1`** (PLAN D.1.4's clock fit, registered by RAR-R15).
-`c2margin` (PLAN C.2, RAR-E24) and `c3margin` (PLAN C.3, RAR-E25) were baked
-after their gates accepted them. `b23core`, `b27all`, `b27core`, `b33`, `b43`, `c2margin`, `c3margin`, `c10pilot`, `c10block1` and `c10long` are historical: their
-thetas are baked or were never baked, their seeds are kept as evidence, and `historical.txt`
-exempts them from the audit's seed checks. B.8 folded the arm features
-(`b2core`, `b3proof`, `b4quiet`) into the only search, so a historical
-group's build line records how its binary was built then; a tune build of
-the current head is `./tools/build_test.ps1 -Suffix <name> -Tune`.
+options applied to both sides at fixed values. **The live group is
+`d711fit`** and its pilot `d711pilot` (PLAN D.7.11, the finishing fit,
+registered by RAR-S135). `d76fit` and its pilot (PLAN D.7.6, the compact
+kernel's first fit, registered by RAR-S128) and `d14block1` (PLAN D.1.4's
+clock fit, registered by RAR-R15) are records, listed in
+`historical.txt`. A tune build of the current head is
+`./tools/build_test.ps1 -Suffix <name> -Tune`.
+The groups that named the classic kernel's options were deleted with it
+(PLAN D.7.7); their records keep their surfaces' recipes.
 
 **Since 2026-11-13 a tune is one run read at checkpoints** (PLAN rule 7c):
 `python tools/spsa_config_to_colosseum.py <group> --rule7c --ceiling 6000`
 writes the group's files, and `./tools/colosseum.ps1 -Mode spsa -Engine
 <tune.exe> -ConfigGroup <group> -Ceiling 6000 -Seed <n> -Dir
 tools/results/<run>` plays it to each checkpoint and reads it there with
-`tools/spsa_read.py`. The groups below were registered and run as blocks;
-their `-Iterations`, `-TotalGames` and `-SeedFrom` lines are history, and
-their committed files still `--check` in the block form (`--iterations`).
+`tools/spsa_read.py`. `d14block1` was registered and run as blocks; its
+`-Iterations` and `-TotalGames` lines are history, and its committed files
+still `--check` in the block form (`--iterations`).
 
-## `d16fix` — D.1.6.3's fit of the cascade cluster, registered by RAR-R21
+## `d711fit` — D.7.11's finishing fit, registered by RAR-S135
 
-- **Surface:** fifteen coordinates: the five aspiration coordinates
-  (`AspirationDelta`, `AspGrowthPct`, `AspGrowthHighPct`, `AspGrowthAdd`,
-  `AspDeltaSquareDiv`), the known-win offset `MopupKnownWin`, the
-  deepening freeze `TmDepthFreeze`, the clock's scale `TmOptScale` (added
-  2026-10-23 before any game, RAR-R21's amendment: the cluster leaves
-  time on the clock), and the seven reduction terms whose
-  negative values the line budget now charges (`CoreLmrPv`,
-  `CoreLmrPvWindow`, `CoreLmrCorrection`, `CoreLmrGivesCheck`,
-  `CoreLmrImprovement`, `CoreLmrTtPv`, `CoreLmrQuietHistory`). `value` is
-  the fit arm's default (217125b, recipe `analysis/arm_patches/217125b-rar-r21-d16fit.patch`: the cluster's four parts baked, so the
-  tune starts at the cluster's seeds, as the harness requires), the step
-  the b43 rule, and `min_value` and `max_value` the declared range except
-  for `AspDeltaSquareDiv` (2000..40000 of 0..100000), `MopupKnownWin`
-  (500..12000 of 0..20000) and `TmDepthFreeze` (2000..9000 of
-  1000..10000000), whose declared ranges hold the switches' off values,
-  and `TmOptScale` at the clock fit's range and step (5000..20000, 938,
-  as `d14block1`: a (max−min)/8 step would perturb thinking time by 19%
-  a side), and `AspirationDelta` (step 6, as `c10block1`) and
-  `CoreLmrTtPv` (step 128, as `b23core`): at the b43 step their first
-  arms rail, which the harness warns about (RAR-R21's rail amendment,
-  2026-10-24).
-- **`fixed_d16fix.json`:** Hash 64, Threads 1, MultiPV 1; the line budget
-  (`CoreLmrDeeperBudget` 1) is the arm's default, not an option.
-- **Run:** block 1 is 2,000 iterations × 30 games on
-  `tools/test_engines/rarog-d16fit-tune.exe` (217125b, recipe `analysis/arm_patches/217125b-rar-r21-d16fit.patch`, bench 8,996,837),
-  `colosseum.ps1 -Mode spsa -Engine tools/test_engines/rarog-d16fit-tune.exe
-  -ConfigGroup d16fix -Iterations 2000 -TotalGames 60000 -Seed 20261050`,
-  or `analysis/artifacts/d16-cascade-2026-10-23/run_r21.ps1 -Read fit`. The
-  Colosseum files are `tools/spsa_config_to_colosseum.py d16fix
-  --iterations 2000`; `--check` says whether they are current. A second
-  block starts with `-SeedFrom` only on rule 7c's count.
-- **Use:** theta is baked only for D.1.6.3's gate (RAR-R20's form, on a
-  rebuilt arm).
+- **Surface:** 225 coordinates of the repaired kernel, the record's
+  (`analysis/d711_fit_2026-11-20.md`, appendix): the 249 seed options of
+  `rarog-d711fit-tune.exe` less sixteen whole-unit seeds and eight
+  inactive on `bench 13` and `bench 17`. `value` is the engine's
+  default (the first fit's baked centres), `min_value` and `max_value`
+  the listing's range, `step` range/16 and at least 1. Generated from
+  the binary's own listing and the activation read by
+  `analysis/artifacts/d711-fit-2026-11-20/gen_config.py`, which fails
+  on any difference from the record; audit with
+  `./tools/audit_spsa_coverage.ps1 -TuneEngine
+  tools/test_engines/rarog-d711fit-tune.exe`.
+- **`fixed_d711fit.json`:** Hash 64, Threads 1, MultiPV 1.
+- **`d711pilot`:** the same surface, converted for the pilot's ceiling
+  of 64 iterations.
+- **Run:** `python tools/spsa_config_to_colosseum.py d711fit --rule7c
+  --ceiling 6000` and `d711pilot --rule7c --ceiling 64` wrote the
+  Colosseum files. The pilot, the tune and the reads are run by
+  RAR-S135's three drivers, `run_pilot.ps1`, `run_tune.ps1` and
+  `run_read.ps1` in `analysis/artifacts/d711-fit-2026-11-20/`, which
+  call `./tools/colosseum.ps1 -Mode spsa` (seed 2026113502,
+  `tools/results/d711-fit`) and `-Mode match -CategoricalTuneBuild`.
+
+## `d76fit` — D.7.6's fit of the compact kernel, registered by RAR-S128
+
+A record: D.7.6.2 (2026-11-19) baked this tune's centres at 2,000 as the
+kernel's seeds, so its `value`s are the registration's, no longer the
+engine's defaults.
+
+- **Surface:** 230 compact-kernel seeds, the active candidates of
+  `analysis/d76_surface_2026-11-18.md` (246 seeds, 5 excluded by
+  construction, 10 dropped by the activation read, and `KPickLateGood`,
+  whose one step of room dies at iteration 894 of 6,000). `value` is the
+  donor's seed, `min_value` and `max_value` the record's range rule, `step`
+  range/16. The options are the `tune compact-kernel` build's (`K` and the
+  seed's name in Pascal case); audit with `./tools/audit_spsa_coverage.ps1
+  -TuneEngine tools/test_engines/rarog-d76fit-tune.exe`.
+- **`fixed_d76fit.json`:** Hash 64, Threads 1, MultiPV 1.
+- **`d76pilot`:** the same surface, converted for the pilot's ceiling of
+  128 iterations (RAR-S128's amendment).
+- **Run:** the pilot first, then rule 7c's one run to 6,000 iterations:
+  `./tools/colosseum.ps1 -Mode spsa -Engine
+  tools/test_engines/rarog-d76fit-tune.exe -ConfigGroup d76fit -Ceiling 6000
+  -Seed 20261118 -Dir tools/results/d76-fit`.
 
 ## `d14block1` — D.1.4's clock fit, registered by RAR-R15
+
+A record: D.7.9.1 (2026-11-20) replaced the clock these coordinates tuned
+with the donor's, so the engine no longer has their options.
 
 - **Surface:** the thirteen clock coordinates: the seven of 2.3.0, D.1.3's
   five and the cross-move slope `TmFallPrevSlope` (added 2026-10-22 before
@@ -79,123 +92,6 @@ their committed files still `--check` in the block form (`--iterations`).
   d14block1 --iterations 2000`. `--check` on both says whether the files
   are current.
 - **Use:** theta is baked only for D.1.5's gate.
-
-## `c10pilot` — C.10.3's sensitivity pilot, registered by RAR-S101 (historical)
-
-- **Surface:** 96 coordinates. The 83 C.10.1 selected
-  (`analysis/c10_research_2026-10-19.md`) plus the 15 history-unit
-  coordinates the pilot decides, less `CoreNmpTtPv` and
-  `CoreLmrResearchShallower`, which the relevance check found dead
-  (RAR-S101). `value` is the engine default at `b7bc142`, `min_value` and
-  `max_value` the declared range, `step` the b43 rule.
-- **`fixed_c10pilot.json`:** Hash 64, Threads 1, MultiPV 1 and
-  `QsCountLimit` 3 (RAR-S100).
-- **Run:** 128 iterations × 30 games on the tune build
-  `tools/test_engines/rarog-c103-tune.exe`, `colosseum.ps1 -Mode spsa
-  -ConfigGroup c10pilot -Iterations 128 -TotalGames 3840 -Seed 20261021`.
-  The Colosseum files are `tools/spsa_config_to_colosseum.py c10pilot
-  --iterations 128`. Generated by `analysis/artifacts/c10/gen_c10pilot.py
-  --drop CoreNmpTtPv,CoreLmrResearchShallower`.
-- **Use:** a diagnostic only. Its theta is never baked, promoted or used
-  as a seed; after the re-audit the group joins `historical.txt` as
-  not baked.
-
-## `c3margin` — PROCESS's margin block for C.3, registered by RAR-E25 (historical)
-
-- **Result:** run 2026-10-08/09 (60,000 games); its rounded final theta was
-  baked into the 28 defaults with C.3's unit (`dcef971`) after RAR-E25's
-  gate 2 accepted it. The seeds below are the registration's.
-- **Surface:** `c2margin`'s 28 coordinates, ranges, steps and fixed options
-  unchanged, seeded at the head RAR-E24 landed (`1abeb46`), so a block on
-  C.3's candidate starts from the margins that head plays.
-- **Run:** only as C.3's registration directs (PROCESS step 4: gate 1
-  fails or a screen flags, or the maintainer opts in after a clean gate 1):
-  `colosseum.ps1 -Mode spsa -ConfigGroup c3margin -Iterations 2000
-  -TotalGames 60000` on C.3's candidate tune build. Generated by
-  `analysis/artifacts/c3-margin/gen_c3margin.py` (`gen_c2margin.py` with
-  the group renamed) from `src/search/params.rs`, then
-  `tools/spsa_config_to_colosseum.py c3margin --iterations 2000`. If
-  `src/search/params.rs` changes before the block runs, regenerate it; the
-  audit and `colosseum.ps1` both refuse a seed that differs from the
-  engine's default.
-
-## `c2margin` — PROCESS's margin block, registered by RAR-E24 (historical)
-
-- **Result:** run 2026-10-07/08 (60,000 games); its rounded final theta was
-  baked on 26 coordinates in `1abeb46` after RAR-E24's gate 2 accepted it.
-  The seeds below are the registration's (the head before RAR-E24).
-- **Surface:** the 28 coordinates PROCESS's *Evaluation change under a
-  fitted search* names (every search coordinate compared with the static
-  evaluation or the score in centipawns, the correction's update scale and
-  `LazyMargin`). `value` is the engine default at registration, `min_value`
-  and `max_value` the declared range, `step` `max(2, round((max - min) /
-  16))` half away from zero (the `b43` rule).
-- **`fixed_c2margin.json`:** Hash 64, Threads 1, MultiPV 1; no categorical
-  switch remains after B.8.
-- **Run:** only when RAR-E24's gate 1 fails or its tree read flags: one
-  block, `colosseum.ps1 -Mode spsa -ConfigGroup c2margin -Iterations 2000
-  -TotalGames 60000` on the candidate's tune build, evaluation weights
-  fixed. The Colosseum files are `tools/spsa_config_to_colosseum.py c2margin
-  --iterations 2000`. Generated by
-  `analysis/artifacts/c2-margin/gen_c2margin.py` from `src/search/params.rs`.
-  Once its theta is baked or the unit is rejected, the group joins
-  `historical.txt`.
-
-## `b43` — B.4.3, the quiescence cluster and the estimate's first consumers (historical)
-
-- **Arm:** `b4quiet` at 10,226,874 / EBF 2.519 (engine `b734caa`). Build the
-  binary with `./tools/build_test.ps1 -Suffix b43 -Tune -Features b4quiet`.
-- **`config_b43.json`**, fourteen coordinates (RAR-S86 as amended before any
-  game): the eight `Qs*` (`QsSeeMargin`, `QsSeeClampHi`, `QsSeeBadFloor`,
-  `QsFutilityMargin`, `QsDeltaMargin`, `QsCountLimit`, `QsStandPatLerp`,
-  `QsCutoffLerp`) and the direct consumers of the interior estimate,
-  `CoreRfpSquare`, `CoreRfpLinear`, `CoreRfpConstant`, `CoreRazorBase`,
-  `CoreRazorSquare`, `CoreNmpBase`; value the engine default, min/max the
-  declared range, step `max(2, round((max - min) / 16))` half away from zero,
-  except `CoreRfpLinear`, whose range was widened to `-100..=200` to take the
-  seed off its lower rail and whose step stays the 13 of every earlier tune.
-- **`fixed_b43.json`:** Hash 64, Threads 1, MultiPV 1; the twelve core,
-  proof and quiescence switches at their defaults, except
-  **`CoreQsEvasionPrune` = 1**, adopted by RAR-S87's categorical read (+7.8 ±
-  9.4 Elo; the bake flips its default with the theta); `CoreQsNoisyHistory`
-  stays off (−4.7 ± 9.4, undecided at that budget); every other `Core*`
-  spin at its default; `CoreProbcutTtMargin` excluded (its switch is off).
-- Generated by `tools/results/b43-sweep/gen_b43.py`; the Colosseum files by
-  `tools/spsa_config_to_colosseum.py b43 --iterations 2000`. Blocks and
-  stop rule: RAR-S86 (PLAN rule 7c).
-
-## `b23core` — B.2.3, the selectivity core (historical)
-
-- **Arm:** `b2core` at 4,706,910 / EBF 2.391 (engine `308abe9`). Build the
-  binary with `./tools/build_test.ps1 -Suffix b23core -Tune -Features b2core`
-  (flavor `b2core-tune`). `spsa.ps1` refuses any other tune build for a
-  group that names `Core*` options.
-- **`config_b23core.json`**, 82 coordinates: every `CoreParams` spin except
-  the five categorical switches (`CoreRazorGuards`, `CoreCorrTrainDecisive`,
-  `CoreCorrTrainExcluded`, `CoreLmrFullDepth`, `CoreLmrCheckRoot`, gated by
-  games in RAR-S74 and never coordinates), `CoreIirMinDepth` (a discrete
-  depth threshold owned by B.3) and `CoreEvalRule50Damping` (too few games
-  reach a high clock at `3+0.03` to carry a gradient). The four LMR clamp
-  bounds are included.
-  - `value` is the engine default and `min_value`/`max_value` the declared
-    range.
-  - `step` is `max(2, round((max - min) / 16))`, rounded half away from zero.
-  - Every step keeps `step * c_t(5000) >= 0.5` at the registered horizon; the
-    smallest step is 3, giving 1.26.
-- **`fixed_b23core.json`:** Hash 64, Threads 1, MultiPV 1 and the five
-  switches at their defaults (fixed because they were gated, not pinned).
-- **Schedule and horizon** are registered in RAR-S75: 32 games per
-  iteration, `r_end` 0.0031, N = 5,000 run in resumable sessions (staged
-  reviews at `-StopAfter 1250` and `2500`). The estimator is the final
-  theta, rounded.
-
-B.1 (2026-09-14) deleted the twelve historical groups (`aspiration`, `corr`,
-`futility`, `histcov`, `history`, `lazymargin`, `lmr`, `probcut`, `pruning`,
-`see`, `selectivity`, `tm`). They fitted the pre-B.2 selectivity core, which
-B.2 replaces with donor-shaped terms under new names, and several named
-parameters B.1 removed as inert. Their fitted values are baked into
-`src/search/params.rs`; the files remain in Git history. SPSA stays
-conditional on activation and curvature evidence (PLAN rule 4).
 
 ## Durable rules
 
@@ -227,7 +123,8 @@ the source of truth for defaults:
 A group whose tune has been baked into the engine is listed in
 `historical.txt`: its seeds are the registration's, kept as evidence, so the
 audit no longer compares them with the defaults or requires every name to
-still be declared. Everything not listed is live and must match `params.rs`.
+still be declared. Everything not listed is live and must match `params.rs`
+or, for the compact kernel's seeds, the tune build's options.
 
 ## Opening book and match conditions
 
@@ -243,34 +140,3 @@ Once PLAN names the experiment, its surface and gates:
 ./tools/spsa.ps1 -ConfigGroup <group> -EngineSuffix <name> -SetupOnly -Iterations <registered-N>
 ./tools/spsa.ps1 -ConfigGroup <group> -LaunchOnly -Iterations <registered-N>
 ```
-
-## `c10block1` — C.10.4's first block, registered by RAR-S103
-
-- **Surface:** 82 coordinates, the pilot's 96 less the 15 history-unit
-  coordinates it did not admit plus `CoreSeeQuietHistory`, which it admitted
-  by its |z| ≥ 2 route; seeds, ranges and steps are the pilot group's (the
-  head's defaults, the declared ranges, the b43 steps). Written by
-  `analysis/artifacts/c103/gen_c10block.py c10block1 --history CoreSeeQuietHistory`.
-  The two dead coordinates C.10.3.1 removed (`CoreNmpTtPv`,
-  `CoreLmrResearchShallower`) are not in the engine any more.
-- **`fixed_c10block1.json`:** the pilot's, unchanged.
-- **Conversion:** `python tools/spsa_config_to_colosseum.py c10block1 --iterations 2000`.
-- **Run:** `./tools/colosseum.ps1 -Mode spsa -Engine tools\test_engines\rarog-c103c-tune.exe
-  -ConfigGroup c10block1 -Iterations 2000 -TotalGames 60000 -Seed 20261024 -Dir tools\results\c10-block1`.
-  A later block starts from this one's run directory with `-SeedFrom`.
-
-## `c10long` — C.10.4 as one long run, registered by RAR-S104
-
-- **Surface:** the 82 coordinates of `c10block1`, with every step doubled
-  except `CoreSingExactSpan` and `QsSeeBadFloor`, whose seeds sit near a
-  range end. Written by `analysis/artifacts/c103/gen_c10block.py c10long
-  --history CoreSeeQuietHistory --scale-steps 2 --keep-step CoreSingExactSpan,QsSeeBadFloor`.
-- **`fixed_c10long.json`:** the pilot's, unchanged.
-- **`schedule_c10long.json`:** the registration's gain ratio, `r_end` 0.0016
-  (spsa-tune.toml's default is 0.0031). The converter reads this file and
-  writes `r-end` into the run file, so `colosseum.ps1`'s regeneration check
-  reproduces it; a `--r-end` flag, if given, must equal it.
-- **Conversion:** `python tools/spsa_config_to_colosseum.py c10long --iterations 4000`.
-- **Run:** `./tools/colosseum.ps1 -Mode spsa -Engine tools\test_engines\rarog-c103c-tune.exe
-  -ConfigGroup c10long -Iterations 4000 -TotalGames 120000 -Seed 20261025 -Dir tools\results\c10-long`.
-  Movement is read in b43 steps: `pilot_reaudit.py ... --movement-config tools/spsa_configs/config_c10pilot.json`.

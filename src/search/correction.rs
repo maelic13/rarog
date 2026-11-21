@@ -1,12 +1,11 @@
 //! Static-evaluation correction: the tables, the corrected-eval formula that
 //! reads them and the update that trains them.
 
-use crate::board::{Board, Color, Piece};
-use crate::eval::piece_value;
+use crate::board::{Board, Color};
 use crate::infra;
 
+use super::Searcher;
 use super::history::{CONT_SIZE, apply_bonus, piece_to};
-use super::{Searcher, TB_WIN_SCORE};
 
 /// Key slots per side to move in a keyed correction table.
 const KEY_SLOTS: usize = 65_536;
@@ -14,15 +13,8 @@ const KEY_SLOTS: usize = 65_536;
 /// bucket per 8 plies up to bucket 15.
 const RULE50_BUCKETS: usize = 16;
 const KEYED_SIZE: usize = RULE50_BUCKETS * 2 * KEY_SLOTS;
-const KEYED_MAX: i32 = 14_605;
-const CONT_MAX: i32 = 16_418;
 /// Table units per evaluation unit: a correction is read as `sum / 64`.
 const TABLE_SCALE: i64 = 64;
-/// Weights are in 128ths.
-const WEIGHT_SCALE: i64 = 128;
-/// Material of the starting position in evaluation units, the point at which
-/// the material term of the corrected eval is neutral.
-const MATERIAL_REFERENCE: i64 = 8_000;
 
 fn saturate(value: i64) -> i32 {
     i32::try_from(value).unwrap_or(if value < 0 { i32::MIN } else { i32::MAX })
@@ -49,65 +41,55 @@ fn keyed_index(bucket: usize, stm: Color, key: u64) -> usize {
 pub(super) struct CorrectionTables {
     /// `[rule-50 bucket][side to move][pawn key]`.
     pawn: Box<[i16; KEYED_SIZE]>,
-    /// `[rule-50 bucket][side to move][minor-piece key]`.
-    minor: Box<[i16; KEYED_SIZE]>,
     /// `[colour][rule-50 bucket][side to move][that colour's non-pawn key]`.
     non_pawn: [Box<[i16; KEYED_SIZE]>; 2],
     /// Continuation corrections: `[context two or four plies back][previous
-    /// move's coloured piece and destination]`.
+    /// move's coloured piece and destination]`, one table for both.
     continuation_2: Box<[i16; CONT_SIZE]>,
-    continuation_4: Box<[i16; CONT_SIZE]>,
 }
 
 impl Default for CorrectionTables {
     fn default() -> Self {
         Self {
             pawn: zeroed(),
-            minor: zeroed(),
             non_pawn: [zeroed(), zeroed()],
             continuation_2: zeroed(),
-            continuation_4: zeroed(),
         }
     }
 }
 
 impl CorrectionTables {
-    /// Every entry of every table is zero: nothing has been trained.
-    #[cfg(test)]
-    pub(super) fn untouched(&self) -> bool {
-        self.pawn.iter().all(|&v| v == 0)
-            && self.minor.iter().all(|&v| v == 0)
-            && self
-                .non_pawn
-                .iter()
-                .all(|table| table.iter().all(|&v| v == 0))
-            && self.continuation_2.iter().all(|&v| v == 0)
-            && self.continuation_4.iter().all(|&v| v == 0)
-    }
-
     /// Forget everything, for a new game.
     pub(super) fn clear(&mut self) {
         self.pawn.fill(0);
-        self.minor.fill(0);
         for table in &mut self.non_pawn {
             table.fill(0);
         }
         self.continuation_2.fill(0);
-        self.continuation_4.fill(0);
     }
 }
 
 /// The slots one position reads and trains.
 struct CorrectionSlots {
     pawn: usize,
-    minor: usize,
     non_pawn: [usize; 2],
     /// `(context, slot)` at two and four plies back, when both moves exist.
     continuation: [Option<usize>; 2],
 }
 
 impl Searcher {
-    fn correction_slots(&self, board: &Board, ply: usize) -> CorrectionSlots {
+    /// The compact kernel's slots: its non-pawn keys include each side's king.
+    fn compact_correction_slots(&self, board: &Board, ply: usize) -> CorrectionSlots {
+        let non_pawn = [Color::White, Color::Black].map(|color| board.non_pawn_key(color));
+        self.correction_slots_keyed(board, ply, non_pawn)
+    }
+
+    fn correction_slots_keyed(
+        &self,
+        board: &Board,
+        ply: usize,
+        non_pawn: [u64; 2],
+    ) -> CorrectionSlots {
         let stm = board.side_to_move();
         let bucket = rule50_bucket(board);
         let previous = self.td.stack.back(ply, 1);
@@ -120,190 +102,69 @@ impl Searcher {
         }
         CorrectionSlots {
             pawn: keyed_index(bucket, stm, board.pawn_key()),
-            minor: keyed_index(bucket, stm, board.minor_key()),
-            non_pawn: [
-                keyed_index(bucket, stm, board.non_pawn_key(Color::White)),
-                keyed_index(bucket, stm, board.non_pawn_key(Color::Black)),
-            ],
+            non_pawn: non_pawn.map(|key| keyed_index(bucket, stm, key)),
             continuation,
         }
     }
 
-    /// The correction for the position at `ply`, in evaluation units: the
-    /// weighted sum of the six tables.
-    pub(super) fn correction_value(&self, board: &Board, ply: usize) -> i32 {
-        let slots = self.correction_slots(board, ply);
+    /// The compact kernel's correction for the position at `ply`: the plain
+    /// sum of the pawn, both non-pawn and two continuation
+    /// readings, over the table scale. Its non-pawn keys include the kings,
+    /// its continuation readings, two and four plies back, share one table,
+    /// and it reads no minor table.
+    pub(super) fn compact_correction(&self, board: &Board, ply: usize) -> i32 {
+        let slots = self.compact_correction_slots(board, ply);
         let tables = &self.td.corr;
-        let p = &self.cfg.core;
-        let read = |table: &[i16], slot: usize| i64::from(table[slot]);
-        let mut sum = i64::from(p.corr_weight_pawn) * read(&tables.pawn[..], slots.pawn)
-            + i64::from(p.corr_weight_minor) * read(&tables.minor[..], slots.minor)
-            + i64::from(p.corr_weight_non_pawn_white)
-                * read(&tables.non_pawn[0][..], slots.non_pawn[0])
-            + i64::from(p.corr_weight_non_pawn_black)
-                * read(&tables.non_pawn[1][..], slots.non_pawn[1]);
-        if let Some(slot) = slots.continuation[0] {
-            sum += i64::from(p.corr_weight_cont2) * read(&tables.continuation_2[..], slot);
+        let mut sum = i64::from(tables.pawn[slots.pawn])
+            + i64::from(tables.non_pawn[0][slots.non_pawn[0]])
+            + i64::from(tables.non_pawn[1][slots.non_pawn[1]]);
+        for slot in slots.continuation.into_iter().flatten() {
+            sum += i64::from(tables.continuation_2[slot]);
         }
-        if let Some(slot) = slots.continuation[1] {
-            sum += i64::from(p.corr_weight_cont4) * read(&tables.continuation_4[..], slot);
-        }
-        saturate(sum / (TABLE_SCALE * WEIGHT_SCALE))
+        saturate(sum / TABLE_SCALE)
     }
 
-    pub(super) fn raw_eval(&mut self, board: &Board) -> i32 {
-        self.td.evaluator.evaluate(board)
-    }
-
-    pub(super) fn corrected_eval(&mut self, board: &Board, ply: usize) -> i32 {
-        let raw = self.raw_eval(board);
-        self.corrected_eval_from_raw(board, raw, ply)
-    }
-
-    pub(super) fn corrected_eval_from_raw(&self, board: &Board, raw: i32, ply: usize) -> i32 {
-        self.corrected_eval_parts(board, raw, ply).0
-    }
-
-    /// The corrected eval and the correction it includes. The raw eval is
-    /// scaled by the material on the board (a coordinate neutral at zero) and
-    /// damped toward the fifty-move horizon with the current clock, then
-    /// corrected and kept out of the tablebase-win band; a draw verdict passes
-    /// through as 0 with no correction. The damping lives
-    /// here, not in the evaluator, because the raw eval is stored in the
-    /// transposition table without the clock.
-    pub(super) fn corrected_eval_parts(&self, board: &Board, raw: i32, ply: usize) -> (i32, i32) {
-        // A draw verdict is a classification, not an estimate, so there is no
-        // error for the correction to remove; the correction read here was
-        // trained on the same structure keys by ordinary positions, and added
-        // to the verdict it turns a dead draw into a won score. A verdict's raw
-        // value is exactly 0, which keeps the recognisers off every other node.
-        if raw == 0 && crate::eval::endgame::is_draw_verdict(board) {
-            return (0, 0);
-        }
-        let p = &self.cfg.core;
-        let mut eval = i64::from(raw);
-        if p.eval_material_scale != 0 {
-            let material = i64::from(material(board));
-            eval += eval * i64::from(p.eval_material_scale) * (material - MATERIAL_REFERENCE)
-                / (64 * MATERIAL_REFERENCE);
-        }
-        if p.eval_rule50_damping != 0 {
-            let clock = i64::from(board.halfmove_clock().min(100));
-            eval -= eval * i64::from(p.eval_rule50_damping) * clock / (100 * 199);
-        }
-        let correction = self.correction_value(board, ply);
-        let eval = (eval + i64::from(correction))
-            .clamp(i64::from(-TB_WIN_SCORE + 1), i64::from(TB_WIN_SCORE - 1));
-        (saturate(eval), correction)
-    }
-
-    /// Train every correction table for the node at `ply` from the residual
-    /// `diff` = searched score minus static eval. The caller owns the
-    /// admission rule: not in check, a quiet best move, a bound that agrees
-    /// with the residual's sign.
-    pub(super) fn train_correction(&mut self, board: &Board, depth: i32, diff: i32, ply: usize) {
+    /// Train the compact kernel's tables for the node at `ply` by `bonus`,
+    /// already scaled and clamped: the pawn and both non-pawn tables, and
+    /// the one continuation table at the contexts two and four plies back.
+    pub(super) fn compact_train_correction(&mut self, board: &Board, ply: usize, bonus: i32) {
         // A pricing probe leaves the corrections as the measured search had them.
         #[cfg(feature = "pricing")]
         if self.td.pricing.probing {
             return;
         }
-        crate::diag_count!(correction_updates);
-        #[cfg(feature = "diag")]
-        {
-            let magnitude = u64::from(diff.unsigned_abs());
-            crate::diag_count!(corr_resid_quiet_n);
-            crate::diag_add!(corr_resid_quiet_sum, magnitude);
-            match board.halfmove_clock() {
-                0..=19 => {
-                    crate::diag_count!(corr_resid_hm_low_n);
-                    crate::diag_add!(corr_resid_hm_low_sum, magnitude);
-                }
-                20..=49 => {
-                    crate::diag_count!(corr_resid_hm_mid_n);
-                    crate::diag_add!(corr_resid_hm_mid_sum, magnitude);
-                }
-                _ => {
-                    crate::diag_count!(corr_resid_hm_high_n);
-                    crate::diag_add!(corr_resid_hm_high_sum, magnitude);
-                }
-            }
-        }
-        let p = &self.cfg.core;
-        // A mate or tablebase residual against an evaluation at the opposite
-        // clamp is about 63,700, so `slope × depth × residual` passes
-        // `i32::MAX` from depth 135 at the default slope; formed in `i64`, it
-        // clamps with the residual's sign instead of wrapping.
-        let product = i64::from(p.corr_update_slope) * i64::from(depth) * i64::from(diff) / 128;
-        let bonus = i32::try_from(
-            product.clamp(i64::from(p.corr_update_min), i64::from(p.corr_update_max)),
-        )
-        .unwrap_or_else(|_| unreachable!("clamped into i32 bounds"));
-        let slots = self.correction_slots(board, ply);
+        let slots = self.compact_correction_slots(board, ply);
+        let seeds = self.seeds();
+        let (keyed_max, cont_max) = (seeds.corr_keyed_max, seeds.corr_cont_max);
         let tables = &mut self.td.corr;
-        #[cfg(feature = "diag")]
-        if crate::diag::sampled(board.hash(), ply, crate::diag::SAMPLE_CORRECTION) {
-            crate::diag::record_correction_slot(
-                0,
-                slots.pawn,
-                board.pawn_key(),
-                tables.pawn[slots.pawn],
-            );
-            crate::diag::record_correction_slot(
-                1,
-                slots.minor,
-                board.minor_key(),
-                tables.minor[slots.minor],
-            );
-            for (source, index, color) in [(2, 0, Color::White), (3, 1, Color::Black)] {
-                crate::diag::record_correction_slot(
-                    source,
-                    slots.non_pawn[index],
-                    board.non_pawn_key(color),
-                    tables.non_pawn[index][slots.non_pawn[index]],
-                );
-            }
-        }
-        apply_bonus(&mut tables.pawn[slots.pawn], bonus, KEYED_MAX);
-        apply_bonus(&mut tables.minor[slots.minor], bonus, KEYED_MAX);
-        apply_bonus(&mut tables.non_pawn[0][slots.non_pawn[0]], bonus, KEYED_MAX);
-        apply_bonus(&mut tables.non_pawn[1][slots.non_pawn[1]], bonus, KEYED_MAX);
-        if let Some(slot) = slots.continuation[0] {
-            apply_bonus(&mut tables.continuation_2[slot], bonus, CONT_MAX);
-        }
-        if let Some(slot) = slots.continuation[1] {
-            apply_bonus(&mut tables.continuation_4[slot], bonus, CONT_MAX);
+        apply_bonus(&mut tables.pawn[slots.pawn], bonus, keyed_max);
+        apply_bonus(&mut tables.non_pawn[0][slots.non_pawn[0]], bonus, keyed_max);
+        apply_bonus(&mut tables.non_pawn[1][slots.non_pawn[1]], bonus, keyed_max);
+        for slot in slots.continuation.into_iter().flatten() {
+            apply_bonus(&mut tables.continuation_2[slot], bonus, cont_max);
+            #[cfg(feature = "probes")]
+            self.td
+                .rates
+                .record(super::compact::probes::Kind::Gravity, true);
         }
     }
-}
 
-/// Non-king material of both sides, in evaluation units.
-fn material(board: &Board) -> i32 {
-    let mut total = 0;
-    for color in [Color::White, Color::Black] {
-        for piece in [
-            Piece::Pawn,
-            Piece::Knight,
-            Piece::Bishop,
-            Piece::Rook,
-            Piece::Queen,
-        ] {
-            total +=
-                infra::to_i32(board.pieces(color, piece).count() as usize) * piece_value(piece);
-        }
+    pub(super) fn raw_eval(&mut self, board: &Board) -> i32 {
+        self.td.evaluator.evaluate(board)
     }
-    total
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::Move;
+    use crate::board::{Move, Piece};
+    use crate::tt::TB_WIN_SCORE;
 
     const FEN: &str = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
 
     /// The table stores the raw eval under a key that ignores the halfmove
     /// clock, so the raw eval must not depend on the clock: a value stored at
-    /// clock 0 and read at clock 80 corrects to exactly what a fresh
+    /// clock 0 and read at clock 80 evaluates to exactly what a fresh
     /// evaluation at clock 80 does, and that is damped toward the draw.
     #[test]
     fn a_stored_raw_eval_serves_any_halfmove_clock() {
@@ -321,33 +182,17 @@ mod tests {
         .raw_static_eval;
         let fresh = searcher.raw_eval(&late);
         assert_eq!(stored, fresh);
-        let (late_eval, _) = searcher.corrected_eval_parts(&late, stored, 0);
-        assert_eq!(late_eval, searcher.corrected_eval_parts(&late, fresh, 0).0);
-        let (early_eval, _) = searcher.corrected_eval_parts(&early, raw, 0);
+        let material = 1_242;
+        let (late_eval, _) = searcher.compact_eval(&late, stored, material, 0);
+        assert_eq!(
+            late_eval,
+            searcher.compact_eval(&late, fresh, material, 0).0
+        );
+        let (early_eval, _) = searcher.compact_eval(&early, raw, material, 0);
         assert!(
             late_eval.abs() < early_eval.abs(),
             "{late_eval} vs {early_eval}"
         );
-    }
-
-    /// At a mate residual and an extreme depth the training bonus's product
-    /// passes `i32::MAX`; the tables must still move in the residual's
-    /// direction, by the clamped bonus, never wrapped to the other sign.
-    #[test]
-    fn an_overflowing_training_bonus_keeps_the_residuals_sign() {
-        let board = Board::from_fen(FEN).expect("valid FEN");
-        for (diff, sign) in [(63_700, 1), (-63_700, -1)] {
-            let mut searcher = Searcher::default();
-            let slot = searcher.correction_slots(&board, 0).pawn;
-            let before = i32::from(searcher.td.corr.pawn[slot]);
-            searcher.train_correction(&board, 200, diff, 0);
-            let after = i32::from(searcher.td.corr.pawn[slot]);
-            assert_eq!(
-                (after - before).signum(),
-                sign,
-                "residual {diff}: {before} -> {after}"
-            );
-        }
     }
 
     #[test]
@@ -364,42 +209,29 @@ mod tests {
         assert_eq!(bucket(255), RULE50_BUCKETS - 1);
     }
 
-    /// A positive residual trained at a position raises the correction read
-    /// back there, and a negative one lowers it; the corrected eval moves by
-    /// the correction and nothing else at the neutral formula coordinates.
-    /// The update is gravity toward the table maximum, not toward the
-    /// residual: a residual that keeps its sign keeps pushing, and only the
-    /// table bounds cap the correction.
+    /// A positive bonus trained at a position raises the correction read
+    /// back there and a negative one lowers it, and the corrected eval moves
+    /// by the correction.
     #[test]
     fn training_moves_the_correction_toward_the_residual() {
         let mut searcher = Searcher::default();
         let board = Board::from_fen(FEN).expect("valid FEN");
-        let raw = 37;
-        assert_eq!(searcher.correction_value(&board, 0), 0);
-        assert_eq!(searcher.corrected_eval_parts(&board, raw, 0), (raw, 0));
+        let (raw, material) = (37, 8_000);
+        assert_eq!(searcher.compact_correction(&board, 0), 0);
+        let (plain, _) = searcher.compact_eval(&board, raw, material, 0);
         for _ in 0..20 {
-            searcher.train_correction(&board, 8, 60, 0);
+            searcher.compact_train_correction(&board, 0, 600);
         }
-        let correction = searcher.correction_value(&board, 0);
-        let p = &searcher.cfg.core;
-        let bound = (KEYED_MAX
-            * (p.corr_weight_pawn
-                + p.corr_weight_minor
-                + p.corr_weight_non_pawn_white
-                + p.corr_weight_non_pawn_black))
-            / (64 * 128);
-        assert!(
-            correction > 0 && correction <= bound,
-            "{correction} vs {bound}"
-        );
+        let correction = searcher.compact_correction(&board, 0);
+        assert!(correction > 0, "{correction}");
         assert_eq!(
-            searcher.corrected_eval_parts(&board, raw, 0),
-            (raw + correction, correction)
+            searcher.compact_eval(&board, raw, material, 0),
+            (plain + correction, correction)
         );
         for _ in 0..200 {
-            searcher.train_correction(&board, 20, -400, 0);
+            searcher.compact_train_correction(&board, 0, -4_000);
         }
-        assert!(searcher.correction_value(&board, 0) < 0);
+        assert!(searcher.compact_correction(&board, 0) < 0);
     }
 
     /// Continuation corrections are keyed by the earlier context and the
@@ -408,14 +240,14 @@ mod tests {
     fn continuation_corrections_need_both_moves() {
         let mut searcher = Searcher::default();
         let board = Board::from_fen(FEN).expect("valid FEN");
-        let slots = searcher.correction_slots(&board, 4);
+        let slots = searcher.compact_correction_slots(&board, 4);
         assert_eq!(slots.continuation, [None, None]);
         let mv = Move::from_uci("e7e5").expect("valid move");
         searcher.td.stack[3].mv = mv;
         searcher.td.stack[3].piece = Piece::Pawn;
         searcher.td.stack[2].mv = Move::from_uci("g1f3").expect("valid move");
         searcher.td.stack[2].cont_key = 1234 * super::super::history::PIECE_TO_SIZE;
-        let slots = searcher.correction_slots(&board, 4);
+        let slots = searcher.compact_correction_slots(&board, 4);
         assert!(slots.continuation[0].is_some());
         assert_eq!(slots.continuation[1], None, "no move four plies back");
     }
@@ -431,23 +263,23 @@ mod tests {
         assert!(crate::eval::endgame::is_draw_verdict(&verdict));
         assert_eq!(searcher.raw_eval(&verdict), 0, "the recogniser's verdict");
         for _ in 0..50 {
-            searcher.train_correction(&verdict, 12, 300, 0);
+            searcher.compact_train_correction(&verdict, 0, 600);
         }
         assert_ne!(
-            searcher.correction_value(&verdict, 0),
+            searcher.compact_correction(&verdict, 0),
             0,
             "the tables are trained"
         );
-        assert_eq!(searcher.corrected_eval_parts(&verdict, 0, 0), (0, 0));
+        assert_eq!(searcher.compact_eval(&verdict, 0, 545, 0), (0, 0));
 
         let ordinary = Board::from_fen(FEN).expect("valid FEN");
         assert!(!crate::eval::endgame::is_draw_verdict(&ordinary));
         for _ in 0..50 {
-            searcher.train_correction(&ordinary, 12, 300, 0);
+            searcher.compact_train_correction(&ordinary, 0, 600);
         }
-        let correction = searcher.correction_value(&ordinary, 0);
+        let correction = searcher.compact_correction(&ordinary, 0);
         assert_ne!(correction, 0);
-        assert_eq!(searcher.corrected_eval_parts(&ordinary, 0, 0).1, correction);
+        assert_eq!(searcher.compact_eval(&ordinary, 0, 8_000, 0).1, correction);
     }
 
     #[test]
@@ -455,29 +287,10 @@ mod tests {
         let mut searcher = Searcher::default();
         let board = Board::from_fen(FEN).expect("valid FEN");
         for _ in 0..500 {
-            searcher.train_correction(&board, 60, 30_000, 0);
+            searcher.compact_train_correction(&board, 0, 30_000);
         }
-        let (eval, _) = searcher.corrected_eval_parts(&board, TB_WIN_SCORE, 0);
+        let raw = crate::search::compact::bounded_raw(TB_WIN_SCORE);
+        let (eval, _) = searcher.compact_eval(&board, raw, 8_000, 0);
         assert!(eval < TB_WIN_SCORE);
-    }
-
-    #[test]
-    fn rule50_damping_is_the_evaluators_and_material_is_neutral_at_zero() {
-        let mut searcher = Searcher::default();
-        let board = Board::from_fen("4k3/8/8/8/8/8/3Q4/4K3 w - - 90 60").expect("valid FEN");
-        // The material scale is an SPSA coordinate and is fitted away from
-        // zero, so the damping line is read with it switched off; the term's
-        // own effect is asserted below.
-        searcher.cfg.core.eval_material_scale = 0;
-        assert_eq!(
-            searcher.corrected_eval_parts(&board, 500, 0).0,
-            500 - 500 * 90 / 199,
-            "the default damping is the evaluator's former rule-50 line"
-        );
-        searcher.cfg.core.eval_rule50_damping = 0;
-        assert_eq!(searcher.corrected_eval_parts(&board, 500, 0).0, 500);
-        searcher.cfg.core.eval_material_scale = 64;
-        let expected = 500 + 500 * (900 - 8_000) / 8_000;
-        assert_eq!(searcher.corrected_eval_parts(&board, 500, 0).0, expected);
     }
 }

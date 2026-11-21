@@ -322,11 +322,11 @@ function Get-HarnessSha256 {
     (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
 }
 
-function Get-EngineUciOptions {
+function Get-EngineUciText {
+    # The engine's answer to `uci`, through `uciok`.
     param(
         [Parameter(Mandatory)][string]$Path,
-        [int]$TimeoutMs = 15000,
-        [switch]$Detailed
+        [int]$TimeoutMs = 15000
     )
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
@@ -369,7 +369,25 @@ function Get-EngineUciOptions {
     if ($text -notmatch '(?m)^\s*uciok\s*$') {
         throw "Engine '$Path' did not emit 'uciok'; it is not a working UCI engine."
     }
+    $text
+}
 
+function Get-EngineIdName {
+    # The name an engine gives itself, the identity a foreign arm has.
+    param([Parameter(Mandatory)][string]$Path)
+    $match = [regex]::Match((Get-EngineUciText -Path $Path), '(?m)^\s*id\s+name\s+(?<name>.+?)\s*$')
+    if (-not $match.Success) { throw "Engine '$Path' gave no 'id name' in its answer to 'uci'." }
+    $match.Groups['name'].Value
+}
+
+function Get-EngineUciOptions {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [int]$TimeoutMs = 15000,
+        [switch]$Detailed
+    )
+
+    $text = Get-EngineUciText -Path $Path -TimeoutMs $TimeoutMs
     $options = [System.Collections.Generic.List[object]]::new()
     foreach ($line in ($text -split "`r?`n")) {
         $match = [regex]::Match($line, '^\s*option\s+name\s+(?<name>.+?)\s+type\s+(?<type>\S+)(?<tail>.*)$')
@@ -744,44 +762,22 @@ function Assert-EngineArmEquality {
     if (-not $Quiet) { Write-Host "  Compiler equality OK: $compilerA" }
 }
 
-function Assert-CoreSurfaceArm {
-    # The Core* coordinates exist only in a tune build of the selectivity core,
-    # every tune build since B.8 removed the B.1 search; an older binary may
-    # lack them. A flavor string does not say which binary carries them, so the
-    # binary is judged by the options it actually advertises: one without them
-    # would tune a different search under the same names or fail late on a
-    # missing option.
-    param(
-        [Parameter(Mandatory)][string[]]$Names,
-        [Parameter(Mandatory)][object[]]$Advertised,
-        [string]$Flavor,
-        [Parameter(Mandatory)][string]$ConfigGroup
-    )
-
-    $normalize = { param($value) ($value -replace '\s+', ' ').Trim().ToLowerInvariant() }
-    $advertisedNames = @($Advertised | ForEach-Object { & $normalize $_.Name })
-    $core = @($Names | Where-Object { $_ -like "Core*" })
-    $missing = @($core | Where-Object { $advertisedNames -notcontains (& $normalize $_) })
-    if ($missing.Count -gt 0) {
-        throw ("Config group '$ConfigGroup' names selectivity-core options ($($missing[0]) and " +
-               "$($missing.Count - 1) more) that the tune binary (flavor '$Flavor') does not advertise. " +
-               "Build a tune binary of the current head: ./tools/build_test.ps1 -Tune.")
-    }
-}
-
 function Assert-TuneSurface {
     # A tune surface is only meaningful against the binary that will run it:
     # every coordinate must exist, be a spin, start at the engine's own default,
     # stay inside the engine's range, and still perturb by at least half a unit
     # at the registered horizon — a step-1 integer knob goes dead after ~894
-    # iterations and tunes nothing while looking healthy.
+    # iterations and tunes nothing while looking healthy. A rule 7c tune plays
+    # the converter's graded perturbation (two steps where the seed has the
+    # room, never under one), so -Rule7c checks that; otherwise one step.
     param(
         [Parameter(Mandatory)][object[]]$Advertised,
         [Parameter(Mandatory)][object]$Surface,
         [Parameter(Mandatory)][int]$Iterations,
         [Parameter(Mandatory)][string]$Label,
         [object]$Fixed = $null,
-        [double]$Gamma = 0.102
+        [double]$Gamma = 0.102,
+        [switch]$Rule7c
     )
 
     $normalize = { param($value) ($value -replace '\s+', ' ').Trim().ToLowerInvariant() }
@@ -813,7 +809,12 @@ function Assert-TuneSurface {
                    "range=[$minimum,$maximum] step=$step; engine default=$($declaration.Default) " +
                    "range=[$($declaration.Min),$($declaration.Max)].")
         }
-        $endPerturbation = $step / [Math]::Pow($Iterations, $Gamma)
+        $steps = 1.0
+        if ($Rule7c) {
+            $room = [Math]::Min($value - $minimum, $maximum - $value) / $step
+            $steps = [Math]::Min(2.0, [Math]::Max(1.0, $room))
+        }
+        $endPerturbation = $steps * $step / [Math]::Pow($Iterations, $Gamma)
         if ($endPerturbation -lt 0.5) {
             throw "$($parameter.Name) perturbation rounds to zero before iteration $Iterations (end=$endPerturbation)."
         }
@@ -831,8 +832,8 @@ function Assert-TuneSurface {
 }
 function Get-ColosseumPin {
     # One file names the runner: its source revision and the SHA-256 that is
-    # actually enforced. Re-pinning to the published `cli-v0.1.0` archive
-    # (PLAN B.2.6.3) is an edit to this file and to nothing else.
+    # actually enforced. Re-pinning to another published release is an edit
+    # to the pin file and to nothing else.
     param([Parameter(Mandatory)][string]$PinPath)
 
     if (-not (Test-Path -LiteralPath $PinPath -PathType Leaf)) {

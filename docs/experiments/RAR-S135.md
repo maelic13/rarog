@@ -1,0 +1,579 @@
+# RAR-S135 — D.7.11: the finishing fit, one rule 7c run over 225 coordinates of the repaired kernel — REGISTERED 2026-11-20, before any game; READ 2026-11-21: theta baked
+
+Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
+
+- **Date / owner:** registered 2026-11-20, after the activation read and
+  before any game, the pilot's included. The pilot and the tune are the
+  maintainer's to run (AGENTS, *Expensive jobs*); the reads' preparation is
+  the agent's.
+- **Kind:** PLAN D.7.11, the finishing fit of one dependency-complete
+  cluster: the compact kernel's whole active surface in one joint run from
+  its baked centres. Research and decisions:
+  `analysis/d711_fit_2026-11-20.md` (the record), frozen; this registration
+  states them and adds the binary, the files, the seeds and the drivers.
+- Disposition: retained — quiet at its first checkpoint 2026-11-21 (2,000 iterations); theta +7.8 ± 9.1 Elo against the start, not wholly below zero, baked (`16f93cb`).
+- **Inherits:** RAR-S128 (the first fit, stopped live at 2,000 and baked,
+  `73966eb`), D.7.8's repairs (ProbCut's bar at the donor's scale, the
+  quiescence and evaluation-only table depth, the root's own order), D.7.9.1
+  (Reckless's time manager, RAR-R34) and RAR-S134 (the repaired kernel
+  +63.8 ± 9.1 Elo against the classic at `3+0.03`, the fit's control).
+- **Hypothesis:** the kernel's constants were fitted once, on a kernel
+  since repaired (ProbCut's family against a bar 0.40 of the donor's) and on
+  a surface missing seven degrees of freedom; a second run from the baked
+  centres on the repaired kernel and the completed surface gains, and does
+  not lose beyond about −15 Elo shown by the read at its stop.
+
+## Binary
+
+`tools/test_engines/rarog-d711fit-tune.exe`, built by
+`./tools/build_test.ps1 -Suffix d711fit -Tune` from the clean tree at
+`3233da2` (engine source `6843b16`, D.7.11.1), `cargo xtask build --tier pext
+--nopgo --features tune`, `rustc 1.100.0`; `id name Rarog
+dev-20261120-3233da24`; SHA-256
+`e88123b26b649212703f2b04f65ea3b494c4fbb2ba8782a8b88200795bddfc25`; its
+sidecar `rarog-d711fit-tune.json` records `bench 13` **3,320,355** (EBF
+2.317, the development fingerprint, reproduced by the default build too). It
+lists 249 seed options (254 seed fields less the five excluded by
+construction, `tune.rs`). Every arm of the pilot, the tune and the reads is
+this binary.
+
+## Surface (frozen)
+
+**225 coordinates**, the record's surface (`analysis/d711_fit_2026-11-20.md`,
+section 2 and its appendix), in `tools/spsa_configs/config_d711fit.json`
+(`66a1f14`): each coordinate's `value` is the engine's default (the first
+fit's baked centres), `min_value` and `max_value` the binary's listed range
+(half to twice the seed, `KProbcutSeeScale` its declared 512 to 4,096),
+`step` range/16 and at least 1. `d711pilot` is the same file.
+`tools/spsa_configs/colosseum/d711fit.*.toml` and `d711pilot.*.toml` are the
+rule 7c conversions at ceilings 6,000 and 64; the room report is empty at
+both (the least room at a seed is 5.0 steps, so every coordinate plays the
+full two steps).
+
+- **In for the first time (ten):** the seven new options of D.7.11.1
+  (`KPawnHistoryMax`, `KSingularPvPerPly1024`, `KQSeeCorrectionScale`,
+  `KExchangeValue1` to `KExchangeValue4`), `KProbcutSeeScale` and
+  `KFdsTtPvDeep`; and `KPickCheckPiece`, inactive on `bench 13` and active on
+  `bench 17`. The ProbCut family is refitted against its repaired bar.
+- **Out, whole units (16):** `KSingularDepth`, `KSingularTtDepth`,
+  `KSingularExactDiv`, `KProbcutDepthBase`, `KTtCutTypedDepth`,
+  `KTtBonusParentMoves`, `KEvalBonusDepth`, `KHpDepth`, `KLdseDepth`,
+  `KFpDepth`, `KBnfpDepth`, `KNmpVerifyDepth`, `KQMoveLimit`,
+  `KNegativeExtension`, `KPickLateGood`, `KSeeNoisySquare`. A clean readout
+  is chosen over a possible Elo or two on the next unit of three of them
+  (the record, *Whole units*).
+- **Out, inactive at both bench depths (8):** `KFdsSingular`,
+  `KFdsSingularCap`, `KFdsSingularOffset`, `KNmpMin16`, `KRfpMin16`,
+  `KPickCheckBase`, `KTtCutFifty`, `KWindowStabilityCap`.
+- **Not options, by construction (5, `tune.rs`):** the two thread spreads,
+  `pick_escape[0]` and `[5]`, and the pawn's exchange value, the unit of the
+  other four. The quiet, noisy and continuation history limits are literals,
+  units of their families.
+
+### Activation read (2026-11-20, before any game)
+
+On the binary above, by `analysis/artifacts/d711-fit-2026-11-20/activation3.py`
+(SHA-256 `8e85cb9a…`; output `activation3.json`, `8f6c7d78…`): RAR-S128's rule
+over all 249 options, `bench 13` at the seed minus and plus its
+perturbation, a seed that reproduces it on both sides read again at
+`bench 17`. Guards passed: 249 seed options listed; default `bench 13`
+3,320,355 and `bench 17` 20,004,610; the positive control (`KLmrLog` at its
+plus side) 3,118,411; every `setoption` accepted; no timeout.
+
+- Active on `bench 13`: 240 of 249; three of them on one side only
+  (`KFdsTtPvDeep`, `KResearchShallower16`, `KTripleNewPv16`), which is
+  active by the rule.
+- Inactive on `bench 13`, read at `bench 17` (9): `KPickCheckPiece` moves it
+  (30,325,641 and 19,953,020); the eight above move neither depth.
+- The seven new options, at the seed minus and plus their perturbation on
+  `bench 13`: `KPawnHistoryMax` 3,774,299 and 3,379,579;
+  `KSingularPvPerPly1024` 3,553,459 and 3,286,013; `KQSeeCorrectionScale`
+  3,216,884 and 2,775,957; `KExchangeValue1` to `4` 4,508,482 / 3,858,410,
+  2,890,805 / 3,423,705, 3,629,362 / 3,731,643 and 5,472,367 / 3,296,708.
+- The surface files were generated from the binary's own listing and this
+  read by `gen_config.py` (SHA-256 `1c77cb1d…`), which compares the result
+  with the record's appendix and fails on any difference: none, 225 of 225
+  with the same seeds and ranges. `./tools/audit_spsa_coverage.ps1
+  -TuneEngine tools/test_engines/rarog-d711fit-tune.exe` ends `RESULT:
+  clean`; `spsa_config_to_colosseum.py --check` passes on both groups.
+
+## Fixed, not in the surface
+
+- `fixed_d711fit.json` and `fixed_d711pilot.json`: Hash 64, Threads 1,
+  MultiPV 1.
+- The clock: the fifteen soft-limit coordinates (`TmNodesBase` to
+  `TmChangesScale`) at the donor's values, the budget's constants and the
+  fail-high stop's multiple (the record, section 1; its retry trigger is
+  PLAN D.7.11, item 1).
+- `LazyMargin` (475), the frozen evaluation's own constant (rule 2);
+  `AspMaxFails` and `TmFailHighTarget`, guards; the evaluation.
+- Nothing is removed from the kernel: the eight inactive seeds are D.8.21's
+  question, after D.7.14.
+
+## Shape (rule 7c, kept whole)
+
+- Colosseum CLI 0.5.0 (the pin), `spsa`, **30 games an iteration on 15
+  slots**, `3+0.03`, the UHO book, no adjudication; the perturbation two
+  steps, graded by room (`tools/spsa_config_to_colosseum.py --rule7c`);
+  `r_end` 0.00155; **ceiling 6,000 iterations (180,000 games)**;
+  checkpoints at **2,000 and every 1,000**, window 1,000, read by
+  `tools/spsa_read.py`.
+- **The test at each checkpoint:** each coordinate's z over the last 1,000
+  iterations; live when any |z| passes the familywise 5% line for 225
+  coordinates or `Σ z² − n ≥ 2·√(2n)`; otherwise quiet.
+- **The stop:** quiet (theta that checkpoint's rounded centres), a rail (a
+  centre within one perturbation of a bound with its z outward past the
+  familywise line: a new registration of that range), a fault (below), the
+  ceiling, or the maintainer's `STOP` in the run directory at a checkpoint.
+  A stopped tune is never extended.
+- **Hours, at the record's rate** (23.16 s an iteration measured on
+  RAR-S128, scaled by the new clock's 0.896 of the budget against 0.851, so
+  about 24.3 s): **13.5 hours to the first checkpoint, 6.8 for each further
+  1,000 iterations, 40.5 to the ceiling.** The pilot measures the rate; the
+  hours are restated from it in an amendment before the tune's first game.
+- Pause and resume: one Ctrl+C in the tune's terminal pauses it at a whole
+  iteration (games in flight get 30 seconds, the iteration in flight is
+  replayed); the same command resumes it at its seed, schedule and
+  checkpoints (PROCESS, *SPSA go/no-go*, item 10). The tune never pauses
+  for a read.
+
+## The fault rule
+
+- **No fixed fault limit:** no `--max-time-losses`, no
+  `--max-engine-faults` (PROCESS, *SPSA go/no-go*, item 11; the record,
+  section 4). The runner's own allowance stays (the larger of 3 and 0.5% of
+  the games so far).
+- A fault reads FAULT at the next checkpoint and the tune stops there for
+  the maintainer.
+- *Acceptance, registered in advance:* a time loss whose `failed-games`
+  table shows the losing search held longer than its slack is the host's
+  and is accepted (`tools/spsa_read.py <run> --accept-faults "<reason>"`,
+  then the same command); a search that overran its own deadline with no
+  hold is the engine's and returns D.7 to the clock.
+
+## The pilot (D.7.11.5)
+
+- **64 iterations of 30 games** (1,920 games, about 26 minutes) on
+  `d711pilot`, the same surface converted for a ceiling of 64
+  (`colosseum.ps1 -Mode spsa -ConfigGroup d711pilot -Ceiling 64
+  -AllowShortRun -FirstCheckpoint 64 -Window 64`), `tools/results/d711-pilot`.
+  The maintainer interrupts it once (Ctrl+C) and runs the same command
+  again.
+- **Its uses:** the run proved end to end on this build, the rate, the
+  spread of an iteration's score at the first perturbations, and the pause.
+- **Pass:** every option accepted by the runner; no first arm clamped; no
+  fault; the reader's move check on the resumed run under 1e-6; the rate
+  recorded and this registration's hours restated from it before the
+  tune's first game.
+- **Its theta is never used**, neither promoted nor the tune's seed, which
+  is the engine's defaults. PROCESS's re-audit (step 6) follows it: a
+  coordinate the pilot finds at a rail at once is reported before the tune.
+
+## Reads of the centres against the start
+
+The tune build on both sides (`colosseum.ps1 -Mode match
+-CategoricalTuneBuild`): `d711at<K>` plays the rounded centres at a
+completed iteration K, taken from `spsa history` through
+`tools/spsa_read.py` without writing into the run directory and checked
+name for name against the surface; `d711start` plays the engine's
+defaults. `3+0.03`, Hash 64, one thread, the UHO book, no adjudication. A
+read never shares the host with a running tune: its driver refuses while
+any `colosseum-cli` is alive.
+
+| Read | When | Games | Seed | Rule |
+|---|---|---:|---:|---|
+| At the stop (D.7.11.7) | after the tune has ended, at the checkpoint the maintainer names | 2,000, about 27 minutes | 2026113503 | **theta is baked unless the 95% interval lies wholly below zero** (D.7.8's keep rule). It catches a true −15 Elo nine times in ten and a true −10 a little over half; "baked" means no harm beyond about −15 shown, not a gain |
+| Interim (optional, the maintainer's) | with the tune paused | 1,000, about 14 minutes | 2026113504 | wholly below zero is reported, and the maintainer may then place `STOP`. It catches −20 at 85% |
+
+No forecast is made from a read, two reads never rank two checkpoints, and
+theta is never chosen by a read. *Not registered:* a `10+0.1` read of theta
+against the start (D.7.13's companion reads the fitted kernel there).
+
+## Seeds and directories (frozen)
+
+| Run | Seed | Directory |
+|---|---:|---|
+| Pilot | 2026113501 | `tools/results/d711-pilot` |
+| Tune | 2026113502 | `tools/results/d711-fit` |
+| Read at the stop | 2026113503 | `tools/results/rar-s135-read<K>-2000` |
+| Interim read | 2026113504 | `tools/results/rar-s135-read<K>-1000` |
+
+None of the four occurs in any earlier registration, driver or run
+directory's `resolved-config.json` (checked 2026-11-20).
+
+## Drivers (D.7.11.4)
+
+Three drivers in `analysis/artifacts/d711-fit-2026-11-20/` (ignored), each
+run from the machine's own terminal, where the harness's live output shows.
+Each checks the binary's SHA-256 before anything else and passes
+`-ExpectBench 3320355 -ExpectRevision 3233da2` to `colosseum.ps1`. The pilot's
+and the tune's retry their start once a minute only while the harness
+refuses the host as busy, which it does before any game; any other failure
+ends them. A run directory that exists keeps its recorded seed.
+
+| Driver | SHA-256 | What it runs |
+|---|---|---|
+| `run_pilot.ps1` | `7f5bae34e790992fa3f12ac0499e3bb6d2d2981bc2ea3316011a70d3cf3636a3` | `colosseum.ps1 -Mode spsa -ConfigGroup d711pilot -Ceiling 64 -AllowShortRun -FirstCheckpoint 64 -Window 64`, seed 2026113501, `tools/results/d711-pilot` |
+| `run_tune.ps1` | `b62eea210359cbe0976dd29d95bcc686221e9c036cacf758308482bd1c03bda5` | `colosseum.ps1 -Mode spsa -ConfigGroup d711fit -Ceiling 6000`, seed 2026113502, `tools/results/d711-fit`; no fault limit; starts or resumes |
+| `run_read.ps1` | `435c6079f8a4a07460ae24f543b15b747293768ab363ef28bef7fe4a0f8cc99d` | `-At <K> -Games 2000` (the stop, seed 2026113503, only on an ended tune) or `-Games 1000` (interim, seed 2026113504); the centres from `tools/spsa_read.py` without `--record`, checked name for name against the surface; refused while any `colosseum-cli` is alive; `colosseum.ps1 -Mode match -CategoricalTuneBuild` |
+
+*Dry runs (2026-11-20, before any game):* each driver's `-DryRun` path ran
+once to the wrapper's own dry run, every guard passed and no game was
+played (manifests `tools/results/colosseum_spsa_d711-pilot_20261120_174734`,
+`colosseum_spsa_d711-fit_20261120_174749` and
+`colosseum_match_rar-s135-dryrun-2000-2000_20261120_174903`, each
+`.manifest.txt`). The pilot's and the tune's verified the surface at their
+ceilings (225 coordinates at N = 64 and N = 6000), the files current and no
+rail warning; the runner's resolved configuration holds seeds 2026113501
+and 2026113502, 30 games an iteration in two waves of 15, `r_end` 0.00155,
+and its own fault allowance (3, or 5 per mille of the games), no limit
+passed. Neither created its run directory. The read's ran on RAR-S128's
+stopped run (`-RunDir tools/results/d76-fit -ConfigGroup d76fit -At 2000`),
+the only tune with a history before the pilot: its 230 centres equal that
+run's `theta-2000.txt` line for line, its run directory was unchanged, and
+the match resolved at seed 2026113503 on this binary. Its first dry run
+stopped at its "ended tune" guard, which read only the last verdict; the
+guard was corrected to the wrapper's own rule (a last verdict other than
+CONTINUE, or that checkpoint's theta written), which RAR-S128's maintainer
+stop meets, and the passing dry run and the hash above are the corrected
+file's.
+
+## PRE-REGISTERED PREDICTION (frozen 2026-11-20 in the record, before the tune build existed; copied unchanged)
+
+1. *Activation on the tune build:* eight inactive at both depths,
+   `KPickCheckPiece` active at 17, the seven new options all active, a
+   surface of 225 (0.75); one option differing (0.2). *Amended twice the
+   same day, before the tune build exists:* it read 223, then 228.
+2. *Pilot:* no fault (0.95); 140 to 155 iterations an hour (0.8).
+3. *Tune:* quiet at 2,000 (0.50); quiet at 3,000 (0.25); later or the
+   ceiling (0.20); a rail (0.03). A FAULT read at some checkpoint from a
+   time loss (0.35).
+4. *The tune's own gain read at its stop:* +10 Elo, 80% band −8 to +30.
+5. *The read at the stop:* **+8 Elo**, 80% band −3 to +20; wholly above
+   zero (0.40); wholly below zero (0.03).
+6. *Furthest movers:* the ProbCut family and `KProbcutSeeScale` (down),
+   `KLmrQuietHistory` (up), the wrapper pair (small); the pawn table's
+   limit within noise.
+- Basis: the first fit's forecast at its stop, RAR-S78 and RAR-S104, the
+  moved tree, seven new coordinates.
+- Most likely failure: a quiet stop at 2,000 with a read inside ±9 Elo,
+  which shows neither gain nor harm; theta is then baked on the keep rule
+  alone.
+
+*Calibration of item 1* (appended after the activation read, before any
+game): eight inactive at both depths, `KPickCheckPiece` active at 17, the seven
+new options active, a surface of 225: the predicted outcome (0.75), with no
+option differing.
+
+## The pilot's result (2026-11-20; read from its files, before any tune game)
+
+`tools/results/d711-pilot`, one invocation (manifest
+`colosseum_spsa_d711-pilot_20261120_175215`), started 16:52:16 and ended
+17:17:17 UTC: 64 of 64 iterations, 1,920 games, the runner `completed` with no
+invalid iteration. The wrapper's read at 64: **FAULT** (`engine_b 1,
+time_losses_b 1`), so the run stopped there for the maintainer.
+
+| Pass criterion | Read |
+|---|---|
+| Every option accepted | **yes**: the wrapper verified 225 coordinates at N = 64; no refused or unknown option in `run.log` or the segment log |
+| No first arm clamped | **yes**: "clamped none"; arms clamped on over 1% of iterations: none |
+| No fault | **no**: one time loss, analysed below |
+| The move check on the resumed run under 1e-6 | **not tested**: the run was not interrupted (one manifest, no `interrupted` line, the run log one stream to 64). The reader's move check on the uninterrupted run is 8.8e-13 |
+| The rate recorded | **yes**: 23.43 s an iteration, 153.7 iterations an hour (4,610 games), slots busy 82.1% (`tune_journal.py`, `34035fca…`) |
+
+**The time loss is the host's, by the rule registered above.** Game 1,072
+(iteration 35, slot 8), the minus side forfeited at ply 52. By the runner's
+`failed-games` table, the search's own time was 24 ms and its last `info`
+came at 24.2 ms, but `bestmove` reached the runner at 125.5 ms against a
+77.1 ms deadline; 112.1 ms of that is charged as *held* (the engine's process
+not running). Without the hold the move took 13.5 ms. That is "the losing
+search held longer than its slack". Read beside the other slots
+(`pilot_fault.py`, `fd4bd5e4…`), it was a host-wide stall: all fifteen games
+in play held 66 to 670 ms in the same seconds, against a median of 0.9 ms a
+side for a whole game; 110 of the run's 111 sides held over 50 ms fall in
+iterations 35 and 36, between 17:05:55 and 17:06:43 UTC. By the same tool on
+RAR-S128's 60,000 games, the worst burst held 24 sides on 12 slots, the
+largest 178 ms; this one held 132 sides on all 15 slots, the largest
+670 ms. The host's scheduled task `\Microsoft\Windows\Shell\CreateObjectTask`
+ran at 17:05:41 UTC, and DCOM logged events 10016 from 17:05:56 to 17:06:08:
+a coincidence in time, not a proven cause. No session of this project ran
+anything in that window.
+
+**Re-audit (PROCESS, *SPSA go/no-go*, step 6), diagnostics only:** one
+coordinate over the familywise line at 64 iterations, `KQuietMalusCap`
+(z +3.81 against 3.69; with 225 coordinates one over the line is a chance
+reading about one time in twenty), then `KNoisyMalusSlope` (+3.20) and
+`KExchangeValue1` (−2.52); `Σ z² − n` +19.9 (+0.9 SD); no rail, no rail
+candidate, no clamped arm. Nothing in it argues for a change of the surface,
+and the pilot's theta is not used.
+
+### Amendment, 2026-11-20, before the tune's first game: the hours
+
+From the pilot's measured 153.7 iterations an hour, the stall included:
+**13.0 hours to the first checkpoint at 2,000, 6.5 for each further 1,000,
+39.0 to the ceiling of 6,000.** These replace the record's 13.5, 6.8 and
+40.5.
+
+*Calibration of item 2:* no fault (0.95): **missed**, one time loss in 1,920
+games, the host's; the miss is in the instrument's environment, not the
+engine (the search itself was inside its deadline). 140 to 155 iterations an
+hour (0.8): **hit**, 153.7.
+
+### Amendment, 2026-11-20, before the tune's first game: the pause is tested in the tune
+
+Maintainer decisions the same day, after the pilot's result.
+
+- **The time loss.** The maintainer reports starting programs on the host
+  during the pilot, possibly in the stall's window; the host is left idle
+  for the tune. That agrees with the registered reading (the host's, the
+  search inside its deadline) and changes no rule: a fault in the tune
+  reads FAULT at its checkpoint and is examined then, by the acceptance
+  rule above.
+- **The pause criterion moves into the tune's opening minutes**, since the
+  pilot ended at its ceiling and cannot be interrupted again:
+  1. The tune starts by its one command.
+  2. After at least three whole iterations, the maintainer presses Ctrl+C
+     once and waits for the driver to end (games in flight get 30
+     seconds).
+  3. With the tune paused, from its files only: the wrapper's `interrupted`
+     line; `spsa_read.py <run> --at <k> --window <k>` without `--record`,
+     whose load runs the move check over every completed iteration, under
+     1e-6; `resolved-config.json`'s seed 2026113502 and schedule.
+  4. The same command resumes it.
+  5. Optionally, a second Ctrl+C after at least three more iterations, and
+     the same read on the resumed run, then the same command again; without
+     it, the move check on the resumed run is read by the wrapper's own read
+     at 2,000, since every read loads the run through it.
+- **Pass:** the move check under 1e-6 on the paused run and on the resumed
+  one, the iteration count continuing with the iteration in flight
+  replayed, the seed and schedule unchanged. **Fail:** the tune is not
+  resumed (or `STOP` is placed at the next checkpoint) and the fault is
+  reported as the runner's, for the maintainer's Colosseum.
+- The pilot's other criteria stand as read above; with this amendment
+  D.7.11.5 is done and the tune is cleared to start.
+
+## The tune's result (2026-11-21; read from its files, before the read at the stop)
+
+`tools/results/d711-fit`, two invocations (manifests
+`colosseum_spsa_d711-fit_20261120_215413`, paused after three iterations,
+and `colosseum_spsa_d711-fit_20261120_215833`, resumed at 3 of 6,000):
+2,000 iterations, 60,000 games, no fault of either kind, no arm clamped.
+**The read at 2,000: STOP_QUIET** (`spsa-read.txt`, `spsa-read.jsonl`
+`E3BFDD7C…`): over 225 coordinates the largest |z| is 3.09 against the
+familywise line of 3.69 (`KContBonusSlope` +3.09, `KRewardBelowParentMargin`
+−3.07, `KNoisyBonusSlope` +2.92), none over it; `Σ z² − n` +23.0 (+1.1 SD,
+line 42.4); no rail, no rail candidate. The tune's own read of its gain
+since iteration 0: +15.8 Elo (null SD 9.0); its forecast for 2,000 to
+4,000, at most +5.0 ± 4.6, decides nothing. The tune stopped by its rule
+and is not extended.
+
+- **Theta:** `theta-2000.txt`, 225 coordinates. The read driver's
+  extraction (`tools/spsa_read.py --at 2000`, without `--record`) equals it
+  name for name and value for value, 225 of 225 (checked 2026-11-21).
+- **Moves against the start**, in steps of a sixteenth of the range:
+  median 0.26, 90th percentile 0.69, largest 1.33 (`KQSeeHistory` 49 to
+  55, `KPickVictim` 14,397 to 16,016, `KContBonusSlope` 87 to 97,
+  `KDoubleQuiet16` 100 to 89); four over one step, none within a step of a
+  bound. RAR-S128 at its stop, from the donor's seeds: median 0.32,
+  largest 2.36, seventeen over one step.
+- **The pause (the amendment above): passed.** Paused after 3 iterations
+  (90 games), the wrapper's `interrupted` line written; the move check on
+  the paused run 0.0 over its three iterations, all 225 coordinates moved,
+  the run directory's hashes unchanged by the read; resumed at 3 of 6,000
+  with the stored horizon, seed 2026113502; the move check on the resumed
+  run at 2,000, 1.2e-12, under 1e-6.
+
+*Calibration of item 3:* quiet at 2,000 (0.50): **hit**. A FAULT read from
+a time loss (0.35): none occurred.
+*Calibration of item 4:* +10 Elo, band −8 to +30: **inside the band**,
++15.8 (a read on the tune's own scores, not Elo measured against the
+start).
+*Calibration of item 6:* `KLmrQuietHistory` up: **hit** (207 to 223). The
+wrapper pair small: **hit** (−0.17 and +0.21 step). The pawn table's limit
+within noise: **hit** (8,192 to 8,401, z +1.78). The ProbCut family and
+`KProbcutSeeScale` down: **missed**, in mechanism and magnitude. Only
+`KProbcutMargin` moved down (−0.70 step), `KProbcutSeeScale` went up
+(2,536 to 2,630) and the rest stayed within half a step, every |z| in the
+family at most 1.40. The assumption that failed: that the ProbCut seeds,
+fitted against a bar 0.40 of the donor's, had compensated for it and
+would fall back against the repaired one; at this resolution nothing in
+the family is distinguishable from its seed. None of the furthest movers
+was named (`KQSeeHistory`, `KPickVictim`, `KContBonusSlope`).
+
+### Was the stop right? (2026-11-21, after the tune, from its files; decides nothing)
+
+The maintainer asked whether any coordinate still had leverage at the stop.
+Read with `tools/spsa_read.py`'s own functions (`halves.py`, ignored, beside
+the drivers):
+
+- **The z at 2,000 are what noise gives:** mean −0.001, SD 1.05; a KS
+  test against the standard normal D = 0.044, under the 5% value of 0.091;
+  |z| of 2 or more 13 times against 10.2 expected, of 3 or more twice
+  against 0.6; a largest |z| of 3.09 or more has chance 0.36. The pilot's
+  `KQuietMalusCap` (z +3.81 at 64) reads +0.96.
+- **The instrument is live:** the same reader and rule read RAR-S128 at
+  2,000 as CONTINUE, `KLmrQuietHistory` over the line (3.90 against 3.69)
+  and its own gain +67 Elo (null SD 14); that fit read +56.8 against its
+  start. Here `KLmrQuietHistory` reads +1.08 and the gain +15.8 (null SD
+  9.0).
+- **No gradient persists:** z over iterations 0 to 1,000 against 1,000 to
+  2,000, disjoint games and perturbations, correlate at −0.033 across the
+  225 coordinates (noise SD 0.067); their signs agree 112 times of 225
+  (49.8%); of the twenty largest |z| in the second window, nine share the
+  first's sign (noise 10 ± 2.2). Pooled over 0 to 2,000 the largest |z| is
+  3.34 against 3.69, `Σ z² − n` +17.3 (+0.8 SD). The largest pooled
+  coordinates are pushed early and quiet late (`KQSeeHistory` +3.71 then
+  +0.96, `KPickVictim` +2.67 then +1.61, `KDoubleQuiet16` −3.01 then
+  −0.75), the shape of a gradient the tune followed and used up.
+- **What continuing could buy:** from 2,000 to the ceiling the
+  perturbation shrinks only by ×0.89 and the gain by ×0.57 (α 0.601,
+  γ 0.102, A 600), so a window keeps about its sensitivity (4.5 Elo across
+  a perturbation, SE 1.2) and the centres' jitter falls by about a
+  quarter. A gradient too small for this test, about 1.5 Elo across a
+  perturbation, could show only by pooling to the ceiling, 26 more hours,
+  and would be worth a fraction of that; the reader's forecast for 2,000
+  to 4,000 is at most +5.0 ± 4.6.
+
+The quiet stop is supported: no evidence of a gradient left, by the
+registered test or by the two that pool it. That is insufficient evidence of
+leverage, not proof of none below about 1.5 Elo a coordinate. No
+continuation is registered; one would need a new registration naming the
+coordinates and their evidence first.
+
+## The read at the stop (D.7.11.7, 2026-11-21)
+
+`tools/results/rar-s135-read2000-2000` (manifest
+`colosseum_match_rar-s135-read2000-2000_20261121_112249`, `results.txt`
+`AE3AB2E9…`), `run_read.ps1 -At 2000 -Games 2000`, seed 2026113503: the tune
+build on both sides, `d711at2000` with the 225 values of `theta-2000.txt`
+(the runner's resolved options for side A equal it value for value; 204
+differ from the start), `d711start` at the engine's defaults. 2,000 games,
+completed, no fault, no time loss, no abnormal game.
+
+| Result | Value |
+|---|---|
+| Elo | **+7.8 ± 9.1** (−1.3 to +16.9) |
+| nElo | +13.1 ± 15.2 |
+| W / D / L | 550 / 945 / 505 |
+| Pentanomial | [27, 218, 475, 243, 37] |
+| Mean depth, nodes a move | 17.29 against 17.47; 98,020 against 97,708 |
+
+**By the rule: theta is baked.** The interval does not lie wholly below
+zero. That means no harm beyond about −15 Elo shown; it is not a gain
+shown, since the interval includes zero.
+
+*Calibration of item 5:* +8 Elo, band −3 to +20: **hit**, +7.8. Wholly
+above zero (0.40): not. Wholly below zero (0.03): not. The record's most
+likely failure, a quiet stop at 2,000 with a read inside ±9 Elo, is what
+happened: theta is baked on the keep rule alone.
+
+## The bake (D.7.11.8): held on two behaviour tests (2026-11-21)
+
+The theta audit at 2,000 (`tools/spsa_theta_audit.py`, `audit2000.log`):
+four full-step movers, no rail, no reversal, mean z² 1.088 against a null
+95% of 1.162 (p 0.17). Each mover's line:
+
+- `KQSeeHistory` 49 to 55 (+1.33 steps): the divisor of the move's history
+  in quiescence's exchange bar; larger, the history moves the bar less.
+  Pushed in the first window (z +3.71), quiet in the second (+0.96).
+- `KPickVictim` 14,397 to 16,016 (+1.20): the captured piece's weight
+  against capture history in the noisy order. The exchange values it
+  multiplies moved down 2 to 3% (bishop up 3%), so the net weight still
+  rises: no cancellation.
+- `KContBonusSlope` 87 to 97 (+1.18): the continuation bonus per ply. Its
+  offset fell (78 to 72) and its cap rose (1,099 to 1,170): the three move
+  together toward a larger bonus, none cancelling another.
+- `KDoubleQuiet16` 100 to 89 (−1.15): the penalty a quiet TT move pays at
+  the double extension's bar, so a quiet singular move extends twice more
+  often. `KTripleQuiet16` rose slightly (123 to 127), within noise.
+
+The values are taken from `theta-2000.txt` by `bake_theta.py` (ignored,
+beside the drivers): 204 of `Seeds::FITTED`'s values change, the other 21
+coordinates were at their seeds, and every other value is unchanged,
+checked by re-reading the table. Seven library tests pinned fitted numbers
+and were updated (the exchange values, the start position's material, the
+wrapper's output, ProbCut's scale, the options' defaults and ranges). One
+selection test's precondition was fixed first in its own commit
+(`df2a6c1`: the root fail-high test takes its position by a fail-high from
+depth 4, as its candidates' comment states; it picks the same line on the
+old seeds).
+
+**Two behaviour tests fail on the baked seeds** (`tests/chess_behaviour.rs`):
+
+| Mate, test depth | First depth reported, before | Baked |
+|---|---|---|
+| KRK mate in 2, depth 5 | 5 | 6 (depth 5 reads +692) |
+| KQK mate in 3, depth 10 | 8 | 20 (mate in 5 from 9, in 4 from 16) |
+
+(`mate_depths.py` on the tune binary, its defaults against theta set,
+Hash 16, one thread.) A family screen (`mate_families.py`,
+`mate_families.log`) finds no single cause: KQK's first depth of mate in 3
+moves from 8 to 16 or more with any one of several unrelated families set
+alone (the window, the pawn table's limit, the exchange values, the picker,
+the reward, RFP, LMP, the correction), and returns to 8 or 9 with all of
+theta but one of several others. That is the order sensitivity the record
+already notes for these endings (RAR-S131, RAR-S132), not a defect located
+in one coordinate. KRK's moves by a ply, mostly through the quiescence
+family.
+
+- `mate_scores_count_the_moves_to_mate_exactly` takes each depth as "two
+  plies or more past the first depth that finds it"; at depths re-derived
+  by that rule on the baked seeds (KRK 8, KQK 22) it passes (a trial, not
+  committed).
+- `two_plies_down_its_line_a_mate_is_nearer` checks that the table is read
+  by `warm.nodes < cold.nodes`; it fails at KQK's depth 10 (1,325 against
+  490) and at 22 (1,198 against 1,186), while its score and line checks
+  pass. A node count stands in for the construct, and a seed change moves
+  it either way.
+
+The bake waits on the maintainer's decision on these two tests. The full
+change is `bake_full.patch` (`90a42dae…`), which reapplies on `df2a6c1`.
+
+### The bake done (2026-11-21, maintainer decision on the two tests)
+
+The maintainer decided the same day that the two mate tests measure their
+preconditions on the seeds and that the mate sensitivity itself is
+investigated after D.7, in the review of D.6 (PLAN D.6.32), not before the
+bake. In order, each commit passing debug and release tests, `fmt` and
+clippy:
+
+1. `df2a6c1`: the root fail-high test takes its position by a fail-high
+   from depth 4 (above).
+2. `da0665b`: the mate tests' depths, two plies past the first depth that
+   finds the mate on the fitted seeds: KRK 8, KQK 22. The warm-table test
+   reads the table directly: one ply deep two plies down the line, the
+   warm searcher reports the mate (+M on both seed sets at depths 10 and
+   22, `warm_probe.py`), a cold one sees none (+576 to +613).
+3. `9ed0ca2`: the stored-win repetition test's warm-up at depth 15. At 12
+   it stored −1,113 on the seeds before the bake (no margin over its
+   −1,000 bar) and −927 on the baked ones; both store a mate from 13.
+4. `16f93cb`, the engine change: `Seeds::FITTED` at theta-2000 (204 values;
+   `bake_theta.py`, the diff equal to `bake_full.patch`, `90a42dae…`), the
+   tests that pinned fitted numbers updated, and the seed-reach test takes
+   the seed's own value from the table instead of a literal.
+
+**Checks on `16f93cb`:** `cargo fmt --check`, debug (542 passed) and release
+(544 passed) suites, `clippy --all-features --all-targets` at zero
+warnings, the `texel` (294) and `tune` (295) library suites, all passing.
+`bench 13` (`bench_bake.py`) is one count on three binaries:
+
+| Binary | `id name` | `bench 13` |
+|---|---|---|
+| `rarog-d711fit-tune.exe` (`e88123b2…`) with theta-2000 set | `dev-20261120-3233da24` | **3,390,842 / EBF 2.317** |
+| the tune build of this tree, at its defaults (251 `K` options) | `dev-20261121-m-9ed0ca2c` | 3,390,842 / 2.317 |
+| the default build of this tree (no `K` option) | `dev-20261121-m-9ed0ca2c` | 3,390,842 / 2.317 |
+| control: `rarog-d711fit-tune.exe` at its defaults | `dev-20261120-3233da24` | 3,320,355 / 2.317, the fingerprint before |
+
+The two builds were made from the working tree the engine commit records,
+unchanged between the build and the commit. `d711fit` and `d711pilot` join
+`tools/spsa_configs/historical.txt`. The new fingerprint is
+**3,390,842 / EBF 2.317** at `16f93cb`.
+
+## Use
+
+Theta, if kept by the read at the stop, is baked by D.7.11.8 (the tune
+build at its defaults and the default build reproducing the tune binary's
+`bench 13` at theta); D.7.12 then calibrates the reported score on the
+read's games or a self-play match of the baked kernel, never on the tune's
+games; D.7.13's SPRT against the classic decides adoption. This run accepts
+nothing by itself.

@@ -65,14 +65,42 @@ leaf continues here, this is the mapping; everything else is history.
 | D.4–D.9 as numbered 2026-11-01 to 2026-11-03: D.4 repairs, D.5 strength candidates, D.6 simplification, D.7 tablebase policy, D.8 Linux large pages, D.9 instruments | D.5, D.6, D.8, D.9, D.7, D.4, every sub-step number kept (D.4.19 is D.5.19, D.5.15 is D.6.15, D.6.13 is D.8.13, D.9.3 is D.4.3) | renumbered 2026-11-03 so that the numbering is the order of work (maintainer decision). The tracked documents were rewritten to the new numbers in the same commit, except this file's dated records, the archives, the records from before 2026-11-01 and `analysis/d5_item15_verdict_probe.patch` (a recipe, kept byte for byte); the old numbers also survive in commit messages, PR texts and untracked artifacts' notes |
 | D.7 (large pages on Linux, numbered so from 2026-11-03 to 2026-11-13) | D.10 | renumbered 2026-11-13 (maintainer decision) when the search-shape step took D.7, so that it runs before the simplification programme; a record from those dates that names D.7 means large pages |
 | E.3.0 (the originality disclosure, numbered so from 2026-10-23 to 2026-11-13) | D.11 | moved 2026-11-13 (maintainer decision) into Phase D as its last leaf; `analysis/originality_review_2.6.0_2026-10-22.md`, `analysis/pst_orientation_2026-10-23.md` and `analysis/triumviratus_review_2026-11-03.md` keep the old number |
+| D.7.7 (the gate), D.7.8 (the problem review), D.7.9 (adoption), D.7.10 (Stockfish's form), as numbered from 2026-11-13 to 2026-11-19 | D.7.13; D.7.8's repairs and the review of D.6 after D.7; D.7.14, the classic kernel's deletion being D.7.7; D.7.15 | renumbered 2026-11-19 (maintainer decisions on `analysis/d7_audit_2026-11-19.md`) so that D.7's open steps run in ascending order: the deletion, the audit's repairs, clock use, the pre-fit read, the finishing fit, the score's calibration, the gate, adoption, the fallback; records written before that date keep the old numbers |
+| D.6.28 (clock use) | D.7.9 | moved 2026-11-19 with its text (maintainer decision): a time manager changed after the fit would move the fit's baseline, and its constants join the fit's surface |
+| D.7.8.7 (correction tables shared between threads) | D.13 | moved 2026-11-20 with its card (maintainer decision): thread work that leaves one thread's play unchanged, built after D.7; the number is retired |
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
+
+- **2026-11-19 — D.7 audited, the first fit stopped and baked, D.7 reworked**
+  (`analysis/d7_audit_2026-11-19.md`, RAR-S129; maintainer decisions the
+  same day). The compact kernel is a faithful port: one fold defect
+  (ProbCut's exchange bar left in evaluation units) and seven smaller
+  departures, each now a step of D.7.8. RAR-S128's tune was sound and
+  stopped live at its 2,000 checkpoint by the maintainer: the centres
+  +56.8 ± 9.5 Elo over the donor's seeds, the two wrapper coordinates
+  alone +24.9 ± 9.0, baked in as the kernel's seeds (D.7.6.2, compact
+  fingerprint 3,488,485 / EBF 2.336). At equal nodes the unfitted kernel
+  read −11.6 ± 10.0 against the donor's hybrid, a read the root driver's
+  rule on an interrupted iteration clouds. Decided: no gate at this
+  state; the classic kernel deleted before the repairs; clock use moved
+  into D.7; Rarog's own dropped forms not retried unless the gate fails;
+  the kernel's scale left free and the printed score calibrated at the
+  boundary; every D.6 step reviewed on the new kernel after D.7.
+
+- **2026-11-13 — The Basilisk check after 2.7.0** (`analysis/basilisk_check_2026-11-13.md`;
+  maintainer decision: after the release, before D.7). Basilisk's B.4 to
+  B.6 work read against Rarog: two new cards (D.6.29, a stalemate
+  quiescence never scores; D.6.30, a proven mate a later iteration can
+  overwrite), new evidence for D.6.28 (2.7.0's field gap sits in the
+  low-clock band its horizon rule shapes), BOARD-9 and H.4, and a list of
+  departures for D.7.0. Nothing ported; no Basilisk cluster gain counts
+  as evidence for one of its pieces here.
 
 - **2026-11-13 — Rarog 2.7.0 released (maintainer decision), an unscheduled
   release before D.7.** It carries D.1's clock, D.3's protocol repairs,
   D.5's behaviour-neutral repairs, D.6.15's draw verdicts, D.6.1, D.6.2,
   D.6.7 and D.6.8, the build names and the universal x64 download (PRs #12 to #18;
-  #18 is `638b56d`); `rustc 1.100.0`; fingerprint 9,077,016 / EBF
+  #18 is `638b56d`, the release #19, `3c57a89`, tagged `v2.7.0`); `rustc 1.100.0`; fingerprint 9,077,016 / EBF
   2.481. The registered read against 2.6.0 (RAR-M87) found a loss, G −7.6
   Elo [−14.4, −0.7] against a five-engine field, and +10.1 ± 8.7 head to
   head; the maintainer decided after the result to ship it for its fixes,

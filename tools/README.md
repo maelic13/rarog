@@ -30,8 +30,9 @@ PROCESS's *Harness* section says when to run the backup as a cross-check.
 
 | Tool | Purpose | Used by |
 |---|---|---|
-| `sprt.ps1` | Pentanomial GSPRT between two Rarog binaries via fastchess, with provenance, compiler-equality and dirty-tree guards; `-Mode calibrate` for null pairs | PROCESS "Harness"; every SPRT row up to B.2.5 |
+| `sprt.ps1` | Pentanomial GSPRT between two Rarog binaries via fastchess, with provenance, compiler-equality and dirty-tree guards; `-Mode calibrate` for null pairs; a clock, node budget or move time per engine (`-TCA`/`-NodesA`/`-MoveTimeA` and the B side), one limit of one kind for both | PROCESS "Harness"; every SPRT row up to B.2.5 |
 | `spsa.ps1` | Set up and run a weather-factory SPSA tune; a surface naming `Core*` options requires a tune binary that advertises them | PROCESS "SPSA go/no-go procedure"; `spsa_configs/README.md` |
+| `diag/test_sprt_limits.ps1` | Break one per-engine limit rule per case and require its refusal; valid controls stop at the engine check, no game played | the limit contract; run after touching `sprt.ps1`'s limits |
 | `pgn_result.ps1` | Recompute Elo, LOS and pentanomial counts from a fastchess PGN | re-reading a finished match |
 | `watch.ps1` | Console-noise filter for long fastchess and weather-factory runs | operator convenience |
 | `gauntlet.ps1` | The frozen Rarog 2.2.0 external gauntlet (hard-coded field) | historical; `colosseum.ps1 -Mode gauntlet` replaces it |

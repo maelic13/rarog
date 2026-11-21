@@ -1,0 +1,23 @@
+# A fixed-length match at a fixed time per move: each side thinks for its own
+# move time on every move, with no clock to manage. A diagnostic beside the
+# fixed-node read, never an acceptance: it keeps a kernel's speed in the
+# comparison and removes time management. Unequal move times (-MoveTimeMsB)
+# give one side time odds per move, as a donor that stops early needs.
+#
+#   ./tools/colosseum.ps1 -Mode match -MoveTimeMs 100 [-MoveTimeMsB 120] ...
+#   (the wrapper selects this file when -MoveTimeMs is given)
+
+extend = "common.toml"
+command = ["match"]
+
+[options]
+games = 2000
+concurrency = 14
+
+a-movetime-ms = 100
+a-margin-ms = 20
+b-movetime-ms = 100
+b-margin-ms = 20
+
+a-option = ["Hash=64", "Threads=1"]
+b-option = ["Hash=64", "Threads=1"]

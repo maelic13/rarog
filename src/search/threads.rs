@@ -131,7 +131,7 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
             // helper's history and cache pages are touched here, not by that
             // search.
             let mut worker = Searcher::helper();
-            worker.reset_worker_state_for_new_game();
+            worker.reset_thread_for_new_game();
             let _ = ack.send(());
             while let Ok(message) = receiver.recv() {
                 match message {
@@ -151,7 +151,7 @@ fn spawn_search_worker(index: usize) -> Option<SearchWorkerHandle> {
                         let _ = result_tx.send(result);
                     }
                     WorkerMessage::NewGame => {
-                        worker.reset_worker_state_for_new_game();
+                        worker.reset_thread_for_new_game();
                         let _ = ack.send(());
                     }
                     WorkerMessage::Shutdown => break,
@@ -271,12 +271,6 @@ fn parallel_result_key(
 }
 
 impl Searcher {
-    fn reset_worker_state_for_new_game(&mut self) {
-        self.clear_history();
-        self.td.evaluator.clear_pawn_table();
-        self.td.previous_search_score = None;
-    }
-
     fn run_worker_job(
         &mut self,
         job: WorkerJob,
@@ -542,8 +536,8 @@ impl Searcher {
     }
 
     /// Publish and retain one completed root-move visit outside the hot node
-    /// kernel: root-only branches placed in `negamax` measured about -0.8%
-    /// best-of NPS despite running only at the root.
+    /// kernel: root-only branches placed in the node kernel measured about
+    /// -0.8% best-of NPS despite running only at the root.
     #[cold]
     #[inline(never)]
     pub(super) fn record_root_move_search(
@@ -607,6 +601,31 @@ mod tests {
     use crate::uci::info::report_line;
 
     const SELF_STOP_LIMIT: Duration = Duration::from_secs(30);
+
+    /// A helper's previous search scores are cleared at a new game, as the
+    /// main thread's are: its first window would otherwise open round the
+    /// last game's score.
+    #[test]
+    fn a_helpers_previous_scores_are_cleared_at_a_new_game() {
+        let mut helper = Searcher::helper();
+        let board = Board::default();
+        let legal = board.generate_legal_moves();
+        let limits = crate::search::options::SearchLimits {
+            depth: Some(6),
+            ..Default::default()
+        };
+        helper.reset_search_state(
+            &limits,
+            &EngineOptions::default(),
+            board.side_to_move(),
+            0,
+            true,
+        );
+        helper.search_root(board, &legal, false, &mut || SearchEvent::None);
+        helper.td.compact_previous_score = 250;
+        helper.reset_thread_for_new_game();
+        assert_eq!(helper.td.compact_previous_score, 0);
+    }
 
     struct Recorder(Arc<Mutex<Vec<String>>>);
 
@@ -944,14 +963,11 @@ mod tests {
     }
 
     /// A mate search ends on a completed iteration, where each of the helper's
-    /// lines holds an exact score at that depth: the three best root moves
-    /// are exact. One line would leave the second and third upper bounds. A
-    /// move that raised alpha before a better one overtook it in its line is
-    /// exact too, so the exact count can exceed the lines. A lower bound is
-    /// left out of the ranking: at equal depth the pool keeps a fail-high's
-    /// lower bound over the upper bound its re-search then returned, so it
-    /// can stand for a fail-high no search confirmed, which is no line's
-    /// result.
+    /// three lines holds an exact score at that depth, so the pool holds at
+    /// least three. A move that raised alpha before a better one overtook it
+    /// in its line is exact too, so the count can exceed the lines; one line
+    /// leaves two here. Bounds are not ranked against exact scores: a move
+    /// that fails low against a mate publishes that mate as its upper bound.
     #[test]
     fn a_helper_searches_every_line() {
         let board = Board::from_fen(MATE_IN_2).expect("valid FEN");
@@ -979,23 +995,14 @@ mod tests {
         );
 
         let depth = i32::try_from(result.depth).expect("a small depth");
-        let mut scored: Vec<(i32, RootBound)> = (0..moves.len())
-            .filter_map(|index| match context.root_score(index) {
-                Some((at, score, bound)) if at == depth && bound != RootBound::Lower => {
-                    Some((score, bound))
-                }
-                _ => None,
-            })
+        let scored: Vec<Option<(i32, i32, RootBound)>> = (0..moves.len())
+            .map(|index| context.root_score(index))
             .collect();
-        // An upper bound equal to an exact score cannot rank above it.
-        scored.sort_by_key(|&(score, bound)| (std::cmp::Reverse(score), bound != RootBound::Exact));
-        assert!(scored.len() >= 3, "{scored:?}");
-        assert!(
-            scored[..3]
-                .iter()
-                .all(|&(_, bound)| bound == RootBound::Exact),
-            "{scored:?}"
-        );
+        let exact = scored
+            .iter()
+            .filter(|score| matches!(score, Some((at, _, RootBound::Exact)) if *at == depth))
+            .count();
+        assert!(exact >= 3, "depth {depth}: {scored:?}");
     }
 
     #[test]

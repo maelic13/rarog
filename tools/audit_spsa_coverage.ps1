@@ -4,6 +4,12 @@
 # tune. This audit catches the expensive mechanical failures before any future
 # experiment is registered: stale names, stale seeds, invalid ranges, binary
 # coordinates and integer perturbations that round to zero before the horizon.
+#
+# The compact kernel's seeds are not literals in params.rs: the engine
+# computes their options (src/search/compact/tune.rs), so a surface of them is
+# checked against a tune build's own listing, `-TuneEngine <tune.exe>`.
+
+param([string]$TuneEngine = "")
 
 $ErrorActionPreference = "Stop"
 $repo = Split-Path $PSScriptRoot -Parent
@@ -20,6 +26,38 @@ foreach ($m in (Select-String -Path (Join-Path $repo "src\search\params.rs") `
         Min = [int]($m.Groups[3].Value -replace '_', '')
         Max = [int]($m.Groups[4].Value -replace '_', '')
     }
+}
+
+if ($TuneEngine) {
+    $listing = "uci`nquit`n" | & $TuneEngine
+    if ($LASTEXITCODE -ne 0) { throw "-TuneEngine: $TuneEngine exited $LASTEXITCODE" }
+    $compact = 0
+    foreach ($line in $listing) {
+        if ($line -match '^option name (K\w+) type spin default (-?\d+) min (-?\d+) max (-?\d+)$') {
+            $defaults[$Matches[1]] = [int]$Matches[2]
+            $declared[$Matches[1]] = [pscustomobject]@{ Min = [int]$Matches[3]; Max = [int]$Matches[4] }
+            $compact++
+        }
+    }
+    if ($compact -eq 0) { throw "-TuneEngine: $TuneEngine lists no compact kernel seed" }
+    "compact kernel seeds declared by ${TuneEngine}: $compact"
+}
+
+# A group converted for the runner states each coordinate's end perturbation
+# in its tune file, which is what the runner plays, in whatever form the file
+# was written (rule 7c's two steps, or a block's one); class 6 reads it there.
+$tuneEnds = @{}
+foreach ($file in @(Get-ChildItem (Join-Path $repo "tools\spsa_configs\colosseum\*.tune.toml"))) {
+    $table = @{}
+    $current = $null
+    foreach ($line in Get-Content -LiteralPath $file.FullName) {
+        if ($line -match '^name = "(\w+)"') { $current = $Matches[1] }
+        elseif ($current -and $line -match '^c_end = (\d+(\.\d+)?)') {
+            $table[$current] = [double]$Matches[1]
+            $current = $null
+        }
+    }
+    $tuneEnds[($file.Name -replace '\.tune\.toml$', '')] = $table
 }
 
 # A historical group is a surface whose tune has been baked: its seeds are the
@@ -149,6 +187,9 @@ $cEnd = 1.0 / [Math]::Pow($horizon, $gamma)
 foreach ($name in ($groups.Keys | Sort-Object)) {
     foreach ($entry in $groups[$name]) {
         $perturbation = $entry.Step * $cEnd
+        if ($tuneEnds.ContainsKey($entry.Group) -and $tuneEnds[$entry.Group].ContainsKey($name)) {
+            $perturbation = $tuneEnds[$entry.Group][$name]
+        }
         if ($perturbation -lt 0.5) {
             $deadAt = [Math]::Pow(2.0 * $entry.Step, 1.0 / $gamma)
             "   {0,-22} {1,-12} step={2} end={3:N2}; dead from {4:N0}" -f `

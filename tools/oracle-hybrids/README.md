@@ -45,7 +45,60 @@ revision being measured, then with `RUSTFLAGS="-C target-cpu=native"`:
 `cargo pgo build -- --no-default-features`, run the instrumented binary's
 `bench`, `cargo pgo optimize build -- --no-default-features`. Syzygy is left
 out because Fathom's C needs the MSVC headers and the reads play without
-tablebases.
+tablebases. The patch links `D:/code/rarog-oracle`: recreate it as a detached
+worktree of the Rarog revision being measured
+(`git worktree add --detach D:/code/rarog-oracle <rev>`).
+
+Reckless's counting twin (RAR-O09): the same tree with
+`reckless-0756957-rarog-hce-count.patch` applied on top, built the same
+way. It counts the null moves it makes and prints
+`info string nullmoves <N> nodes <M>` before `bestmove`; it is never
+played, and its `bench` must report the node count of the plain hybrid.
+
+Reckless's tracing twin (D.7.3): the hybrid's tree with
+`reckless-0756957-rarog-hce-trace.patch` on top, built with
+`cargo build --release --no-default-features` (no PGO: at a fixed depth
+the tree does not depend on code generation). With nothing set its
+`bench` is the hybrid's, 4,158,758, and with tracing on as well.
+
+- `RAROG_TRACE=<file>` writes one line per decision of every n-th node
+  (`RAROG_TRACE_STRIDE`, default 64): `<kind> fire=<0|1> <name>=<int>`.
+- `RAROG_SPREAD_SALT=<k>` shifts the node count in the two LMR spread
+  terms and the draw score, for the noise floor.
+- `RAROG_PLANT` is `unreduced`, `lmr_check` or `q5`, a planted difference.
+- Every rule's firings and attempts are printed as
+  `info string rates ...` before `bestmove`.
+- Since D.7.4 the trace also carries what four records lacked
+  (`nmp_gate`'s capture refutation, `nmp_result`'s outcome, cut or
+  verified, `singular_result`'s searched move, `q_stand_pat`'s node type)
+  and eleven more kinds, one for each rule and
+  seed the 36 did not reach: `tt_cut_bonus`, `tt_cut_return`,
+  `eval_bonus_gate`, `null_bound`, `probcut_value`, `spread`, `malus_fade`,
+  `q_cutoff_bonus`, `score_held`, `pick_threshold` and `draw_score`. They
+  are written only, never counted, so the rates line is the one D.7.3
+  calibrated, and the twin's `bench` and its tree statistics are unchanged.
+
+Its tools:
+
+    python tools/oracle-hybrids/tree_stats.py positions <match.pgn> <positions.jsonl> [count] [seed]
+    python tools/oracle-hybrids/tree_stats.py run <engine.exe> <positions.jsonl> <out.jsonl> [KEY=VALUE ...]
+    python tools/oracle-hybrids/tree_stats.py compare <base.jsonl> <candidate.jsonl> --floor <salted.jsonl> ...
+    python tools/oracle-hybrids/capture_trace.py <engine.exe> <positions.jsonl> <out_dir> [count] [stride]
+
+`run` stops a search past `TREE_STATS_LIMIT_S` seconds (120) and marks it;
+`capture_trace.py` leaves out the ids in `TREE_STATS_EXCLUDE`. The
+calibration is `analysis/d73_parity_instrument_2026-11-16.md`.
+
+## Reading the limits from a match
+
+`pgn_limits.py` reads a fastchess PGN: games and terminations, each
+engine's mean and median time a move and their ratios between the two
+named engines,
+and, in a node-budget match (where `tools/sprt.ps1` records each move's
+reported nodes as `n=`), the largest count and the moves above a budget
+plus a tolerance (per engine after a colon, else `--tolerance`):
+
+    python -I tools/oracle-hybrids/pgn_limits.py <games.pgn> <A>[=<budget>[:<tol>]] <B>[=<budget>[:<tol>]] [--tolerance 1]
 
 Stockfish dev: clone `def601cc`, `git apply` the patch, then in MSYS2's
 MinGW64 shell `make -j profile-build ARCH=x86-64-bmi2 COMP=mingw` in `src/`

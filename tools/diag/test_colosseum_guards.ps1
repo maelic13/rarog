@@ -20,8 +20,7 @@
 param(
     [string]$EngineA = "tools/test_engines/rarog-b24b-core-pext-pgo.exe",
     [string]$EngineB = "tools/test_engines/rarog-b23-theta3900-pext-pgo.exe",
-    [string]$TuneEngine = "tools/test_engines/rarog-b23core-tune.exe",
-    [string]$OffArmTuneEngine = "tools/test_engines/rarog-b23negoff-tune.exe",
+    [string]$TuneEngine = "tools/test_engines/rarog-d76fit-tune.exe",
     [switch]$KeepScratch
 )
 
@@ -30,7 +29,7 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $wrapper = Join-Path $repo "tools\colosseum.ps1"
 $pin = Join-Path $repo "tools\colosseum\colosseum.pin.json"
 
-foreach ($required in @($EngineA, $EngineB, $TuneEngine, $OffArmTuneEngine)) {
+foreach ($required in @($EngineA, $EngineB, $TuneEngine)) {
     if (-not (Test-Path -LiteralPath (Join-Path $repo $required))) {
         throw "This suite needs $required, which is not staged on this host."
     }
@@ -39,11 +38,15 @@ foreach ($required in @($EngineA, $EngineB, $TuneEngine, $OffArmTuneEngine)) {
 $scratch = Join-Path ([System.IO.Path]::GetTempPath()) ("rarog-guards-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $scratch | Out-Null
 # A tune reads the rule 7c conversion of its surface beside its run file. The
-# suite generates one for b23core inside the ignored tools/results, where the
+# suite generates one for d76fit inside the ignored tools/results, where the
 # run file's relative path to the tune policy resolves, and checks it there.
 $surfaceScratch = Join-Path $repo ("tools\results\guards-surface-" + [guid]::NewGuid())
-python (Join-Path $repo "tools\spsa_config_to_colosseum.py") b23core --rule7c --ceiling 6000 --out $surfaceScratch | Out-Null
+python (Join-Path $repo "tools\spsa_config_to_colosseum.py") d76fit --rule7c --ceiling 6000 --out $surfaceScratch | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Could not generate the rule 7c surface the tune cases need." }
+# A block-form conversion of the same surface, which a tune must refuse.
+$blockScratch = Join-Path $repo ("tools\results\guards-block-" + [guid]::NewGuid())
+python (Join-Path $repo "tools\spsa_config_to_colosseum.py") d76fit --iterations 2000 --out $blockScratch | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Could not generate the block-form surface." }
 
 function Merge-Arguments {
     # PowerShell's hashtable `+` throws on a duplicate key, which is exactly what
@@ -123,8 +126,8 @@ try {
     }
     $tune = @{
         Mode = "spsa"; Engine = (Copy-Arm -Source $TuneEngine -Name "tuneArm")
-        ConfigGroup = "b23core"; Ceiling = 6000; Seed = 7
-        RunFile = (Join-Path $surfaceScratch "b23core.run.toml")
+        ConfigGroup = "d76fit"; Ceiling = 6000; Seed = 7
+        RunFile = (Join-Path $surfaceScratch "d76fit.run.toml")
         Dir = (Join-Path $scratch "tune"); DryRun = $true; AllowBusyHost = $true
     }
 
@@ -203,7 +206,7 @@ try {
     $catTune = Copy-Arm -Source $TuneEngine -Name "catTune"
     $categorical = @{
         Mode = "match"; EngineA = $catTune; EngineB = $catTune; NameA = "alt"; NameB = "base"
-        OptionsA = @("CoreRfpLinear=30"); Games = 200; Seed = 7; CategoricalTuneBuild = $true
+        OptionsA = @("KLmrLog=300"); Games = 200; Seed = 7; CategoricalTuneBuild = $true
         Dir = (Join-Path $scratch "categorical"); DryRun = $true; AllowBusyHost = $true
     }
     Invoke-Case -Name "control: a categorical on one tune build" -Expect "" -Arguments $categorical
@@ -234,6 +237,77 @@ try {
         -Arguments (Merge-Arguments $base @{ Nodes = 150000 })
     Invoke-Case -Name "fixed-node run file without -Nodes" -Expect "expected the clock" `
         -Arguments (Merge-Arguments $categorical @{ RunFile = (Join-Path $repo "tools\colosseum\match-fixed-nodes.toml") })
+
+    # Each side's own limit: a move time, and arm B's own move time or node
+    # budget. The runner refuses a repeated limit flag, so a resolved value
+    # off the request cannot be staged here; the wire smokes prove the values.
+    $selfOdds = Merge-Arguments $base @{ Mode = "match"; Games = 100; EngineB = $armA; NameB = "armAodds" } @("MaxPairs")
+    Invoke-Case -Name "control: a fixed move-time read resolves" -Expect "" `
+        -Arguments (Merge-Arguments $categorical @{ MoveTimeMs = 100 })
+    Invoke-Case -Name "control: one binary, 100 against 130 ms" -Expect "" `
+        -Arguments (Merge-Arguments $selfOdds @{ MoveTimeMs = 100; MoveTimeMsB = 130 })
+    Invoke-Case -Name "control: one binary, 5,000 against 20,000 nodes" -Expect "" `
+        -Arguments (Merge-Arguments $selfOdds @{ Nodes = 5000; NodesB = 20000 })
+    Invoke-Case -Name "one binary, equal move times" -Expect "require -Mode calibrate" `
+        -Arguments (Merge-Arguments $selfOdds @{ MoveTimeMs = 100; MoveTimeMsB = 100 })
+    Invoke-Case -Name "-MoveTimeMs in a gate" -Expect "-MoveTimeMs is for -Mode match only" `
+        -Arguments (Merge-Arguments $base @{ MoveTimeMs = 100 })
+    Invoke-Case -Name "-NodesB in a null pair" -Expect "-NodesB is for -Mode match only" `
+        -Arguments @{ Mode = "calibrate"; EngineA = $armA; EngineB = $armA; NameA = "a"; NameB = "b"; NodesB = 5000
+                      Dir = (Join-Path $scratch "null"); DryRun = $true; AllowBusyHost = $true }
+    Invoke-Case -Name "-NodesB without -Nodes" -Expect "it needs -Nodes" `
+        -Arguments (Merge-Arguments $selfOdds @{ NodesB = 5000 })
+    Invoke-Case -Name "-MoveTimeMsB without -MoveTimeMs" -Expect "it needs -MoveTimeMs" `
+        -Arguments (Merge-Arguments $selfOdds @{ MoveTimeMsB = 100 })
+    Invoke-Case -Name "a move time and a node budget" -Expect "two limits" `
+        -Arguments (Merge-Arguments $selfOdds @{ MoveTimeMs = 100; Nodes = 5000 })
+    Invoke-Case -Name "time odds on a move-time read" -Expect "a fixed move-time read (-MoveTimeMs) has none" `
+        -Arguments (Merge-Arguments $odds @{ MoveTimeMs = 100 })
+    Invoke-Case -Name "move-time run file without -MoveTimeMs" -Expect "expected the clock" `
+        -Arguments (Merge-Arguments $categorical @{ RunFile = (Join-Path $repo "tools\colosseum\match-fixed-movetime.toml") })
+    Invoke-Case -Name "-MoveTimeMs with the fixed-node run file" -Expect "only one of movetime, base/increment, nodes" `
+        -Arguments (Merge-Arguments $categorical @{ MoveTimeMs = 100; RunFile = (Join-Path $repo "tools\colosseum\match-fixed-nodes.toml") })
+
+    # A foreign arm: a binary with no sidecar is refused in a gate or a match
+    # unless it is arm B declared with -ForeignB, which then must have none,
+    # and arm A's sidecar carries every expectation.
+    $foreign = Join-Path $scratch "foreignB.exe"
+    Copy-Item -LiteralPath (Join-Path $repo $EngineB) -Destination $foreign -Force
+    $bareA = Join-Path $scratch "bareA.exe"
+    Copy-Item -LiteralPath (Join-Path $repo $EngineA) -Destination $bareA -Force
+    $foreignMatch = Merge-Arguments $base @{ Mode = "match"; Games = 100; MoveTimeMs = 100
+                                             EngineB = $foreign; NameB = "foreignB" } @("MaxPairs")
+    $declared = Merge-Arguments $foreignMatch @{ ForeignB = $true }
+    Invoke-Case -Name "a match arm without a sidecar" -Expect "NO SIDECAR - foreignB" -Arguments $foreignMatch
+    Invoke-Case -Name "a gate arm without a sidecar" -Expect "NO SIDECAR - foreignB" `
+        -Arguments (Merge-Arguments $base @{ EngineB = $foreign; NameB = "foreignB" })
+    Invoke-Case -Name "control: a declared foreign arm resolves" -Expect "" -Arguments $declared
+    Invoke-Case -Name "-ForeignB on an arm with a sidecar" -Expect "but armB has one" `
+        -Arguments (Merge-Arguments $declared @{ EngineB = $armB; NameB = "armB" })
+    Invoke-Case -Name "-ForeignB in a gate" -Expect "-ForeignB is for -Mode match only" `
+        -Arguments (Merge-Arguments $base @{ ForeignB = $true; EngineB = $foreign; NameB = "foreignB" })
+    Invoke-Case -Name "-ForeignB with arm A's sidecar missing" -Expect "NO SIDECAR - bareA" `
+        -Arguments (Merge-Arguments $declared @{ EngineA = $bareA; NameA = "bareA" })
+    Invoke-Case -Name "-ExpectBench for the foreign arm too" -Expect "one fingerprint per arm with a sidecar" `
+        -Arguments (Merge-Arguments $declared @{ ExpectBench = @(7185678, 6199302) })
+    Invoke-Case -Name "-ExpectBench off arm A's fingerprint" -Expect "WRONG FINGERPRINT - armA" `
+        -Arguments (Merge-Arguments $declared @{ ExpectBench = @(1) })
+    Invoke-Case -Name "-ExpectRevision off arm A's revision" -Expect "WRONG REVISION - armA" `
+        -Arguments (Merge-Arguments $declared @{ ExpectRevision = "deadbee" })
+    $foreignSha = (Get-FileHash -LiteralPath $foreign -Algorithm SHA256).Hash
+    $declaredBench = Merge-Arguments $declared @{ ExpectBench = @(7185678) }
+    Invoke-Case -Name "control: the foreign arm's identity recorded" -Expect "" -Check {
+        $output = & $wrapper @declaredBench *>&1 | Out-String
+        $path = [regex]::Match($output, 'Manifest: (?<p>\S+manifest\.txt)').Groups['p'].Value
+        if (-not $path -or -not (Test-Path -LiteralPath $path)) { throw "no manifest named in the output" }
+        $text = Get-Content -LiteralPath $path -Raw
+        Remove-Item -LiteralPath $path, ($path -replace 'manifest\.txt$', 'dry-run.json'), ($path -replace 'manifest\.txt$', 'dry-run.notes.txt') -ErrorAction SilentlyContinue
+        foreach ($want in @("sha256:         $foreignSha", '(?m)^  id_name:        \S', 'foreign:        yes',
+                            'expect_bench:     7185678 \(arm armA only; foreignB is foreign\)',
+                            '100ms a move \(fixed move time')) {
+            if ($text -notmatch $want) { throw "the manifest lacks '$want'" }
+        }
+    }.GetNewClosure()
 
     $otherCompiler = Copy-Arm -Source $EngineB -Name "otherCompiler"
     Set-Sidecar -EnginePath $otherCompiler -Fields @{ rustc = "rustc 1.97.0 (not the pinned toolchain)" }
@@ -307,16 +381,14 @@ try {
         $probe.Dispose()
     }
 
-    $offArm = Copy-Arm -Source $OffArmTuneEngine -Name "offArm"
-    Set-Sidecar -EnginePath $offArm -Fields @{ git_dirty = $false }
-    Invoke-Case -Name "Core* surface on an off-arm tune build" -Expect "selectivity-core options" `
-        -Arguments (Merge-Arguments $tune @{ Engine = $offArm })
-
-    # At N = 1e8 the smallest registered step (3) perturbs by 0.458, which rounds
-    # to zero on an integer option: the coordinate would look tuned and move
-    # nothing.
+    # A rule 7c tune plays two steps where the seed has the room, so a
+    # coordinate dies only when even that rounds to zero: d76fit's one-step
+    # plies play 2 x 1 x 1e8^-0.102 = 0.31 at N = 1e8 and would look tuned
+    # while moving nothing.
+    $compactTune = Merge-Arguments $tune -Remove @("RunFile")
     Invoke-Case -Name "tune ceiling the surface cannot resolve" -Expect "rounds to zero" `
-        -Arguments (Merge-Arguments $tune @{ Ceiling = 100000000 })
+        -Arguments (Merge-Arguments $compactTune @{ Ceiling = 100000000 })
+    Invoke-Case -Name "control: the compact surface resolves" -Expect "" -Arguments $compactTune
 
     Invoke-Case -Name "control: the registered tune resolves" -Expect "" -Arguments $tune
 
@@ -330,7 +402,7 @@ try {
     Invoke-Case -Name "a surface converted for another ceiling" -Expect "not the rule 7c conversion" `
         -Arguments (Merge-Arguments $tune @{ Ceiling = 5000 })
     Invoke-Case -Name "a block-form surface" -Expect "not the rule 7c conversion" `
-        -Arguments (Merge-Arguments $tune -Remove @("RunFile"))
+        -Arguments (Merge-Arguments $tune @{ RunFile = (Join-Path $blockScratch "d76fit.run.toml") })
     Invoke-Case -Name "-Ceiling in a gate" -Expect "ignores" `
         -Arguments (Merge-Arguments $base @{ Ceiling = 6000 })
     Invoke-Case -Name "control: a short tune smoke resolves" -Expect "" `
@@ -480,6 +552,7 @@ try {
     if (-not $KeepScratch) {
         Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $surfaceScratch -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $blockScratch -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 

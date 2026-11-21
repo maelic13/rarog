@@ -9,6 +9,7 @@
 pub mod attacks;
 pub mod bitboard;
 pub mod board;
+mod cuckoo;
 pub mod movegen;
 pub mod moves;
 pub mod piece;
@@ -23,6 +24,6 @@ pub use board::{
     Board, CROSS_ENGINE_SEE_VALUES, GameResult, PRODUCTION_SEE_VALUES, STARTING_FEN, SeeValues,
     Threats,
 };
-pub use moves::{Move, MoveList, UciMove};
+pub use moves::{FixedList, Move, MoveList, UciMove};
 pub use piece::{CastlingRights, Color, Piece};
 pub use square::{File, Rank, Square};

@@ -8,7 +8,9 @@
     "`archive` is the published asset: `sha256` there is the digest GitHub serves for",
     "the asset itself (this release has no SHA256SUMS file), checked on download,",
     "while the top-level `sha256` is checked on the extracted executable. Re-pinning",
-    "to a later release is an edit to this file and to nothing else in the tree."
+    "to a later release is an edit to this file and to nothing else in the tree.",
+    "The CLI moved to its own repository on 2026-11-14 (maelic13/colosseum is now the",
+    "GUI); 0.5.0 there is the same asset, digest and size, at the same revision."
   ],
   "revision": "8fa63cc65b69c9c84b8e259ce590713f063c4500",
   "sha256": "81EA6CBA88F36B62E3F324B61C321A803D67DAA6CC5687B456E13A536F91A08B",
@@ -16,14 +18,14 @@
   "pinned_utc": "2026-11-01",
   "source": {
     "kind": "release-archive",
-    "repository": "https://github.com/maelic13/colosseum",
+    "repository": "https://github.com/maelic13/colosseum-cli",
     "build_command": "cargo build --release -p colosseum-cli",
     "artifact": "target/release/colosseum-cli.exe"
   },
   "archive": {
-    "tag": "cli-v0.5.0",
+    "tag": "v0.5.0",
     "asset": "colosseum-cli-0.5.0-windows-x64.zip",
-    "url": "https://github.com/maelic13/colosseum/releases/download/cli-v0.5.0/colosseum-cli-0.5.0-windows-x64.zip",
+    "url": "https://github.com/maelic13/colosseum-cli/releases/download/v0.5.0/colosseum-cli-0.5.0-windows-x64.zip",
     "sha256": "DF03C7ABFA0A019EEAC0B67BFC8223D4E2988681D4A55F34F040A1111D176BC8",
     "size_bytes": 3024473
   }

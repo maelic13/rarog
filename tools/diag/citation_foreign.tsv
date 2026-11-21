@@ -27,6 +27,7 @@
 5e539523	Colosseum tournament ID (RAR-M45)
 66638ae04bbce4d1ffdecfcf19fd7d65ce88e5f7	Basilisk initial snapshot commit
 7551803d287e404cbc746b2e3ba743c463a8b80c	Basilisk follow-up snapshot commit
+5f61c94	Basilisk commit: the root rebuild and the joint search tune (RAR-O10)
 75d38ad	GyatsoChess commit
 7cdd5e89	Stockfish master commit of 2026-11-06 (the promotion-generation reference of RAR-S108)
 8791a27e	Colosseum tournament ID (RAR-M57)
@@ -34,6 +35,7 @@
 8fa63cc	Colosseum cli-v0.5.0 revision (the pinned runner since 2026-11-01)
 91b56c2	Reckless commit of the binary RAR-M20 measured
 9587eeeb	Stockfish commit (the C.0 donor instrument)
+edb0d9db	Stockfish 19 commit (Basilisk's B.7.2 board harness, PLAN D.12.2)
 9587eeeb5ed29f834d4f956b92e0e732877c47a7	Stockfish commit (the C.0 donor instrument, full)
 def601cc	Stockfish commit (2026-11-10, RAR-O08's Stockfish dev hybrid)
 9a8dd81	Stockfish commit (position-state reading)
@@ -115,3 +117,16 @@ db98633b	Stockfish commit (the hybrid accumulator update on king moves)
 e1a884c	Triumviratus commit (experts 5-7 margins unbaked)
 f7a83be	Triumviratus commit (NUMA spread, threads up to the whole machine)
 f7e1489	Triumviratus commit (per-thread state aligned to 128 bytes)
+d76a98c	Basilisk master at the 2026-11-13 Basilisk check
+fdb35fa	Basilisk branch b6-perft-pins at the 2026-11-13 Basilisk check
+21ce21c	Basilisk commit: its board findings for Rarog (analysis/basilisk_board_handoff_2026-11-14.md, PLAN D.12)
+c6d27da	Basilisk commit: branch b7-board-audit with its search replay and engine screen (PLAN D.12.2, lead 2)
+838a3c6	Basilisk commit: its node count moved to Stockfish's, once per move made (RAR-O12, PLAN D.7.2.4)
+d17a62d	Basilisk commit: its B.8.9 speed pass, the head with Stockfish's count read in RAR-O12 (PLAN D.7.2.4)
+68e1e9b3	Stockfish commit: sf_16, the hand-crafted evaluation of the pre-NNUE goal (RAR-M89)
+af110e02	Stockfish commit: the hand-crafted evaluation removed (RAR-M89)
+0e47e9b	Ethereal commit: master built without a network as Ethereal 14.40 HCE (RAR-M89)
+8d7d1dd	Reckless commit (D.7.8.12's profiled donor build, the tablebase fix after 0756957)
+1e7e6bde	Stockfish commit (D.7.12's win-rate model and UCI_ShowWDL reference)
+87de6fa	Basilisk commit (D.15.1's release archives, 1.11.0)
+1e68ec6	Basilisk commit (D.15.2's release notes as summary and highlights)

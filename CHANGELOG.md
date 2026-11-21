@@ -8,6 +8,37 @@ plain and to the point.
 Rarog was released as Lynx through version `1.4.3`. The project was renamed
 starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
+## [Unreleased]
+
+### Added
+
+- **Win, draw and loss rates.** With the new option `UCI_ShowWDL` on, each
+  info line also shows the engine's chances of winning, drawing and losing,
+  as GUIs that support it display beside the score.
+
+### Changed
+
+- **A new search.** Rarog's search has been rebuilt and refitted on its own
+  games. It plays clearly stronger, at short and longer time controls and
+  on several threads, and it manages its time differently.
+- **Scores mean the same thing in every position.** A score of +1.00 is now
+  the advantage with which Rarog wins about half its games, with many pieces
+  on the board or few, as Stockfish's scores do. Scores read differently
+  from earlier versions; mates and tablebase results are unchanged.
+- **Fewer info lines in short searches.** A search no longer prints a
+  bound line each time its window fails; those lines appear only in long
+  searches, so a GUI shows one line per depth.
+
+### Fixed
+
+- **A found mate is kept.** When a deeper search lost sight of a mate it
+  had already found, the engine could switch to another move and take
+  longer to win; it now keeps the mating move.
+- **A tiny node budget still plays a searched move.** With a budget too
+  small for even the shortest search, the engine played its first legal
+  move and reported being mated; it now finishes that search first, and
+  never reports a score it did not find.
+
 ## [2.7.0] - 2026-11-13
 
 Fixes and new downloads. 2.7.0 fixes many search, clock and protocol

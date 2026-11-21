@@ -12,6 +12,7 @@ use std::sync::{Mutex, MutexGuard};
 use rarog::bench::BENCH_FENS;
 use rarog::board::{Board, CastlingRights, Color, Move, Piece, Square, UciMove};
 use rarog::eval::{Evaluator, MATE_SCORE};
+use rarog::search::DRAW_SPREAD;
 use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, SearchResult, Searcher};
 use rarog::syzygy::{self, Wdl};
@@ -218,7 +219,8 @@ fn saavedra_rook_promotion_wins() {
     let s = summary(&r);
     assert_eq!(r.bestmove.to_string(), "c7c8r", "{s}");
     assert!(r.score >= MATE_SCORE - 40, "{s}");
-    assert_eq!(alone(fen, "c7c8q", r.depth), 0, "the queen is drawn");
+    let queen = alone(fen, "c7c8q", r.depth);
+    assert!(queen.abs() <= DRAW_SPREAD, "the queen is drawn: {queen}");
 }
 
 /// `tournament_infraction_positions`: legal best moves in two final positions
@@ -447,7 +449,8 @@ fn bare_king_promotion_order() {
 
 /// Not a Basilisk test: whether the promotion order above reaches the search.
 /// BI's bishops (b8, f8) share a colour, a draw. From KBP-K the search must
-/// promote to a queen or rook at every depth 1-12, never to a minor.
+/// never promote to a minor at any depth 1-12, in its move or in its line;
+/// it may move the bishop first and promote after.
 #[test]
 fn bare_king_promotion_choice_in_search() {
     let _g = serial();
@@ -462,7 +465,8 @@ fn bare_king_promotion_choice_in_search() {
     for depth in 1..=12 {
         let r = search(fen, Some(depth), 0);
         eprintln!("KBP-K depth {depth}: {}", summary(&r));
-        if !["f7f8q", "f7f8r"].contains(&r.bestmove.to_string().as_str()) {
+        let minor = |mv: &Move| matches!(mv.to_string().as_str(), "f7f8n" | "f7f8b");
+        if minor(&r.bestmove) || r.pv.iter().any(minor) {
             bad.push(format!("depth {depth}: {}", summary(&r)));
         }
     }
@@ -601,7 +605,9 @@ fn kbnk_keeps_both_minors() {
 }
 
 /// `pawnless_scale_truth_table`, second half: KQ against two minors is served
-/// as the queen's win at depth 1 (no tables loaded, as in Basilisk).
+/// as the queen's win at depth 1 (no tables loaded, as in Basilisk): the
+/// evaluation reads at least Basilisk's 150, in its own units, and the
+/// search keeps the win, whatever scale the search's wrapper gives it.
 #[test]
 fn kq_against_two_minors_is_the_queens_win_at_depth_1() {
     let _g = serial();
@@ -612,9 +618,10 @@ fn kq_against_two_minors_is_the_queens_win_at_depth_1() {
         "8/8/3bb3/4k3/8/8/8/K6Q b - - 1 1",
     ] {
         let r = search(fen, Some(1), 0);
-        if -r.score <= 150 {
+        let eval = eval_white(fen);
+        if eval < 150 || -r.score <= 0 {
             failures.push(format!(
-                "{fen}: White's score {} ({})",
+                "{fen}: White's evaluation {eval}, score {} ({})",
                 -r.score,
                 summary(&r)
             ));

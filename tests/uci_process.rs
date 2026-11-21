@@ -852,7 +852,10 @@ fn the_empty_syzygy_path_placeholder_says_nothing() {
 /// `seldepth` is the deepest ply reached in the CURRENT iteration, counted as
 /// Stockfish counts it (`ss->ply + 1`), not a high-water mark for the whole
 /// search. Carried across a search it only ever rises, which is not what a GUI
-/// plots against depth. One thread at fixed depth is deterministic.
+/// plots against depth. One thread at fixed depth is deterministic. A bound
+/// line reports an iteration still searching, whose deepest ply so far can lie
+/// short of its depth when a stored score ends the first moves early, so only
+/// an iteration's completed line is held to its depth.
 #[test]
 fn seldepth_resets_each_iteration_and_counts_plies_from_one() {
     let mut session = UciSession::ready();
@@ -871,7 +874,17 @@ fn seldepth_resets_each_iteration_and_counts_plies_from_one() {
         })
         .collect();
     assert!(reported.len() >= 10, "a depth-12 search reports: {lines:?}");
-    for (depth, seldepth) in &reported {
+    let completed = lines
+        .iter()
+        .filter(|line| line.starts_with("info depth") && line.contains(" pv "))
+        .filter(|line| !line.contains("lowerbound") && !line.contains("upperbound"))
+        .filter_map(|line| {
+            Some((
+                parse_uci_u64_field(line, "depth")?,
+                parse_uci_u64_field(line, "seldepth")?,
+            ))
+        });
+    for (depth, seldepth) in completed {
         assert!(
             seldepth >= depth,
             "an iteration reaches at least its own depth: depth {depth}, seldepth {seldepth}"
@@ -892,43 +905,38 @@ fn seldepth_resets_each_iteration_and_counts_plies_from_one() {
     session.quit();
 }
 
-/// An aspiration re-search's score is only a bound, and single-PV mode used to
-/// print nothing at all until the window closed: a long iteration went silent
-/// and a stopped one reported the previous depth. One-thread fixed-depth
-/// searches are deterministic, so this asserts exact shapes.
+/// A failed aspiration window prints its bound line only once the search has
+/// counted 10,000,000 nodes, so a short search prints exact lines alone: one
+/// an iteration. One-thread fixed-depth searches are deterministic.
 #[test]
-fn single_pv_reports_aspiration_bounds() {
+fn a_short_search_prints_no_bound_lines() {
     let mut session = UciSession::ready();
     session.send("position startpos");
     session.send("go depth 12");
     let lines = session.collect_until_line_containing("bestmove", wait(60));
 
-    let bounded: Vec<&String> = lines
+    let depths: Vec<u64> = lines
         .iter()
-        .filter(|line| line.contains("lowerbound") || line.contains("upperbound"))
+        .filter(|line| line.starts_with("info depth"))
+        .map(|line| {
+            assert!(
+                !line.contains("lowerbound") && !line.contains("upperbound"),
+                "a short search prints no bound line: {line}"
+            );
+            assert!(
+                line.contains(" multipv 1 score ") && line.contains(" pv "),
+                "{line}"
+            );
+            parse_uci_u64_field(line, "nodes")
+                .filter(|&nodes| nodes < 10_000_000)
+                .expect("the search is short of the floor");
+            parse_uci_u64_field(line, "depth").expect("a depth")
+        })
         .collect();
-    assert!(
-        !bounded.is_empty(),
-        "a depth-12 search re-searches its window and must report the bounds: {lines:?}"
-    );
-    for line in &bounded {
-        assert!(
-            line.contains(" multipv 1 score ") && line.contains(" pv "),
-            "a bounded line keeps the ordinary shape: {line}"
-        );
-        let bounds =
-            usize::from(line.contains("lowerbound")) + usize::from(line.contains("upperbound"));
-        assert_eq!(bounds, 1, "a score is one bound or the other: {line}");
-    }
-    // The line that closes an iteration is exact, never bounded.
-    let last_info = lines
-        .iter()
-        .rev()
-        .find(|line| line.starts_with("info depth"))
-        .expect("the search reports");
-    assert!(
-        !last_info.contains("bound"),
-        "the final line of a search is an exact score: {last_info}"
+    assert_eq!(
+        depths,
+        (1..=12).collect::<Vec<_>>(),
+        "one line an iteration"
     );
     session.quit();
 }

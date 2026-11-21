@@ -388,7 +388,8 @@ impl InfoSink for FailHighSink {
 /// A bound line names a new move failing high; the sink then stops the
 /// search (seen by the poll, every 2,048 nodes), so bestmove may be the
 /// previous depth's move. The last reported line must name bestmove.
-/// Basilisk: bench positions to depth 14, the first that fires.
+/// Basilisk: bench positions to depth 14, the first that fires. Every
+/// bound line is printed, as past the node floor a long search's are.
 #[test]
 fn stopped_fail_high_line_names_the_move_played() {
     let mut found = 0;
@@ -406,6 +407,7 @@ fn stopped_fail_high_line_names_the_move_played() {
             ..SearchOptions::default()
         };
         options.limits.depth = Some(14);
+        options.engine.bound_lines_from_nodes = 0;
         let poll_stop = Arc::clone(&stop);
         let result = searcher.search(board, &options, true, || {
             if poll_stop.load(Ordering::SeqCst) {

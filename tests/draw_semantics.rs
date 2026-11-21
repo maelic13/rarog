@@ -1,19 +1,12 @@
-//! Phase 7.1 draw-semantics regression tests.
-//!
-//! Only fix (a) — rule-50/mate precedence — survived Phase 7.1: clock >= 100
-//! is a draw only if the position is not checkmate (a mate delivered on the
-//! 100th-clock move wins). It is bench-identical to the accepted head and
-//! fires ~never, so it ships without an SPRT.
-//!
-//! The other three parts (null clock, cross-null repetition fence,
-//! root-aware repetition) collectively lost two `[-3,3]` SPRTs (−7.21, then
-//! −11.91 with the root-aware part removed) and were reverted — the whole
-//! repetition/null-clock rework is anti-Elo at Rarog's level (PLAN.md lesson
-//! 14). The aggressive twofold-is-a-draw behavior it tried to change is
-//! kept, and asserted below.
+//! Draw-semantics regression tests: a clock at 100 is a draw only if the
+//! position is not checkmate (a mate delivered on the 100th-clock move
+//! wins); the search scores a repetition a draw when one earlier occurrence
+//! lies inside the search or two anywhere since the last irreversible or
+//! null move; the arbiter's threefold stays the rule's own.
 
 use rarog::board::{Board, GameResult, Move};
 use rarog::eval::MATE_SCORE;
+use rarog::search::DRAW_SPREAD;
 use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
 
@@ -47,7 +40,7 @@ fn mate_on_the_100th_clock_move_beats_the_rule50_draw() {
     assert_eq!(board.halfmove_clock(), 100);
     assert_eq!(board.game_result(), Some(GameResult::WhiteCheckmates));
     assert!(!board.can_declare_draw());
-    assert!(!board.can_declare_draw_in_search());
+    assert!(!board.is_draw_at(1));
 }
 
 #[test]
@@ -58,14 +51,14 @@ fn check_with_an_escape_at_clock_100_is_still_a_draw() {
     board.make_move(mv(&board, "a1a8"));
     assert_eq!(board.halfmove_clock(), 100);
     assert_eq!(board.game_result(), Some(GameResult::Draw));
-    assert!(board.can_declare_draw_in_search());
+    assert!(board.is_draw_at(1));
 }
 
 #[test]
 fn stalemate_at_clock_100_is_a_draw() {
     let board = Board::from_fen("7k/5Q2/6K1/8/8/8/8/8 b - - 100 80").unwrap();
     assert_eq!(board.game_result(), Some(GameResult::Draw));
-    assert!(board.can_declare_draw_in_search());
+    assert!(board.is_draw_at(1));
 }
 
 #[test]
@@ -81,20 +74,19 @@ fn search_finds_mate_in_one_at_clock_99() {
     );
 }
 
-// -------------------- aggressive twofold heuristic (7.1d reverted) --------
+// ------------------------------------------------------- twofold --------
 
 #[test]
 fn a_single_prior_twofold_is_a_search_draw() {
-    // The kept heuristic: one prior occurrence within the scan bound scores a
-    // draw in search, whether or not it predates the search root. The
-    // root-aware variant that suppressed the pre-root case (7.1d) lost 7 Elo
-    // and was reverted (lesson 14).
+    // One prior occurrence scores a draw in search only inside the search:
+    // four plies back it draws five plies from the root, not four.
     let mut board = Board::from_fen("6k1/5ppp/8/8/8/8/8/R5K1 w - - 10 40").unwrap();
     board.make_move(mv(&board, "a1a2"));
     board.make_move(mv(&board, "g8f8"));
     board.make_move(mv(&board, "a2a1"));
     board.make_move(mv(&board, "f8g8"));
-    assert!(board.can_declare_draw_in_search());
+    assert!(board.is_draw_at(5));
+    assert!(!board.is_draw_at(4), "an occurrence before the root");
     // The arbiter's threefold rule is unaffected: twice is not three times.
     assert!(!board.can_declare_draw());
 }
@@ -103,12 +95,11 @@ fn a_single_prior_twofold_is_a_search_draw() {
 fn a_stored_win_never_answers_a_position_repeating_the_game_history() {
     // KQ v K. The position after d1d2 is first searched as a root, so the
     // table holds a deep winning entry for exactly that position. The game
-    // then shuffles back (d1d2 h8g8 d2d1 g8h8), and d1d2 from the repeated
-    // root reaches that position again: repetition detection must score it
-    // a draw before any table probe could return the stored win. Both the
-    // main search and quiescence check repetition before probing, and the
-    // root (a PV node) never takes a table cutoff; with both checks removed
-    // this reads the stored mate instead of 0.
+    // then shuffles back twice (d1d2 h8g8 d2d1 g8h8), and d1d2 from the
+    // repeated root reaches that position a third time, which two earlier
+    // occurrences make a draw anywhere: repetition detection must score it
+    // a draw before any table probe could return the stored win. With the
+    // check removed this reads the stored mate instead of 0.
     const START: &str = "7k/8/8/8/8/2K5/8/3Q4 w - - 0 1";
     let mut searcher = Searcher::default();
     let search = |searcher: &mut Searcher, board: &Board, root_move: Option<&str>, depth: u32| {
@@ -127,17 +118,23 @@ fn a_stored_win_never_answers_a_position_repeating_the_game_history() {
 
     let mut after_d1d2 = Board::from_fen(START).unwrap();
     after_d1d2.make_move(mv(&after_d1d2, "d1d2"));
-    let stored = search(&mut searcher, &after_d1d2, None, 12);
+    // Two plies past the first depth whose search stores the win: 13 on
+    // the fitted seeds of 2026-11-21 (12 on the seeds before them, at
+    // -1,113 there, so with no margin).
+    let stored = search(&mut searcher, &after_d1d2, None, 15);
     assert!(
         stored <= -1_000,
         "the warm-up must store a win for White, got {stored}"
     );
 
     let mut repeated = Board::from_fen(START).unwrap();
-    for uci in ["d1d2", "h8g8", "d2d1", "g8h8"] {
+    for uci in ["d1d2", "h8g8", "d2d1", "g8h8"].repeat(2) {
         repeated.make_move(mv(&repeated, uci));
     }
-    assert_eq!(search(&mut searcher, &repeated, Some("d1d2"), 6), 0);
+    assert!(
+        search(&mut searcher, &repeated, Some("d1d2"), 6).abs() <= DRAW_SPREAD,
+        "the third occurrence is a draw"
+    );
     assert!(search(&mut searcher, &repeated, Some("d1d3"), 6) >= 300);
 }
 
@@ -150,7 +147,7 @@ fn three_occurrences_are_a_threefold_for_the_arbiter() {
         board.make_move(mv(&board, "a2a1"));
         board.make_move(mv(&board, "f8g8"));
     }
-    assert!(board.can_declare_draw_in_search());
+    assert!(board.is_draw_at(0), "two earlier occurrences draw anywhere");
     assert!(board.can_declare_draw());
 }
 
@@ -220,14 +217,15 @@ fn an_irreversible_move_makes_the_earlier_position_hash_unreachable() {
     }
 }
 
-/// The search's repetition scan runs back across null moves, so a pass can
-/// complete a twofold the search then scores as a draw: two passes by White
-/// while Black's king steps out and back, or one pass while Black's king
-/// loses a tempo round a triangle. Pinned as it stands, either way it is
-/// changed: bounding the scan at the last null is a registered unit of its
-/// own. The arbiter's threefold never sees a null.
+/// The search's repetition scan stops at the last null move, so a pass
+/// never completes a repetition: two passes by White while Black's king
+/// steps out and back, or one pass while Black's king loses a tempo round a
+/// triangle, return to the start without a draw. The arbiter's threefold
+/// never sees a null.
 #[test]
-fn a_repetition_across_null_moves_scores_as_a_draw_in_search() {
+fn a_repetition_across_null_moves_is_no_draw_in_search() {
+    // Deep inside a search, so only the null can keep the draw away.
+    const DEEP_PLY: usize = 64;
     const FEN: &str = "4k3/8/8/8/8/8/PPP5/4K3 w - - 0 1";
     let start = Board::from_fen(FEN).expect("valid FEN");
     let play = |board: &mut Board, step: &str| {
@@ -243,14 +241,11 @@ fn a_repetition_across_null_moves_scores_as_a_draw_in_search() {
     ] {
         let mut board = start.clone();
         for (index, step) in line.iter().enumerate() {
-            assert!(
-                !board.can_declare_draw_in_search(),
-                "{line:?} before step {index}"
-            );
+            assert!(!board.is_draw_at(DEEP_PLY), "{line:?} before step {index}");
             play(&mut board, step);
         }
         assert_eq!(board.hash(), start.hash(), "{line:?} returns to the start");
-        assert!(board.can_declare_draw_in_search(), "{line:?}");
+        assert!(!board.is_draw_at(DEEP_PLY), "{line:?}");
         assert!(!board.can_declare_draw(), "{line:?}: the arbiter's draw");
     }
 }

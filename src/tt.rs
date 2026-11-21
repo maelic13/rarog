@@ -25,10 +25,14 @@ const PV_BIT: u8 = 0x04;
 const AGE_MASK: u8 = 0xF8;
 const AGE_STRIDE: u8 = 0x08;
 const AGE_QUALITY_DIVISOR: i32 = 2;
+/// Stored depth of a quiescence result, the donor's: one ply below every
+/// main-search store, so it never satisfies a main-search depth test, and
+/// level with an evaluation-only entry in the keep rule and as a victim.
+pub(crate) const QUIESCENCE_DEPTH: i32 = -1;
 /// Stored depth of an entry that holds only a raw static eval: no bound, no
-/// score, no move. Below every searched depth (qsearch stores 0, the floor
-/// for a stored result is -1), so it never satisfies a depth test.
-pub(crate) const EVAL_ONLY_DEPTH: i32 = -2;
+/// score, no move. A quiescence result's depth, as in the donor's table; the
+/// missing bound tells the two apart.
+pub(crate) const EVAL_ONLY_DEPTH: i32 = QUIESCENCE_DEPTH;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Bound {
@@ -482,7 +486,14 @@ impl TranspositionTable {
 
     #[inline(always)]
     pub fn store(&mut self, e: TtStore) {
-        self.store_with_bits(e, e.bound as u8);
+        self.store_with_bits(e, e.bound as u8, false);
+    }
+
+    /// [`Self::store`], overwriting a deeper result for the same position:
+    /// a PV node's final result in the compact kernel.
+    #[inline(always)]
+    pub fn store_forced(&mut self, e: TtStore) {
+        self.store_with_bits(e, e.bound as u8, true);
     }
 
     /// Store the raw static eval of a position the probe missed, so a later
@@ -502,17 +513,18 @@ impl TranspositionTable {
                 is_pv,
             },
             0,
+            false,
         );
     }
 
     #[inline(always)]
-    fn store_with_bits(&mut self, e: TtStore, bound_bits: u8) {
+    fn store_with_bits(&mut self, e: TtStore, bound_bits: u8, force: bool) {
         match &mut self.storage {
             TtStorage::Local(table) => {
-                store_local(table, e, bound_bits);
+                store_local(table, e, bound_bits, force);
             }
             TtStorage::Shared(table) => {
-                store_shared(table, e, bound_bits);
+                store_shared(table, e, bound_bits, force);
             }
         }
     }
@@ -539,9 +551,10 @@ fn prefetch_ptr<T>(ptr: *const T) {
     }
 
     // The ARM64 spelling of the SAME hint, so the ARM64 assets prefetch as the
-    // x86 ones do. Rarog issues the hint after making the child move, so there
-    // is useful work between it and the child's TT probe, which is what makes a
-    // prefetch worth issuing.
+    // x86 ones do. Rarog issues the hint before making the child move, from
+    // the key the move will produce, and again after, so the make runs while
+    // the line arrives; with the hint after the make alone the child's probe
+    // stalled on it.
     //
     // `pldl1keep` is the ARM analogue of `_MM_HINT_T0`: prefetch for load, into
     // L1, temporal (keep). Written as inline `asm!` because
@@ -651,9 +664,6 @@ pub(crate) struct TtProbe {
     /// The entry's own PV bit. Combine with the node's `is_pv` via
     /// [`Self::pv_line`].
     stored_pv: bool,
-    /// Whether the probe hit at all. Only the diagnostic census reads it.
-    #[cfg(feature = "diag")]
-    pub(crate) hit: bool,
 }
 
 impl TtProbe {
@@ -665,8 +675,6 @@ impl TtProbe {
         raw_static_eval: VALUE_NONE,
         mv: None,
         stored_pv: false,
-        #[cfg(feature = "diag")]
-        hit: false,
     };
 
     /// Decode a probe result. `halfmove_clock` is the node's, and is what makes
@@ -686,8 +694,6 @@ impl TtProbe {
                 raw_static_eval: i32::from(entry.static_eval),
                 mv: entry.best_move(),
                 stored_pv: entry.is_pv_node(),
-                #[cfg(feature = "diag")]
-                hit: true,
             },
         }
     }
@@ -696,88 +702,6 @@ impl TtProbe {
     #[inline(always)]
     pub(crate) fn pv_line(&self, is_pv: bool) -> bool {
         is_pv || self.stored_pv
-    }
-
-    /// Cut this node off outright: the score to return, or `None`. The caller
-    /// owns the node-role guards (`!is_pv`, no excluded move); this covers only
-    /// deep enough plus a bound that resolves the window.
-    #[inline(always)]
-    pub(crate) fn cutoff_score(&self, depth: i32, alpha: i32, beta: i32) -> Option<i32> {
-        if self.depth < depth {
-            return None;
-        }
-        match self.bound? {
-            Bound::Exact => Some(self.score),
-            Bound::Lower if self.score >= beta => Some(self.score),
-            Bound::Upper if self.score <= alpha => Some(self.score),
-            _ => None,
-        }
-    }
-
-    /// The main search's cutoff, conditioned on the node type. A result at or
-    /// above beta needs one ply more than the node's depth; a fail-low entry
-    /// cuts an expected cut node, and a fail-high entry an expected all node,
-    /// only above depth 5, where a wrong prediction is cheap to re-search.
-    /// The caller owns the node-role guards and the rule-50 guard.
-    #[inline(always)]
-    pub(crate) fn node_cutoff_score(
-        &self,
-        depth: i32,
-        alpha: i32,
-        beta: i32,
-        cut_node: bool,
-    ) -> Option<i32> {
-        let bound = self.bound?;
-        if self.depth <= depth - i32::from(self.score < beta) {
-            return None;
-        }
-        let admitted = match bound {
-            Bound::Exact => true,
-            Bound::Upper => self.score <= alpha && (!cut_node || depth > 5),
-            Bound::Lower => self.score >= beta && (cut_node || depth > 5),
-        };
-        admitted.then_some(self.score)
-    }
-
-    /// Stand in for the static eval when forward-pruning. The main-search form:
-    /// requires a real score and `min_depth` plies of stored depth. The
-    /// accepted callers pass 0, admitting depth-0 qsearch entries.
-    #[inline(always)]
-    pub(crate) fn refine_eval(&self, static_eval: i32, min_depth: i32) -> i32 {
-        if self.score == VALUE_NONE || self.depth < min_depth {
-            return static_eval;
-        }
-        self.refine_eval_bound_only(static_eval)
-    }
-
-    /// The same refinement with NO depth or `VALUE_NONE` guard: the qsearch
-    /// stand-pat form. At `min_depth == 0` the two agree on every
-    /// storable state, which a test below pins.
-    #[inline(always)]
-    fn refine_eval_bound_only(&self, base: i32) -> i32 {
-        match self.bound {
-            Some(Bound::Exact) => self.score,
-            Some(Bound::Lower) if self.score > base => self.score,
-            Some(Bound::Upper) if self.score < base => self.score,
-            _ => base,
-        }
-    }
-
-    /// Is the stored depth too shallow to guide move ordering? The evidence
-    /// half of the IIR predicate; the caller owns the node-role half.
-    #[inline(always)]
-    pub(crate) fn too_shallow_to_order(&self, depth: i32) -> bool {
-        self.depth < depth - 3
-    }
-
-    /// An inexact bound that points the wrong way for the current window: a
-    /// `Lower` at or below `alpha`, or an `Upper` at or above `beta`. Such an
-    /// entry is admissible but told the node nothing. Diagnostic only.
-    #[cfg(any(test, feature = "diag"))]
-    #[inline(always)]
-    pub(crate) fn contradicts_window(&self, alpha: i32, beta: i32) -> bool {
-        matches!(self.bound, Some(Bound::Lower)) && self.score <= alpha
-            || matches!(self.bound, Some(Bound::Upper)) && self.score >= beta
     }
 }
 
@@ -835,21 +759,21 @@ fn probe_shared(table: &SharedTable, key: u64) -> Option<TtEntry> {
 }
 
 #[inline(always)]
-fn store_local(table: &mut LocalTable, e: TtStore, bound_bits: u8) {
+fn store_local(table: &mut LocalTable, e: TtStore, bound_bits: u8, force: bool) {
     let key16 = key16_of(e.key);
     let count = table.clusters.len();
     let cluster = &mut table.clusters[cluster_index(e.key, count)];
-    if let Some((index, entry)) = replacement(cluster, table.age, key16, e, bound_bits) {
+    if let Some((index, entry)) = replacement(cluster, table.age, key16, e, bound_bits, force) {
         cluster.entries[index] = entry;
     }
 }
 
 #[inline(always)]
-fn store_shared(table: &SharedTable, e: TtStore, bound_bits: u8) {
+fn store_shared(table: &SharedTable, e: TtStore, bound_bits: u8, force: bool) {
     let age = table.age.load(Ordering::Relaxed);
     let key16 = key16_of(e.key);
     let cluster = &table.clusters[cluster_index(e.key, table.clusters.len())];
-    if let Some((index, entry)) = replacement(cluster, age, key16, e, bound_bits) {
+    if let Some((index, entry)) = replacement(cluster, age, key16, e, bound_bits, force) {
         cluster.store(index, key16, entry);
     }
 }
@@ -861,7 +785,8 @@ fn store_shared(table: &SharedTable, e: TtStore, bound_bits: u8) {
 /// lowest [`entry_quality`] is. A result of any bound does not overwrite a
 /// current-generation entry for the same position at least four plies deeper
 /// (six for a PV store), though a new move still replaces its move; a store
-/// without a move keeps the position's stored move.
+/// without a move keeps the position's stored move. A forced store always
+/// writes its result.
 #[inline(always)]
 fn replacement<C: ClusterSlots>(
     cluster: &C,
@@ -869,6 +794,7 @@ fn replacement<C: ClusterSlots>(
     key16: u16,
     e: TtStore,
     bound_bits: u8,
+    force: bool,
 ) -> Option<(usize, TtEntry)> {
     let mut replace_index = 0usize;
     let mut replace_quality = i32::MAX;
@@ -899,7 +825,8 @@ fn replacement<C: ClusterSlots>(
     // A current-generation entry for the same position that is at least four
     // plies deeper (six on a PV line) keeps its result; a new move still
     // replaces its move.
-    if same_position
+    if !force
+        && same_position
         && e.depth + 4 + 2 * i32::from(e.is_pv) <= i32::from(replace_entry.depth)
         && (replace_entry.flag_age & AGE_MASK) == age
     {
@@ -996,10 +923,10 @@ fn entry_quality(entry: TtEntry, age: u8) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::{
-        Bound, LocalCluster, SharedCluster, TB_VALUE, TB_WIN_SCORE, TtProbe, cluster_count,
-        cluster_index, key16_of, score_from_tt, score_to_tt, size_of,
+        LocalCluster, SharedCluster, TB_VALUE, TB_WIN_SCORE, TtProbe, cluster_count, cluster_index,
+        key16_of, score_from_tt, score_to_tt, size_of,
     };
-    use crate::eval::{MATE_SCORE, VALUE_NONE};
+    use crate::eval::MATE_SCORE;
 
     /// An entry whose every field derives from its key, so a load that pairs
     /// one store's tag with another's payload shows as a mismatch.
@@ -1157,107 +1084,12 @@ mod tests {
         assert_eq!(score_from_tt(TB_VALUE - 10, ply, 99), TB_VALUE - 10);
     }
 
-    /// Build a probe directly, bypassing `from_entry`, so a case can be stated
-    /// without constructing a table and a matching key.
-    fn probe(bound: Bound, depth: i32, score: i32) -> TtProbe {
-        TtProbe {
-            bound: Some(bound),
-            depth,
-            score,
-            ..TtProbe::MISS
-        }
-    }
-
     #[test]
     fn a_miss_grants_no_capability() {
         let miss = TtProbe::MISS;
-        assert_eq!(miss.cutoff_score(0, -100, 100), None);
-        assert_eq!(miss.refine_eval(42, 0), 42);
-        assert_eq!(miss.refine_eval_bound_only(42), 42);
         assert_eq!(miss.depth, -1);
-    }
-
-    #[test]
-    fn cutoff_requires_depth_and_a_resolving_bound() {
-        assert_eq!(probe(Bound::Exact, 8, 50).cutoff_score(8, 0, 100), Some(50));
-        assert_eq!(probe(Bound::Exact, 9, 50).cutoff_score(8, 0, 100), Some(50));
-        assert_eq!(probe(Bound::Exact, 7, 50).cutoff_score(8, 0, 100), None);
-        assert_eq!(
-            probe(Bound::Lower, 8, 150).cutoff_score(8, 0, 100),
-            Some(150)
-        );
-        assert_eq!(probe(Bound::Lower, 8, 50).cutoff_score(8, 0, 100), None);
-        assert_eq!(
-            probe(Bound::Upper, 8, -50).cutoff_score(8, 0, 100),
-            Some(-50)
-        );
-        assert_eq!(probe(Bound::Upper, 8, 50).cutoff_score(8, 0, 100), None);
-    }
-
-    #[test]
-    fn eval_refinement_only_moves_in_the_bound_direction() {
-        assert_eq!(probe(Bound::Lower, 4, 80).refine_eval(30, 0), 80);
-        assert_eq!(probe(Bound::Lower, 4, 10).refine_eval(30, 0), 30);
-        assert_eq!(probe(Bound::Upper, 4, 10).refine_eval(30, 0), 10);
-        assert_eq!(probe(Bound::Upper, 4, 80).refine_eval(30, 0), 30);
-    }
-
-    #[test]
-    fn only_the_main_search_form_enforces_a_depth_floor() {
-        let shallow = probe(Bound::Lower, 0, 80);
-        assert_eq!(shallow.refine_eval(30, 4), 30, "depth floor rejects it");
-        assert_eq!(
-            shallow.refine_eval_bound_only(30),
-            80,
-            "the qsearch form has no floor"
-        );
-        assert_eq!(shallow.refine_eval(30, 0), 80);
-        let none = TtProbe {
-            score: VALUE_NONE,
-            ..probe(Bound::Lower, 8, 0)
-        };
-        assert_eq!(none.refine_eval(30, 0), 30, "VALUE_NONE is rejected");
-    }
-
-    #[test]
-    fn guarded_refinement_at_depth_zero_equals_the_unguarded_form() {
-        // Every stored depth is >= 0 and a converted score is never VALUE_NONE,
-        // so the two refinement forms agree at a depth floor of zero.
-        for bound in [Bound::Exact, Bound::Lower, Bound::Upper] {
-            for depth in 0..=12 {
-                for score in [-MATE_SCORE, -300, -1, 0, 1, 300, MATE_SCORE] {
-                    for base in [-500, -1, 0, 1, 500] {
-                        let ev = probe(bound, depth, score);
-                        assert_eq!(
-                            ev.refine_eval(base, 0),
-                            ev.refine_eval_bound_only(base),
-                            "bound {bound:?} depth {depth} score {score} base {base}"
-                        );
-                    }
-                }
-            }
-        }
-        assert_eq!(
-            TtProbe::MISS.refine_eval(42, 0),
-            TtProbe::MISS.refine_eval_bound_only(42)
-        );
-    }
-
-    #[test]
-    fn a_contradicting_bound_can_never_produce_a_cutoff() {
-        for alpha in -300..=300 {
-            for beta in (alpha + 1)..=300 {
-                for score in [alpha - 1, alpha, beta, beta + 1] {
-                    for bound in [Bound::Lower, Bound::Upper] {
-                        let ev = probe(bound, 99, score);
-                        if ev.contradicts_window(alpha, beta) {
-                            assert_eq!(ev.cutoff_score(0, alpha, beta), None);
-                        }
-                    }
-                }
-            }
-        }
-        assert!(!probe(Bound::Exact, 8, 50).contradicts_window(0, 100));
+        assert!(miss.bound.is_none());
+        assert!(miss.mv.is_none());
     }
 
     #[test]
@@ -1326,7 +1158,8 @@ mod tests {
     mod core {
         use super::super::{
             AGE_MASK, AGE_QUALITY_DIVISOR, AGE_STRIDE, Bound, EVAL_ONLY_DEPTH, LocalTable, PV_BIT,
-            TranspositionTable, TtEntry, TtProbe, TtStorage, TtStore, entry_quality,
+            QUIESCENCE_DEPTH, TranspositionTable, TtEntry, TtProbe, TtStorage, TtStore,
+            entry_quality,
         };
         use crate::board::Move;
         use crate::eval::VALUE_NONE;
@@ -1391,9 +1224,6 @@ mod tests {
                 assert_eq!(probe.depth, EVAL_ONLY_DEPTH);
                 assert_eq!(probe.mv, None);
                 assert!(probe.pv_line(false), "the PV bit is stored");
-                assert_eq!(probe.node_cutoff_score(1, -1000, 1000, true), None);
-                assert_eq!(probe.cutoff_score(0, -1000, 1000), None);
-                assert_eq!(probe.refine_eval(55, 0), 55);
             }
             // Eval-only entries occupy their slots: a table holding nothing
             // else reports them in `hashfull`.
@@ -1404,6 +1234,61 @@ mod tests {
                 }
                 assert!(tt.hashfull() > 0, "eval-only entries count as used");
             }
+        }
+
+        /// The keep rule reads a quiescence store as the donor's table does:
+        /// it keeps a same-position entry three plies deep (five for a PV
+        /// store) and replaces a shallower one.
+        #[test]
+        fn a_quiescence_store_keeps_an_entry_three_plies_deep_and_replaces_a_shallower_one() {
+            let mv = Move::from_uci("e2e4").expect("valid move");
+            for (is_pv, kept) in [(false, 3), (true, 5)] {
+                for mut tt in both_backends() {
+                    tt.store(stored(kept, 50, Bound::Lower, mv, false));
+                    tt.store(stored(
+                        QUIESCENCE_DEPTH,
+                        10,
+                        Bound::Exact,
+                        Move::NULL,
+                        is_pv,
+                    ));
+                    let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
+                    assert_eq!((probe.depth, probe.score), (kept, 50), "pv {is_pv}");
+                }
+                for mut tt in both_backends() {
+                    tt.store(stored(kept - 1, 50, Bound::Lower, mv, false));
+                    tt.store(stored(
+                        QUIESCENCE_DEPTH,
+                        10,
+                        Bound::Exact,
+                        Move::NULL,
+                        is_pv,
+                    ));
+                    let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
+                    assert_eq!(
+                        (probe.depth, probe.score),
+                        (QUIESCENCE_DEPTH, 10),
+                        "pv {is_pv}"
+                    );
+                    assert_eq!(probe.mv, Some(mv), "a store without a move keeps the move");
+                }
+            }
+        }
+
+        /// A quiescence result and an evaluation-only entry rank level as
+        /// victims, below every searched depth, as in the donor's table.
+        #[test]
+        fn quiescence_and_evaluation_only_entries_rank_level_as_victims() {
+            let at = |depth: i32, bound: u8| TtEntry {
+                depth: i8::try_from(depth).expect("a small depth"),
+                flag_age: bound,
+                ..TtEntry::default()
+            };
+            let quiescence = entry_quality(at(QUIESCENCE_DEPTH, Bound::Exact as u8), 0);
+            let eval_only = entry_quality(at(EVAL_ONLY_DEPTH, 0), 0);
+            assert_eq!(quiescence, eval_only);
+            assert!(entry_quality(at(1, Bound::Lower as u8), 0) > quiescence);
+            assert!(at(EVAL_ONLY_DEPTH, 0).is_occupied() && !TtEntry::default().is_occupied());
         }
 
         #[test]
@@ -1446,78 +1331,6 @@ mod tests {
                 let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
                 assert_eq!((probe.depth, probe.score), (3, 6));
             }
-        }
-
-        fn probe(bound: Bound, depth: i32, score: i32) -> TtProbe {
-            TtProbe {
-                bound: Some(bound),
-                depth,
-                score,
-                ..TtProbe::MISS
-            }
-        }
-
-        #[test]
-        fn node_cutoff_needs_an_extra_ply_at_or_above_beta() {
-            assert_eq!(
-                probe(Bound::Upper, 8, -10).node_cutoff_score(8, 0, 100, false),
-                Some(-10)
-            );
-            assert_eq!(
-                probe(Bound::Upper, 7, -10).node_cutoff_score(8, 0, 100, false),
-                None
-            );
-            assert_eq!(
-                probe(Bound::Lower, 8, 150).node_cutoff_score(8, 0, 100, true),
-                None
-            );
-            assert_eq!(
-                probe(Bound::Lower, 9, 150).node_cutoff_score(8, 0, 100, true),
-                Some(150)
-            );
-            assert_eq!(
-                probe(Bound::Exact, 8, 50).node_cutoff_score(8, 0, 100, true),
-                Some(50)
-            );
-            assert_eq!(
-                probe(Bound::Exact, 8, 100).node_cutoff_score(8, 0, 100, true),
-                None
-            );
-            assert_eq!(
-                probe(Bound::Exact, 9, 100).node_cutoff_score(8, 0, 100, true),
-                Some(100)
-            );
-        }
-
-        #[test]
-        fn node_cutoff_distrusts_a_contrary_prediction_at_low_depth() {
-            // Fail-low entry at an expected cut node: only above depth 5.
-            assert_eq!(
-                probe(Bound::Upper, 5, -10).node_cutoff_score(5, 0, 100, true),
-                None
-            );
-            assert_eq!(
-                probe(Bound::Upper, 6, -10).node_cutoff_score(6, 0, 100, true),
-                Some(-10)
-            );
-            // Fail-high entry at an expected all node: only above depth 5.
-            assert_eq!(
-                probe(Bound::Lower, 6, 150).node_cutoff_score(5, 0, 100, false),
-                None
-            );
-            assert_eq!(
-                probe(Bound::Lower, 7, 150).node_cutoff_score(6, 0, 100, false),
-                Some(150)
-            );
-            // A bound that does not resolve the window never cuts.
-            assert_eq!(
-                probe(Bound::Upper, 20, 50).node_cutoff_score(8, 0, 100, false),
-                None
-            );
-            assert_eq!(
-                probe(Bound::Lower, 20, 50).node_cutoff_score(8, 0, 100, true),
-                None
-            );
         }
     }
 }

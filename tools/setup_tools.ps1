@@ -125,8 +125,8 @@ if ($downloadFastchess) {
 # Pinned by BOTH its source revision and its SHA-256, and only the hash can be
 # enforced: a stripped release executable does not carry the revision it was
 # built from. A runner that is not the pinned one is a silent instrument change,
-# so a mismatch refuses rather than replaces. Re-pinning to the published
-# `cli-v0.1.0` archive (PLAN B.2.6.3) is an edit to colosseum.pin.json alone.
+# so a mismatch refuses rather than replaces. Re-pinning to another published
+# release is an edit to colosseum.pin.json alone.
 $colosseumPinPath = Join-Path $PSScriptRoot "colosseum\colosseum.pin.json"
 $colosseumPin = Get-ColosseumPin -PinPath $colosseumPinPath
 $colosseumExe = Join-Path $binDir "colosseum-cli.exe"
@@ -189,7 +189,7 @@ if ($stageColosseum) {
         $source = if ($ColosseumSource) { $ColosseumSource } else { $colosseumPin.source.repository }
         if (-not $source -or -not (Test-Path -LiteralPath $source)) {
             throw ("Colosseum source '$source' not found. Clone it, or pass -ColosseumSource, " +
-                   "or give $colosseumPinPath an 'archive' once cli-v0.1.0 is tagged.")
+                   "or give $colosseumPinPath an 'archive' naming a published release.")
         }
         $artifact = Join-Path $source $colosseumPin.source.artifact
         $recipe = ("  git -C `"$source`" switch --detach $($colosseumPin.revision)`n" +

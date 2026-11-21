@@ -4,21 +4,6 @@
 // `clippy::too_many_arguments` is accepted crate-wide for search kernels —
 // see the rationale in Cargo.toml's [lints.clippy] section.
 
-/// Print one search decision with its inputs. In a `diag` build, under
-/// `go searchmoves`, on the main thread and at plies one and two only, every
-/// prune, reduction, extension and proof decision is written to the output
-/// sink as `info string trace ply <n> line <moves> <decision>`. Counters say
-/// how often a decision fires; only a trace says which move it dropped and on
-/// what inputs. Expands to nothing without the feature.
-macro_rules! trace_decision {
-    ($searcher:expr, $ply:expr, $($arg:tt)*) => {
-        #[cfg(feature = "diag")]
-        if $searcher.td.trace_decisions && matches!($ply, 1 | 2) {
-            $searcher.trace_line($ply, format_args!($($arg)*));
-        }
-    };
-}
-
 /// Whether a pricing probe switched `rule` off at `ply`: the one decision a
 /// node-level probe reverses. Always false outside the `pricing` build.
 macro_rules! pricing_off {
@@ -31,6 +16,7 @@ macro_rules! pricing_off {
     }};
 }
 
+mod compact;
 mod correction;
 mod history;
 mod movepick;
@@ -50,19 +36,15 @@ mod time;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
-use crate::board::{Board, Color, GameResult, Move, MoveList};
+use crate::board::{Board, Color, GameResult, Move, MoveList, Piece};
 use crate::eval::{INF_SCORE, MATE_SCORE};
 use crate::infra;
 use crate::search::options::{
-    EngineOptions, HashRequest, MAX_THREADS, SearchLimits, SearchOptions,
+    BOUND_LINES_FROM_NODES, EngineOptions, HashRequest, MAX_THREADS, SearchLimits, SearchOptions,
 };
 use crate::syzygy::{self, Wdl};
 use crate::tt::{TB_VALUE, TB_WIN_SCORE, TranspositionTable};
 
-use params::CoreParams;
-use params::Param;
-use params::ProofParams;
-use params::QuietParams;
 use params::SearchParams;
 use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared, TbRootDecision};
 use stack::{PlyArray, StackEntry};
@@ -73,7 +55,10 @@ use time::{IterationSignals, MateWatch, RuntimeLimits, TbExtension, compute_runt
 const MAX_DEPTH: usize = 100;
 
 pub(crate) const MAX_PLY: usize = 128;
-const MAX_QPLY: usize = 16;
+/// The most a draw's score lies from zero. The kernel scores a draw a unit
+/// either side of it by the node count, so a line that can draw is not
+/// scored level with every other draw.
+pub const DRAW_SPREAD: i32 = 1;
 const MIN_PARALLEL_DEPTH: usize = 4;
 const SHARED_NODE_BATCH: u64 = 128;
 const SHARED_NODE_BATCH_MASK: u64 = SHARED_NODE_BATCH - 1;
@@ -112,6 +97,29 @@ pub struct InfoRecord<'a> {
     pub tb_hits: u64,
     pub elapsed_ms: u128,
     pub pv: &'a [Move],
+    /// The root's material (`score_material`), which sets the scale an
+    /// ordinary score prints at.
+    pub material: i32,
+    /// The line carries the win, draw and loss rates (`UCI_ShowWDL`).
+    pub show_wdl: bool,
+}
+
+/// The material a reported score's scale is read at: pawn 1, knight and
+/// bishop 3, rook 5, queen 9, both sides; 78 at the start.
+pub fn score_material(board: &Board) -> i32 {
+    [
+        (Piece::Pawn, 1),
+        (Piece::Knight, 3),
+        (Piece::Bishop, 3),
+        (Piece::Rook, 5),
+        (Piece::Queen, 9),
+    ]
+    .into_iter()
+    .map(|(piece, value)| {
+        let both = board.pieces(Color::White, piece) | board.pieces(Color::Black, piece);
+        infra::to_i32(both.count()) * value
+    })
+    .sum()
 }
 
 /// What a reported score is: exact, or the bound of a window that failed.
@@ -177,6 +185,16 @@ pub struct SearchResult {
 }
 
 /// Persistent state for one legal root move across iterative-deepening passes.
+/// The last completed iteration that proved a win, kept against a later
+/// iteration that no longer proves one.
+struct ProvedWin {
+    mv: Move,
+    ponder: Move,
+    score: i32,
+    pv: [Move; MAX_PLY],
+    pv_len: usize,
+}
+
 #[derive(Debug, Clone)]
 struct RootMove {
     mv: Move,
@@ -228,8 +246,8 @@ impl RootMove {
 
     /// Root-only bookkeeping must not be inlined into the node kernel. Besides
     /// executing only a few hundred times per search, keeping the floating
-    /// point/statistics block cold prevents it from perturbing `negamax`'s hot
-    /// code layout (inlining it measured a real NPS loss).
+    /// point/statistics block cold prevents it from perturbing the node
+    /// kernel's hot code layout (inlining it measured a real NPS loss).
     #[cold]
     #[inline(never)]
     fn record_search(
@@ -270,22 +288,38 @@ struct SearchConfig {
     /// Root, clock and quiescence settings, which integration tests set to
     /// exercise switches production leaves off, so they stay runtime values.
     params: SearchParams,
-    core: Param<CoreParams>,
-    proof: Param<ProofParams>,
-    quiet: Param<QuietParams>,
+    /// The compact kernel's seeds as the tuning options set them.
+    #[cfg(feature = "tune")]
+    compact_seeds: &'static compact::rules::Seeds,
+    /// Their exchange values, built when they change.
+    #[cfg(all(feature = "tune", not(feature = "pricing")))]
+    compact_exchange: crate::board::SeeValues,
     limits: RuntimeLimits,
     start: Instant,
+    /// The search's node count past which a failed root window prints its
+    /// bound line; below it only exact lines and the line a search stops on
+    /// are printed.
+    bound_lines_from_nodes: u64,
+    /// The root's material, the scale its reported scores print at; output
+    /// only, no search decision reads it.
+    score_material: i32,
+    /// `info` lines carry the win, draw and loss rates.
+    show_wdl: bool,
 }
 
 impl Default for SearchConfig {
     fn default() -> Self {
         Self {
             params: SearchParams::default(),
-            core: Param::<CoreParams>::default(),
-            proof: Param::<ProofParams>::default(),
-            quiet: Param::<QuietParams>::default(),
+            #[cfg(feature = "tune")]
+            compact_seeds: compact::rules::SEEDS,
+            #[cfg(all(feature = "tune", not(feature = "pricing")))]
+            compact_exchange: compact::KERNEL_SEE_VALUES,
             limits: RuntimeLimits::default(),
             start: Instant::now(),
+            bound_lines_from_nodes: BOUND_LINES_FROM_NODES,
+            score_material: 78,
+            show_wdl: false,
         }
     }
 }
@@ -298,78 +332,6 @@ struct ReportedLine {
     score: i32,
     bound: RootBound,
     pv: Vec<Move>,
-}
-
-/// An aspiration window and its widening state for one root search.
-///
-/// From depth 4 the window centres on `center` unless that is a mate score.
-/// Each failure widens the failing side by the growth parameters, re-centred
-/// on `center`; a fail-low also pulls beta to the midpoint of the new alpha
-/// and the old beta. A
-/// side opens fully after `asp_max_fails` failures, once its delta saturates,
-/// or when the failing score is in the mate range, so the loop terminates.
-struct Aspiration {
-    alpha: i32,
-    beta: i32,
-    center: i32,
-    alpha_delta: i32,
-    beta_delta: i32,
-    fail_lows: i32,
-    fail_highs: i32,
-}
-
-impl Aspiration {
-    fn new(params: &SearchParams, depth: usize, center: i32) -> Self {
-        let use_aspiration = depth >= 4 && center.abs() < MATE_SCORE - infra::to_i32(MAX_PLY);
-        let delta = params.aspiration_delta;
-        Self {
-            alpha: if use_aspiration {
-                (center - delta).max(-INF_SCORE)
-            } else {
-                -INF_SCORE
-            },
-            beta: if use_aspiration {
-                (center + delta).min(INF_SCORE)
-            } else {
-                INF_SCORE
-            },
-            center,
-            alpha_delta: delta,
-            beta_delta: delta,
-            fail_lows: 0,
-            fail_highs: 0,
-        }
-    }
-
-    fn fail_low(&mut self, params: &SearchParams, score: i32) {
-        self.fail_lows += 1;
-        self.alpha_delta =
-            (self.alpha_delta * params.asp_growth_pct / 100 + params.asp_growth_add).min(INF_SCORE);
-        self.alpha = if self.fail_lows >= params.asp_max_fails
-            || self.alpha_delta >= INF_SCORE
-            || score <= -(MATE_SCORE - infra::to_i32(MAX_PLY))
-        {
-            -INF_SCORE
-        } else {
-            (self.center - self.alpha_delta).max(-INF_SCORE)
-        };
-        self.beta = (self.alpha + self.beta) / 2;
-    }
-
-    fn fail_high(&mut self, params: &SearchParams, score: i32) {
-        self.fail_highs += 1;
-        self.beta_delta = (self.beta_delta * params.asp_growth_high_pct / 100
-            + params.asp_growth_add)
-            .min(INF_SCORE);
-        self.beta = if self.fail_highs >= params.asp_max_fails
-            || self.beta_delta >= INF_SCORE
-            || score >= MATE_SCORE - infra::to_i32(MAX_PLY)
-        {
-            INF_SCORE
-        } else {
-            (self.center + self.beta_delta).min(INF_SCORE)
-        };
-    }
 }
 
 /// One search thread: what every thread shares, the configuration of the
@@ -499,10 +461,18 @@ impl Searcher {
     pub fn new_game(&mut self) {
         self.worker_pool.start_new_game();
         self.shared.tt.clear();
+        self.reset_thread_for_new_game();
+        self.worker_pool.finish_new_game();
+    }
+
+    /// What one thread carries from game to game, cleared: its histories,
+    /// pawn cache and previous search scores. The main thread and every
+    /// helper run this one reset, so a new game's first window opens at
+    /// the same score on each.
+    fn reset_thread_for_new_game(&mut self) {
         self.clear_history();
         self.td.evaluator.clear_pawn_table();
-        self.td.previous_search_score = None;
-        self.worker_pool.finish_new_game();
+        self.td.compact_previous_score = 0;
     }
 
     pub(crate) fn clear_history(&mut self) {
@@ -559,6 +529,7 @@ impl Searcher {
         let game_ply = 2 * root.fullmove().saturating_sub(1) as u32
             + (root.side_to_move() == Color::Black) as u32;
         self.reset_search_state(limits, engine_options, root.side_to_move(), game_ply, true);
+        self.cfg.score_material = score_material(&root);
 
         let board = root;
         let mut legal_moves = MoveList::new();
@@ -781,6 +752,11 @@ impl Searcher {
             .td
             .evaluator
             .set_lazy_margin(engine_options.search_params.lazy_margin);
+        #[cfg(feature = "probes")]
+        {
+            self.td.rates.clear();
+            self.td.hist.updates = 0;
+        }
         if lazy_margin_changed && age_tt {
             self.shared.tt.clear();
         }
@@ -804,23 +780,24 @@ impl Searcher {
         self.shared.syzygy.fifty_move_rule = engine_options.syzygy.fifty_move_rule;
         self.shared.syzygy.root = TbRootDecision::default();
         self.cfg.params = engine_options.search_params.clone();
-        #[cfg(any(feature = "tune", test))]
-        {
-            self.cfg.core = engine_options.core_params.clone();
-            self.cfg.proof = engine_options.proof_params.clone();
-            self.cfg.quiet = engine_options.quiet_params.clone();
+        self.cfg.bound_lines_from_nodes = engine_options.bound_lines_from_nodes;
+        self.cfg.show_wdl = engine_options.show_wdl;
+        // The kernel reads its seeds by a static reference, as it reads the
+        // donor's in every other build, so a node borrows nothing from the
+        // searcher. A table is allocated only when the options change it,
+        // about a kilobyte for each tuning iteration a process plays.
+        #[cfg(feature = "tune")]
+        if *self.cfg.compact_seeds != engine_options.compact_seeds {
+            self.cfg.compact_seeds = Box::leak(Box::new(engine_options.compact_seeds.clone()));
+            #[cfg(not(feature = "pricing"))]
+            {
+                self.cfg.compact_exchange = compact::exchange_values_of(self.cfg.compact_seeds);
+            }
         }
-        // Without `tune` no option reaches these sets, so the compiled-in
-        // handles are what the options hold. A caller outside the crate that
-        // sets one (an integration test) needs a `tune` build.
-        #[cfg(not(any(feature = "tune", test)))]
-        debug_assert!(
-            engine_options.core_params == CoreParams::DEFAULT
-                && engine_options.proof_params == ProofParams::DEFAULT
-                && engine_options.quiet_params == QuietParams::DEFAULT,
-            "a core, proof or quiet search parameter was set in a build that reads the \
-             compiled-in values; set it in a `tune` build"
-        );
+        // In a build whose seed table can change, the pawn history's limit
+        // follows it, set once a search as the seeds are.
+        #[cfg(any(feature = "tune", feature = "pricing"))]
+        self.td.hist.set_pawn_max(self.seeds().pawn_history_max);
         self.td.nmp_min_ply = 0;
         self.shared.syzygy.largest = syzygy::largest().min(self.shared.syzygy.probe_limit);
         self.td.tb_root_scores.clear();
@@ -832,10 +809,6 @@ impl Searcher {
         self.td.pv_table = PlyArray::new([Move::NULL; MAX_PLY]);
         self.td.pv_len = PlyArray::new(0);
         self.td.stack = PlyArray::new(StackEntry::default());
-        #[cfg(feature = "diag")]
-        {
-            self.td.trace_decisions = self.td.thread_id == 0 && !limits.search_moves.is_empty();
-        }
     }
 
     /// A root with no legal move: report the position's value and then
@@ -951,10 +924,8 @@ impl Searcher {
         let mut best_score = -INF_SCORE;
         let mut completed_depth = 0;
         let max_depth = self.cfg.limits.depth.min(MAX_DEPTH - 1);
-        let mut prev_avg_score = 0.0_f64; // EWMA of completed root scores (SF bestPreviousAverageScore)
-        let mut tot_best_move_changes = 0.0_f64; // decaying count of best-move changes
-        let mut stable_iterations = 0_u32;
         let mut mate_watch = MateWatch::default();
+        let mut proved_win: Option<ProvedWin> = None;
         // The soft target the last completed iteration set; a root window
         // that fails high this far past it ends the search.
         let mut soft_target_ms = f64::INFINITY;
@@ -964,79 +935,94 @@ impl Searcher {
         // target votes again every iteration and can reach the majority
         // single-handedly — which is the opposite of pooling the decision.
         let mut cast_stop_vote = false;
+        let mut iterations =
+            compact::window::Iterations::new(self.td.compact_previous_score, 1, self.seeds());
+        crate::diag_count!(root_searches);
 
         for depth in 1..=max_depth {
             // Per iteration, as Stockfish resets `selDepth`: carried across a
             // whole search the number reports a deeper earlier iteration and
             // never falls, which is not what a GUI plots against depth.
             self.td.seldepth = 0;
+            // The clock counts this iteration's best-move changes alone.
+            self.td.best_move_changes = 0;
             for root_move in &mut self.td.root_move_records {
                 root_move.begin_iteration();
             }
             let previous_bestmove = bestmove;
             let mut failed_high_past_target = false;
-            // The aspiration window centers on this thread's own last
-            // completed score — unless the pool has already proven an Exact
-            // root score DEEPER than this thread's progress, in which case it
-            // centers on the pool's estimate (fewer fail-high/low re-searches
+            // The window opens on this thread's own average, joined by the
+            // pool's estimate when the pool has already proven an Exact root
+            // score deeper than this thread's progress (fewer re-searches
             // when joining the pool's view). Serial searches have no shared
-            // state and keep `best_score` bit-for-bit.
-            let mut window_center = best_score;
-            if let Some(shared) = self.shared.pool()
-                && let Some((pool_depth, pool_score)) = shared.pool_best_exact()
-                && pool_depth > infra::to_i32(completed_depth)
+            // state.
+            let pool_average = self
+                .shared
+                .pool()
+                .and_then(|shared| shared.pool_best_exact())
+                .filter(|&(pool_depth, _)| pool_depth > infra::to_i32(completed_depth))
+                .map(|(_, pool_score)| pool_score);
+            let (opening, optimism) = iterations.open(0, pool_average);
+            let stm = board.side_to_move() as usize;
+            self.td.optimism[stm] = optimism;
+            self.td.optimism[1 - stm] = -optimism;
+            #[cfg(feature = "probes")]
             {
-                window_center = pool_score;
+                self.td.rates.record(compact::probes::Kind::Optimism, true);
+                self.td.rates.record(compact::probes::Kind::Window, true);
             }
-            // Termination by construction: see `Aspiration`.
-            let mut window = Aspiration::new(&self.cfg.params, depth, window_center);
+            let mut window = compact::window::CompactWindow::new(opening, self.seeds());
+            // The move an earlier window of this iteration failed high on.
+            #[cfg(feature = "diag")]
+            let mut iteration_fail_high_move = Move::NULL;
 
             loop {
                 #[cfg(feature = "diag")]
                 let window_nodes_before = self.td.nodes;
-                let score = self.search_root_window(
-                    &mut board,
-                    infra::to_i32(depth),
-                    window.alpha,
-                    window.beta,
-                    poll,
-                );
+                let (alpha, beta, search_depth) = window.bounds(infra::to_i32(depth));
+                // Each window searches from a clean stack, its cutoff counts
+                // included.
+                self.td.stack = PlyArray::new(StackEntry::default());
+                self.td.root_report_depth = infra::to_i32(depth);
+                let score = self.search_root_window(&mut board, search_depth, alpha, beta, poll);
                 #[cfg(feature = "diag")]
                 let window_nodes = self.td.nodes.saturating_sub(window_nodes_before);
                 if self.td.stopped || self.td.quit {
+                    #[cfg(feature = "diag")]
+                    self.count_interrupted_iteration(bestmove, iteration_fail_high_move);
                     break;
                 }
                 #[cfg(feature = "diag")]
                 if depth >= 4 {
                     crate::diag_add!(asp_search_nodes, window_nodes);
                 }
-                // Termination guard. The widened window re-centers
-                // on the previous iteration's best_score; with the delta
-                // clamped to INF_SCORE that caps the reachable bound at
-                // best_score ± INF_SCORE, which can never contain a mate score
-                // found *this* iteration when best_score is negative-ish
-                // (prev + 32001 < mate) — the fail-high loop then never
-                // terminates (WAC.005 hung every fixed-depth search ≥ 4; games
-                // masked it because the clock aborts the iteration). Force the
-                // failing side fully open once a mate-magnitude score appears
-                // or the delta saturates; every other re-search keeps the
-                // best_score-centered dynamics — the SF-style "re-center on the
-                // failing score" variant measured −4.52 ± 4.80 Elo, because
-                // AspirationDelta and the pruning group were tuned around these
-                // dynamics.
-                if score <= window.alpha {
+                // A failed window re-centres on the failing score and grows;
+                // after `asp_max_fails` failures the failing side opens fully,
+                // so the loop ends.
+                if score <= alpha {
                     crate::diag_count!(asp_fail_low);
                     crate::diag_add!(asp_fail_low_nodes, window_nodes);
-                    if emit_info {
+                    if emit_info && self.shows_bound_lines() {
                         self.send_bounded_info_line(depth, score, RootBound::Upper, bestmove);
                     }
-                    window.fail_low(&self.cfg.params, score);
+                    window.fail_low(score, self.cfg.params.asp_max_fails);
+                    #[cfg(feature = "probes")]
+                    self.td.rates.record(compact::probes::Kind::Window, true);
                     continue;
                 }
-                if score >= window.beta {
+                if score >= beta {
                     crate::diag_count!(asp_fail_high);
                     crate::diag_add!(asp_fail_high_nodes, window_nodes);
-                    if emit_info {
+                    #[cfg(feature = "diag")]
+                    if self.td.pv_len[0] > 0 {
+                        iteration_fail_high_move = self.td.pv_table[0][0];
+                    }
+                    let stops = self.td.thread_id == 0
+                        && !self.td.pondering
+                        && self.elapsed_ms() >= soft_target_ms * fail_high_target;
+                    // The line a search stops on is its report of the move
+                    // it plays, so it is printed however short the search.
+                    if emit_info && (stops || self.shows_bound_lines()) {
                         self.send_bounded_info_line(depth, score, RootBound::Lower, bestmove);
                     }
                     // Past a multiple of the soft target (twice it by default)
@@ -1051,10 +1037,7 @@ impl Searcher {
                     // centred on or, after a fail-low pulled it down, above
                     // every move's bound from that fail-low. The main thread
                     // decides; helpers keep their vote.
-                    if self.td.thread_id == 0
-                        && !self.td.pondering
-                        && self.elapsed_ms() >= soft_target_ms * fail_high_target
-                    {
+                    if stops {
                         crate::diag_count!(tm_fail_high_stop);
                         if self.td.pv_len[0] > 0 {
                             bestmove = self.td.pv_table[0][0];
@@ -1068,11 +1051,14 @@ impl Searcher {
                         failed_high_past_target = true;
                         break;
                     }
-                    window.fail_high(&self.cfg.params, score);
+                    window.fail_high(score, self.cfg.params.asp_max_fails);
+                    #[cfg(feature = "probes")]
+                    self.td.rates.record(compact::probes::Kind::Window, true);
                     continue;
                 }
                 best_score = score;
                 completed_depth = depth;
+                iterations.record_exact(0, score);
                 if self.td.pv_len[0] > 0 {
                     bestmove = self.td.pv_table[0][0];
                     pondermove = if self.td.pv_len[0] > 1 {
@@ -1080,6 +1066,32 @@ impl Searcher {
                     } else {
                         Move::NULL
                     };
+                }
+                // A deeper iteration loses a proven win to pruning or a table
+                // artefact far more often than it refutes it, and playing its
+                // move only delays the mate: keep the proven win's move, score
+                // and line until another iteration proves a win.
+                if best_score >= MATE_SCORE - infra::to_i32(MAX_PLY) {
+                    crate::diag_count!(iter_mate_win);
+                    let pv_len = self.td.pv_len[0].min(MAX_PLY);
+                    proved_win = Some(ProvedWin {
+                        mv: bestmove,
+                        ponder: pondermove,
+                        score: best_score,
+                        pv: self.td.pv_table[0],
+                        pv_len,
+                    });
+                } else if let Some(proved) = &proved_win {
+                    crate::diag_count!(iter_mate_win_lost);
+                    #[cfg(feature = "diag")]
+                    if bestmove != proved.mv {
+                        crate::diag_count!(iter_mate_win_lost_move);
+                    }
+                    bestmove = proved.mv;
+                    pondermove = proved.ponder;
+                    best_score = proved.score;
+                    self.td.pv_table[0] = proved.pv;
+                    self.td.pv_len[0] = proved.pv_len;
                 }
                 if let Some(root_move) = self
                     .td
@@ -1100,6 +1112,7 @@ impl Searcher {
             if self.td.stopped || self.td.quit || failed_high_past_target {
                 break;
             }
+            iterations.end_iteration(best_score, bestmove);
 
             if emit_info {
                 self.send_info(depth, best_score);
@@ -1132,42 +1145,12 @@ impl Searcher {
                 break;
             }
 
-            // Update best-move instability and score EWMA for the soft-stop
-            // formula. **This thread's own** best-move flips, deliberately:
-            // the POOL's deepest-Exact move measured −5.54 ± 8.15 Elo over
-            // 2,760 games at 4T, the noisier signal rather than the better one.
-            tot_best_move_changes /= 2.0;
             if bestmove != previous_bestmove {
-                tot_best_move_changes += 1.0;
                 crate::diag_count!(root_best_changes);
             }
             crate::diag_count!(root_iterations);
-            stable_iterations = if depth == 1 || bestmove != previous_bestmove {
-                0
-            } else {
-                stable_iterations + 1
-            };
 
-            // `falling_eval` compares this iteration's score against the
-            // average of the *prior* iterations. At this point `prev_avg_score`
-            // is still that prior average, so capture it here as the baseline
-            // BEFORE folding the current score in below; reading it after the
-            // update would attenuate the signal to two-thirds. On the first
-            // iteration there is no prior average, so the baseline is the
-            // current score → a neutral (zero) falling signal.
-            let falling_baseline = if completed_depth <= 1 {
-                best_score as f64
-            } else {
-                prev_avg_score
-            };
-            // Update the EWMA for the next iteration's baseline.
-            prev_avg_score = if completed_depth <= 1 {
-                best_score as f64
-            } else {
-                (prev_avg_score * 2.0 + best_score as f64) / 3.0
-            };
-
-            // SF-style between-iteration stop.
+            // The between-iteration stop.
             // movetime mode: no soft stop — count_node (every 2048 nodes) fires at maximum_ms.
             // clock mode: stop when elapsed exceeds the dynamically scaled optimum.
             let elapsed_ms = self.elapsed_ms();
@@ -1182,13 +1165,7 @@ impl Searcher {
                 break;
             }
             if !self.cfg.limits.movetime_mode {
-                let signals = IterationSignals {
-                    score_fall: falling_baseline - f64::from(best_score),
-                    cross_move_fall: self.cross_move_fall(best_score),
-                    best_move_changes: tot_best_move_changes,
-                    stable_iterations,
-                    effort_share: self.effort_share(bestmove),
-                };
+                let signals = self.iteration_signals(&iterations, bestmove, best_score);
                 let soft = time::soft_stop(&self.cfg.params, &self.cfg.limits, signals);
                 soft_target_ms = soft.target_ms;
                 #[cfg(feature = "diag")]
@@ -1256,6 +1233,16 @@ impl Searcher {
             crate::diag_count!(root_interrupted_fallback);
         }
 
+        #[cfg(feature = "diag")]
+        if let Some(proved) = &proved_win
+            && best_score < MATE_SCORE - infra::to_i32(MAX_PLY)
+        {
+            crate::diag_count!(search_mate_win_dropped);
+            if bestmove != proved.mv {
+                crate::diag_count!(search_mate_win_dropped_move);
+            }
+        }
+
         // Dump per-search counters (no-op without `--features diag`).
         // Serial path only — see the reset note above. The parallel
         // dump lives in `search_parallel`, after the helpers are joined.
@@ -1265,7 +1252,17 @@ impl Searcher {
             self.pricing_dump();
         }
 
-        self.remember_search_score(best_score);
+        if best_score > -INF_SCORE {
+            self.td.compact_previous_score = best_score;
+        }
+        #[cfg(feature = "probes")]
+        if emit_info && self.td.thread_id == 0 {
+            self.td
+                .rates
+                .add_fired(compact::probes::Kind::Gravity, self.td.hist.updates);
+            self.notice(format_args!("{}", self.td.rates.line()));
+        }
+        let best_score = best_score;
         let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
         SearchResult {
             bestmove,
@@ -1286,6 +1283,26 @@ impl Searcher {
         }
     }
 
+    /// What the clock reads after a completed iteration ended on
+    /// `best_score` with `bestmove`: the best move's node share, the score's
+    /// fall from the previous search in the game, the two stability counts
+    /// the root window keeps, and this iteration's best-move changes. Each is
+    /// this thread's own, as in the donor.
+    fn iteration_signals(
+        &self,
+        iterations: &compact::window::Iterations,
+        bestmove: Move,
+        best_score: i32,
+    ) -> IterationSignals {
+        IterationSignals {
+            node_share: self.effort_share(bestmove),
+            score_fall: f64::from(self.td.compact_previous_score - best_score),
+            pv_stability: iterations.pv_stability(),
+            eval_stability: iterations.eval_stability(),
+            best_move_changes: self.td.best_move_changes,
+        }
+    }
+
     /// Whether `score`, from a completed iteration, is a mate within `go mate`'s
     /// limit, for either side. Only a completed iteration's score is exact.
     fn mate_limit_proved(&self, score: i32) -> bool {
@@ -1300,22 +1317,6 @@ impl Searcher {
     fn stop_the_pool(&self) {
         if let Some(shared) = self.shared.pool() {
             shared.request_stop();
-        }
-    }
-
-    /// The fall from this thread's previous search in the game to `score`,
-    /// the previous move's score both donors read; zero without one.
-    fn cross_move_fall(&self, score: i32) -> f64 {
-        self.td
-            .previous_search_score
-            .map_or(0.0, |previous| f64::from(previous - score))
-    }
-
-    /// Keep this search's root score for the next search's falling eval. A
-    /// search that completed no iteration leaves the previous one in place.
-    fn remember_search_score(&mut self, score: i32) {
-        if score > -INF_SCORE {
-            self.td.previous_search_score = Some(score);
         }
     }
 
@@ -1340,15 +1341,19 @@ impl Searcher {
         elapsed_ms: f64,
     ) {
         self.td.sink.line(&format!(
-            "info string tm depth {depth} k {} share {:.4} cross {:.1} fall {:.4} instab {:.4} \
-             stab {:.4} effort {:.4} optimum {:.1} target {:.1} elapsed {elapsed_ms:.1}",
-            signals.stable_iterations,
-            signals.effort_share,
-            signals.cross_move_fall,
-            soft.falling,
-            soft.instability,
-            soft.stability,
-            soft.effort,
+            "info string tm depth {depth} share {:.4} fall {:.1} pv {} eval {} changes {} \
+             nodes {:.4} trend {:.4} pvstab {:.4} evalstab {:.4} bms {:.4} optimum {:.1} \
+             target {:.1} elapsed {elapsed_ms:.1}",
+            signals.node_share,
+            signals.score_fall,
+            signals.pv_stability,
+            signals.eval_stability,
+            signals.best_move_changes,
+            soft.nodes,
+            soft.score_trend,
+            soft.pv_stability,
+            soft.eval_stability,
+            soft.best_move_stability,
             self.cfg.limits.optimum_ms,
             soft.target_ms,
         ));
@@ -1390,19 +1395,19 @@ impl Searcher {
         let mut best_score = -INF_SCORE;
         let mut completed_depth = 0;
         let max_depth = self.cfg.limits.depth.min(MAX_DEPTH - 1);
-        let mut prev_avg_score = 0.0_f64;
-        let mut tot_best_move_changes = 0.0_f64;
-        let mut stable_iterations = 0_u32;
         let mut mate_watch = MateWatch::default();
         let mut cast_stop_vote = false;
         // The lines of the last depth whose every line completed, best first.
         // A record's score alone is not a line: a move that never raised alpha
         // keeps the bound of its last attempt.
         let mut settled: Vec<ReportedLine> = Vec::new();
+        let mut iterations =
+            compact::window::Iterations::new(self.td.compact_previous_score, lines, self.seeds());
 
         for depth in 1..=max_depth {
             // Per iteration, as in the single-line path above.
             self.td.seldepth = 0;
+            self.td.best_move_changes = 0;
             for root_move in &mut self.td.root_move_records {
                 root_move.begin_iteration();
             }
@@ -1430,23 +1435,34 @@ impl Searcher {
                 self.td.root_moves.clear();
                 self.td.root_moves.extend_from_slice(&order[line..]);
                 self.td.multipv_line = line;
-                let center = self
-                    .root_record(order[line])
-                    .map_or(-INF_SCORE, |rm| rm.previous_score);
-                let mut window = Aspiration::new(&self.cfg.params, depth, center);
+                // Line 1 joins the pool's deeper average, as the one-line
+                // search does.
+                let pool_average = self
+                    .shared
+                    .pool()
+                    .and_then(|shared| shared.pool_best_exact())
+                    .filter(|&(pool_depth, _)| {
+                        line == 0 && pool_depth > infra::to_i32(completed_depth)
+                    })
+                    .map(|(_, pool_score)| pool_score);
+                let (opening, optimism) = iterations.open(line, pool_average);
+                let stm = board.side_to_move() as usize;
+                self.td.optimism[stm] = optimism;
+                self.td.optimism[1 - stm] = -optimism;
+                let mut window =
+                    compact::window::CompactWindow::at_iteration_depth(opening, self.seeds());
                 let mut attempt: Option<ReportedLine> = None;
                 let completed = loop {
-                    let score = self.search_root_window(
-                        &mut board,
-                        infra::to_i32(depth),
-                        window.alpha,
-                        window.beta,
-                        poll,
-                    );
+                    let (alpha, beta, search_depth) = window.bounds(infra::to_i32(depth));
+                    // Each window searches from a clean stack.
+                    self.td.stack = PlyArray::new(StackEntry::default());
+                    self.td.root_report_depth = infra::to_i32(depth);
+                    let score =
+                        self.search_root_window(&mut board, search_depth, alpha, beta, poll);
                     if self.td.stopped || self.td.quit {
                         break false;
                     }
-                    if score <= window.alpha {
+                    if score <= alpha {
                         crate::diag_count!(asp_fail_low);
                         // No move raised alpha: the line's bound is the best
                         // upper bound among the moves this attempt searched.
@@ -1461,10 +1477,10 @@ impl Searcher {
                             .max_by_key(|&(score, _)| score)
                             .map_or(order[line], |(_, mv)| mv);
                         attempt = Some(self.reported_line(bounded_move, depth, RootBound::Upper));
-                        window.fail_low(&self.cfg.params, score);
+                        window.fail_low(score, self.cfg.params.asp_max_fails);
                         continue;
                     }
-                    if score >= window.beta {
+                    if score >= beta {
                         crate::diag_count!(asp_fail_high);
                         let fail_high_move = if self.td.pv_len[0] > 0 {
                             self.td.pv_table[0][0]
@@ -1472,9 +1488,10 @@ impl Searcher {
                             order[line]
                         };
                         attempt = Some(self.reported_line(fail_high_move, depth, RootBound::Lower));
-                        window.fail_high(&self.cfg.params, score);
+                        window.fail_high(score, self.cfg.params.asp_max_fails);
                         continue;
                     }
+                    iterations.record_exact(line, score);
                     break true;
                 };
                 if !completed {
@@ -1550,6 +1567,7 @@ impl Searcher {
             if stopped {
                 break;
             }
+            iterations.end_iteration(best_score, bestmove);
             settled = order[..ranked]
                 .iter()
                 .map(|&mv| self.reported_line(mv, depth, RootBound::Exact))
@@ -1560,27 +1578,10 @@ impl Searcher {
                 break;
             }
 
-            tot_best_move_changes /= 2.0;
             if bestmove != previous_bestmove {
-                tot_best_move_changes += 1.0;
                 crate::diag_count!(root_best_changes);
             }
             crate::diag_count!(root_iterations);
-            stable_iterations = if depth == 1 || bestmove != previous_bestmove {
-                0
-            } else {
-                stable_iterations + 1
-            };
-            let falling_baseline = if completed_depth <= 1 {
-                best_score as f64
-            } else {
-                prev_avg_score
-            };
-            prev_avg_score = if completed_depth <= 1 {
-                best_score as f64
-            } else {
-                (prev_avg_score * 2.0 + best_score as f64) / 3.0
-            };
             let elapsed_ms = self.elapsed_ms();
             if elapsed_ms >= self.cfg.limits.maximum_ms {
                 break;
@@ -1596,13 +1597,7 @@ impl Searcher {
                 break;
             }
             if !self.cfg.limits.movetime_mode {
-                let signals = IterationSignals {
-                    score_fall: falling_baseline - f64::from(best_score),
-                    cross_move_fall: self.cross_move_fall(best_score),
-                    best_move_changes: tot_best_move_changes,
-                    stable_iterations,
-                    effort_share: self.effort_share(bestmove),
-                };
+                let signals = self.iteration_signals(&iterations, bestmove, best_score);
                 let soft_target =
                     time::soft_stop(&self.cfg.params, &self.cfg.limits, signals).target_ms;
                 if self.td.pondering {
@@ -1636,7 +1631,10 @@ impl Searcher {
             #[cfg(feature = "pricing")]
             self.pricing_dump();
         }
-        self.remember_search_score(best_score);
+        if best_score > -INF_SCORE {
+            self.td.compact_previous_score = best_score;
+        }
+        let best_score = best_score;
         let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
         SearchResult {
             bestmove,
@@ -1706,6 +1704,11 @@ impl Searcher {
     /// The score a line prints: the tables' where they replace the search's,
     /// otherwise the search's own.
     fn displayed_score(&self, root_move: Option<&Move>, score: i32) -> i32 {
+        // A move the search never scored, after a stop inside the first
+        // iteration, prints 0: the marker would read as a mate.
+        if score == -INF_SCORE {
+            return 0;
+        }
         self.tb_root_score(root_move, score).unwrap_or(score)
     }
 
@@ -1760,6 +1763,8 @@ impl Searcher {
                 tb_hits,
                 elapsed_ms,
                 pv: &line_pv,
+                material: self.cfg.score_material,
+                show_wdl: self.cfg.show_wdl,
             }));
         }
     }
@@ -1824,13 +1829,13 @@ impl Searcher {
         }
     }
 
-    /// Count the position a move or a null move just reached, then look
-    /// for a reason to stop: another thread's stop, the node limit, and on
-    /// every 2048th count the GUI and the clock. Each position is counted
-    /// once: a re-search, the hand-off to quiescence, razoring's
-    /// quiescence search, a null-move verification and an exclusion search
-    /// enter a position already counted and add nothing, so `nodes`, `nps`,
-    /// `go nodes` and the bench count one thing. A reason to stop sets
+    /// Count the position a move just reached, then look for a reason to
+    /// stop: another thread's stop, the node limit, and on every 2048th
+    /// count the GUI and the clock. A count is a move made, as Stockfish
+    /// and Reckless keep it: a null move, a re-search, the hand-off to
+    /// quiescence, razoring's quiescence search, a null-move verification
+    /// and an exclusion search add nothing, so `nodes`, `nps`, `go nodes`
+    /// and the bench count one thing, the same thing those engines count. A reason to stop sets
     /// `td.stopped`, which every node reads on entry.
     fn count_node<P: FnMut() -> SearchEvent + ?Sized>(&mut self, poll: &mut P) {
         let total_nodes = self.record_node();
@@ -1850,7 +1855,12 @@ impl Searcher {
                 _ => {}
             }
         }
-        if self.cfg.limits.nodes > 0 && total_nodes >= self.cfg.limits.nodes {
+        // Not before the first iteration has completed, as for the clock
+        // below: a search stopped inside it has no score and no searched move.
+        if self.cfg.limits.nodes > 0
+            && total_nodes >= self.cfg.limits.nodes
+            && self.td.root_depth > 1
+        {
             self.td.stopped = true;
             if let Some(shared_state) = self.shared.pool() {
                 shared_state.request_stop();
@@ -1922,24 +1932,37 @@ impl Searcher {
         })
     }
 
+    /// What a stop inside an iteration discards when the root falls back to
+    /// `fallback`, the last completed iteration's move: the interrupted
+    /// window's root resets its line and sets it only when a fully searched
+    /// move raises alpha.
+    #[cfg(feature = "diag")]
+    #[cold]
+    fn count_interrupted_iteration(&self, fallback: Move, fail_high_move: Move) {
+        crate::diag_count!(root_stop_mid_iteration);
+        let new_best = self.td.pv_len[0] > 0 && self.td.pv_table[0][0] != fallback;
+        let failed_high_new = !fail_high_move.is_null() && fail_high_move != fallback;
+        if new_best {
+            crate::diag_count!(root_stop_partial_new_best);
+        }
+        if failed_high_new {
+            crate::diag_count!(root_stop_after_fail_high_new);
+        }
+        if new_best || failed_high_new {
+            crate::diag_count!(root_stop_discards);
+        }
+    }
+
+    /// Whether a failed root window prints its bound line: past the floor
+    /// on the search's count, every thread's nodes included.
+    fn shows_bound_lines(&self) -> bool {
+        self.reported_nodes() > self.cfg.bound_lines_from_nodes
+    }
+
     fn reported_tb_hits(&self) -> u64 {
         self.shared.pool().map_or(self.td.tb_hits, |shared_state| {
             shared_state.tb_hits.load(Ordering::Relaxed)
         })
-    }
-
-    /// Write one decision-trace line; see `trace_decision!`.
-    #[cfg(feature = "diag")]
-    #[cold]
-    #[inline(never)]
-    fn trace_line(&self, ply: usize, decision: std::fmt::Arguments<'_>) {
-        let line = (0..ply)
-            .map(|p| self.td.stack[p].mv.to_string())
-            .collect::<Vec<_>>()
-            .join(" ");
-        self.td.sink.line(&format!(
-            "info string trace ply {ply} line {line} {decision}"
-        ));
     }
 
     fn elapsed_ms(&self) -> f64 {
@@ -2024,6 +2047,8 @@ impl Searcher {
             tb_hits: self.reported_tb_hits(),
             elapsed_ms: self.cfg.start.elapsed().as_millis(),
             pv,
+            material: self.cfg.score_material,
+            show_wdl: self.cfg.show_wdl,
         }));
     }
 
@@ -2108,12 +2133,49 @@ mod tests {
     /// or, for a clock parameter, the time limits or the soft stop on a named
     /// clock. The SPSA coverage audit reads the source; this reads behaviour,
     /// so a parameter the search no longer consults, or consults only where no
-    /// named position reaches, fails here by name. Release only: the sweep is
-    /// about 300 searches.
+    /// named position reaches, fails here by name. The kernel's seeds are not
+    /// search parameters: a tuning build's sets them (see the seed test above).
+    /// Release only: the sweep is about 25 searches at depth 8.
+    /// A tuning build's compact seeds reach the compact search: a seed set
+    /// through the options changes its tree, its own value leaves the tree
+    /// alone, and a searcher given new values and then the old ones searches
+    /// the old tree again.
+    #[cfg(feature = "tune")]
+    #[test]
+    fn a_compact_seed_set_in_the_options_reaches_the_compact_search() {
+        const FEN: &str = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
+        let options = |value: &str| {
+            let mut options = SearchOptions::default();
+            options.limits.depth = Some(8);
+            assert!(options.engine.set_compact_seed("KLmrLog", value));
+            options
+        };
+        let tree = |searcher: &mut Searcher, options: &SearchOptions| {
+            let board = Board::from_fen(FEN).expect("valid FEN");
+            searcher
+                .search(board, options, false, || SearchEvent::None)
+                .nodes
+        };
+        let mut donor = SearchOptions::default();
+        donor.limits.depth = Some(8);
+        let base = tree(&mut Searcher::default(), &donor);
+        let own = compact::rules::SEEDS.lmr_log.to_string();
+        assert_eq!(tree(&mut Searcher::default(), &options(&own)), base);
+        let moved = tree(&mut Searcher::default(), &options("400"));
+        assert_ne!(
+            moved, base,
+            "a longer reduction table searches another tree"
+        );
+        let mut reused = Searcher::default();
+        assert_eq!(tree(&mut reused, &options("400")), moved);
+        reused.new_game();
+        assert_eq!(tree(&mut reused, &donor), base);
+    }
+
     #[test]
     #[cfg_attr(
         debug_assertions,
-        ignore = "about 300 searches; the release suite runs it"
+        ignore = "about 25 searches at depth 8; the release suite runs it"
     )]
     fn every_search_parameter_moves_what_it_tunes() {
         const DEPTH: u32 = 8;
@@ -2121,24 +2183,12 @@ mod tests {
             "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
         const SEMI_SLAV: &str =
             "rnbqkb1r/pp3ppp/2p1pn2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 0 5";
-        // A knight up, so null moves see a surplus over beta.
+        // A knight up.
         const KNIGHT_UP: &str = "r1bqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         // Two pieces a side, and a rule-50 clock under way.
         const TWO_PIECES: &str = "2r3k1/pp1n1ppp/4p3/3pP3/3P1P2/2RB2P1/PP5P/6K1 w - - 40 30";
         const PAWN_ENDING: &str = "8/5pk1/6p1/8/4P3/5PK1/8/8 w - - 10 50";
         const POSITIONS: [&str; 5] = [KIWIPETE, SEMI_SLAV, KNIGHT_UP, TWO_PIECES, PAWN_ENDING];
-        // Parameters that act only deeper than the sweep, each with the
-        // position and depth where an end of its range first moved the tree:
-        // a null move's surplus past 128, a singular extension at a new PV
-        // node, a capped singular reduction, and a pruned quiet at a node
-        // already at or above beta.
-        const DEEP: [(&str, &str, u32); 5] = [
-            ("CoreNmpRClamp", KIWIPETE, 10),
-            ("CoreSingDoubleNotTtPv", KNIGHT_UP, 10),
-            ("CoreSingTripleNotTtPv", SEMI_SLAV, 12),
-            ("CoreLmrSingularCap", TWO_PIECES, 10),
-            ("CoreFpEvalAboveBeta", PAWN_ENDING, 13),
-        ];
         // Proved live by a test of its own: a root fail-high stops the search
         // at the low end of the range and not at the high end.
         const ELSEWHERE: [(&str, &str); 1] = [(
@@ -2158,22 +2208,30 @@ mod tests {
             (2_000, 20, 0, 60),
             (30_000, 0, 20, 20),
         ];
-        // Early in a search, and late, with the best move long held and
-        // most of the nodes spent on it.
+        // Early in a search with the score inside the trend's clamps; late,
+        // with the best move and score long held, most of the nodes on the
+        // move and the score risen; and a spread search after a large fall.
         let signals = [
             IterationSignals {
-                score_fall: 25.0,
-                cross_move_fall: 15.0,
-                best_move_changes: 1.5,
-                stable_iterations: 3,
-                effort_share: 0.6,
+                node_share: 0.6,
+                score_fall: 2.0,
+                pv_stability: 3,
+                eval_stability: 2,
+                best_move_changes: 1,
             },
             IterationSignals {
+                node_share: 0.97,
                 score_fall: -10.0,
-                cross_move_fall: 0.0,
-                best_move_changes: 0.0,
-                stable_iterations: 20,
-                effort_share: 0.97,
+                pv_stability: 20,
+                eval_stability: 20,
+                best_move_changes: 0,
+            },
+            IterationSignals {
+                node_share: 0.3,
+                score_fall: 25.0,
+                pv_stability: 0,
+                eval_stability: 0,
+                best_move_changes: 3,
             },
         ];
         let clock = |options: &SearchOptions| -> Vec<u64> {
@@ -2221,15 +2279,11 @@ mod tests {
             if ELSEWHERE.iter().any(|(elsewhere, _)| *elsewhere == name) {
                 return;
             }
-            let deep = DEEP.iter().find(|(deep, _, _)| *deep == name);
-            let deep_base = deep.map(|&(_, fen, depth)| tree(&base, fen, depth));
             let live = [min, max].into_iter().any(|value| {
                 let mut options = base.clone();
                 set(&mut options, value);
                 if name.starts_with("Tm") {
                     clock(&options) != base_clock
-                } else if let (Some(&(_, fen, depth)), Some(deep_base)) = (deep, deep_base) {
-                    tree(&options, fen, depth) != deep_base
                 } else {
                     POSITIONS
                         .iter()
@@ -2246,30 +2300,11 @@ mod tests {
                 *field(&mut o.engine.search_params) = v;
             });
         }
-        for &(name, min, max, field) in CoreParams::FIELDS {
-            visit(name, min, max, &|o, v| {
-                *field(&mut o.engine.core_params) = v;
-            });
-        }
-        for &(name, min, max, field) in ProofParams::FIELDS {
-            visit(name, min, max, &|o, v| {
-                *field(&mut o.engine.proof_params) = v;
-            });
-        }
-        for &(name, min, max, field) in QuietParams::FIELDS {
-            visit(name, min, max, &|o, v| {
-                *field(&mut o.engine.quiet_params) = v;
-            });
-        }
         assert!(
             dead.is_empty(),
             "moved nothing at either end of its range: {dead:?}"
         );
-        for name in DEEP
-            .iter()
-            .map(|d| d.0)
-            .chain(ELSEWHERE.iter().map(|e| e.0))
-        {
+        for name in ELSEWHERE.iter().map(|e| e.0) {
             assert!(
                 visited.iter().any(|v| v == name),
                 "{name} is no longer a parameter"
@@ -2420,6 +2455,111 @@ mod tests {
         assert_eq!(lines.lock().unwrap().len(), 2);
     }
 
+    /// A search stopped inside its first iteration has no score; its line
+    /// printed the marker as `mate -0`.
+    #[test]
+    fn a_move_the_search_never_scored_prints_zero() {
+        let lines = Arc::new(Mutex::new(Vec::new()));
+        let searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+        let a2a3 = Move::from_uci("a2a3").expect("valid move");
+        let result = SearchResult {
+            bestmove: a2a3,
+            pondermove: Move::NULL,
+            score: -INF_SCORE,
+            depth: 0,
+            pv: vec![a2a3],
+            seldepth: 0,
+            nodes: 1,
+            tb_hits: 0,
+            elapsed_ms: 0,
+            exit: SearchExit::Stop,
+            ponderhit: false,
+        };
+        searcher.report_line(&result);
+        let printed = lines.lock().unwrap().clone();
+        assert_eq!(printed.len(), 1, "{printed:?}");
+        assert!(printed[0].contains(" score cp 0 nodes "), "{printed:?}");
+    }
+
+    /// A node budget smaller than the first iteration still completes it, so
+    /// the move played was searched and the score is one the search found.
+    #[test]
+    fn a_node_budget_waits_for_the_first_iteration() {
+        let board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .expect("valid FEN");
+        let mut first = SearchOptions::default();
+        first.limits.depth = Some(1);
+        let first_iteration = Searcher::default()
+            .search(board.clone(), &first, false, || SearchEvent::None)
+            .nodes;
+        let mut options = SearchOptions::default();
+        options.limits.nodes = 1;
+        let result = Searcher::default().search(board, &options, false, || SearchEvent::None);
+        assert_eq!(result.depth, 1);
+        assert!(
+            result.score.abs() < MATE_SCORE - infra::to_i32(MAX_PLY),
+            "{}",
+            result.score
+        );
+        // The first iteration's windows, and the first node of depth 2 that
+        // stops it.
+        assert_eq!(result.nodes, first_iteration + 1);
+    }
+
+    /// The printed score and its rates are output only: a search showing
+    /// them makes the same tree, move, internal score and number of lines as
+    /// one that does not, and only its lines carry `wdl`.
+    #[test]
+    fn showing_the_rates_changes_no_search() {
+        for fen in [
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            LAZY_MARGIN_REGRESSION_FEN,
+        ] {
+            let run = |show_wdl| {
+                let lines = Arc::new(Mutex::new(Vec::new()));
+                let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+                let mut options = SearchOptions::default();
+                options.limits.depth = Some(9);
+                options.engine.show_wdl = show_wdl;
+                let board = Board::from_fen(fen).expect("valid FEN");
+                let result = searcher.search(board, &options, true, || SearchEvent::None);
+                let printed = lines.lock().unwrap().clone();
+                (result, printed)
+            };
+            let (plain, plain_lines) = run(false);
+            let (shown, shown_lines) = run(true);
+            assert_eq!(
+                (
+                    plain.nodes,
+                    plain.bestmove,
+                    plain.score,
+                    plain.depth,
+                    &plain.pv
+                ),
+                (
+                    shown.nodes,
+                    shown.bestmove,
+                    shown.score,
+                    shown.depth,
+                    &shown.pv
+                ),
+                "{fen}"
+            );
+            assert_eq!(plain_lines.len(), shown_lines.len(), "{fen}");
+            let info = |lines: &[String]| -> Vec<bool> {
+                lines
+                    .iter()
+                    .filter(|l| l.contains(" score "))
+                    .map(|l| l.contains(" wdl "))
+                    .collect()
+            };
+            assert!(info(&plain_lines).iter().all(|wdl| !wdl), "{fen}");
+            assert!(info(&shown_lines).iter().all(|wdl| *wdl), "{fen}");
+            assert!(!info(&shown_lines).is_empty(), "{fen}");
+        }
+    }
+
     /// A tablebase score is exact however the search's window failed, so its
     /// line carries no bound; a searched score keeps the bound it has.
     #[test]
@@ -2435,10 +2575,12 @@ mod tests {
         searcher.send_full_info_line(5, 11, MATE_SCORE - 3, RootBound::Lower, &[e2e4]);
         let printed = lines.lock().unwrap().clone();
         assert!(printed[0].contains(" score cp 20000 nodes "), "{printed:?}");
-        assert!(
-            printed[1].contains(" score cp 41 upperbound nodes "),
-            "{printed:?}"
+        // No search ran, so the line prints at the start position's material.
+        let searched = format!(
+            " score {} upperbound nodes ",
+            crate::uci::info::format_score(41, 78)
         );
+        assert!(printed[1].contains(&searched), "{printed:?}");
         assert!(
             printed[2].contains(" score mate 2 lowerbound nodes "),
             "{printed:?}"
@@ -2456,12 +2598,20 @@ mod tests {
 
         let lines = lines.lock().unwrap();
         assert_eq!(result.depth, 3);
-        assert_eq!(lines.len(), 3, "{lines:?}");
-        for (index, line) in lines.iter().enumerate() {
+        // A window that fails prints its bound on the way; each iteration
+        // ends on one exact line.
+        let exact: Vec<&String> = lines
+            .iter()
+            .filter(|line| !line.contains("lowerbound") && !line.contains("upperbound"))
+            .collect();
+        assert_eq!(exact.len(), 3, "{lines:?}");
+        for (index, line) in exact.iter().enumerate() {
             assert!(
                 line.starts_with(&format!("info depth {} ", index + 1)),
                 "{line}"
             );
+        }
+        for line in lines.iter() {
             assert!(line.contains(" pv "), "{line}");
         }
 
@@ -2476,41 +2626,48 @@ mod tests {
         );
     }
 
-    /// The decision trace fires only under `searchmoves`, and only at plies one
-    /// and two.
-    #[cfg(feature = "diag")]
+    /// A failed window's bound line is printed only past the floor, and
+    /// keeps the exact line's shape when it is; the exact lines are the
+    /// same either way.
     #[test]
-    fn decision_trace_is_bounded_to_searchmoves_and_plies_one_and_two() {
-        let run = |search_moves: Vec<crate::board::UciMove>| {
-            let lines = Arc::new(Mutex::new(Vec::new()));
-            let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
-            let mut options = SearchOptions::default();
-            options.limits.depth = Some(6);
-            options.limits.search_moves = search_moves;
-            searcher.search(options.board.clone(), &options, false, || SearchEvent::None);
-            let lines = lines.lock().unwrap();
+    fn bound_lines_are_printed_past_the_node_floor_only() {
+        let limits = SearchLimits {
+            depth: Some(10),
+            ..SearchLimits::default()
+        };
+        let fen = FAIL_HIGH_CANDIDATES[0];
+        let options = EngineOptions::default();
+        let (short, lines) = clock_search(fen, &limits, &options, None, usize::MAX);
+        assert!(short.nodes < BOUND_LINES_FROM_NODES);
+        assert!(
+            lines.iter().all(|line| line.bound.is_empty()),
+            "no bound line"
+        );
+        let (all, every) = clock_search_with_bounds(fen, &limits, &options, None, usize::MAX, 0);
+        assert_eq!(all.nodes, short.nodes, "printing changes no search");
+        assert!(
+            every.iter().any(|line| !line.bound.is_empty()),
+            "a window fails"
+        );
+        let exact = |lines: &[InfoLine]| {
             lines
                 .iter()
-                .filter(|line| line.starts_with("info string trace "))
-                .cloned()
+                .filter(|line| line.bound.is_empty())
+                .map(|line| {
+                    (
+                        line.depth,
+                        line.score.clone(),
+                        line.nodes,
+                        line.first.clone(),
+                    )
+                })
                 .collect::<Vec<_>>()
         };
-
-        assert!(run(Vec::new()).is_empty(), "no searchmoves, no trace");
-        let traced = run(vec![
-            crate::board::UciMove::parse("e2e4").expect("valid move"),
-            crate::board::UciMove::parse("d2d4").expect("valid move"),
-        ]);
-        assert!(!traced.is_empty(), "searchmoves must produce a trace");
-        for line in &traced {
-            let (ply, rest) = line
-                .strip_prefix("info string trace ply ")
-                .and_then(|rest| rest.split_once(" line "))
-                .unwrap_or_else(|| panic!("malformed trace line: {line}"));
-            let path = rest.split_whitespace().take(2).collect::<Vec<_>>();
-            assert!(matches!(ply, "1" | "2"), "{line}");
-            assert!(matches!(path[0], "e2e4" | "d2d4"), "{line}");
-        }
+        assert_eq!(
+            exact(&lines),
+            exact(&every),
+            "the exact lines are unchanged"
+        );
     }
 
     /// The budget is measured from the instant `go` was
@@ -2612,6 +2769,34 @@ mod tests {
             );
             assert_ne!(searcher.raw_eval(&board), low_margin_score);
         }
+    }
+
+    /// A search takes the tuning options' exchange values and pawn-table
+    /// limit when it begins.
+    #[cfg(all(feature = "tune", not(feature = "pricing")))]
+    #[test]
+    fn a_search_takes_the_exchange_values_and_pawn_limit_from_the_options() {
+        use crate::board::{Piece, Square};
+
+        let mut searcher = Searcher::default();
+        let mut options = EngineOptions::default();
+        options.compact_seeds.pawn_history_max = 4_096;
+        options.compact_seeds.exchange_value[3] = 600;
+        searcher.reset_search_state(&SearchLimits::default(), &options, Color::White, 0, false);
+        assert_eq!(searcher.exchange_values().as_array()[3], 600);
+        let row = history::HistoryTables::pawn_row(0);
+        searcher
+            .td
+            .hist
+            .update_pawn(row, Color::White, Piece::Knight, Square::F3, 100_000);
+        assert_eq!(
+            searcher
+                .td
+                .hist
+                .pawn(row, Color::White, Piece::Knight, Square::F3),
+            4_096,
+            "one clamped bonus saturates the table at its limit"
+        );
     }
 
     #[test]
@@ -2795,7 +2980,9 @@ mod tests {
             .find(|rm| rm.mv == result.bestmove)
             .expect("best move has a persistent record");
         assert_eq!(best.last_best_depth, result.depth);
-        assert!(best.pv_len > 1);
+        // At least the move: after a fail high the window searches one ply
+        // less, and a line from depth 1 is the move alone.
+        assert!(best.pv_len >= 1);
         assert!(
             searcher
                 .td
@@ -3002,11 +3189,35 @@ mod tests {
         test_clock: Option<(u64, f64)>,
         poll_budget: usize,
     ) -> (SearchResult, Vec<InfoLine>) {
+        clock_search_with_bounds(
+            fen,
+            limits,
+            options,
+            test_clock,
+            poll_budget,
+            BOUND_LINES_FROM_NODES,
+        )
+    }
+
+    /// `clock_search` with failed windows' bound lines printed past
+    /// `bound_lines_from_nodes` nodes.
+    fn clock_search_with_bounds(
+        fen: &str,
+        limits: &SearchLimits,
+        options: &EngineOptions,
+        test_clock: Option<(u64, f64)>,
+        poll_budget: usize,
+        bound_lines_from_nodes: u64,
+    ) -> (SearchResult, Vec<InfoLine>) {
         let board = Board::from_fen(fen).expect("valid fen");
         let legal = board.generate_legal_moves();
         let lines = Arc::new(Mutex::new(Vec::new()));
         let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
-        searcher.reset_search_state(limits, options, board.side_to_move(), 0, true);
+        let options = EngineOptions {
+            bound_lines_from_nodes,
+            ..options.clone()
+        };
+        searcher.reset_search_state(limits, &options, board.side_to_move(), 0, true);
         assert!(searcher.shared.pool().is_none());
         searcher.td.test_clock = test_clock;
         let mut polls = 0;
@@ -3052,19 +3263,22 @@ mod tests {
             FROZEN_CLOCK,
             BUDGET,
         );
-        let first_mate = lines
+        // A window that fails prints its bound on the way; each iteration
+        // ends on one exact line.
+        let exact: Vec<&InfoLine> = lines.iter().filter(|line| line.bound.is_empty()).collect();
+        let first_mate = exact
             .iter()
             .position(|line| line.score == "mate 1")
             .expect("the mate is found");
         assert_eq!(
-            lines.len(),
+            exact.len(),
             first_mate + 3,
             "three mate iterations, then the stop"
         );
-        for line in &lines[first_mate..] {
-            assert!(line.score == "mate 1" && line.first == "h5f7" && line.bound.is_empty());
+        for line in &exact[first_mate..] {
+            assert!(line.score == "mate 1" && line.first == "h5f7");
         }
-        assert_eq!(result.depth, lines[first_mate].depth + 2);
+        assert_eq!(result.depth, exact[first_mate].depth + 2);
         assert_eq!(result.bestmove.to_string(), "h5f7");
         assert!(
             result.nodes < (BUDGET * 2048) as u64,
@@ -3106,9 +3320,21 @@ mod tests {
                     depth: Some(DEPTH),
                     ..SearchLimits::default()
                 };
-                let (_, mut lines) =
-                    clock_search(fen, &probe, &EngineOptions::default(), None, usize::MAX);
-                let at = lines.iter().position(|line| line.bound == "lowerbound")?;
+                // Every failed window's line, so the fail-high shows.
+                let (_, mut lines) = clock_search_with_bounds(
+                    fen,
+                    &probe,
+                    &EngineOptions::default(),
+                    None,
+                    usize::MAX,
+                    0,
+                );
+                // The first fail-high from depth 4: an earlier one is not
+                // what this test reads, and the seeds decide whether a
+                // position has one.
+                let at = lines
+                    .iter()
+                    .position(|line| line.bound == "lowerbound" && line.depth >= 4)?;
                 let completed = lines[..at]
                     .iter()
                     .rev()
@@ -3120,10 +3346,12 @@ mod tests {
             .expect("a candidate fails high at the root");
         assert!(fail_high.depth >= 4);
 
-        // Half the optimum keeps every soft target below 99% of the maximum;
-        // the stop is read at the target itself, where it was registered.
+        // The score trend pinned at a half keeps every soft target below 99%
+        // of the maximum; the stop is read at the target itself, where it was
+        // registered.
         let mut options = EngineOptions::default();
-        options.search_params.tm_opt_scale = 5_000;
+        options.search_params.tm_trend_low = 5_000;
+        options.search_params.tm_trend_high = 5_000;
         options.search_params.tm_fail_high_target = 10_000;
         let board = Board::from_fen(fen).expect("valid fen");
         let clock = SearchLimits {
@@ -3134,9 +3362,16 @@ mod tests {
             compute_runtime_limits(&clock, &options, board.side_to_move(), 0, MAX_DEPTH).maximum_ms;
 
         // The clock passes the soft target, not the maximum, during the
-        // iteration that fails high.
+        // iteration that fails high. The search is short of the bound-line
+        // floor, so the line it stops on is printed because it stops.
         let late = Some((completed_nodes + 1, 0.99 * maximum_ms));
         let (stopped, lines) = clock_search(fen, &clock, &options, late, usize::MAX);
+        assert!(stopped.nodes < BOUND_LINES_FROM_NODES);
+        assert_eq!(
+            lines.iter().filter(|line| !line.bound.is_empty()).count(),
+            1,
+            "only the line it stops on is a bound"
+        );
         let last = lines.last().expect("a line was printed");
         assert_eq!(last.bound, "lowerbound");
         assert_eq!(
@@ -3150,7 +3385,7 @@ mod tests {
         );
         assert_eq!(stopped.bestmove.to_string(), fail_high.first);
         assert_eq!(
-            crate::uci::info::format_score(stopped.score),
+            crate::uci::info::format_score(stopped.score, score_material(&board)),
             fail_high.score
         );
         assert_eq!(stopped.depth, fail_high.depth - 1);
@@ -3170,18 +3405,19 @@ mod tests {
         assert!(lines.last().expect("a line was printed").bound.is_empty());
     }
 
-    /// A position is counted once, when a move reaches it: a depth-1 search
-    /// from the start position makes its twenty root moves, and neither the
-    /// root nor a child's hand-off to quiescence adds a count.
+    /// A position is counted once, when a move reaches it: a depth-1 root
+    /// search of the start position in an open window makes its twenty root
+    /// moves, and neither the root nor a child's hand-off to quiescence adds
+    /// a count.
     #[test]
     fn a_depth_one_search_counts_each_root_move_once() {
-        let board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        let mut board = Board::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             .expect("valid FEN");
-        let mut options = SearchOptions::default();
-        options.limits.depth = Some(1);
-        let result = Searcher::default().search(board, &options, false, || SearchEvent::None);
-        assert_eq!(result.depth, 1);
-        assert_eq!(result.nodes, 20);
+        let mut searcher = Searcher::default();
+        searcher.search_root_window(&mut board, 1, -INF_SCORE, INF_SCORE, &mut || {
+            SearchEvent::None
+        });
+        assert_eq!(searcher.td.nodes, 20);
     }
 
     #[test]
@@ -3218,8 +3454,11 @@ mod tests {
             usize::MAX,
         );
         assert_eq!(result.depth, 1);
-        assert_eq!(lines.len(), 1);
-        assert_eq!(lines[0].first, result.bestmove.to_string());
+        // The first iteration's windows, ending on its one exact line.
+        assert!(lines.iter().all(|line| line.depth == 1));
+        let last = lines.last().expect("a line was printed");
+        assert!(last.bound.is_empty());
+        assert_eq!(last.first, result.bestmove.to_string());
     }
 
     /// A castling move that fails belongs to the quiet tables: no search
@@ -3261,13 +3500,14 @@ mod tests {
         assert!(written > 0, "the search never reached a castling move");
     }
 
-    /// Each search leaves its root score for the next one's falling eval; a
-    /// new game forgets it, and before any search there is no fall to read.
+    /// Each search leaves its root score for the next one's score trend; a
+    /// new game forgets it, and before any search the trend reads from zero,
+    /// as the donor's does.
     #[test]
     fn a_search_leaves_its_score_for_the_next_move_until_a_new_game() {
         let engine = EngineOptions::default();
         let mut searcher = Searcher::default();
-        assert_eq!(searcher.cross_move_fall(0), 0.0);
+        assert_eq!(searcher.td.compact_previous_score, 0);
         let depth_limited = SearchLimits {
             depth: Some(4),
             ..SearchLimits::default()
@@ -3276,20 +3516,17 @@ mod tests {
         let legal = board.generate_legal_moves();
         searcher.reset_search_state(&depth_limited, &engine, board.side_to_move(), 0, true);
         let first = searcher.search_root(board.clone(), &legal, false, &mut || SearchEvent::None);
-        assert_eq!(searcher.td.previous_search_score, Some(first.score));
-        assert_eq!(searcher.cross_move_fall(first.score - 25), 25.0);
-        assert_eq!(searcher.cross_move_fall(first.score + 40), -40.0);
+        assert_eq!(searcher.td.compact_previous_score, first.score);
 
         let mut next = board;
         next.make_move(first.bestmove);
         let legal = next.generate_legal_moves();
         searcher.reset_search_state(&depth_limited, &engine, next.side_to_move(), 1, true);
         let second = searcher.search_root(next, &legal, false, &mut || SearchEvent::None);
-        assert_eq!(searcher.td.previous_search_score, Some(second.score));
+        assert_eq!(searcher.td.compact_previous_score, second.score);
 
         searcher.new_game();
-        assert_eq!(searcher.td.previous_search_score, None);
-        assert_eq!(searcher.cross_move_fall(second.score), 0.0);
+        assert_eq!(searcher.td.compact_previous_score, 0);
     }
 
     /// `go` parsed 60 ms before the search starts, at a 150 ms clock: the

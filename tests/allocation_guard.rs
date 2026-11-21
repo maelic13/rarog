@@ -58,12 +58,10 @@ static GLOBAL: CountingAllocator = CountingAllocator;
 
 /// Plies between the two searches; each extra ply is one more iteration.
 const SHALLOW_DEPTH: u32 = 5;
-/// The contract is the release binary's, so release searches the full depth.
-/// Debug stops two plies short, in about a third of the time: that tree
-/// still grows more than twentyfold and fires every per-node diag counter the
-/// full one does, except a depth band of the null-move cut and an endgame
-/// census entry with no code path of its own.
-const DEEP_DEPTH: u32 = if cfg!(debug_assertions) { 11 } else { 13 };
+/// The kernel's trees are small: bench position 0 grows from 4,811 nodes at
+/// depth 5 only 8.7-fold by depth 13 and 18.8-fold by 14, so it searches to
+/// 15 in both builds, where it grows 28.6-fold.
+const DEEP_DEPTH: u32 = 15;
 
 /// Allocations one iteration may add, per searching thread: the line it
 /// reports. Bench position 0 at one thread adds one allocation over eight
@@ -113,7 +111,7 @@ fn allocations_grow_per_iteration_never_per_node() {
             "{fen} must be in check at the boundary to reach the mate test"
         );
         let before = ALLOCATIONS.load(Ordering::Relaxed);
-        let result = board.can_declare_draw_in_search();
+        let result = board.is_draw_at(1);
         let allocations = ALLOCATIONS.load(Ordering::Relaxed) - before;
         assert_eq!(result, drawn, "{fen}");
         assert_eq!(allocations, 0, "the rule-50 draw test allocated at {fen}");
@@ -143,12 +141,14 @@ fn allocations_grow_per_iteration_never_per_node() {
 
             let (shallow_allocations, shallow_nodes) =
                 measured_search(&mut searcher, &options, SHALLOW_DEPTH);
+            let deep_depth = DEEP_DEPTH;
             let (deep_allocations, deep_nodes) =
-                measured_search(&mut searcher, &options, DEEP_DEPTH);
+                measured_search(&mut searcher, &options, deep_depth);
             let context = format!(
-                "Threads {threads}, bench position {index}: depth {SHALLOW_DEPTH} made \
+                "Threads {threads}, bench position {index}: depth \
+                 {SHALLOW_DEPTH} made \
                  {shallow_allocations} allocations in {shallow_nodes} nodes, depth \
-                 {DEEP_DEPTH} made {deep_allocations} in {deep_nodes}"
+                 {deep_depth} made {deep_allocations} in {deep_nodes}"
             );
             if threads == 1 {
                 single_thread_shallow_nodes = shallow_nodes;
@@ -157,7 +157,7 @@ fn allocations_grow_per_iteration_never_per_node() {
                 deep_nodes >= MIN_NODE_GROWTH * single_thread_shallow_nodes,
                 "the deep search is too small to expose a per-node allocation; {context}"
             );
-            let extra_iterations = u64::from(DEEP_DEPTH - SHALLOW_DEPTH);
+            let extra_iterations = u64::from(deep_depth - SHALLOW_DEPTH);
             let budget = ALLOCATIONS_PER_ITERATION_PER_THREAD
                 * extra_iterations
                 * u64::try_from(threads).expect("a thread count fits in u64");

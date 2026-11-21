@@ -104,10 +104,6 @@ pub(super) struct StackEntry {
     pub(super) threats: crate::board::Bitboard,
     /// The piece `mv` captured, if any.
     pub(super) captured: Option<Piece>,
-    /// Positive extensions taken along the line from the root up to and
-    /// including the move made at this ply; the child reads it as its own
-    /// spent budget.
-    pub(super) extension_spent: i32,
 }
 
 impl Default for StackEntry {
@@ -125,7 +121,6 @@ impl Default for StackEntry {
             tt_move: Move::NULL,
             threats: crate::board::Bitboard::EMPTY,
             captured: None,
-            extension_spent: 0,
         }
     }
 }

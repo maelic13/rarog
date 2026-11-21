@@ -3,9 +3,6 @@
 //! reads them.
 
 use crate::board::{Board, UciMove};
-use crate::search::params::CoreParams;
-use crate::search::params::ProofParams;
-use crate::search::params::QuietParams;
 use crate::search::params::SearchParams;
 
 pub(crate) const MAX_THREADS: usize = 1024;
@@ -39,16 +36,34 @@ pub struct EngineOptions {
     pub threads: usize,
     /// Principal variations reported per depth; 1 is the ordinary search.
     pub multi_pv: usize,
+    /// `info` lines carry the win, draw and loss rates (`UCI_ShowWDL`).
+    pub show_wdl: bool,
     /// Back the big tables with large pages where Windows grants them.
     pub large_pages: bool,
     pub syzygy: SyzygyOptions,
     pub search_params: SearchParams,
-    /// The selectivity core's coordinates.
-    pub core_params: CoreParams,
-    /// The proof-search cluster's coordinates.
-    pub proof_params: ProofParams,
-    /// The quiescence cluster's coordinates and switches.
-    pub quiet_params: QuietParams,
+    /// The search's node count past which a failed root window prints its
+    /// bound line, `BOUND_LINES_FROM_NODES` by default. No UCI option sets
+    /// it: a caller that wants every bound line, as a test, sets 0.
+    pub bound_lines_from_nodes: u64,
+    /// The compact kernel's seeds, which only a tuning build can set.
+    #[cfg(feature = "tune")]
+    pub(crate) compact_seeds: super::compact::rules::Seeds,
+}
+
+#[cfg(feature = "tune")]
+impl EngineOptions {
+    /// The compact kernel's seeds as tuning options, the donor's values as
+    /// defaults.
+    pub(crate) fn compact_seed_option_lines() -> Vec<String> {
+        super::compact::tune::uci_option_strings()
+    }
+
+    /// Sets a compact kernel seed by its option name; false when the name is
+    /// no tunable seed.
+    pub(crate) fn set_compact_seed(&mut self, name: &str, value: &str) -> bool {
+        super::compact::tune::set_uci_option(&mut self.compact_seeds, name, value)
+    }
 }
 
 impl Default for EngineOptions {
@@ -59,15 +74,21 @@ impl Default for EngineOptions {
             ponder: false,
             threads: 1,
             multi_pv: 1,
+            show_wdl: false,
             large_pages: true,
             syzygy: SyzygyOptions::default(),
             search_params: SearchParams::default(),
-            core_params: CoreParams::default(),
-            proof_params: ProofParams::default(),
-            quiet_params: QuietParams::default(),
+            bound_lines_from_nodes: BOUND_LINES_FROM_NODES,
+            #[cfg(feature = "tune")]
+            compact_seeds: super::compact::rules::Seeds::FITTED,
         }
     }
 }
+
+/// The search's node count below which a failed root window prints no bound
+/// line, the donor's: the kernel's narrow windows fail often by design, and
+/// in a short search a line for each buries the exact ones.
+pub(crate) const BOUND_LINES_FROM_NODES: u64 = 10_000_000;
 
 #[derive(Clone, Default)]
 pub struct SearchLimits {

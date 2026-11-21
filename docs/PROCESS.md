@@ -293,8 +293,12 @@ quotes what that version reports at the end of a run:
 - how the counted games ended, overall and per engine;
 - faults and time losses by engine;
 - each engine's search: depth with and without mate scores, nodes and time
-  a move, nodes per second, and the harness hold (`h=`) as p50 to p999 and
-  max with the moves over the margin;
+  a move, nodes per second, and the harness overhead (`h=`) as p50 to p999
+  and max with the moves over the margin. The manifest labels it
+  `harness_hold_ms`, but it is the charged time less the time in the
+  engine's last `info` line (RAR-R30), so it includes any search the engine
+  reported nothing for, such as an interrupted iteration. The process's hold
+  is the journal's `held_ns`, the charged time less its CPU time (D.7.9);
 - for a tournament, every pair's W/D/L, Elo with its interval and
   pentanomial, and the standings;
 - for a tune, the arms clamped at a range end per coordinate (`arm_clamps:`)
@@ -365,6 +369,17 @@ Rarog's own default 10. A held rating measured before this decision
 (RAR-M75 and earlier) carries the default and is not comparable with one
 measured after it; an engine whose setting changed is re-rated in the next
 round robin, and a row says which setting its rating was played at.
+
+**Equal nodes are not equal work against a foreign engine** (RAR-S129,
+2026-11-19). Under a node budget every search stops inside an iteration.
+Rarog's root driver then plays the last completed iteration's move, and
+its last report covers 75% to 85% of the budget in contested positions;
+Reckless and Stockfish play from the interrupted iteration. A fixed-node
+match of Rarog against such an engine is tilted toward it by that rule,
+not by the kernel, and a PGN's `n=` for Rarog is the last completed
+iteration's count, not the work done. Name the asymmetry in the
+registration, and for a question about the kernel prefer two Rarog arms,
+which share the driver. PLAN D.7.8.5 reads the rule itself.
 
 ### Toolchain and harness notes
 
@@ -648,21 +663,52 @@ PLAN Phase C's cluster shape carries them for Phase C):
    before the first game. The surface is the same for every unit so that
    gate-2 results are comparable and the block's movement is itself a
    reading of how far the evaluation's shape moved:
-   `AspirationDelta`, `QsSeeMargin`, `QsFutilityMargin`, `QsDeltaMargin`,
-   `CoreEvalMaterialScale`, `CoreRazorBase`, `CoreRazorSquare`,
-   `CoreRfpSquare`, `CoreRfpLinear`, `CoreRfpImprovement`,
-   `CoreRfpCorrection`, `CoreRfpThreat`, `CoreRfpConstant`,
-   `CoreHindsightReduceMargin`, `CoreFpBase`, `CoreFpLinear`,
-   `CoreFpEvalAboveBeta`, `CoreFpCorrection`, `CoreBnfpBase`,
-   `CoreBnfpLinear`, `CoreSeeQuietConstant`, `CoreSeeNoisyConstant`,
-   `CoreNmpBase`, `CoreProbcutBase`, `CoreProbcutImproving`,
-   `CoreCorrUpdateSlope`, `CoreCorrUpdateMax`, `LazyMargin` (28 coordinates:
-   every search coordinate that is compared with the static evaluation or
-   the score in centipawns, the correction's update scale, and the lazy
-   gate, whose threshold is compared with the running evaluation sum and
-   whose meaning a new evaluation moves most directly; `LazyMargin` was
-   added by the C.0 audit, 2026-10-06, before any block ran). Rule 2 holds:
-   evaluation and search coordinates never share a tune.
+   the compact kernel's options (restated 2026-11-21 at PLAN D.7.14; the
+   classic kernel's 28, from `AspirationDelta` to `LazyMargin`, were
+   deleted with it at D.7.7). It holds every seed whose value is compared
+   with, or multiplies, a quantity in score units (the static evaluation,
+   the estimate, alpha, beta, a search score or the correction), the
+   correction's update and limits, the wrapper pair and `LazyMargin`: 69
+   coordinates.
+   - The evaluation's wrapper and optimism: `KWrapRawBase`,
+     `KWrapDivisor`, `KOptimismScale`, `KOptimismOffset`.
+   - Before the moves: `KHindsightRise`; `KRazorBase16`,
+     `KRazorSquare16`, `KRazorAlphaLimit`; `KRfpSquare16`,
+     `KRfpImprovement`, `KRfpLinear16`, `KRfpCorrection`,
+     `KRfpUnthreatened16`, `KRfpConstant16`; `KNmpDepth16`, `KNmpTtPv16`,
+     `KNmpImprovement`, `KNmpCutoffs16`, `KNmpBase16`, `KNmpRSurplus`,
+     `KNmpRSurplusCap`; `KProbcutMargin`, `KProbcutImproving`,
+     `KProbcutDepthPer`, `KProbcutRaise16`, `KProbcutSeeScale`.
+   - The singular search: `KSingularPerPly1024`, `KSingularPvPerPly1024`,
+     `KDoublePv16`, `KDoubleNewPv16`, `KDoubleQuiet16`,
+     `KDoubleCorrection`, `KTriplePv16`, `KTripleNewPv16`,
+     `KTripleQuiet16`, `KTripleCorrection`, `KTripleBase16`;
+     `KLdseMargin`.
+   - The move loop: `KFpLinear16`, `KFpHistory16`, `KFpAboveBeta16`,
+     `KFpCorrection`, `KFpConstant16`; `KBnfpLinear16`, `KBnfpHistory16`,
+     `KBnfpConstant16`; `KLmrCorrection`, `KLmrAlphaGap`,
+     `KLmrAlphaGapMin`, `KLmrAlphaGapMax`, `KFdsCorrection`;
+     `KResearchDeeper16`, `KResearchShallower16`.
+   - After the moves: `KRewardBelowEvalMargin`,
+     `KRewardBelowParentMargin`, `KEvalBonusScale`; the correction's
+     `KCorrSlope`, `KCorrMin`, `KCorrMax`, `KCorrKeyedMax`,
+     `KCorrContMax`.
+   - Quiescence: `KQSeeScale`, `KQSeeCorrectionScale`,
+     `KQSeeCorrectionCap`.
+   - The root window: `KWindowBase1024`, `KWindowStability1024`,
+     `KWindowSquare`, `KWindowStable16`.
+   - `LazyMargin`, the played evaluation's own constant: refitted only
+     here, last fitted with the classic search (RAR-S104), held at 475
+     by D.7.11.
+
+   Out: the fractions toward beta (the `T` seeds), plies, depths, move
+   counts and amounts in history units; the SEE thresholds and the
+   exchange values, which compare exchange units, not scores; the two
+   seeds no bench reaches, `KRfpMin16` and `KNmpMin16` (D.8.21). Each
+   name is one of D.7.11's 225 fitted options
+   (`analysis/d711_fit_2026-11-20.md`, *Appendix*). Rule 2 holds:
+   evaluation and search coordinates never share a tune, `LazyMargin`
+   excepted as before.
 5. **Gate 2.** The candidate with its retuned margins against the head,
    SPRT `[0,3]` at `3+0.03`. Gate 2 accepts. A unit that fails both gates
    is a worse function for this engine; one that fails gate 1 and passes
@@ -744,6 +790,24 @@ Before any SPSA:
    mis-scaled input, a rail hiding a wanted value. The analysis never
    changes theta; a finding becomes a registration of its own
    (maintainer decision 2026-11-02).
+10. A tune is paused by one interrupt (Ctrl+C) in its terminal and
+   resumed by its own command. The runner starts no new game, gives the
+   games in flight 30 seconds and counts only whole iterations, so the
+   iteration in flight is replayed; the run directory keeps the seed,
+   the schedule, the horizon and the checkpoints, so the stop rule is
+   unchanged. The wrapper never pauses a tune for a read. A read of
+   the centres against the start plays on the tune build with the tune
+   paused or stopped, takes its values from `spsa history` without
+   writing into the run directory, and decides nothing in the run; its
+   game count comes from its own rule (PLAN D.7.11,
+   `analysis/d711_fit_2026-11-20.md`).
+11. A tune sets no fixed fault limit (`--max-engine-faults`,
+   `--max-time-losses`). The runner ends a tune that passes one on an
+   invalid iteration, and a run directory holding one cannot be resumed
+   (CLI 0.5.0, `spsa_driver.rs`, `TerminalCheckpoint`), so a fault the
+   maintainer accepted could not be played past. The runner's own
+   allowance stays, and any fault reads FAULT at the next checkpoint
+   (rule 7c).
 
 ### Branches and pull requests
 

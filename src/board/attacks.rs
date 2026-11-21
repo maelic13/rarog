@@ -216,7 +216,7 @@ pub(crate) const fn knight_attacks_of(knights: Bitboard) -> Bitboard {
 }
 
 /// The squares a king on `king` attacks.
-const fn king_attacks_of(king: Bitboard) -> Bitboard {
+pub(super) const fn king_attacks_of(king: Bitboard) -> Bitboard {
     Bitboard(
         king.north().0
             | king.south().0
@@ -363,7 +363,7 @@ const fn bishop_mask(sq: Square) -> u64 {
     mask
 }
 
-const fn rook_attacks_slow(sq: Square, occ: u64) -> u64 {
+pub(super) const fn rook_attacks_slow(sq: Square, occ: u64) -> u64 {
     let r = sq.0 / 8;
     let f = sq.0 % 8;
     let mut att = 0u64;
@@ -402,7 +402,7 @@ const fn rook_attacks_slow(sq: Square, occ: u64) -> u64 {
     att
 }
 
-const fn bishop_attacks_slow(sq: Square, occ: u64) -> u64 {
+pub(super) const fn bishop_attacks_slow(sq: Square, occ: u64) -> u64 {
     let r = (sq.0 / 8) as i32;
     let f = (sq.0 % 8) as i32;
     let mut att = 0u64;
