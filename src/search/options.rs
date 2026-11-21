@@ -36,6 +36,8 @@ pub struct EngineOptions {
     pub threads: usize,
     /// Principal variations reported per depth; 1 is the ordinary search.
     pub multi_pv: usize,
+    /// `info` lines carry the win, draw and loss rates (`UCI_ShowWDL`).
+    pub show_wdl: bool,
     /// Back the big tables with large pages where Windows grants them.
     pub large_pages: bool,
     pub syzygy: SyzygyOptions,
@@ -72,6 +74,7 @@ impl Default for EngineOptions {
             ponder: false,
             threads: 1,
             multi_pv: 1,
+            show_wdl: false,
             large_pages: true,
             syzygy: SyzygyOptions::default(),
             search_params: SearchParams::default(),

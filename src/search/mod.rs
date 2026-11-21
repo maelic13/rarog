@@ -36,7 +36,7 @@ mod time;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
-use crate::board::{Board, Color, GameResult, Move, MoveList};
+use crate::board::{Board, Color, GameResult, Move, MoveList, Piece};
 use crate::eval::{INF_SCORE, MATE_SCORE};
 use crate::infra;
 use crate::search::options::{
@@ -97,6 +97,29 @@ pub struct InfoRecord<'a> {
     pub tb_hits: u64,
     pub elapsed_ms: u128,
     pub pv: &'a [Move],
+    /// The root's material (`score_material`), which sets the scale an
+    /// ordinary score prints at.
+    pub material: i32,
+    /// The line carries the win, draw and loss rates (`UCI_ShowWDL`).
+    pub show_wdl: bool,
+}
+
+/// The material a reported score's scale is read at: pawn 1, knight and
+/// bishop 3, rook 5, queen 9, both sides; 78 at the start.
+pub fn score_material(board: &Board) -> i32 {
+    [
+        (Piece::Pawn, 1),
+        (Piece::Knight, 3),
+        (Piece::Bishop, 3),
+        (Piece::Rook, 5),
+        (Piece::Queen, 9),
+    ]
+    .into_iter()
+    .map(|(piece, value)| {
+        let both = board.pieces(Color::White, piece) | board.pieces(Color::Black, piece);
+        infra::to_i32(both.count()) * value
+    })
+    .sum()
 }
 
 /// What a reported score is: exact, or the bound of a window that failed.
@@ -277,6 +300,11 @@ struct SearchConfig {
     /// bound line; below it only exact lines and the line a search stops on
     /// are printed.
     bound_lines_from_nodes: u64,
+    /// The root's material, the scale its reported scores print at; output
+    /// only, no search decision reads it.
+    score_material: i32,
+    /// `info` lines carry the win, draw and loss rates.
+    show_wdl: bool,
 }
 
 impl Default for SearchConfig {
@@ -290,6 +318,8 @@ impl Default for SearchConfig {
             limits: RuntimeLimits::default(),
             start: Instant::now(),
             bound_lines_from_nodes: BOUND_LINES_FROM_NODES,
+            score_material: 78,
+            show_wdl: false,
         }
     }
 }
@@ -499,6 +529,7 @@ impl Searcher {
         let game_ply = 2 * root.fullmove().saturating_sub(1) as u32
             + (root.side_to_move() == Color::Black) as u32;
         self.reset_search_state(limits, engine_options, root.side_to_move(), game_ply, true);
+        self.cfg.score_material = score_material(&root);
 
         let board = root;
         let mut legal_moves = MoveList::new();
@@ -750,6 +781,7 @@ impl Searcher {
         self.shared.syzygy.root = TbRootDecision::default();
         self.cfg.params = engine_options.search_params.clone();
         self.cfg.bound_lines_from_nodes = engine_options.bound_lines_from_nodes;
+        self.cfg.show_wdl = engine_options.show_wdl;
         // The kernel reads its seeds by a static reference, as it reads the
         // donor's in every other build, so a node borrows nothing from the
         // searcher. A table is allocated only when the options change it,
@@ -1731,6 +1763,8 @@ impl Searcher {
                 tb_hits,
                 elapsed_ms,
                 pv: &line_pv,
+                material: self.cfg.score_material,
+                show_wdl: self.cfg.show_wdl,
             }));
         }
     }
@@ -2013,6 +2047,8 @@ impl Searcher {
             tb_hits: self.reported_tb_hits(),
             elapsed_ms: self.cfg.start.elapsed().as_millis(),
             pv,
+            material: self.cfg.score_material,
+            show_wdl: self.cfg.show_wdl,
         }));
     }
 
@@ -2470,6 +2506,60 @@ mod tests {
         assert_eq!(result.nodes, first_iteration + 1);
     }
 
+    /// The printed score and its rates are output only: a search showing
+    /// them makes the same tree, move, internal score and number of lines as
+    /// one that does not, and only its lines carry `wdl`.
+    #[test]
+    fn showing_the_rates_changes_no_search() {
+        for fen in [
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            LAZY_MARGIN_REGRESSION_FEN,
+        ] {
+            let run = |show_wdl| {
+                let lines = Arc::new(Mutex::new(Vec::new()));
+                let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::clone(&lines))));
+                let mut options = SearchOptions::default();
+                options.limits.depth = Some(9);
+                options.engine.show_wdl = show_wdl;
+                let board = Board::from_fen(fen).expect("valid FEN");
+                let result = searcher.search(board, &options, true, || SearchEvent::None);
+                let printed = lines.lock().unwrap().clone();
+                (result, printed)
+            };
+            let (plain, plain_lines) = run(false);
+            let (shown, shown_lines) = run(true);
+            assert_eq!(
+                (
+                    plain.nodes,
+                    plain.bestmove,
+                    plain.score,
+                    plain.depth,
+                    &plain.pv
+                ),
+                (
+                    shown.nodes,
+                    shown.bestmove,
+                    shown.score,
+                    shown.depth,
+                    &shown.pv
+                ),
+                "{fen}"
+            );
+            assert_eq!(plain_lines.len(), shown_lines.len(), "{fen}");
+            let info = |lines: &[String]| -> Vec<bool> {
+                lines
+                    .iter()
+                    .filter(|l| l.contains(" score "))
+                    .map(|l| l.contains(" wdl "))
+                    .collect()
+            };
+            assert!(info(&plain_lines).iter().all(|wdl| !wdl), "{fen}");
+            assert!(info(&shown_lines).iter().all(|wdl| *wdl), "{fen}");
+            assert!(!info(&shown_lines).is_empty(), "{fen}");
+        }
+    }
+
     /// A tablebase score is exact however the search's window failed, so its
     /// line carries no bound; a searched score keeps the bound it has.
     #[test]
@@ -2485,10 +2575,12 @@ mod tests {
         searcher.send_full_info_line(5, 11, MATE_SCORE - 3, RootBound::Lower, &[e2e4]);
         let printed = lines.lock().unwrap().clone();
         assert!(printed[0].contains(" score cp 20000 nodes "), "{printed:?}");
-        assert!(
-            printed[1].contains(" score cp 41 upperbound nodes "),
-            "{printed:?}"
+        // No search ran, so the line prints at the start position's material.
+        let searched = format!(
+            " score {} upperbound nodes ",
+            crate::uci::info::format_score(41, 78)
         );
+        assert!(printed[1].contains(&searched), "{printed:?}");
         assert!(
             printed[2].contains(" score mate 2 lowerbound nodes "),
             "{printed:?}"
@@ -3293,7 +3385,7 @@ mod tests {
         );
         assert_eq!(stopped.bestmove.to_string(), fail_high.first);
         assert_eq!(
-            crate::uci::info::format_score(stopped.score),
+            crate::uci::info::format_score(stopped.score, score_material(&board)),
             fail_high.score
         );
         assert_eq!(stopped.depth, fail_high.depth - 1);

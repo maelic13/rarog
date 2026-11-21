@@ -160,6 +160,8 @@ fn table() -> Vec<UciOption> {
             1..=to_i32(MAX_MULTI_PV),
             |engine, value, range| store(&mut engine.multi_pv, clamped(value, range)),
         ),
+        // Stockfish's name and default: the rates GUIs show beside the score.
+        check("UCI_ShowWDL", false, |engine, on| engine.show_wdl = on),
         UciOption {
             name: "SyzygyPath",
             kind: Kind::Text {
@@ -395,6 +397,7 @@ mod tests {
             "option name Move Overhead type spin default 10 min 0 max 5000",
             "option name Threads type spin default 1 min 1 max 1024",
             "option name MultiPV type spin default 1 min 1 max 256",
+            "option name UCI_ShowWDL type check default false",
             "option name SyzygyPath type string default <empty>",
             "option name SyzygyProbeDepth type spin default 1 min 1 max 100",
             "option name SyzygyProbeLimit type spin default 7 min 0 max 7",
@@ -475,7 +478,26 @@ mod tests {
         assert_eq!(engine.move_overhead, default.move_overhead);
         assert_eq!(engine.threads, default.threads);
         assert_eq!(engine.multi_pv, default.multi_pv);
+        assert_eq!(engine.show_wdl, default.show_wdl);
         assert_eq!(engine.large_pages, default.large_pages);
         assert!(engine.syzygy == default.syzygy);
+    }
+
+    /// `UCI_ShowWDL` reaches the engine's setting, and its case does not
+    /// matter, as for every option.
+    #[test]
+    fn showing_the_rates_is_set_by_its_option() {
+        let mut engine = EngineOptions::default();
+        let set = |engine: &mut EngineOptions, value: &str| {
+            let args: Vec<String> = ["name", "uci_showwdl", "value", value]
+                .iter()
+                .map(ToString::to_string)
+                .collect();
+            apply(engine, &args)
+        };
+        assert_eq!(set(&mut engine, "true"), OptionUpdate::Applied);
+        assert!(engine.show_wdl);
+        assert_eq!(set(&mut engine, "false"), OptionUpdate::Applied);
+        assert!(!engine.show_wdl);
     }
 }
