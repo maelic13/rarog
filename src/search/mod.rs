@@ -3236,7 +3236,12 @@ mod tests {
                     usize::MAX,
                     0,
                 );
-                let at = lines.iter().position(|line| line.bound == "lowerbound")?;
+                // The first fail-high from depth 4: an earlier one is not
+                // what this test reads, and the seeds decide whether a
+                // position has one.
+                let at = lines
+                    .iter()
+                    .position(|line| line.bound == "lowerbound" && line.depth >= 4)?;
                 let completed = lines[..at]
                     .iter()
                     .rev()
