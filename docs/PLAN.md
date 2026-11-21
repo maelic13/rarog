@@ -3307,6 +3307,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           new fingerprint, recorded in GUIDE's checkpoint; debug and
           release tests, `fmt`, clippy, the `texel` and `tune` suites;
           `d711fit` and `d711pilot` listed in `historical.txt`.
+          *Held (2026-11-21, RAR-S135):* the bake is prepared and its
+          pinned numbers updated, but two behaviour tests fail on the
+          baked seeds. KQK's mate in 3 first shows at depth 20, not 8,
+          and KRK's mate in 2 at 6, not 5; no single family causes it.
+          The warm-table test's node comparison flips. *Unblocks:* the
+          maintainer's decision on those two tests.
     - **D.7.12 The reported score calibrated — `I1`.**
       (A3; `analysis/d7_audit_2026-11-19.md`, *The score scale*) `score cp`
       has never been calibrated: the classic kernel won half its games at

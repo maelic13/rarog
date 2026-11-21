@@ -466,6 +466,68 @@ above zero (0.40): not. Wholly below zero (0.03): not. The record's most
 likely failure, a quiet stop at 2,000 with a read inside ±9 Elo, is what
 happened: theta is baked on the keep rule alone.
 
+## The bake (D.7.11.8): held on two behaviour tests (2026-11-21)
+
+The theta audit at 2,000 (`tools/spsa_theta_audit.py`, `audit2000.log`):
+four full-step movers, no rail, no reversal, mean z² 1.088 against a null
+95% of 1.162 (p 0.17). Each mover's line:
+
+- `KQSeeHistory` 49 to 55 (+1.33 steps): the divisor of the move's history
+  in quiescence's exchange bar; larger, the history moves the bar less.
+  Pushed in the first window (z +3.71), quiet in the second (+0.96).
+- `KPickVictim` 14,397 to 16,016 (+1.20): the captured piece's weight
+  against capture history in the noisy order. The exchange values it
+  multiplies moved down 2 to 3% (bishop up 3%), so the net weight still
+  rises: no cancellation.
+- `KContBonusSlope` 87 to 97 (+1.18): the continuation bonus per ply. Its
+  offset fell (78 to 72) and its cap rose (1,099 to 1,170): the three move
+  together toward a larger bonus, none cancelling another.
+- `KDoubleQuiet16` 100 to 89 (−1.15): the penalty a quiet TT move pays at
+  the double extension's bar, so a quiet singular move extends twice more
+  often. `KTripleQuiet16` rose slightly (123 to 127), within noise.
+
+The values are taken from `theta-2000.txt` by `bake_theta.py` (ignored,
+beside the drivers): 204 of `Seeds::FITTED`'s values change, the other 21
+coordinates were at their seeds, and every other value is unchanged,
+checked by re-reading the table. Seven library tests pinned fitted numbers
+and were updated (the exchange values, the start position's material, the
+wrapper's output, ProbCut's scale, the options' defaults and ranges). One
+selection test's precondition was fixed first in its own commit
+(`df2a6c1`: the root fail-high test takes its position by a fail-high from
+depth 4, as its candidates' comment states; it picks the same line on the
+old seeds).
+
+**Two behaviour tests fail on the baked seeds** (`tests/chess_behaviour.rs`):
+
+| Mate, test depth | First depth reported, before | Baked |
+|---|---|---|
+| KRK mate in 2, depth 5 | 5 | 6 (depth 5 reads +692) |
+| KQK mate in 3, depth 10 | 8 | 20 (mate in 5 from 9, in 4 from 16) |
+
+(`mate_depths.py` on the tune binary, its defaults against theta set,
+Hash 16, one thread.) A family screen (`mate_families.py`,
+`mate_families.log`) finds no single cause: KQK's first depth of mate in 3
+moves from 8 to 16 or more with any one of several unrelated families set
+alone (the window, the pawn table's limit, the exchange values, the picker,
+the reward, RFP, LMP, the correction), and returns to 8 or 9 with all of
+theta but one of several others. That is the order sensitivity the record
+already notes for these endings (RAR-S131, RAR-S132), not a defect located
+in one coordinate. KRK's moves by a ply, mostly through the quiescence
+family.
+
+- `mate_scores_count_the_moves_to_mate_exactly` takes each depth as "two
+  plies or more past the first depth that finds it"; at depths re-derived
+  by that rule on the baked seeds (KRK 8, KQK 22) it passes (a trial, not
+  committed).
+- `two_plies_down_its_line_a_mate_is_nearer` checks that the table is read
+  by `warm.nodes < cold.nodes`; it fails at KQK's depth 10 (1,325 against
+  490) and at 22 (1,198 against 1,186), while its score and line checks
+  pass. A node count stands in for the construct, and a seed change moves
+  it either way.
+
+The bake waits on the maintainer's decision on these two tests. The full
+change is `bake_full.patch` (`90a42dae…`), which reapplies on `df2a6c1`.
+
 ## Use
 
 Theta, if kept by the read at the stop, is baked by D.7.11.8 (the tune
