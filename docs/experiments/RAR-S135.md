@@ -528,6 +528,46 @@ family.
 The bake waits on the maintainer's decision on these two tests. The full
 change is `bake_full.patch` (`90a42dae…`), which reapplies on `df2a6c1`.
 
+### The bake done (2026-11-21, maintainer decision on the two tests)
+
+The maintainer decided the same day that the two mate tests measure their
+preconditions on the seeds and that the mate sensitivity itself is
+investigated after D.7, in the review of D.6 (PLAN D.6.32), not before the
+bake. In order, each commit passing debug and release tests, `fmt` and
+clippy:
+
+1. `df2a6c1`: the root fail-high test takes its position by a fail-high
+   from depth 4 (above).
+2. `da0665b`: the mate tests' depths, two plies past the first depth that
+   finds the mate on the fitted seeds: KRK 8, KQK 22. The warm-table test
+   reads the table directly: one ply deep two plies down the line, the
+   warm searcher reports the mate (+M on both seed sets at depths 10 and
+   22, `warm_probe.py`), a cold one sees none (+576 to +613).
+3. `9ed0ca2`: the stored-win repetition test's warm-up at depth 15. At 12
+   it stored −1,113 on the seeds before the bake (no margin over its
+   −1,000 bar) and −927 on the baked ones; both store a mate from 13.
+4. `16f93cb`, the engine change: `Seeds::FITTED` at theta-2000 (204 values;
+   `bake_theta.py`, the diff equal to `bake_full.patch`, `90a42dae…`), the
+   tests that pinned fitted numbers updated, and the seed-reach test takes
+   the seed's own value from the table instead of a literal.
+
+**Checks on `16f93cb`:** `cargo fmt --check`, debug (542 passed) and release
+(544 passed) suites, `clippy --all-features --all-targets` at zero
+warnings, the `texel` (294) and `tune` (295) library suites, all passing.
+`bench 13` (`bench_bake.py`) is one count on three binaries:
+
+| Binary | `id name` | `bench 13` |
+|---|---|---|
+| `rarog-d711fit-tune.exe` (`e88123b2…`) with theta-2000 set | `dev-20261120-3233da24` | **3,390,842 / EBF 2.317** |
+| the tune build of this tree, at its defaults (251 `K` options) | `dev-20261121-m-9ed0ca2c` | 3,390,842 / 2.317 |
+| the default build of this tree (no `K` option) | `dev-20261121-m-9ed0ca2c` | 3,390,842 / 2.317 |
+| control: `rarog-d711fit-tune.exe` at its defaults | `dev-20261120-3233da24` | 3,320,355 / 2.317, the fingerprint before |
+
+The two builds were made from the working tree the engine commit records,
+unchanged between the build and the commit. `d711fit` and `d711pilot` join
+`tools/spsa_configs/historical.txt`. The new fingerprint is
+**3,390,842 / EBF 2.317** at `16f93cb`.
+
 ## Use
 
 Theta, if kept by the read at the stop, is baked by D.7.11.8 (the tune

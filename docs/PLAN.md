@@ -58,7 +58,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **3,320,355 / EBF 2.317** at engine source `4271031` (D.7.8.3: the root ordered by the kernel's own scorer, kept by RAR-S132; before it 3,348,508 / EBF 2.329 at `e363908`, D.7.8.2: quiescence and evaluation-only entries at the donor's depth, kept by RAR-S131; before it 3,278,226 / EBF 2.313 at `e63b652`, D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
+| Fingerprint | `bench 13` **3,390,842 / EBF 2.317** at engine source `16f93cb` (D.7.11.8: RAR-S135's centres at 2,000 baked into the kernel's seeds; before it 3,320,355 / EBF 2.317 at `4271031`, D.7.8.3: the root ordered by the kernel's own scorer, kept by RAR-S132; before it 3,348,508 / EBF 2.329 at `e363908`, D.7.8.2: quiescence and evaluation-only entries at the donor's depth, kept by RAR-S131; before it 3,278,226 / EBF 2.313 at `e63b652`, D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -386,8 +386,6 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.11.8 | READY_FOR_IMPLEMENTATION | I1 | Theta baked; the tune build at its defaults and the default build reproduce the new fingerprint |
-| D.7.11 | READY_FOR_IMPLEMENTATION | V | Researched 2026-11-20 (`analysis/d711_fit_2026-11-20.md`); closes when D.7.11.8 bakes theta or D.7.11.7 keeps the start |
 | D.7.12 | RESEARCH | I1 | `score cp` calibrated on the fitted kernel's games, output only; the fitting tool |
 | D.7.13 | RESEARCH | V | The one gate: the fitted, repaired kernel against `d7classic` on `[0,3]`, with `10+0.1` and four-thread reads beside it |
 | D.7.14 | RESEARCH | V | Adoption by the maintainer's decision on D.7.13; the meters, the changelog, D.11's disclosure, the squash |
@@ -417,6 +415,7 @@ request. The rows below are D.7's, then D.6's in number order.
 | D.6.29 | RESEARCH | R2 | Review after D.7: the kernel's quiescence scores no stalemate, as its donor's; the replay that read 19.2% of searches on the 2.7.0 kernel, taken again |
 | D.6.30 | RESEARCH | R2 | Review after D.7: the proven-win rule is the root driver's and stays; confirm it under the kernel's narrow windows and fail-high reduction |
 | D.6.31 | RESEARCH | R2 | Review after D.7: the kernel counts no null move; confirm by the test that nodes equal moves made |
+| D.6.32 | RESEARCH | R2 | Review after D.7: the depth at which the shortest mate first shows moves with the seeds, KQK's mate in three from depth 8 to 20 at the bake; why, and whether a mate-distance contract is worth a repair |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -1365,6 +1364,37 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       against the −13 rule; nodes a move ×0.990 at the same depth and
       time. Rarog's head now counts as Stockfish, Reckless and Basilisk
       (`838a3c6`) do; fingerprint 9,067,595 / EBF 2.479.
+    - **D.6.32 The shortest mate's depth moves with the seeds — `R2`, added 2026-11-21 for the review after D.7.**
+      (found by D.7.11.8's bake, RAR-S135, *The bake*; maintainer
+      decision 2026-11-21 to investigate it here, after D.7, and not
+      to hold the bake on it.) On the kernel's seeds before the bake,
+      KQK's mate in three (`8/k7/8/8/3K4/8/8/1Q6 w - - 2 2`) is first
+      reported at depth 8; on the baked seeds at depth 20, after a mate
+      in five from depth 9 and in four from 16. KRK's mate in two
+      (`k7/8/2K5/8/8/8/8/7R w - - 0 1`) moves from depth 5 to 6. A
+      zero-game screen locates no family: any one of several unrelated
+      families set alone moves KQK's first depth to 16 or more (the
+      window, the pawn table's limit, the exchange values, the picker,
+      the reward, RFP, LMP, the correction), and leaving out one of
+      several others brings it back to 8 or 9
+      (`analysis/artifacts/d711-fit-2026-11-20/mate_families.log`).
+      RAR-S131 and RAR-S132 saw the same sensitivity: a table entry
+      kept over a quiescence store can hold a longer mate, so how
+      soon the shortest shows depends on the order the root searches
+      its moves in. Any reported mate is its line's own length, so the
+      cost in games is a later shortest mate, not a result. The mate
+      tests no longer show it: at the bake their depths were measured
+      again by their own rule (two plies past the first depth that
+      finds the mate: KRK 8, KQK 22), and the warm-table test reads
+      the table directly instead of comparing node counts.
+      *Question:* why the shortest mate needs so much more depth than
+      its length on the kernel, and whether a contract (a mate in n
+      first reported by a fixed depth past 2n − 1) is worth a repair.
+      *Screen, zero games:* the first depth of the shortest mate on the
+      mate canaries and a KQK and KRK enumeration against Syzygy, on
+      the kernel's seeds and with the table's mate entries not kept
+      over quiescence stores; a repair is registered only if a
+      mechanism is located. `R2` card.
   Evidence for items already here (H18–H21, H25): item 4 (NODE-2), the
   donor form read +3.3 ± 9.1 in Basilisk (2,000 games) and each of its
   consumers alone (IIR, the no-TT-move LMR term) threw a promotion fixture
@@ -3031,7 +3061,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
         good, so the fit runs on the runner's own allowance.
       - Predicted +45 at `10+0.1`: a miss in magnitude; the kernel's gain
         holds whole at the longer control.
-    - **D.7.11 The finishing fit — `V`.**
+    - **D.7.11 The finishing fit — `V`, DONE 2026-11-21.**
+      *Result:* RAR-S135's tune stopped quiet at 2,000 iterations, its
+      centres read +7.8 ± 9.1 Elo against the start (kept, no gain
+      shown) and are baked (`16f93cb`); fingerprint 3,390,842 / EBF
+      2.317.
       One rule 7c run on the repaired kernel from the baked centres, at
       `3+0.03` (D.7.10). Researched 2026-11-20 at zero games
       (`analysis/d711_fit_2026-11-20.md`): that record holds the evidence,
@@ -3297,7 +3331,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           fault: not wholly below zero, so theta is baked; no gain shown.
           The quiet stop checked afterwards: no gradient persists across
           the tune's two windows (their z correlate at −0.03).
-        - **D.7.11.8 The theta baked — `I1`.**
+        - **D.7.11.8 The theta baked — `I1`, DONE 2026-11-21.**
           As D.7.6.2 baked the first: `tools/spsa_theta_audit.py <run>
           <config> --at <K>` first, each named coordinate given its line
           in the record; the values taken from the theta file by script;
@@ -3313,6 +3347,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           and KRK's mate in 2 at 6, not 5; no single family causes it.
           The warm-table test's node comparison flips. *Unblocks:* the
           maintainer's decision on those two tests.
+          *Result (2026-11-21, RAR-S135):* the maintainer decided that
+          the tests measure their depths on the seeds and that the
+          sensitivity is investigated in D.6.32, after D.7. Three test
+          commits first, each passing on the seeds before and after
+          (`df2a6c1`, `da0665b`, `9ed0ca2`: the mate depths, the
+          warm table read directly, the stored-win warm-up at 15), then
+          the bake (`16f93cb`): 204 values, every suite passing, and
+          `bench 13` **3,390,842 / EBF 2.317** on the tune binary with
+          theta set, the tune build at its defaults and the default
+          build.
     - **D.7.12 The reported score calibrated — `I1`.**
       (A3; `analysis/d7_audit_2026-11-19.md`, *The score scale*) `score cp`
       has never been calibrated: the classic kernel won half its games at

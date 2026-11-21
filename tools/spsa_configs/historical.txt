@@ -4,3 +4,5 @@
 d76fit      # RAR-S128, baked by PLAN D.7.6.2 (2026-11-19)
 d76pilot    # RAR-S128's pilot, the same surface
 d14block1   # RAR-R15; its options went with the old clock (PLAN D.7.9.1, 2026-11-20)
+d711fit     # RAR-S135, baked by PLAN D.7.11.8 (2026-11-21)
+d711pilot   # RAR-S135's pilot, the same surface
