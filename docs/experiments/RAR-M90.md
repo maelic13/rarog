@@ -91,7 +91,8 @@ row. None decides anything.
 pwsh -NoProfile -File D:\code\rarog\analysis\artifacts\d714-meter-2026-11-21\run_m90.ps1
 ```
 
-`run_m90.ps1` (ignored, in `analysis/artifacts/d714-meter-2026-11-21/`)
+`run_m90.ps1` (ignored, in `analysis/artifacts/d714-meter-2026-11-21/`),
+SHA-256 `9119071e0cde4b3e024257d6e1c678ed7245397a41f69a19d71c8bb90f8e507c`,
 checks every binary's hash, then runs the gauntlet, retrying a start once a
 minute only while the harness refuses a busy host before any game; Ctrl+C
 stops it at a committed boundary and running it again resumes it. Its dry
