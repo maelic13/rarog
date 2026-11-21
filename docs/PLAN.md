@@ -448,6 +448,8 @@ request. D.7 closed 2026-11-21; the rows below are D.6's in number order.
 | D.12.4 | RESEARCH | V | After D.12.3: pooled-PGO NPS of the rebuilt board, the microbenchmark per component beside it; a component that does not pay returns to Rarog's form |
 | D.13 | RESEARCH | R2 | Moved from D.7.8.7 2026-11-20: opens after D.7.14; built only if one thread reproduces the fingerprint, then the NPS and four-thread reads |
 | D.14 | RESEARCH | R2 | Added 2026-11-20 (maintainer request): the donor's soft-stop vote on the new clock, after the fit and D.7.14, beside D.13; a four-thread withdrawal screen at zero games first, 2% floor |
+| D.15.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: each download a `.zip` or `.tar.gz` with the binary, the licences, the README and the changelog, where D.11's notices ship; before the next release |
+| D.15.2 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: the release notes as the section's summary and highlights, with a link to the full changelog; before the next release |
 
 ## Phase D — Clock, threads, robustness
 
@@ -4357,6 +4359,39 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     2,000 games) takes about 1 hour 45 minutes. A gain needs an SPRT,
     priced in the card as D.13's was (`[0,5]` about 13 to 18 hours).
     One thread must reproduce the fingerprint and play the same.
+
+- **D.15 Release packaging from Basilisk 1.11.0 — `I1`.**
+  Added 2026-11-21 (maintainer request) from Basilisk's release work
+  between `v1.10.2` and `v1.11.0`; it lands before the next release
+  (2.8.0), which also waits for D.11. Basilisk's other release changes
+  are already in Rarog or do not apply: the `<ver>-<os>-<x64|arm64>`
+  asset names and the universal x86-64 binary (E.3.2, E.3.3), a
+  development build's `id name` naming its commit, a patch tag cut from a
+  branch, the release commit's fingerprint check, and Basilisk's Clang,
+  Xcode and MSVC changes (Rarog pins its Rust toolchain). Its published
+  `SHA256SUMS` is not taken: Rarog checks the sums between the
+  workflow's jobs and does not publish them, since a sums file beside the
+  assets proves nothing about them (`release.yml`).
+    - **D.15.1 Each download an archive — `I1`.**
+      Each release asset becomes a `.zip` (Windows) or a `.tar.gz` (Linux,
+      macOS; the executable bit kept) holding one folder
+      `rarog-<ver>-<os>-<arch>/` with the binary, `LICENSE`, Fathom's
+      licence (`vendor/fathom/LICENSE`), `README.md` and `CHANGELOG.md`,
+      as Basilisk's (`87de6fa`) and Stockfish's releases do. It is where
+      D.11's notices ship with the binaries. The workflow's publish step,
+      the README's download table and an upgrade note for the renamed
+      downloads change with it; the smoke and fingerprint checks run on
+      the binary taken out of each archive. Checked by a release-candidate
+      run that lists each archive's contents.
+    - **D.15.2 Release notes as a summary and highlights — `I1`.**
+      The release notes become the changelog section's opening summary
+      and a `### Highlights` list, each paragraph joined into one line
+      (GitHub renders every newline as a break), with a link to the full
+      changelog at the tag; the release check refuses a section with
+      neither (Basilisk `1e68ec6`: 1.11.0's page carried the whole
+      section, 4,300 words). `cargo xtask release-check --notes` writes
+      them; its tests and a run on a dated section are the check. PROCESS
+      *Release* and the changelog's convention change with it.
 
 ## Phase E — Classical checkpoint and release
 
