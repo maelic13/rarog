@@ -386,7 +386,7 @@ request. The rows below are D.7's, then D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.7.13 | RESEARCH | V | The one gate: the fitted, repaired kernel against `d7classic` on `[0,3]`, with `10+0.1` and four-thread reads beside it |
+| D.7.13 | GAME_GATE | V | The one gate, registered as RAR-S136 (2026-11-21): the fitted, repaired kernel against `d7classic` on `[0,3]`, cap 20,000 pairs, with `10+0.1` and four-thread reads beside it; the maintainer's command |
 | D.7.14 | RESEARCH | V | Adoption by the maintainer's decision on D.7.13; the meters, the changelog, D.11's disclosure, the squash |
 | D.7.15 | RESEARCH | R3 | Opens only if D.7.13 does not gain: the kernel discarded, the classic restored, then Rarog's own forms and Stockfish's form |
 | D.6.1 | RESEARCH | R2 | Review on the new kernel after D.7: the kernel's partition counts castling quiet (`is_quiet_move`); confirm it in pruning, the histories and SEE |
@@ -3410,6 +3410,13 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       At D.7.10's reading the SPRT reaches H1 in about 600 pairs and
       cannot see the finishing fit; that is D.7.11.7's read. The
       `10+0.1` companion is also the clock's check (D.7.11, item 1).
+      *Registered 2026-11-21* (`docs/experiments/RAR-S136.md`, before
+      any game): `d713kern`, a pext PGO build of `eb84cce` (bench
+      3,390,842), against `d7classic`; cap 20,000 pairs, which by
+      RAR-M10 resolves a true gain of about +4.5 nElo or more; seeds
+      2026113601 to 2026113603. One driver runs the gate and both
+      reads, and its dry run passed; about 3 hours 35 minutes on an idle
+      host, the maintainer's.
     - **D.7.14 Adoption and checkpoint — `V`, then `M`.**
       The maintainer's decision on D.7.13. On adoption: the pre-NNUE meter
       read again (RAR-M89's field, the gap to Stockfish 16 with `Use
