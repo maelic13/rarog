@@ -1009,8 +1009,9 @@ fn check_isa(exe: &Path, arch: Arch, target: &str, default_cpu: bool) -> Result<
     }
     if judgement.runtime_instructions > 0 {
         println_flush(format_args!(
-            "  {} instructions of the static C runtime's own functions left out: it picks \
-             its variants (SSE, AVX, SVE) for the CPU at run time",
+            "  {} instructions of run-time-picked variants left out (the static C \
+             runtime's SSE, AVX and SVE ones, `compiler_builtins`' FMA): each runs \
+             only on a CPU with its instructions",
             judgement.runtime_instructions
         ));
     }
@@ -1104,6 +1105,28 @@ fn is_dispatched_runtime_function(name: &str) -> bool {
     VARIANT_TAGS.iter().any(|tag| name.contains(tag)) || GUARDED.contains(&name)
 }
 
+/// Is `label` one of the Rust sysroot's functions that run only on a CPU with
+/// their instructions?
+///
+/// `compiler_builtins`' `fmaf` and `fma`, which `f32::mul_add` calls where the
+/// tier has no FMA, pick a variant once from the CPU's features: `*_with_fma`
+/// (`vfmadd`) only when it has FMA, `*_with_fma4` only with FMA4, a software
+/// fallback otherwise (`libm/src/math/arch/x86/fma.rs` at Rust 1.100.0). Only
+/// those four variants are left out; the dispatcher and the fallback are
+/// checked like the engine.
+fn is_dispatched_sysroot_function(label: &str) -> bool {
+    const FMA_VARIANTS: [&str; 4] = [
+        "12fma_with_fma",
+        "13fmaf_with_fma",
+        "13fma_with_fma4",
+        "14fmaf_with_fma4",
+    ];
+    label.starts_with("_RNv")
+        && label.contains("17compiler_builtins")
+        && label.contains("4arch3x863fma")
+        && FMA_VARIANTS.iter().any(|variant| label.ends_with(variant))
+}
+
 /// The archives `path` stands for: itself, or the ones a GNU ld script
 /// names (Ubuntu's `libm.a` is `GROUP ( …/libm-2.39.a …/libmvec.a )`).
 fn archive_members(path: &Path) -> Result<Vec<PathBuf>> {
@@ -1158,14 +1181,16 @@ struct IsaJudgement {
     instructions: u64,
     counts: Vec<(&'static str, u64)>,
     tzcnt: u64,
-    /// Instructions of `runtime` functions, left out of the contract.
+    /// Instructions of `runtime` functions and of the sysroot's run-time-picked
+    /// variants ([`is_dispatched_sysroot_function`]), left out of the contract.
     runtime_instructions: u64,
     failures: Vec<String>,
 }
 
 /// Hold `disassembly` (`llvm-objdump -d` output) to the contract of `arch`,
 /// whose code generation enables `features`, leaving out the functions in
-/// `runtime` (see [`static_runtime_functions`]). Pure, so a planted
+/// `runtime` (see [`static_runtime_functions`]) and the sysroot's
+/// run-time-picked variants ([`is_dispatched_sysroot_function`]). Pure, so a planted
 /// instruction can be shown to fail.
 fn judge_disassembly(
     disassembly: &str,
@@ -1188,7 +1213,7 @@ fn judge_disassembly(
     let mut seen_in: Vec<Vec<&str>> = vec![Vec::new(); contract.classes.len()];
     for line in disassembly.lines() {
         if let Some(label) = function_label(line) {
-            in_runtime = runtime.contains(label);
+            in_runtime = runtime.contains(label) || is_dispatched_sysroot_function(label);
             function = label;
             continue;
         }
@@ -2952,6 +2977,56 @@ Instrumentation level: IR
         let planted = disassembly.replace("  401000: \tmovq", "  401000: \tvmovdqu");
         let judgement = judge_disassembly(&planted, Arch::Base, &features, &runtime);
         assert!(fails_naming(&judgement.failures, "avx"));
+    }
+
+    /// `compiler_builtins`' FMA variants, which `f32::mul_add` reaches on a
+    /// tier without FMA, are picked at run time and left out by name; the
+    /// dispatcher and the same instruction in engine code are still checked.
+    #[test]
+    fn the_sysroots_fma_variants_are_left_out_and_only_they() {
+        let features = tier_features(Arch::Base, LINUX, false).unwrap();
+        let prefix = "_RNvNtNtNtNtNtCsaoqDdJB9WAk_17compiler_builtins4math9libm_math4arch3x863fma";
+        let disassembly = format!(
+            "
+0000000000401000 <_ZN5rarog6search7negamax>:
+  401000: \tmovq\t%rdi, %rax
+0000000000402000 <{prefix}13fmaf_with_fma>:
+  402000: \tvfmadd213ss\t%xmm2, %xmm1, %xmm0
+"
+        );
+        let none = HashSet::new();
+        let judgement = judge_disassembly(&disassembly, Arch::Base, &features, &none);
+        assert!(judgement.failures.is_empty(), "{:?}", judgement.failures);
+        assert_eq!(
+            (judgement.instructions, judgement.runtime_instructions),
+            (2, 1)
+        );
+        // The dispatcher is checked: it must not run FMA itself.
+        let dispatcher = disassembly.replace("13fmaf_with_fma>", "4fmaf>");
+        let judgement = judge_disassembly(&dispatcher, Arch::Base, &features, &none);
+        assert!(fails_naming(&judgement.failures, "avx"));
+        // The same instruction in an engine function still fails.
+        let planted = disassembly.replace("  401000: \tmovq", "  401000: \tvfmadd213ss");
+        let judgement = judge_disassembly(&planted, Arch::Base, &features, &none);
+        assert!(fails_naming(&judgement.failures, "avx"));
+        for variant in [
+            "12fma_with_fma",
+            "13fmaf_with_fma",
+            "13fma_with_fma4",
+            "14fmaf_with_fma4",
+        ] {
+            let name = format!("{prefix}{variant}");
+            assert!(is_dispatched_sysroot_function(&name), "{name}");
+        }
+        for name in [
+            format!("{prefix}4fmaf"),
+            format!("{prefix}13fmaf_fallback"),
+            "_RNvNtNtCsaoqDdJB9WAk_17compiler_builtins4math9libm_math3fma13fmaf_with_fma"
+                .to_string(),
+            "_ZN5rarog6search13fmaf_with_fma17h0123456789abcdefE".to_string(),
+        ] {
+            assert!(!is_dispatched_sysroot_function(&name), "{name}");
+        }
     }
 
     /// Only run-time-picked variants and the guarded unwinder and SME
