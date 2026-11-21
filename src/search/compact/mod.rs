@@ -201,22 +201,22 @@ mod tests {
     fn the_wrapper_weighs_material_optimism_and_keeps_verdicts() {
         let mut searcher = Searcher::default();
         let board = Board::starting_position();
-        // 200 * (16385 + 10296) / 32596, no correction trained.
+        // 200 * (16119 + 10174) / 34115, no correction trained.
         let material = kernel_material(&board, searcher.exchange_values());
-        assert_eq!(searcher.compact_eval(&board, 200, material, 0), (163, 0));
+        assert_eq!(searcher.compact_eval(&board, 200, material, 0), (154, 0));
         searcher.td.optimism = [10, -10];
-        // (200 * 26681 + 10 * (1539 + 10296)) / 32596.
-        assert_eq!(searcher.compact_eval(&board, 200, material, 0), (167, 0));
+        // (200 * 26293 + 10 * (1570 + 10174)) / 34115.
+        assert_eq!(searcher.compact_eval(&board, 200, material, 0), (157, 0));
         let bare_kings = Board::from_fen("8/8/8/4k3/8/8/8/4K3 w - - 0 1").expect("a legal FEN");
         assert_eq!(searcher.compact_eval(&bare_kings, 0, 0, 0), (0, 0));
     }
 
     #[test]
-    fn the_start_position_counts_the_donors_material() {
+    fn the_start_position_counts_the_fitted_material() {
         let board = Board::starting_position();
         assert_eq!(
             kernel_material(&board, KERNEL_SEE_VALUES),
-            16 * 109 + 4 * 403 + 4 * 435 + 4 * 679 + 2 * 1242
+            16 * 109 + 4 * 396 + 4 * 447 + 4 * 658 + 2 * 1213
         );
     }
 
@@ -224,7 +224,7 @@ mod tests {
     fn the_exchange_values_are_the_seed_tables() {
         assert_eq!(
             KERNEL_SEE_VALUES.as_array(),
-            [109, 403, 435, 679, 1242, 20_000]
+            [109, 396, 447, 658, 1213, 20_000]
         );
         let mut seeds = Seeds::FITTED;
         seeds.exchange_value = [100, 300, 310, 500, 900];

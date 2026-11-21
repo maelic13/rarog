@@ -20,7 +20,7 @@ const EXCLUDED: [&str; 5] = [
 
 /// Seeds whose range is declared rather than the rule's, each for a value
 /// the rule's range would not reach: ProbCut's exchange scale spans the
-/// unconverted 1,024 and the donor's 2,536 the kernel plays.
+/// unconverted 1,024 and the donor's 2,536.
 const DECLARED: [(&str, (i32, i32)); 1] = [("probcut_see_scale", (512, 4_096))];
 
 /// A seed's option name: `K` and the seed's name in Pascal case, an array
@@ -145,10 +145,10 @@ mod tests {
         assert_eq!(range(-3), (-7, -1));
         let lines = uci_option_strings();
         assert!(lines.contains(&String::from(
-            "option name KRfpSquare16 type spin default 8218 min 4109 max 16436"
+            "option name KRfpSquare16 type spin default 8812 min 4406 max 17624"
         )));
         assert!(lines.contains(&String::from(
-            "option name KProbcutSeeScale type spin default 2536 min 512 max 4096"
+            "option name KProbcutSeeScale type spin default 2630 min 512 max 4096"
         )));
         let mut seeds = Seeds::FITTED;
         assert!(set_uci_option(&mut seeds, "KProbcutSeeScale", "1024"));
@@ -165,13 +165,13 @@ mod tests {
 
         let lines = uci_option_strings();
         for line in [
-            "option name KPawnHistoryMax type spin default 8192 min 4096 max 16384",
-            "option name KSingularPvPerPly1024 type spin default 405 min 202 max 810",
-            "option name KQSeeCorrectionScale type spin default 2536 min 1268 max 5072",
-            "option name KExchangeValue1 type spin default 403 min 201 max 806",
-            "option name KExchangeValue2 type spin default 435 min 217 max 870",
-            "option name KExchangeValue3 type spin default 679 min 339 max 1358",
-            "option name KExchangeValue4 type spin default 1242 min 621 max 2484",
+            "option name KPawnHistoryMax type spin default 8401 min 4200 max 16802",
+            "option name KSingularPvPerPly1024 type spin default 403 min 201 max 806",
+            "option name KQSeeCorrectionScale type spin default 2559 min 1279 max 5118",
+            "option name KExchangeValue1 type spin default 396 min 198 max 792",
+            "option name KExchangeValue2 type spin default 447 min 223 max 894",
+            "option name KExchangeValue3 type spin default 658 min 329 max 1316",
+            "option name KExchangeValue4 type spin default 1213 min 606 max 2426",
         ] {
             assert!(lines.contains(&String::from(line)), "{line}");
         }
@@ -183,7 +183,7 @@ mod tests {
 
         let mut seeds = Seeds::FITTED;
         assert!(set_uci_option(&mut seeds, "KPawnHistoryMax", "20000"));
-        assert_eq!(seeds.pawn_history_max, 16_384, "clamped inside an i16");
+        assert_eq!(seeds.pawn_history_max, 16_802, "clamped inside an i16");
 
         let mut seeds = Seeds::FITTED;
         assert!(set_uci_option(&mut seeds, "KSingularPvPerPly1024", "600"));
@@ -217,13 +217,13 @@ mod tests {
         assert!(set_uci_option(&mut seeds, "krfpsquare16", "8000"));
         assert_eq!(seeds.rfp_square_16, 8_000);
         assert!(set_uci_option(&mut seeds, "KRfpSquare16", "1"));
-        assert_eq!(seeds.rfp_square_16, 4_109, "clamped to the range");
+        assert_eq!(seeds.rfp_square_16, 4_406, "clamped to the range");
         assert!(set_uci_option(&mut seeds, "KPickCont2", "1200"));
         assert_eq!(seeds.pick_cont[2], 1_200);
         assert!(!set_uci_option(&mut seeds, "KLmrSpreadThread", "1"));
         assert!(!set_uci_option(&mut seeds, "Hash", "16"));
         let mut expected = Seeds::DONOR;
-        expected.rfp_square_16 = 4_109;
+        expected.rfp_square_16 = 4_406;
         expected.pick_cont[2] = 1_200;
         assert_eq!(seeds, expected);
     }

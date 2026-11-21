@@ -2123,7 +2123,8 @@ mod tests {
         let mut donor = SearchOptions::default();
         donor.limits.depth = Some(8);
         let base = tree(&mut Searcher::default(), &donor);
-        assert_eq!(tree(&mut Searcher::default(), &options("269")), base);
+        let own = compact::rules::SEEDS.lmr_log.to_string();
+        assert_eq!(tree(&mut Searcher::default(), &options(&own)), base);
         let moved = tree(&mut Searcher::default(), &options("400"));
         assert_ne!(
             moved, base,

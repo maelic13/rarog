@@ -345,7 +345,7 @@ mod tests {
     #[test]
     fn every_table_is_bounded_and_updates_by_gravity() {
         // The pawn table's largest limit a tuning option reaches is twice
-        // its seed, 16,384, inside an `i16`.
+        // its seed, 16,802, inside an `i16`.
         for max in [QUIET_MAX, NOISY_MAX, PAWN_MAX, 2 * PAWN_MAX, CONT_MAX] {
             let mut entry = 0i16;
             let mut previous = 0;
