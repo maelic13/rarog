@@ -8,7 +8,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Kind:** PLAN D.6.7's repair, AGENTS' repair case 2: expected near zero
   in the rated configuration, where a small loss is acceptable for
   correctness (maintainer decision 2026-11-22: "zero-game read, then case 2").
-- Disposition: open — registered 2026-11-22, neither part read yet.
+- Disposition: open — part A read 2026-11-22: no correctness fault where the cap binds; part B, 2,000 games, prepared and the maintainer's to run.
 
 ## The change
 
@@ -110,4 +110,39 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 
 ## Result
 
-Not read yet.
+### Part A (read 2026-11-22, once, after registration)
+
+The 14 games, 977 searches per build, the replay and referee exit 0.
+
+- **Correctness: no fault.** No illegal move, no crash or stall, no mate
+  score beyond 240 plies, in either build. By the frozen rule part B runs.
+- **Wire: passed.** The baseline's replay reaches the cap again at all 21 of
+  RAR-S137's cap searches.
+- **Diagnostics.** At the 21 cap searches the arm's lines pass ply 128 in 7
+  and reach 240 in none (11 of all 977 arm searches pass 128). The builds'
+  moves differ at 12 of the 21. The referee reads 10 of the 12 equal (the
+  same draw or the same mate distance), 1 better for the arm (a mate
+  delayed, five moves to seven) and 1 better for the baseline (a mate one
+  move sooner); no direction, as registered.
+- **Calibration.** No correctness fault held (0.95). The two diagnostic
+  predictions failed in mechanism: past 128 in 7 of 21, not 15 or more, and
+  moves differing in 12, not 5 or fewer. The prediction took the arm's tree
+  to be the baseline's run past ply 128; the moved score bands reshape these
+  mate-heavy endings' trees instead, so the arm often ends shallower.
+- **Artifacts:** `s138_partA.json` (`c8554fc5…`), `s138_partA.log`
+  (`6be9c519…`), in `analysis/artifacts/d67-review-2026-11-22/`.
+
+### Part B: binaries, before any game
+
+Built 2026-11-22 by `run_s138.ps1 -Step build`, each from a clean worktree at
+its commit, rustc 1.100.0, `tools/build_test.ps1` (pext, PGO):
+
+| Arm | Commit | `id name` | Bench | SHA-256 |
+| --- | --- | --- | --- | --- |
+| `d67base` | `b90e983` | `dev-20261122-b90e9837` | 3,390,842 | `9d4292149b1e4b203834518946a2e3ec8b27aae3c1c5a6d3206555a194efc20b` |
+| `d67cap240` | `91bc561` | `dev-20261122-91bc5616` | 3,374,901 | `58eb79c9d507bcc8628baa6537bd2fe72e7e57bc54fe9b446cb13f0b2e85419f` |
+
+The dry run of `-Step stc` passed every preflight (host idle 7%, the pinned
+runner, both fingerprints, equal build flavour and compiler, the policy):
+`tools/results/colosseum_match_rar-s138-stc_20261122_172233.dry-run.json`.
+Part B is the maintainer's to run.
