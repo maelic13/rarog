@@ -123,3 +123,32 @@ head-to-head reads, `ae2bca65…9221`) and its output `rating.out`
 
 **Retry trigger or `closed`:** closed as an observation; nothing changes on
 it.
+
+## Speed and depth by engine (added 2026-11-22)
+
+Read for E.0's research card, from the same tournament in Colosseum's
+database (opened read-only): each engine's mean over its 8,800 games of
+the per-game `white_nps`/`black_nps` and `white_depth`/`black_depth`,
+taken by engine id, all 52,800 games finished. Leads, not measurements:
+every engine counts nodes and reports depth its own way, and Colosseum's
+depth includes moves with a mate score.
+
+| Engine | NPS | Depth | Move ms |
+|---|---|---|---|
+| Ethereal 14.40 HCE | 2.989M | 19.64 | 72.7 |
+| Berserk 4.7.0 HCE | 2.414M | 19.78 | 71.7 |
+| Houdini 6.03 | 2.375M | 13.80 | 66.2 |
+| Fire 8.3 | 2.313M | 13.19 | 48.1 |
+| Stockfish 11 | 2.219M | 21.75 | 71.3 |
+| Stockfish 16 HCE | 2.160M | 25.22 | 72.2 |
+| Komodo 14.1 | 2.082M | 15.39 | 69.0 |
+| Dragon 3.3 HCE | 2.074M | 14.85 | 61.8 |
+| Basilisk 1.11.0 | 1.692M | 18.88 | 73.8 |
+| Basilisk dev-20261121-f0ed0612 | 1.675M | 18.79 | 73.9 |
+| **Rarog dev-20261121-94d7f72d** | **1.579M** | **15.03** | 71.4 |
+| Rarog 2.7.0 | 1.523M | 12.72 | 70.8 |
+
+The recipe: `games` joined to `tournament_engines` on the tournament id
+`658cb048-46e0-47af-b7c3-cd7b012e6d0a`, both sides of each finished game
+taken as one row (`white_id`, `white_nps`, `white_depth`, `white_move_ms`,
+and the same for Black), averaged by engine id.

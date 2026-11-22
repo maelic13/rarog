@@ -4414,6 +4414,65 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
 
 ## Phase E — Classical checkpoint and release
 
+- **E.0 Where the remaining strength is: speed, search, evaluation and how they fit each other, against the strongest hand-crafted engines — `R3`.** Added
+  2026-11-22 (maintainer request, after RAR-M91). Research only: zero
+  games first, no code changed, nothing implemented. It ranks the levers;
+  each one it proposes becomes a step of its own, numbered where it runs,
+  and E.4 is ranked among them. It is the first step of Phase E.
+  **The question.** The merged kernel rates 100.2 below Stockfish 16 HCE
+  in RAR-M91 (−103.3 [−121.0, −86.0] head to head) and 35 to 49 below
+  Berserk 4.7.0 HCE and Stockfish 11. Which part of that gap can Rarog
+  take, where, at what cost and in which order: the cost of a node, the
+  tree the kernel searches, the evaluation, the fit of search and
+  evaluation to each other, or elsewhere (clock, threads, tablebases, the
+  board), alone or in combination.
+  **What RAR-M91's games show** (its record, *Speed and depth by engine*):
+  NPS and mean depth a move, Stockfish 16 HCE 2.16M and 25.2, Stockfish
+  11 2.22M and 21.8, Berserk 2.41M and 19.8, Ethereal 14.40 HCE 2.99M and
+  19.6, Basilisk 1.11.0 1.69M and 18.9, the kernel 1.58M and 15.0, Rarog
+  2.7.0 1.52M and 12.7. These are leads, not measurements: each engine
+  counts and reports in its own way, and Colosseum's depth includes moves
+  with a mate score. Rarog is the slowest of the twelve. Since D.6.31 it
+  counts nodes as Stockfish does, so Stockfish 16 HCE's 1.37 times its
+  rate is one unit; Rarog's own slope at `3+0.03`, about 145 Elo a
+  doubling (RAR-S98, RAR-S99), puts that ratio near +65 if all of it
+  could be closed, which is not assumed, since the two evaluations cost
+  differently. Depth does not order the field: Basilisk is 3.9 plies
+  deeper than the kernel and 94.6 weaker, and the kernel is 2.3 plies
+  deeper than 2.7.0 and 79 stronger. Depth is a symptom to explain, not a
+  target.
+  **Explanations to separate,** each with what already speaks to it:
+  1. *The cost of a node:* evaluation, board and memory traffic. The last
+     profile is D.7.8.12's (`analysis/d7812_profile_2026-11-20.md`); D.12
+     owns the board's part.
+  2. *The tree:* the kernel is Reckless's form, built for a network
+     evaluation, its margins fitted on Rarog's evaluation at `3+0.03`
+     (D.7.11). Against a search built for a hand-crafted evaluation doing
+     better here: RAR-O08 put Stockfish classical's search on Rarog's
+     evaluation 59.8 ± 8.1 below the head of the day.
+  3. *The evaluation:* RAR-O07's same-search meter read 99 at C.11; RAR-O10
+     read Rarog's evaluation as more accurate than Basilisk's against
+     Stockfish 19, with no read against Stockfish 16 HCE's or Berserk's.
+  4. *Search and evaluation together:* the evaluation's scale, noise and
+     cost against the kernel's margins; `LazyMargin` not refitted on the
+     kernel (*What stays unfitted*); the fit's labels from the B.9 head's
+     games (RAR-M67; E.4's method question).
+  5. *The instrument:* the node and depth conventions themselves.
+  **The cheapest reads, zero games first:** NPS and depth by phase, mate
+  moves out, from RAR-M91's database; the kernel's cost by component on
+  the bench beside D.7.8.12's profile; RAR-O10's accuracy instrument on
+  Stockfish 16 HCE's and Berserk's static evaluations beside Rarog's.
+  Games only where they separate explanations, each registered with its
+  use named first: the kernel against Stockfish 16 HCE at equal nodes
+  (D.7.1.1's per-side budget, corrected for Rarog's driver discarding the
+  interrupted iteration, RAR-O09) separates work a node from speed, and
+  the same pair with Rarog's clock raised by the measured NPS ratio
+  prices speed parity.
+  **Output:** a short packet in `analysis/`, each lever with its evidence,
+  its prior band frozen before any game, the cheapest test that kills it
+  and the step that would own it; a lever without a discriminating read is
+  listed as unknown, not ranked. The maintainer orders the steps it
+  proposes before any is built.
 - **E.1 Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — `V`.** Re-run the B.2.0 architecture review
   on the B.9 and C.11 heads first. Final head against 2.3.2 and against
   the B.9 and C.11 heads at STC, `10+0.1` and 4T; attributed Elo per programme
@@ -4701,6 +4760,50 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   refitted. It was last fitted with the classic search (RAR-S104, 423 to
   475, no gradient past noise), and D.7.11 held it at 475 with the
   kernel's margins fitted against it.
+  **The tuner before the refit (added 2026-11-22, from Basilisk's C.2.1.2,
+  read on Rarog's tuner the same day).** Rarog's tuner already fits the
+  played score: the lazy gate applies under `texel`, the base score is
+  `evaluate()`'s own, `linear_delta_scale` calls the evaluator's scale
+  rules in its order, and `--verify` compares against the evaluator's own
+  sum, so Basilisk's defect is not here. Five gaps remain, each closed by
+  a check that can fail:
+  1. `fit_k` searches [0.5, 2.5] and says nothing at a bound: K at a bound
+     fails the run.
+  2. `clamp_weights` applies sign priors, passer ranks 0 and 7 at zero
+     and a running maximum on the passer ranks to every coordinate after
+     each step, and no manifest lists them: the run asserts that the
+     clamps leave the seed unchanged, and the fitting manifest lists them.
+  3. Rows the evaluator does not score linearly. A draw verdict scores 0
+     with every coefficient 0, so it moves neither K nor a gradient and
+     only adds a constant to the reported loss. The mop-up's rows (KBNK,
+     KXK) carry large frozen terms and may move K, as Basilisk's override
+     rows moved its K from 0.00606 to 0.00428: read K and the held-out
+     loss with and without them on `hce-v4-tb`, and report the loss over
+     the rows the fit can move.
+  4. Adam moves a one-signed coordinate about `lr` an epoch, so 200 epochs
+     at 0.3 bound its travel near 60 cp whatever the data say, and the
+     tuner prints its best epoch but accepts a run whose best epoch is its
+     last (Basilisk's T1): fail such a run, or one whose travel reaches 0.9
+     of the bound.
+  5. `extract.py` labels a game however it ended: reject by termination,
+     as Basilisk's row contract does. No row of `hce-v4` changes (612,745
+     normal endings, 2 adjudicated draws, no forfeit), so this binds only
+     a new corpus.
+  **And the method itself (maintainer request, 2026-11-22).** Before the
+  refit, research whether this pipeline is still the best way to fit
+  Rarog's evaluation, and what would do better, by evidence in this
+  engine: the labels (game results, or a blend with the kernel's own
+  search scores; RAR-E03's Stockfish-distilled fit lost 17.11 Elo and
+  stays the prior against distillation); the corpus (`hce-v4-tb`'s games
+  were played by the B.9 head at 8,000 nodes, two searches ago, RAR-M67,
+  against games of the kernel itself; RAR-E12 measured a corpus change
+  alone at +11.8 ± 5.3 Elo); the optimiser (full-batch Adam on a fixed
+  schedule against a converged second-order method); K by phase band; and
+  fitting the evaluation together with the search margins it feeds
+  (PROCESS's margin block) rather than after them. Held-out loss chooses
+  candidates and accepts none (RAR-E03 improved it and lost); a method
+  that changes the fit's result reaches E.4's gate, one that does not
+  closes `NO_CHANGE`. E.0's ranking may reorder this work.
 ## Phase F — NNUE (own data only)
 
 **Rules.** Own data only, generated by Rarog's classical head and later by its
