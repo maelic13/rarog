@@ -395,7 +395,6 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.4 | RESEARCH | R2 | Review after D.7: the kernel stores no move at a fail low, as its donor; confirm what the store carries and which consumers read it |
 | D.6.5 | RESEARCH | R2 | Review after D.7: the exclusion search's estimate in the kernel is its donor's form; confirm against RAR-S118's and RAR-S119's reads |
 | D.6.6 | RESEARCH | R2 | Review after D.7: the staged picker hands the table move before generating captures; confirm the cycles RAR-S120 priced are gone |
 | D.6.7 | RESEARCH | R2 | Review after D.7: the kernel's line bound is eight times the depth; RAR-S121's replay on it, the searches reaching the ply cap counted; the eight was chosen at zero games and no fit holds it (D.7.11) |
@@ -815,7 +814,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      holds the rule table and requires every call reached, and it fails on
      the null child typed `true` (8,125 children against the rule) and on a
      ProbCut child typed `true` (7).
-    - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`, reopened 2026-11-19 for review on the new kernel (no change 2026-11-11 on the classic kernel).** (NODE-2):
+    - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; no change 2026-11-11 on the classic kernel).** (NODE-2):
      `best_move` is set on every new best score, so an `Upper` entry carries
      the refuted move and overwrites the position's earlier move; the donor
      sets it only when alpha rises and keeps the old move. Consumers at the
@@ -907,6 +906,21 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      ordering change with a predicted node saving at equal
      consumers. The store's contract is pinned by
      `a_fail_low_store_carries_its_best_scoring_move`.
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. The kernel's best move changes only when a
+     score raises alpha, as Reckless's does, so a fail-low node stores no
+     move, and the table keeps the entry's older move when a store for the
+     same position brings none (`src/tt.rs`, pinned there by "a store
+     without a move keeps the move"), as Reckless's `write` does. Neither
+     kernel has IIR, the consumer that carried RAR-S115's loss; a missing
+     TT move is read by the cut-node reduction terms and the singular
+     search's need for a TT move, both the donor's and fitted with this
+     store in place (D.7.11). The classic's own form, the best-scoring
+     move kept, is not retried: its ordering evidence was 1.022 of the
+     nodes (0.990 to 1.043) on another kernel, and the kernel's fit and
+     gate were made with the donor's store. The classic's search-side test
+     left with that kernel; no kernel test pins the fail-low store
+     (maintainer decision 2026-11-22: closed without one).
     - **D.6.5 The exclusion search uses the table-refined estimate — `R2`, reopened 2026-11-19 for review on the new kernel (no change 2026-11-11 on the classic kernel).** (NODE-4):
      `eval_for_pruning` has no `excluded` guard; in a singular exclusion node
      the TT bound is Lower or Exact and the window sits below `tt_score`, so
