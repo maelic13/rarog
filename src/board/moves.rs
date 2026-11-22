@@ -175,14 +175,15 @@ impl Move {
         self.flags() >= PROMO_KNIGHT
     }
 
-    /// A noisy move is a capture or a promotion.
+    /// A capture or any promotion: the board's own split of the moves, which
+    /// only tests read. The search reads the kernel's partition instead
+    /// (`is_quiet_move`), in which a rook, bishop or knight push is quiet.
     #[inline(always)]
     pub fn is_noisy(self) -> bool {
         self.is_capture() || self.is_promo()
     }
 
-    /// A quiet move is any other, castling included: the one partition of the
-    /// moves that ordering, pruning, reduction and the histories all read.
+    /// Any move that is not noisy, castling included.
     #[inline(always)]
     pub fn is_quiet(self) -> bool {
         !self.is_noisy()
