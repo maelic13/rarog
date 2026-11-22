@@ -391,7 +391,6 @@ request. D.7 closed 2026-11-21; the rows below are D.6's in number order.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.1 | RESEARCH | R2 | Review on the new kernel after D.7: the kernel's partition counts castling quiet (`is_quiet_move`); confirm it in pruning, the histories and SEE |
 | D.6.2 | RESEARCH | R2 | Review after D.7: a queen push is noisy in the kernel's partition; confirm quiescence and ProbCut generate and search it |
 | D.6.3 | RESEARCH | R2 | Review after D.7: the kernel types the null-move and ProbCut children as its donor does; confirm, and whether the classic's finding has an instance left |
 | D.6.4 | RESEARCH | R2 | Review after D.7: the kernel stores no move at a fail low, as its donor; confirm what the store carries and which consumers read it |
@@ -605,7 +604,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   its card. The closed steps are reopened for that review; their records
   below stay as written and describe the classic kernel, which D.7.7
   deleted. D.6.28, clock use, moved into D.7 as D.7.9, with its text.
-    - **D.6.1 Castling is neither quiet nor noisy — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-10 on the classic kernel).** (NODE-3, BOARD-1):
+    - **D.6.1 Castling is neither quiet nor noisy — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; done 2026-11-10 on the classic kernel).** (NODE-3, BOARD-1):
      `is_quiet_move` is `flags <= DOUBLE_PUSH` while castling has flags 2 and
      3, and `is_noisy` is capture or promotion, so in the move loop castling
      skips late-move, futility and history pruning, takes the noisy SEE
@@ -623,6 +622,24 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      1 in 381 moves in the loop, between 49% and 71% of them decided differently,
      castling legal in 95% of gate games, so no closing rule fired; the repair is
      `72c4e60` on `d6`, kept by its harm read on 2026-11-10 at nElo −4.9 ± 15.2.
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. The kernel reads one partition, `is_quiet_move`
+     (`src/search/compact/mod.rs`): any move but a capture or a queen
+     promotion, so castling is quiet, as in Reckless's `is_quiet`
+     (its `types/moves.rs`). Every reader takes it: the move loop's
+     pruning, exchange threshold, reductions and history read, the tried
+     moves' bonuses and maluses, the parent and fail-low rewards, the
+     continuation key and the picker's table-move tier. Castling comes
+     from the quiet generator and never enters a noisy table. The exchange
+     test passes castling only at a threshold at or below zero, where
+     Reckless's passes it always; no caller asks above zero, since every
+     quiet threshold is capped at 0, the good-noisy bar reads noisy moves
+     only and quiescence never generates a castle. Check: the kernel's
+     seven picker tests (`compact::picker`, one asserting `e1g1` quiet)
+     pass, exit 0. The board's own `Move::is_quiet`, which counts
+     under-promotions noisy, is read only by tests; its comment claimed
+     otherwise and was corrected (`f22bf1d`, comment only). Folding the
+     two partitions into one is a cleanup for D.8's census (D.8.1).
     - **D.6.2 Quiescence cannot see a non-capturing queen promotion — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-10 on the classic kernel).** (BOARD-2): pawn
      captures target enemy occupancy only, every non-capture promotion is
      generated with the quiets, and quiescence outside check generates
