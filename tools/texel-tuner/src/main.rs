@@ -1,6 +1,6 @@
 //! Rarog Texel eval tuner.
 //!
-//! A faithful Rust port of `tools/texel/reference/basilisk_tuner.cpp`:
+//! A Rust port of Basilisk's Texel tuner:
 //! golden-section K-fit, full-batch Adam, staged group masks, the
 //! `linear_delta_scale` that captures Rarog's frozen non-linear factors, the
 //! reconstruction `--verify` gate, and the `name index value` output format
@@ -225,10 +225,10 @@ fn active_indices_for_group(group: &str) -> Vec<usize> {
         "minors" => push_all(&mut active, MINORS),
         "mobility" => push_all(&mut active, MOBILITY),
         "threats" => push_all(&mut active, THREATS),
-        // Narrow affected-family refit for the HCE semantics bundle
-        // — the pawn tables (support + new phalanx), passers, the rook-behind
-        // pair, the attacked2-affected threats, and the square-rule scalar.
-        // Nothing else (lesson 1: no all-parameter fit).
+        // Narrow refit of the families a semantics change touched: the pawn
+        // tables (support and phalanx), passers, the rook-behind pair, the
+        // threats and the square-rule scalar. Nothing else: no all-parameter
+        // fit.
         "p74" => {
             push_all(&mut active, PAWNSTRUCT);
             push_all(&mut active, PASSERS);
@@ -561,16 +561,12 @@ const BUCKET_NAMES: &[&str] = &[
 /// buckets, computed once from `EVAL_PARAM_NAMES`. The king-attack bucket
 /// reads the trace's `king_danger` flag: the map's output is untraced.
 ///
-/// Each family is a LIST of ranges, not one min..max span. The span form was a
-/// silent instrument failure: `passed*` is 13 fields totalling 27 slots but
-/// they are **not contiguous**, so min..max covered [780,1211) = 431 slots, of
-/// which 404 belonged to 113 other fields -- every pawn-structure term, the
-/// threats, king safety, all of it. The bucket then fired whenever any of those
-/// foreign slots was nonzero, which is nearly always: it selected 127,777 of
-/// 127,778 positions and therefore measured nothing at all, while looking like
-/// a working cohort. `threat` (48 slots) and the king-safety table (40, since
-/// replaced) happened to be contiguous, so those two buckets were correct --
-/// which is exactly why the bug survived: two thirds of the instrument worked.
+/// Each family is a LIST of ranges, not one min..max span: the `passed*` fields
+/// are **not contiguous**, so a span would cover the slots of other fields
+/// (pawn structure, threats, king safety). The bucket would then fire whenever
+/// any of those foreign slots was nonzero, which is nearly always: measured,
+/// the span selected 127,777 of 127,778 positions, a cohort that looks real
+/// and measures nothing.
 struct FamilyRanges {
     passer: Vec<(usize, usize)>,
     threat: Vec<(usize, usize)>,
@@ -670,9 +666,9 @@ struct TuneSet {
     result: Vec<f32>,
     base_score: Vec<f32>,
     /// CSR row offsets plus parallel active-coordinate/value arrays. A complete
-    /// 1,194-coordinate row is overwhelmingly zero; the old dense layout used
-    /// about 11 GiB for the 2.30M-position corpus and multiplied every zero in
-    /// every epoch. `u16` is sufficient because FLAT_SIZE is 1,218.
+    /// row is overwhelmingly zero; a dense layout would use about 11 GiB for
+    /// the 2.30M-position corpus and multiply every zero in every epoch. `u16`
+    /// is sufficient because `FLAT_SIZE` is below 65,536.
     row_offsets: Vec<usize>,
     coeff_indices: Vec<u16>,
     coeff_values: Vec<f32>,
@@ -1229,8 +1225,8 @@ fn cmd_verify(path: &str, weights: Option<&str>) {
         let trace = evaluator.last_trace();
         // `trace.raw` is the independently accumulated linear tapered score.
         // Comparing reconstruction directly against it catches missing/wrong
-        // feature counts. The old check derived `rest = score - recon` and
-        // then compared `score == recon + rest`, which was true by definition.
+        // feature counts; comparing against a quantity derived from `recon`
+        // itself would be true by definition.
         let recon = trace.reconstruct(&params);
         let err = (trace.raw - recon).abs();
         if err != 0 {

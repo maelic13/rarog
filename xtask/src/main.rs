@@ -572,11 +572,9 @@ fn rustflags(arch: Arch, native: bool) -> Vec<String> {
 // tier computes exactly the right node count on every machine that can run it
 // at all, and crashes with `#UD` on the machines the tier exists for.
 //
-// It was not hypothetical. The 2.3.0/2.3.1 baseline assets shipped **15 `popcntq`**,
-// every one of them from `vendor/fathom`, because `-C target-cpu` is a rustc
-// flag that `cc` never sees and Fathom picks its popcount from the compiler
-// rather than from the target (fixed in `build.rs`). This command is what keeps
-// that class of drift from coming back silently.
+// The drift is real: `-C target-cpu` is a rustc flag that `cc` never sees, so
+// `vendor/fathom` picks its popcount from the compiler rather than from the
+// target (`build.rs` pins it). This command catches that class of drift.
 //
 // SCOPE, stated honestly: this proves the CLASSES named below and nothing
 // wider. It is a lower bound on conformance, not a proof of it.
@@ -586,9 +584,8 @@ fn rustflags(arch: Arch, native: bool) -> Vec<String> {
 /// The feature name is the load-bearing field. What a tier may emit is decided
 /// by asking RUSTC what its `target-cpu` enables, never by a list maintained
 /// here from memory — that list would be folklore, and folklore is exactly what
-/// this command exists to replace. Writing one down was tried first and was
-/// wrong within the hour: `movddup` was assumed to be outside the baseline, and
-/// the pinned rustc's `x86-64` model turns out to enable `sse3`.
+/// this command exists to replace (the pinned rustc's `x86-64` model enables
+/// `sse3`, so `movddup` is baseline).
 struct InstructionClass {
     name: &'static str,
     feature: &'static str,
@@ -855,8 +852,7 @@ fn tier_features(arch: Arch, target: &str, default_cpu: bool) -> Result<Vec<Stri
     // emit, so the checker would be reporting a defect that is really a
     // mismatch between what was built and what was asserted. Every other
     // shipped triple happens to agree (both x86-64 defaults equal the base
-    // tier; both non-Apple aarch64 defaults equal `generic`), which is exactly
-    // why this needed to be found by inspection rather than by a green run.
+    // tier; both non-Apple aarch64 defaults equal `generic`).
     if !default_cpu {
         // Reuse the very flags the build uses, minus `--cfg`, which selects a
         // source path rather than an instruction set.
@@ -893,12 +889,9 @@ fn tier_features(arch: Arch, target: &str, default_cpu: bool) -> Result<Vec<Stri
 /// Find the tier's artifact in `target/dist`, accepting either PGO flavour.
 ///
 /// `--pgo` is a BUILD flag; it says nothing about which instructions an
-/// artifact contains, so requiring the caller to repeat it here bought nothing
-/// and cost a real failure: a PGO arm64 build followed by the obvious
-/// `verify-isa` reported "artifact not found" while the artifact sat next to
-/// the name it looked for. Try the requested flavour, then the other, and only
-/// then fail — listing what IS there, because "not found" without the
-/// directory contents is the least useful thing a tool can say.
+/// artifact contains, so the caller need not repeat it here. Try the requested
+/// flavour, then the other, and only then fail, listing what is in the
+/// directory.
 fn resolve_dist_artifact(config: &Config) -> Result<PathBuf> {
     let dist = PathBuf::from("target").join("dist");
     let version = build_name::display_version(&package_version()?, Path::new("."))?;
@@ -1364,31 +1357,6 @@ fn find_rustup_llvm_tool(name: &str) -> Option<PathBuf> {
     candidate.exists().then_some(candidate)
 }
 
-/// Linker overrides a target needs on top of its codegen flags.
-///
-/// WORKAROUND — REMOVE WHEN FIXED UPSTREAM (rust-lang/rust#156675, open as of
-/// rustc 1.97.1 / LLVM 22.1.6).
-///
-/// `aarch64-pc-windows-msvc` only. Linked with MSVC's `link.exe`, the
-/// instrumented binary runs correctly but writes a `.profraw` whose
-/// symbol-name table is empty, so `llvm-profdata merge` rejects every input
-/// with "malformed instrumentation profile data: symbol name is empty" and
-/// then "no profile can be merged" — PGO cannot complete at all. Linking the
-/// same objects with LLD fixes it outright: the merged profile carries real
-/// mangled Rust symbols and `-C profile-use` consumes it.
-///
-/// `/OPT:NOREF /OPT:NOICF` does NOT help, so this is not link.exe dead-stripping
-/// `__llvm_prf_names` — the names section is present and non-empty in the
-/// failing binary. The two linkers disagree about something else in the
-/// `__llvm_prf` layout; the precise mechanism is unknown here.
-///
-/// On every toolchain bump: delete this function and run
-/// `cargo xtask build --arch arm64 --pgo` on Windows ARM64. If the merge
-/// succeeds, link.exe is fixed and the override is dead weight.
-///
-/// Applied to EVERY build of the target, not just `--pgo` ones, so the PGO and
-/// non-PGO binaries differ in exactly one variable — the profile — and a
-/// performance bisect never has to ask "which linker was that one?".
 /// The C runtime linked into the binary where the platform allows it, so a
 /// user needs nothing installed: the Visual C++ runtime and the UCRT on
 /// Windows, glibc on Linux (a static PIE, no glibc floor). macOS cannot:
@@ -1476,6 +1444,31 @@ fn elf_runtime_dependencies(text: &str) -> Vec<String> {
         .collect()
 }
 
+/// Linker overrides a target needs on top of its codegen flags.
+///
+/// WORKAROUND — REMOVE WHEN FIXED UPSTREAM (rust-lang/rust#156675, open as of
+/// rustc 1.97.1 / LLVM 22.1.6).
+///
+/// `aarch64-pc-windows-msvc` only. Linked with MSVC's `link.exe`, the
+/// instrumented binary runs correctly but writes a `.profraw` whose
+/// symbol-name table is empty, so `llvm-profdata merge` rejects every input
+/// with "malformed instrumentation profile data: symbol name is empty" and
+/// then "no profile can be merged" — PGO cannot complete at all. Linking the
+/// same objects with LLD fixes it outright: the merged profile carries real
+/// mangled Rust symbols and `-C profile-use` consumes it.
+///
+/// `/OPT:NOREF /OPT:NOICF` does NOT help, so this is not link.exe dead-stripping
+/// `__llvm_prf_names` — the names section is present and non-empty in the
+/// failing binary. The two linkers disagree about something else in the
+/// `__llvm_prf` layout; the precise mechanism is unknown here.
+///
+/// On every toolchain bump: delete this function and run
+/// `cargo xtask build --arch arm64 --pgo` on Windows ARM64. If the merge
+/// succeeds, link.exe is fixed and the override is dead weight.
+///
+/// Applied to EVERY build of the target, not just `--pgo` ones, so the PGO and
+/// non-PGO binaries differ in exactly one variable — the profile — and a
+/// performance bisect never has to ask "which linker was that one?".
 fn linker_flags(target: &str) -> Result<Vec<String>> {
     if target != "aarch64-pc-windows-msvc" {
         return Ok(Vec::new());
@@ -1820,7 +1813,7 @@ const KERNEL_FUNCTIONS: [&str; 2] = ["Searcher15compact_negamax", "Searcher18com
 /// A copy the training bench never reaches still has a profile record, with
 /// every count zero, so LLVM lays it out cold without a word: its
 /// missing-profile warning fires only for functions with no record at all.
-/// A kernel instantiated per caller once left every multi-thread search
+/// A kernel instantiated per caller would leave every multi-thread search
 /// running untrained copies this way. The merged profile says which ran.
 fn check_kernel_trained(llvm_profdata: &Path, profdata: &Path, functions: [&str; 2]) -> Result<()> {
     let output = Command::new(llvm_profdata)
@@ -1940,7 +1933,7 @@ fn merge_profiles(
 /// Targets with a known merge failure mode get an actionable hint instead of a
 /// bare exit code.
 ///
-/// On `aarch64-pc-windows-msvc` a merge failure now means the LLD override in
+/// On `aarch64-pc-windows-msvc` a merge failure means the LLD override in
 /// [`linker_flags`] did not take effect — with it, the merge succeeds; without
 /// it, every `.profraw` has an empty symbol-name table. So point at the
 /// override rather than declaring PGO impossible.
@@ -2544,7 +2537,7 @@ Instrumentation level: IR
         }
     }
 
-    /// The names the maintainer agreed (PLAN E.3.2): the version as `id name`
+    /// The file-name scheme: the version as `id name`
     /// gives it, `x64` or `arm64`, the tier word, then the kinds in order.
     #[test]
     fn file_names_follow_the_scheme() {
