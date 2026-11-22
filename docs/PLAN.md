@@ -395,18 +395,11 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.10 | RESEARCH | R2 | Review after D.7: an evaluation item; its screen as written, read through the kernel's wrapper |
 | D.6.13 | RESEARCH | R2 | Review after D.7: the kernel's window is its donor's; confirm the classic's fail-low form has no instance left, close if moot |
 | D.6.15 | RESEARCH | R2 | Review after D.7: `compact_eval` passes a draw verdict as 0 with no correction and no optimism; confirm by its test and the three draw anchors |
 | D.6.16 | RESEARCH | R2 | Review after D.7: quiescence is the donor's form; re-evaluate the gain pruning against a decisive material edge on it |
 | D.6.17 | RESEARCH | R2 | Review after D.7: the ignored transposing-rook anchor and the promotion anchors run on the new kernel and its root order (D.7.8.3) |
 | D.6.20 | RESEARCH | R2 | Review after D.7: the ignored won-ending clock test run on the new kernel; the fail-high stop is the root driver's and stays |
-| D.6.21 | RESEARCH | R2 | Review after D.7: an evaluation item; screen: does a one- or two-ply search of the new kernel already read the 88 above 0; minutes |
-| D.6.22 | RESEARCH | R2 | Review after D.7: an evaluation item; screen: a per-site scale that keeps the draws near 0 and the wins above it; minutes |
-| D.6.23 | RESEARCH | R2 | Review after D.7: an evaluation item; screen: raw against corrected at the non-verdict leaves near the verdicts in the 63 fixture searches; minutes |
-| D.6.24 | RESEARCH | R2 | Review after D.7: an evaluation item; screen: a narrowed or discounted fortress on the same enumeration, draws kept at 0 and wins lifted; minutes |
-| D.6.25 | RESEARCH | R2 | Review after D.7: an evaluation item; screen: does any search at the gate's budget pick the bishop promotion, or score the same-coloured pair above a draw at the root; minutes |
-| D.6.26 | RESEARCH | R2 | Review after D.7: an evaluation item; screen: the pawnless one-minor-ahead classes against Syzygy over an enumeration, and their exposure in the new kernel's games; minutes |
 | D.6.27 | RESEARCH | R2 | Review after D.7: the kernel has no IIR, as its donor; close if moot |
 | D.6.29 | RESEARCH | R2 | Review after D.7: the kernel's quiescence scores no stalemate, as its donor's; the replay that read 19.2% of searches on the 2.7.0 kernel, taken again |
 | D.6.30 | RESEARCH | R2 | Review after D.7: the proven-win rule is the root driver's and stays; confirm it under the kernel's narrow windows and fail-high reduction |
@@ -1174,7 +1167,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      for its null move. Pinned by the bench-positions test and the mate
      test (the count equals a test-only tally of moves made) and by
      `a_depth_one_search_counts_each_root_move_once` (20 from the start).
-    - **D.6.9 The endgame scale's target — `R2`, CLOSED 2026-11-22: moved into E.4's refit.** (EVAL-5): `evaluate` adds tempo to `mg`,
+    - **D.6.9 The endgame scale's target — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (EVAL-5): `evaluate` adds tempo to `mg`,
      tapers, then `scale_endgame` multiplies the whole; both donor commits
      scale the endgame half only (`v = mg·p + eg·(128−p)·sf/64`), so the forms
      differ for the opposite-bishop rule with pieces on the board and the
@@ -1196,19 +1189,34 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
 
      The middlegame case the card names almost never arises: with pieces
      on the board the scale bites only at three pawns or fewer. **Closed
-     here, moved into E.4's refit** (maintainer decision 2026-11-22): that
-     refit fits both forms and lets held-out loss and its gate choose, so
+     here, moved into E.4's refit, now E.4.2** (maintainer decision
+     2026-11-22): it fits both forms and lets held-out loss and its gate choose, so
      the constants stay consistent with the form. The count:
      `analysis/artifacts/d69-review-2026-11-22/ocb_exposure.py` (SHA-256
      `34c97b8d…`, its output `b967dfc7…`), on RAR-M91's PGN, seed
      20261122.
-    - **D.6.10 The pawnless default factor — `R2`.** (EVAL-6): `material.cpp:195–203` scales
+    - **D.6.10 The pawnless default factor — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (EVAL-6): `material.cpp:195–203` scales
       a side with no pawns and a small material edge to 0, 4 or 14 of 64;
       Rarog's pawnless branch covers at most one minor in total or one each,
       so K+B+N v K+B keeps two thirds of about a knight. Never a ranked family
       (the family list is SF11's endgame functions). Screen: the families'
       share of the game record; at 0.5% of games or more the Syzygy
       drawn-overclaim read of RAR-E36. Case 2.
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     gap is still there, an evaluation rule the kernel leaves as it was.
+     Stockfish 11 scales a side with no pawns whose non-pawn material
+     leads by at most a bishop (to a draw under a rook's worth, else 4 or
+     14 of 64); Rarog's branch only scales a board with no pawns at all, no
+     rooks or queens, and one minor or a minor each. The card's screen fires:
+     1,320 of the kernel's 8,800 games in RAR-M91 (15.0%) reach a position
+     the donor's rule scales and Rarog's does not, 4.2% of all positions,
+     and fifteen families pass 0.5% of games each, KRN-KR, KB-KP, KR-KB,
+     KR-KN and KRB-KR at 1.1% to 1.3%
+     (`analysis/artifacts/d610-review-2026-11-22/pawnless_exposure.py`,
+     SHA-256 `66f18f80…`, its output `0f841fb0…`). The same mechanism is
+     D.6.26's. **Closed here, moved into E.4.2** (maintainer decision
+     2026-11-22), where the card's next read, the Syzygy drawn-overclaim
+     read, runs over every endgame family together.
     - **D.6.13 The aspiration fail-low window — `R2`.** (DRIVER-13): the code halves toward
       the new alpha; a counter of fail-lows whose re-search fails high
       (`asp_fail_high` straight after `asp_fail_low` at one depth); above 15%
@@ -1296,7 +1304,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       (maintainer decision): the hole is older than 2.6.0, the hard
       maximum bounds it, and the stop sits in the loop D.7 replaces, so
       the review after D.7 asks first.
-    - **D.6.21 Won KPK positions read at or below 0 — `R2`.** (D.5.19's read,
+    - **D.6.21 Won KPK positions read at or below 0 — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (D.5.19's read,
       2026-11-02; Basilisk's A3): 88 of 445,128 won KPK positions read at
       or below 0 for the winner, 78 of the wrong sign and 10 exactly 0,
       all where the bitbase correctly passes a win to the generic
@@ -1311,7 +1319,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `every_won_kpk_reads_above_zero_for_the_winner` in
       `tests/kpk_syzygy.rs`; gate case 1 by a static differential over KPK
       positions. `R2` read, minutes.
-    - **D.6.22 `krpkr_scale`'s hard zeros on won positions — `R2`.** (D.5.19's read,
+     **Closed here, moved into E.4.2** (maintainer decision 2026-11-22),
+     before its review on the kernel; its screen runs there with the
+     other endgame families'.
+    - **D.6.22 `krpkr_scale`'s hard zeros on won positions — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (D.5.19's read,
       2026-11-02; Basilisk's BAS-E54 found 18 of 3,000): over 2,000,000
       quiet random KRPKR positions the five `Some(0)` sites fired 65,865
       times, 97.6% on Syzygy draws; 1,137 (1.7%) are wins for the pawn
@@ -1327,7 +1338,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       registration states its measured exposure and the gate case follows
       (a static differential confines it, case 1; a refitted scale is a
       value change, case 2's fixed read). `R2` card.
-    - **D.6.23 Wrong-bishop draws still misread through leaves the recogniser does not cover — `R2`.**
+     **Closed here, moved into E.4.2** (maintainer decision 2026-11-22),
+     before its review on the kernel; its screen runs there with the
+     other endgame families'.
+    - **D.6.23 Wrong-bishop draws still misread through leaves the recogniser does not cover — `R2`, CLOSED 2026-11-22: moved into E.4.2.**
       D.6.15's falsifier (2026-11-03): with the correction kept off every
       verdict, Basilisk's four wrong-bishop KBP-K draws still read beyond
       ±75 in 7 of 28 searches from cleared tables (+83 to +103) and in 9 of
@@ -1346,7 +1360,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       leaves within a move of a verdict, raw against corrected, on the 63
       searches. Acceptance test: `wrong_bishop_draws_read_as_draws_with_cleared_and_trained_tables`
       in `tests/endgames.rs`, committed `#[ignore]`d. `R2` read, minutes.
-    - **D.6.24 The KQKP fortress's hard zeros on won positions — `R2`.** (D.5.19's read,
+     **Closed here, moved into E.4.2** (maintainer decision 2026-11-22),
+     before its review on the kernel; its screen runs there with the
+     other endgame families'.
+    - **D.6.24 The KQKP fortress's hard zeros on won positions — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (D.5.19's read,
       2026-11-08): over every legal KQvKP position with the pawn on the
       defender's seventh, 5,552,520 of them, `kqkp_fortress_scale` returns 0
       at 172,256: 131,256 Syzygy draws, 32,360 wins for the queen side and
@@ -1363,7 +1380,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       lifted. The registration states measured exposure (gate games
       reaching KQKP with a seventh-rank rook or bishop pawn); a narrowed zone
       that a static differential confines is case 1. `R2` card, minutes.
-    - **D.6.25 Two same-coloured bishops outscore a queen against a bare king — `R2`.** (D.5.21's
+     **Closed here, moved into E.4.2** (maintainer decision 2026-11-22),
+     before its review on the kernel; its screen runs there with the
+     other endgame families'.
+    - **D.6.25 Two same-coloured bishops outscore a queen against a bare king — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (D.5.21's
       port of Basilisk's `bare_king_material_is_monotone`, 2026-11-08): from
       `1B6/5P2/8/2k2K2/8/8/8/8 w` the promotions evaluate queen 1433, rook
       990, knight 1097 and bishop 1537, and the bishop's position, two
@@ -1375,7 +1395,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       chooses the drawn material, and the exposure of KBB-K with one colour
       in gate games. Acceptance test: `bare_king_promotion_order` in
       `tests/behaviour_anchors.rs`, committed `#[ignore]`d. `R2` card.
-    - **D.6.26 Pawnless endings a minor ahead read as wins — `R2`.** (D.5.21's port of Basilisk's
+     **Closed here, moved into E.4.2** (maintainer decision 2026-11-22),
+     before its review on the kernel; its screen runs there with the
+     other endgame families'.
+    - **D.6.26 Pawnless endings a minor ahead read as wins — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (D.5.21's port of Basilisk's
       `pawnless_scale_truth_table`, 2026-11-08): Rarog has no scale for a
       pawnless side only a minor ahead, so Syzygy draws read KR-KB 277,
       KRB-KR 253 and KRN-KR 173, where the dead KB-KN draw reads 0 and three
@@ -1384,6 +1407,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the repair form is a scale, as Stockfish 11's. Acceptance test:
       `pawnless_scale_truth_table` in `tests/behaviour_anchors.rs`, committed
       `#[ignore]`d (needs `RAROG_SYZYGY_PATH`). `R2` card.
+     **Closed here, moved into E.4.2** (maintainer decision 2026-11-22),
+     before its review on the kernel; its screen runs there with the
+     other endgame families'.
     - **D.6.27 IIR has no node-type condition — `R2`.** (found 2026-11-11,
       RAR-S117): IIR reduces any node of depth 4 or more that has no table
       move. Stockfish 19 reduces only PV and cut nodes, at depth 6 or more,
@@ -4833,106 +4859,169 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       squash-merged once `CI` and `Release` are green; the
       `vX.Y.Z` tag pushed on instruction through E.3.1's workflow, by
       PROCESS *Release*.
-- **E.4 The king-danger index rebuilt in the donor's structure; the classical line's next release if it wins — `R2` card, then `I2`/`V`.** The
-  one hand-crafted lead Phase C left (added 2026-10-22, maintainer
-  decision: classical work resumes only after Phases D and E). Evidence:
-  RAR-E72 read the donor's king signal in the middlegame band as
-  conditioning, +0.28% static over the comparator; RAR-E73 refitted our 23
-  danger coordinates from the donor's seeds and lost held-out loss, closing
-  the lead as the index's structure, not its weights; RAR-E21 put 92% of the
-  king residual in the danger map, its safe checks and weak ring foremost.
-  Independent of Phase F's data, so it runs after E.3's release and before
-  F.0; a win also strengthens F.4's labels, which the classical head
-  generates. Research card first: which structural difference carries
-  the signal, the cheapest static falsifier, the unit's handoff. Then the
-  unit in Rarog's own structure, fitted on `hce-v4-tb` by C.3's pipeline and
-  gated by PROCESS's *Evaluation change under a fitted search* (gate 1
-  `[0,3]`, the margin block if flagged, gate 2), with RAR-O07's same-search
-  meter re-read at the close. Prior from Phase C's units: +10 to +25 Elo,
-  frozen with its band at the registration. Accepted, it is released as the
-  classical line's next version through E.3.1's flow and becomes the
-  classical reference of Phase F's rule; `NO_CHANGE` closes the family work
-  and leaves F.4.1 as the classical programme's last experiment.
-  **First step, from the 2026-11-01 review (EVAL-3 in
-  `analysis/engine_review_2026-11-01.md`):** the king-danger inputs are
-  computed on plain attack maps, while the donor's bishop attacks see through
-  queens, its rook attacks through queens and own rooks, and a pinned piece's
-  attacks are cut to the king line (`evaluate.cpp:269–274`); C.3's fixture
-  came from a donor patched to plain maps, so it proves nothing about the
-  donor as played, and RAR-E72 put the king lead in the four inputs that read
-  those maps. Zero games: stack `tools/diag/patches/sf9587_plain_maps.patch`
-  on the sub-term patch and read RAR-E72's (B) with each bundle; frozen rule:
-  x-ray and pin lines are the carrier if the plain bundle's (B) is at most
-  half of +0.194; if so, the unit is an attack-map producer change that moves
-  mobility, threats and king danger together (gate 3 with a refit), otherwise
-  the lead is weights, cap or structure and the rebuild above is the owner.
-  Also for the refit: the endgame scale's target (D.6.9, moved here
-  2026-11-22): fit both forms, the whole score scaled as now and the
-  endgame half only as Stockfish 11 scales it, with the scale constants
-  refitted under each, and let held-out loss and the gate choose; the
-  forms differ mostly in pure opposite-bishop endings, 1.5% of the
-  kernel's positions. The bishop pair's three representations fold exactly
-  (EVAL-11), and a second-difference penalty on the mobility tables and the
-  pawn PST (EVAL-13). And the piece-term definitions no experiment read
-  (EVAL-10; D.6.11 until 2026-11-05): outposts use the current enemy pawn
-  attacks rather than the attack span; minor-behind-pawn counts own pawns
-  only; the long diagonal reads the enemy king zone rather than the two
-  centre squares. Screen before the fit: an E62-style direction read, zero
-  games; a term at the line enters this unit's refit. If the rebuild
-  moves the endgame king danger, read the
-  phase with it (H32): with piece-count phase weights the middlegame share
-  in simplified endings is far above the donor's (double rook 33% against
-  10%, R+B against R+N 25% against 3%, Q against Q 33% against 13%).
+- **E.4 The hand-crafted evaluation in its donor's shape: the donor, a rebuild or repairs, endgame knowledge and the fit; the classical line's next release if it wins — `R3` card, then `I2`/`V`.**
+  Reworked 2026-11-22 (maintainer decision, after D.6's review on the
+  compact kernel): the review found Rarog's evaluation off its donor's
+  shape in several places, most of them endgame knowledge, so the
+  programme opens with research on the donor and the form, as D.7's
+  research opened the search's rebuild, and the endgame items D.6 found
+  are consolidated in it. Classical work resumes after Phases D and E's
+  release (maintainer decision 2026-10-22), and E.0's ranking places this
+  programme among the other levers. The sub-steps run in number order; the
+  king-danger unit, E.4's whole content until this rework, is E.4.3.
+  Every evaluation change here runs PROCESS's *Evaluation change under a
+  fitted search*.
   *From D.7.11 (2026-11-20):* this is the first evaluation change under
   the fitted kernel, so its margin block (PROCESS, *Evaluation change
   under a fitted search*, restated at D.7.14) is where `LazyMargin` is
   refitted. It was last fitted with the classic search (RAR-S104, 423 to
   475, no gradient past noise), and D.7.11 held it at 475 with the
   kernel's margins fitted against it.
-  **The tuner before the refit (added 2026-11-22, from Basilisk's C.2.1.2,
-  read on Rarog's tuner the same day).** Rarog's tuner already fits the
-  played score: the lazy gate applies under `texel`, the base score is
-  `evaluate()`'s own, `linear_delta_scale` calls the evaluator's scale
-  rules in its order, and `--verify` compares against the evaluator's own
-  sum, so Basilisk's defect is not here. Five gaps remain, each closed by
-  a check that can fail:
-  1. `fit_k` searches [0.5, 2.5] and says nothing at a bound: K at a bound
-     fails the run.
-  2. `clamp_weights` applies sign priors, passer ranks 0 and 7 at zero
-     and a running maximum on the passer ranks to every coordinate after
-     each step, and no manifest lists them: the run asserts that the
-     clamps leave the seed unchanged, and the fitting manifest lists them.
-  3. Rows the evaluator does not score linearly. A draw verdict scores 0
-     with every coefficient 0, so it moves neither K nor a gradient and
-     only adds a constant to the reported loss. The mop-up's rows (KBNK,
-     KXK) carry large frozen terms and may move K, as Basilisk's override
-     rows moved its K from 0.00606 to 0.00428: read K and the held-out
-     loss with and without them on `hce-v4-tb`, and report the loss over
-     the rows the fit can move.
-  4. Adam moves a one-signed coordinate about `lr` an epoch, so 200 epochs
-     at 0.3 bound its travel near 60 cp whatever the data say, and the
-     tuner prints its best epoch but accepts a run whose best epoch is its
-     last (Basilisk's T1): fail such a run, or one whose travel reaches 0.9
-     of the bound.
-  5. `extract.py` labels a game however it ended: reject by termination,
-     as Basilisk's row contract does. No row of `hce-v4` changes (612,745
-     normal endings, 2 adjudicated draws, no forfeit), so this binds only
-     a new corpus.
-  **And the method itself (maintainer request, 2026-11-22).** Before the
-  refit, research whether this pipeline is still the best way to fit
-  Rarog's evaluation, and what would do better, by evidence in this
-  engine: the labels (game results, or a blend with the kernel's own
-  search scores; RAR-E03's Stockfish-distilled fit lost 17.11 Elo and
-  stays the prior against distillation); the corpus (`hce-v4-tb`'s games
-  were played by the B.9 head at 8,000 nodes, two searches ago, RAR-M67,
-  against games of the kernel itself; RAR-E12 measured a corpus change
-  alone at +11.8 ± 5.3 Elo); the optimiser (full-batch Adam on a fixed
-  schedule against a converged second-order method); K by phase band; and
-  fitting the evaluation together with the search margins it feeds
-  (PROCESS's margin block) rather than after them. Held-out loss chooses
-  candidates and accepts none (RAR-E03 improved it and lost); a method
-  that changes the fit's result reaches E.4's gate, one that does not
-  closes `NO_CHANGE`. E.0's ranking may reorder this work.
+    - **E.4.0 The donor and the form — `R3`.** Research only, no engine
+      change; added 2026-11-22 (maintainer decision). Its questions:
+      1. *The donor.* Stockfish 11's classical evaluation, the design
+         Rarog's follows today, or Stockfish 16's (`sf_16`), the last
+         Stockfish shipped and Basilisk's donor, or `9587eeeb`'s
+         (`SF_classical`), the last classical master. The evidence so far,
+         Basilisk's included, is copied into
+         `analysis/hce_donor_evidence_2026-11-22.md` so that it does not
+         depend on Basilisk: in games `sf_16`'s and `9587eeeb`'s
+         evaluations are equal within about 8 Elo in either search
+         (BAS-O09), statically `9587eeeb`'s leads slightly (BAS-E58), and
+         Basilisk kept `sf_16` by its frozen rule. Stockfish 11 was never
+         measured against them, and Rarog's evaluation has not been read
+         against either.
+      2. *The form.* Rebuild Rarog's evaluation whole in the chosen donor's
+         form, as D.7 rebuilt the search (one unit, parity with the donor by
+         fixture before any fit, then one whole-surface fit and one gate),
+         or repair it family by family. Decide by evidence in this engine:
+         a static read of Rarog's evaluation against the donor's on the
+         kernel's game positions by phase and by family (BAS-E58's
+         method), and where Rarog's own terms carry information the
+         donor's lack.
+      3. *The interactions with the compact kernel:* its evaluation
+         wrapper (the correction, the material scaling), `LazyMargin`, the
+         draw verdicts, and the kernel's margins, fitted on today's
+         evaluation (D.7.11).
+      4. *The fitting method,* below, moved here from the refit.
+
+      Output: a packet in `analysis/` whose decision is the maintainer's
+      before anything is built; it adds the sub-steps the decision needs,
+      and a rebuild takes E.4.2 and E.4.3 into its own units.
+      **And the method itself (maintainer request, 2026-11-22).** Before the
+      refit, research whether this pipeline is still the best way to fit
+      Rarog's evaluation, and what would do better, by evidence in this
+      engine: the labels (game results, or a blend with the kernel's own
+      search scores; RAR-E03's Stockfish-distilled fit lost 17.11 Elo and
+      stays the prior against distillation); the corpus (`hce-v4-tb`'s games
+      were played by the B.9 head at 8,000 nodes, two searches ago, RAR-M67,
+      against games of the kernel itself; RAR-E12 measured a corpus change
+      alone at +11.8 ± 5.3 Elo); the optimiser (full-batch Adam on a fixed
+      schedule against a converged second-order method); K by phase band; and
+      fitting the evaluation together with the search margins it feeds
+      (PROCESS's margin block) rather than after them. Held-out loss chooses
+      candidates and accepts none (RAR-E03 improved it and lost); a method
+      that changes the fit's result reaches E.4's gate, one that does not
+      closes `NO_CHANGE`. E.0's ranking may reorder this work.
+    - **E.4.1 The tuner before any fit — `I1`.** The five checks below,
+      added 2026-11-22 to the refit and moved here when E.4 became the
+      programme, land before the programme's first fit.
+      **The tuner before the refit (added 2026-11-22, from Basilisk's C.2.1.2,
+      read on Rarog's tuner the same day).** Rarog's tuner already fits the
+      played score: the lazy gate applies under `texel`, the base score is
+      `evaluate()`'s own, `linear_delta_scale` calls the evaluator's scale
+      rules in its order, and `--verify` compares against the evaluator's own
+      sum, so Basilisk's defect is not here. Five gaps remain, each closed by
+      a check that can fail:
+      1. `fit_k` searches [0.5, 2.5] and says nothing at a bound: K at a bound
+         fails the run.
+      2. `clamp_weights` applies sign priors, passer ranks 0 and 7 at zero
+         and a running maximum on the passer ranks to every coordinate after
+         each step, and no manifest lists them: the run asserts that the
+         clamps leave the seed unchanged, and the fitting manifest lists them.
+      3. Rows the evaluator does not score linearly. A draw verdict scores 0
+         with every coefficient 0, so it moves neither K nor a gradient and
+         only adds a constant to the reported loss. The mop-up's rows (KBNK,
+         KXK) carry large frozen terms and may move K, as Basilisk's override
+         rows moved its K from 0.00606 to 0.00428: read K and the held-out
+         loss with and without them on `hce-v4-tb`, and report the loss over
+         the rows the fit can move.
+      4. Adam moves a one-signed coordinate about `lr` an epoch, so 200 epochs
+         at 0.3 bound its travel near 60 cp whatever the data say, and the
+         tuner prints its best epoch but accepts a run whose best epoch is its
+         last (Basilisk's T1): fail such a run, or one whose travel reaches 0.9
+         of the bound.
+      5. `extract.py` labels a game however it ended: reject by termination,
+         as Basilisk's row contract does. No row of `hce-v4` changes (612,745
+         normal endings, 2 adjudicated draws, no forfeit), so this binds only
+         a new corpus.
+    - **E.4.2 Endgame knowledge — `R2`, then `I2`/`V`.** Consolidated
+      2026-11-22 (maintainer decision) from D.6's review on the compact
+      kernel: D.6.9 (the endgame scale's target), D.6.10 (the pawnless
+      default factor), D.6.21 (won KPK positions at or below 0), D.6.22
+      (`krpkr_scale`'s hard zeros), D.6.23 (wrong-bishop draws through
+      uncovered leaves), D.6.24 (the KQKP fortress's hard zeros), D.6.25
+      (two same-coloured bishops above a queen) and D.6.26 (pawnless endings
+      a minor ahead read as wins). Each keeps its card and screens in D.6.
+      One Syzygy screen over all their families on the kernel's own game
+      positions comes first (RAR-E36's drawn-overclaim method), D.6.10's
+      families with it: 15% of the kernel's games reach a pawnless family
+      Stockfish 11 scales and Rarog does not
+      (`analysis/artifacts/d610-review-2026-11-22/`). Then repairs grouped by
+      the families they touch, each gated as a repair (AGENTS, *Gating*).
+      If E.4.0 decides a rebuild, these become its endgame cluster.
+      Also for the refit: the endgame scale's target (D.6.9, moved here
+      2026-11-22): fit both forms, the whole score scaled as now and the
+      endgame half only as Stockfish 11 scales it, with the scale constants
+      refitted under each, and let held-out loss and the gate choose; the
+      forms differ mostly in pure opposite-bishop endings, 1.5% of the
+      kernel's positions.
+    - **E.4.3 The king-danger index rebuilt in the donor's structure — `R2` card, then `I2`/`V`.** The
+      one hand-crafted lead Phase C left (added 2026-10-22, maintainer
+      decision: classical work resumes only after Phases D and E). Evidence:
+      RAR-E72 read the donor's king signal in the middlegame band as
+      conditioning, +0.28% static over the comparator; RAR-E73 refitted our 23
+      danger coordinates from the donor's seeds and lost held-out loss, closing
+      the lead as the index's structure, not its weights; RAR-E21 put 92% of the
+      king residual in the danger map, its safe checks and weak ring foremost.
+      Independent of Phase F's data, so it runs after E.3's release and before
+      F.0; a win also strengthens F.4's labels, which the classical head
+      generates. Research card first: which structural difference carries
+      the signal, the cheapest static falsifier, the unit's handoff. Then the
+      unit in Rarog's own structure, fitted on `hce-v4-tb` by C.3's pipeline and
+      gated by PROCESS's *Evaluation change under a fitted search* (gate 1
+      `[0,3]`, the margin block if flagged, gate 2), with RAR-O07's same-search
+      meter re-read at the close. Prior from Phase C's units: +10 to +25 Elo,
+      frozen with its band at the registration. Accepted, it is released as the
+      classical line's next version through E.3.1's flow and becomes the
+      classical reference of Phase F's rule; `NO_CHANGE` closes the family work
+      and leaves F.4.1 as the classical programme's last experiment.
+      **First step, from the 2026-11-01 review (EVAL-3 in
+      `analysis/engine_review_2026-11-01.md`):** the king-danger inputs are
+      computed on plain attack maps, while the donor's bishop attacks see through
+      queens, its rook attacks through queens and own rooks, and a pinned piece's
+      attacks are cut to the king line (`evaluate.cpp:269–274`); C.3's fixture
+      came from a donor patched to plain maps, so it proves nothing about the
+      donor as played, and RAR-E72 put the king lead in the four inputs that read
+      those maps. Zero games: stack `tools/diag/patches/sf9587_plain_maps.patch`
+      on the sub-term patch and read RAR-E72's (B) with each bundle; frozen rule:
+      x-ray and pin lines are the carrier if the plain bundle's (B) is at most
+      half of +0.194; if so, the unit is an attack-map producer change that moves
+      mobility, threats and king danger together (gate 3 with a refit), otherwise
+      the lead is weights, cap or structure and the rebuild above is the owner.
+      The bishop pair's three representations fold exactly
+      (EVAL-11), and a second-difference penalty on the mobility tables and the
+      pawn PST (EVAL-13). And the piece-term definitions no experiment read
+      (EVAL-10; D.6.11 until 2026-11-05): outposts use the current enemy pawn
+      attacks rather than the attack span; minor-behind-pawn counts own pawns
+      only; the long diagonal reads the enemy king zone rather than the two
+      centre squares. Screen before the fit: an E62-style direction read, zero
+      games; a term at the line enters this unit's refit. If the rebuild
+      moves the endgame king danger, read the
+      phase with it (H32): with piece-count phase weights the middlegame share
+      in simplified endings is far above the donor's (double rook 33% against
+      10%, R+B against R+N 25% against 3%, Q against Q 33% against 13%).
+      If E.4.0 decides a rebuild, this unit folds into it.
 ## Phase F — NNUE (own data only)
 
 **Rules.** Own data only, generated by Rarog's classical head and later by its
