@@ -1,9 +1,9 @@
 // `clippy::module_inception` allowed. `board::board` holds the `Board`
 // type itself while the sibling modules hold its supporting concepts
 // (bitboard, movegen, moves, piece, square, zobrist). Renaming it would churn
-// every `use crate::board::board::…` path and every commit that references
-// them, for a naming-style lint with no functional effect. The re-exports
-// below mean callers write `crate::board::Board` regardless.
+// every `use crate::board::board::…` path for a naming-style lint with no
+// functional effect. The re-exports below mean callers write
+// `crate::board::Board` regardless.
 #![allow(clippy::module_inception)]
 
 pub mod attacks;

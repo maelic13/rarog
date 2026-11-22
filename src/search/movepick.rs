@@ -82,7 +82,7 @@ pub(super) struct MovePicker {
 
 impl MovePicker {
     /// An empty picker that hands over `tt_move` first; its list is filled
-    /// in place, as the list is too large to move by value once a window.
+    /// in place, as it is too large to pass by value.
     #[inline(always)]
     pub(super) fn new(tt_move: Move) -> Self {
         Self {

@@ -8,8 +8,8 @@
 //!
 //! Index space is `stm(2) × wk(64) × bk(64) × pawn(64)`. The build script
 //! generates the table (`kpk_generate.rs`) and the engine keeps one bit per
-//! position: generated at run time, it ran inside the first search that
-//! reached KPK, on that search's clock, or delayed start-up.
+//! position: generated at run time, it would run inside the first search that
+//! reached KPK, on that search's clock, or delay start-up.
 
 const SIZE: usize = 2 * 64 * 64 * 64;
 
@@ -39,8 +39,8 @@ mod tests {
         rank0 * 8 + file
     }
 
-    /// The run-time generator the built table replaced, as it was: its own
-    /// geometry, loops and byte table, the built table's oracle.
+    /// An independent run-time generator with its own geometry, loops and
+    /// byte table: the built table's oracle.
     mod reference {
         use crate::infra;
 

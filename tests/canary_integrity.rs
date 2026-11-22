@@ -1,7 +1,6 @@
-//! Test-data integrity canary (adopted 2026-07-16 after the Basilisk canary
-//! post-mortem: its gate had 4 *illegal* endgame positions — side-not-to-move
-//! in check — that "passed by coincidence" and made their eval/playout
-//! meaningless; and Rarog itself once shipped an illegal 9-pawn bench position).
+//! Test-data integrity canary: an illegal position (side-not-to-move in
+//! check, say) can "pass by coincidence" and make its eval or playout
+//! meaningless.
 //!
 //! `Board::from_fen` already rejects illegal positions (side-not-to-move in
 //! check, adjacent kings, bad pawn counts), and every position set is loaded

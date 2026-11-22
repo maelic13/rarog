@@ -1,14 +1,13 @@
-//! 9.5 seeded random-walk differential test.
+//! Seeded random-walk differential test.
 //!
 //! `Board` keeps five redundant representations of one position: the 12 piece
 //! bitboards, the two occupancies, `all_occ`, the mailbox, and five Zobrist
-//! keys. Before this file, only two of them were ever checked — the existing
-//! make/unmake test compares `to_fen()`, `hash`, `is_in_check()` and
-//! `checkers`, and `to_fen()` reads the MAILBOX, so the FEN comparison
-//! validates the mailbox and nothing else.
+//! keys. A `to_fen()`, `hash`, `is_in_check()` and `checkers` comparison
+//! covers only some of them, and `to_fen()` reads the MAILBOX, so the FEN
+//! comparison validates the mailbox and nothing else.
 //!
-//! The unchecked half is the dangerous half. `pawn_key`, `minor_key` and the
-//! two `non_pawn_key`s are CACHE KEYS — they index the pawn cache, correction
+//! The rest is the dangerous half. `pawn_key`, `minor_key` and the two
+//! `non_pawn_key`s are CACHE KEYS — they index the pawn cache, correction
 //! history and pawn history. A drifted key does not crash; it silently
 //! returns another position's cached evaluation, which surfaces much later as
 //! an unexplained Elo loss.
@@ -16,10 +15,6 @@
 //! This walks random legal moves from several structurally different roots,
 //! rebuilding every derived field from the mailbox after each make and each
 //! unmake. Seeded, so a failure reproduces exactly.
-//!
-//! Phase 11 note: NNUE accumulators are this same bug class one level worse —
-//! incrementally maintained state that must always equal a from-scratch
-//! rebuild. This harness is deliberately shaped to extend to them.
 
 use rarog::board::{Board, Move};
 
@@ -136,8 +131,7 @@ fn walk(name: &str, fen: &str, seed: u64, plies: usize) {
         played.push((mv, before));
     }
 
-    // Unwind, asserting FULL field equivalence at every step — not just the
-    // four fields the older snapshot compared.
+    // Unwind, asserting FULL field equivalence at every step.
     while let Some((mv, before)) = played.pop() {
         board.unmake_move(mv);
         board

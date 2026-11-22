@@ -10,37 +10,18 @@ use crate::infra;
 
 /// Manhattan (taxicab) distance between squares, used only by the mate drive.
 ///
-/// Chebyshev distance alone is FLAT -- every square in a ring around the
-/// target scores identically. Measured over 300
-/// theoretically won KBNK positions, the 19 legal moves collapsed into a median
-/// of 3 distinct mop-up values and **94% of positions had a tied best move**,
-/// median best-vs-second gap 0 cp. A term that cannot order its own moves
-/// cannot steer a search, which is why raising the magnitude alone would have
-/// changed nothing: 40x a 0 cp gap is still 0. Manhattan breaks the rings.
+/// Chebyshev distance alone is FLAT: every square in a ring around the target
+/// scores identically, so over 300 won KBNK positions 94% had a tied best move.
+/// A term that cannot order its own moves cannot steer a search, whatever its
+/// magnitude. Manhattan breaks the rings.
 const MANHATTAN_DISTANCE: [[u8; 64]; 64] = init_manhattan_distance();
 /// Mate-drive weights. Chebyshev carries the coarse pull and Manhattan
-/// supplies the resolution that breaks its rings; the pair is what takes the
-/// tied-best-move rate from 94% to 11% on won KBNK positions.
-///
-/// Three things were needed and they were found in this order: RESOLUTION (a
-/// flat metric cannot order its own moves), MAGNITUDE (once ordered, the
-/// difference must survive the pruning thresholds), and RATIO (the corner pull
-/// must dominate the king pull, not merely exceed it). Swept on KBN-K
-/// conversion at 100 positions, 60k nodes:
-///
-///   Chebyshev, 8/4 (accepted head)     19.4%    KBB-K  78.0%
-///   Chebyshev+Manhattan 16/8/10/5      32.7%    KBB-K  96.0%
-///   Chebyshev+Manhattan 32/16/20/10    57.1%    KBB-K 100.0%
-///   diagonal 60  (~1:1 vs king terms)  56.1%    KBB-K 100.0%
-///   diagonal 120 (~3:1)                83.7%    KBB-K 100.0%
-///   diagonal 240 (~6:1)                94.9%    KBB-K 100.0%
-///   diagonal 360 (THESE)               96.9%    KBB-K 100.0%
-///   diagonal 480                       96.9%    KBB-K 100.0%
-///   diagonal 720                       94.9%    KBB-K 100.0%
-///
-/// 360 and 480 tie at the peak; the smaller is taken. The term is gated on
-/// `|approximate| > 200` and on minor-piece mates, so even at this size it only
-/// applies to an already-won bare-king ending and `bench 13` is unchanged.
+/// supplies the resolution that breaks its rings. The diagonal weight sets the
+/// ratio of the corner pull to the king pull, which must dominate, not merely
+/// exceed it: swept on KBN-K conversion (100 positions, 60k nodes), Chebyshev
+/// alone converted 19.4%, with Manhattan 57.1%, a diagonal pull at about 1:1
+/// against the king terms 56.1%, and 96.9% at 360 and at 480 (720 gave 94.9%);
+/// the smaller of the tied peak is taken.
 const MOPUP_DIAGONAL: i32 = 360;
 const MOPUP_KING_CHEB: i32 = 20;
 const MOPUP_KING_MAN: i32 = 10;
@@ -63,11 +44,9 @@ pub(crate) const MOPUP_ASSUMED_MAX_PLY: i32 = 128;
 /// A guidance term must never reach the band the search reads as a forced mate.
 ///
 /// This is a `const` assertion rather than a debug check or a validator inside
-/// an option-setter, and that is the point: the SHIPPED default
-/// is what plays the games, so the bound has to hold in every build type
-/// including release, not only where a tuning build happens to compile a
-/// setter. Basilisk shipped exactly that gap -- its bound was enforced only in
-/// tuning builds and the release default was validated by nothing (BAS-E52).
+/// an option-setter, and that is the point: the SHIPPED default is what plays
+/// the games, so the bound has to hold in every build type including release,
+/// not only where a tuning build happens to compile a setter.
 ///
 /// If this fails, the drive can manufacture a mate score out of king geometry
 /// and the search will believe it.
@@ -123,9 +102,8 @@ const fn init_manhattan_distance() -> [[u8; 64]; 64] {
 
 impl Evaluator {
     /// Mate-drive "mop-up": when one side is clearly winning, nudge the losing
-    /// king toward the edge/corner (the bishop's corner for KBNK). Extracted
-    /// from `eval_piece_activity` so it also runs on the lazy-eval early-return
-    /// path — mating technique must survive a lazy skip. Frozen
+    /// king toward the edge/corner (the bishop's corner for KBNK). It also runs
+    /// on the lazy-eval path, so mating technique survives a lazy skip. Frozen
     /// (non-tunable) term, so it lands in the tuner's `rest`.
     pub(in crate::eval) fn apply_mop_up(&self, board: &Board, mg: &mut i32, eg: &mut i32) {
         let approximate = (*mg + *eg) / 2;
@@ -140,29 +118,16 @@ impl Evaluator {
             let lksq = board.king_sq(losing);
             let wksq = board.king_sq(winning);
             let king_distance = KING_DISTANCE[wksq.index()][lksq.index()] as i32;
-            // KBNK: the generic corner-drive cannot win K+B+N vs K
-            // because it pushes the bare king to the nearest corner, not the
-            // bishop-coloured one. For that exact material pattern, drive the
-            // losing king to a corner matching the winning bishop's colour
-            // instead; keep the generic drive for every other won ending.
-            // The finer drive applies ONLY when the losing side is a
-            // bare king at the point of evaluation. KXK/KBNK match directly,
-            // but a pawn-root family can enter this material shape after an
-            // under-promotion and exchange; its real scope is the dispatcher's
-            // promotion closure, never root material alone. The enclosing
-            // gate is `|approximate| > 200`, which is "up two pawns" and fires
-            // in plenty of middlegames; scaling the drive there moved `bench 13`
-            // by +7.9% (7,226,051 -> 7,800,345) purely by perturbing positions
-            // this term was never meant to steer. Everything else keeps the old
-            // mild edge push, avoiding a broad middlegame blast radius.
-            // Scoped to MINOR-PIECE mates, following Basilisk BAS-E34. Their
-            // first version drove every bare-king mate, queen and rook
-            // included, and cost +20.5% bench nodes; restricting it to
-            // minor-piece mates returned bench to baseline byte for byte. The
-            // reason generalises: a recogniser is worth adding only where
-            // SEARCH CANNOT ALREADY SOLVE THE CLASS, and overriding a class it
-            // solves only churns aspiration windows wherever a deep line
-            // touches a won ending. Their KQ-K/KR-K were already 100/100.
+            // The corner drive applies ONLY to MINOR-PIECE mates: a losing bare
+            // king against a winner with no pawn, rook or queen, read from the
+            // position evaluated (a pawn-root family can reach this material
+            // after an under-promotion). KBNK needs the bishop's corner, which
+            // the generic nearest-corner drive cannot find. Every other won
+            // ending keeps the mild edge push: the gate `|approximate| > 200`
+            // is "up two pawns" and fires in plenty of middlegames, where the
+            // corner drive perturbed positions it was never meant to steer
+            // (bench nodes +7.9%), and the search already solves queen and rook
+            // mates, so a drive there only churns aspiration windows.
             let minor_mate = board.color_occ(losing) == Bitboard::from(lksq)
                 && !board.pieces(winning, Piece::Pawn).any()
                 && !board.pieces(winning, Piece::Rook).any()
@@ -175,18 +140,13 @@ impl Evaluator {
                 sign * (5 * (file_push + rank_push) + (14 - king_distance) * 4)
             } else {
                 // Both branches below drive to a CORNER through the same
-                // Chebyshev+Manhattan metric. Chebyshev alone is flat -- it scores
-                // every square in a ring identically -- and the measured cost was
-                // total: over 300 won KBNK positions, 94% had a TIED best move and
-                // the whole term spanned 8 cp across all 19 legal moves. The same
-                // metric serves KXK and KBNK because they share that one defect,
-                // which is why one change fixes both.
+                // Chebyshev+Manhattan metric (see `MANHATTAN_DISTANCE`).
                 let corners = match kbnk_winner_bishop(board, winning) {
                     Some(true) => KBNK_DARK_CORNERS,
                     Some(false) => KBNK_LIGHT_CORNERS,
                     // Generic KXK: drive toward whichever corner is already
-                    // nearest. A corner is on the edge, so this subsumes the old
-                    // edge push while giving the search an ordering to follow.
+                    // nearest. A corner is on the edge, so this subsumes the edge
+                    // push while giving the search an ordering to follow.
                     None => {
                         if KING_DISTANCE[lksq.index()][KBNK_DARK_CORNERS[0]]
                             .min(KING_DISTANCE[lksq.index()][KBNK_DARK_CORNERS[1]])
@@ -219,12 +179,10 @@ impl Evaluator {
                 // plateau-free by construction and describes the actual
                 // technique: walk the king DOWN A DIAGONAL rather than at a
                 // corner. Mirroring the file serves the h1/a8 pair with
-                // one formula. Structure and scale both come from the reference
-                // HCE, whose corner term outweighs its king term by roughly 24
-                // to 1 -- and that RATIO is the whole mechanism. An earlier
-                // sweep tried this shape at roughly 1:1 and measured it WORSE
-                // than the Chebyshev version it replaced (33-50% against
-                // 57.1%), which is why it was wrongly rejected once already.
+                // one formula. Structure and scale come from the reference HCE,
+                // whose corner term outweighs its king term by roughly 24 to 1;
+                // that ratio is the mechanism, and at about 1:1 the pull
+                // converted worse than Chebyshev+Manhattan alone.
                 let lfile = infra::to_i32(SQUARE_FILE[lksq.index()]);
                 let lrank = infra::to_i32(SQUARE_RANK[lksq.index()]);
                 let diag_file = if target == KBNK_DARK_CORNERS[0] || target == KBNK_DARK_CORNERS[1]

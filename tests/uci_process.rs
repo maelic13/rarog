@@ -11,10 +11,9 @@ use rarog::board::Board;
 /// A debug build searches roughly an order of magnitude slower than release,
 /// and a CI runner is slower again than a dev box — so budgets calibrated
 /// against `cargo test --release` locally are not safe in the CI debug matrix.
-/// `long_endgame_search_does_not_overflow_engine_thread_stack` is the one that
-/// caught us: `go movetime 100` with a flat 2 s budget passed in release for
-/// months and failed the first CI debug run with `seen: []`, having produced no
-/// output at all inside the window.
+/// `long_endgame_search_does_not_overflow_engine_thread_stack` shows it:
+/// `go movetime 100` with a flat 2 s budget passes in release and fails in a
+/// CI debug run with `seen: []`, no output at all inside the window.
 ///
 /// **This never weakens an assertion.** Every call site guarded by this helper
 /// asserts that the engine eventually *does* something — emits `bestmove`,
@@ -513,14 +512,12 @@ fn threaded_go_nodes_returns_bestmove_and_reports_nodes() {
     session.send("position startpos");
     // Budget deliberately far above one iteration's cost. `info depth` is only
     // emitted when an iteration COMPLETES, and the node limit is shared across
-    // threads — so at Threads=4 a 4096-node budget was consumed in ~1024 nodes
-    // per thread, which is around what depth 1 costs from the start position.
-    // Whether the iteration finished first was then a scheduling race, and it
-    // lost on a windows release runner: the search returned `bestmove` having
-    // emitted no `info` line at all. The assertion below is about node-limited
-    // search WORKING under threads, not about the budget being tight, so the
-    // fix is to stop racing. (Whether the engine should guarantee at least one
-    // `info` line before every `bestmove` is a real question — filed as 10.6.)
+    // threads — so at Threads=4 a 4096-node budget is about 1024 nodes per
+    // thread, around what depth 1 costs from the start position. Whether the
+    // iteration finished first would then be a scheduling race, and the search
+    // could return `bestmove` having emitted no `info` line at all. The
+    // assertion below is about node-limited search WORKING under threads, not
+    // about the budget being tight, so the test must not race.
     session.send("go nodes 200000");
 
     let lines = session.collect_until_line_containing("bestmove", wait(5));
@@ -942,7 +939,7 @@ fn a_short_search_prints_no_bound_lines() {
 }
 
 /// A root with no legal move still reports what the position is worth: a GUI
-/// otherwise receives `bestmove` with no score at all (the 2026-09-16 review).
+/// otherwise receives `bestmove` with no score at all.
 #[test]
 fn a_root_with_no_legal_move_reports_a_score_before_bestmove() {
     for (fen, expected) in [
@@ -1036,14 +1033,12 @@ fn last_pv_and_bestmove(lines: &[String]) -> (String, String) {
 
 /// A parallel search picks its move by vote across threads, but only the main
 /// thread prints `info`. When the vote chose a helper's move, `bestmove` named
-/// a move no printed line mentioned — 4 of 24 searches in the 2026-09-16
-/// review, and the report in GitHub issue #1. The pool now prints the winner's
-/// own line.
+/// a move no printed line mentioned. The pool prints the winner's own line.
 ///
 /// **A guard, not a proof.** Whether a given search's vote disagrees with the
 /// main thread is a scheduling matter, so this cannot fail deterministically
-/// on a broken build; it runs at the thread count and time control where the
-/// review saw disagreement most often. The decision itself is pinned
+/// on a broken build; it runs at the thread count and time control where
+/// disagreement was most frequent. The decision itself is pinned
 /// deterministically by `only_a_helpers_line_is_reported_after_the_vote`.
 #[test]
 fn threaded_bestmove_is_the_move_the_last_info_line_reports() {
@@ -1077,7 +1072,7 @@ fn threaded_bestmove_is_the_move_the_last_info_line_reports() {
 /// The same contract without threads or a clock, where it is deterministic: a
 /// node budget that stops an iteration just after a window failed high on a
 /// new move left that move's `lowerbound` line last while `bestmove` named the
-/// previous depth's move (`go nodes 9770` to `12467` here). The search now
+/// previous depth's move (`go nodes 9770` to `12467` here). The search
 /// prints its result's own line before `bestmove` whenever they differ.
 #[test]
 fn a_stopped_fail_high_line_is_followed_by_the_line_of_the_move_played() {
@@ -1117,10 +1112,10 @@ fn kpk_search_ms(session: &mut UciSession) -> u64 {
 }
 
 /// A fresh process's first search that reaches KPK must cost what the same
-/// search costs warm. The bitbase was built on first probe, inside that search
-/// and on its clock (about 20 ms in release, 670 in debug), which lost games
-/// on time late in fast games whenever a harness started a fresh engine for
-/// every game.
+/// search costs warm. A bitbase built on first probe would run inside that
+/// search and on its clock (about 20 ms in release, 670 in debug), which loses
+/// games on time late in fast games whenever a harness starts a fresh engine
+/// for every game.
 ///
 /// A genuine timing assertion, deliberately NOT scaled by `wait`: the margin
 /// sits far above a depth-4 KPK search's noise in either profile and below

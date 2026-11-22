@@ -68,9 +68,8 @@ const fn mated(moves: i32) -> i32 {
 
 /// Mates with Stockfish's shortest distance and a depth that finds it, two
 /// plies or more past the first depth that does. That first depth moves
-/// with the search's seeds, so it is measured on them: on the fitted seeds
-/// of 2026-11-21 KRK's mate first shows at depth 6 and KQK's at 20 (at 5
-/// and 8 on the seeds before them).
+/// with the search's seeds, so it is measured on them: KRK's mate first shows
+/// at depth 6 and KQK's at 20.
 const MATES: [(&str, i32, u32); 3] = [
     ("6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1", 1, 3),
     ("k7/8/2K5/8/8/8/8/7R w - - 0 1", 2, 8),
@@ -302,10 +301,10 @@ fn no_mate_in_one_is_missed() {
 }
 
 /// Of the 123 positions here where some move allows a mate in one and some
-/// does not, the classic kernel allowed none at depths 3 and 5; this kernel
-/// allows `Qg2#` after `Nxg4` in one (`5r2/2p2k1p/2p4r/3P4/4p1b1/1Q2NqPp/PP3P1K/R4R2 w`)
-/// at every depth to 7: once late-move pruning or futility fires, its
-/// picker skips every quiet left, the quiet mating check among them.
+/// does not, the search allows `Qg2#` after `Nxg4` in one
+/// (`5r2/2p2k1p/2p4r/3P4/4p1b1/1Q2NqPp/PP3P1K/R4R2 w`) at every depth to 7:
+/// once late-move pruning or futility fires, its picker skips every quiet
+/// left, the quiet mating check among them.
 #[test]
 #[ignore = "the kernel's quiet skip drops direct checks; a dropped Rarog form, not retried inside D.7 (PLAN D.7, 2026-11-19 decision 6)"]
 fn no_mate_in_one_is_allowed() {

@@ -426,13 +426,13 @@ mod texel_tests {
         assert_eq!(t.eg.unstoppable_passer_eg[0], 0);
     }
 
-    /// Counterexamples for four pawn and passer terms that once fired on the
-    /// wrong positions.
+    /// Four pawn and passer terms fire on the positions they describe and on
+    /// no others.
     #[test]
     fn pawn_and_passer_terms_hold_on_their_counterexamples() {
         let mut ev = full_evaluator();
 
-        // (iv) Phalanx fires for pawns abreast on the same rank (d4+e4)...
+        // Phalanx fires for pawns abreast on the same rank (d4+e4)...
         let t = trace_of(&mut ev, "4k3/8/8/8/3PP3/8/8/4K3 w - - 0 1");
         assert!(
             t.mg.pawn_phalanx_mg.iter().any(|&c| c != 0),
@@ -444,23 +444,23 @@ mod texel_tests {
             t.mg.pawn_phalanx_mg.iter().all(|&c| c == 0),
             "phalanx should not fire on non-adjacent pawns"
         );
-        // Support (the old "connected") still fires for a diagonally-defended
-        // pawn (d4 defends e5), and phalanx does not.
+        // Support fires for a diagonally-defended pawn (d4 defends e5), and
+        // phalanx does not.
         let t = trace_of(&mut ev, "4k3/8/8/4P3/3P4/8/8/4K3 w - - 0 1");
         assert!(
             t.mg.pawn_connected_mg.iter().any(|&c| c != 0),
             "support dead on d4->e5"
         );
 
-        // (ii) Enemy rook behind a passer is now counted even with NO friendly
-        // rook on the file (pre-fix it required a friendly rook to be seen).
+        // An enemy rook behind a passer counts even with NO friendly rook on
+        // the file.
         let t = trace_of(&mut ev, "4k3/8/8/3P4/8/8/8/3rK3 w - - 0 1");
         assert_ne!(
             t.mg.enemy_rook_behind_passer_mg[0], 0,
             "enemy rook behind passer missed without a friendly rook on the file"
         );
 
-        // (iii) Square rule is SUPPRESSED when the defender has a piece (a
+        // The square rule is SUPPRESSED when the defender has a piece (a
         // knight can interpose), but fires when the king is the sole defender.
         let t = trace_of(&mut ev, "8/P7/1K6/8/8/8/6n1/7k w - - 0 1");
         assert_eq!(
@@ -482,7 +482,7 @@ mod texel_tests {
     /// above the gate is the gate's doing. Both traces reconstruct exactly.
     #[test]
     fn lazy_gate_applies_under_texel() {
-        // A queen and three pawns against a rook: far above the 600 cp gate.
+        // A queen and three pawns against a rook: far above the lazy margin.
         const FEN: &str = "3rk3/8/8/8/8/8/PPP5/3QK3 w - - 0 1";
         const BEFORE_GATE: &[&str] = &[
             "mg_val",

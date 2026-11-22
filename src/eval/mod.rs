@@ -58,9 +58,10 @@ const PAWN_TABLE_SIZE: usize = 16_384;
 const TOTAL_PHASE: i32 = 24;
 /// Lazy-eval threshold: if the tapered material + PST + pawn score already
 /// exceeds it, the positional block is skipped. It must equal the search's
-/// `LazyMargin` default: otherwise a fresh process's first search clears the
-/// evaluation cache and the TT on its clock, and `texel` fits, which never set
-/// the margin, describe a function the engine does not play.
+/// `LazyMargin` default: otherwise a fresh process's first search sees a margin
+/// change and clears the transposition table on its clock, and
+/// `texel` fits, which never set the margin, describe a function the engine
+/// does not play.
 const LAZY_MARGIN: i32 = 475;
 const PIECE_VALUES: [i32; 6] = [100, 320, 330, 500, 900, MATE_SCORE];
 /// The pieces whose material and squares `evaluate` sums itself. The pawns'
@@ -223,10 +224,9 @@ impl Evaluator {
     }
 
     pub fn evaluate(&mut self, board: &Board) -> i32 {
-        // Endgame-family occurrence in the search tree, counted BEFORE the cache lookup: a
-        // cache hit is still the search reaching that family, and counting
-        // only misses would undercount exactly the families the tree revisits
-        // most. Compiled out entirely without `--features diag`.
+        // Endgame-family occurrence in the search tree, counted on every call
+        // and before the pawn cache is read. Compiled out entirely without
+        // `--features diag`.
         #[cfg(feature = "diag")]
         {
             let counts = |c: Color| {

@@ -139,8 +139,8 @@ macro_rules! eval_params {
             threat_queen_mg: 1 = [69];
             threat_queen_eg: 1 = [44];
             // Threats by victim, indexed by `Piece as usize` (0 = pawn .. 5 = king).
-            // The refined hanging term covers what the flat `hanging_*` penalty below
-            // did, which the joint fit holds at about 0.
+            // The victim-specific `threat_hanging_refined_*` below generalise the flat
+            // `hanging_*` penalty.
             threat_by_minor_mg: 6 = [0, 37, 66, 72, 71, 0];
             threat_by_minor_eg: 6 = [6, 28, 2, 0, 0, 0];
             threat_by_rook_mg: 6 = [0, 19, 38, 4, 68, 0];

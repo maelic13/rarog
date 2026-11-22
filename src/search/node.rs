@@ -40,7 +40,7 @@ pub(super) fn tb_verdict(score: i32, bound: Bound, alpha: i32, beta: i32, pv: bo
 }
 
 /// A node's type, resolved at compile time, so quiescence can know it is on
-/// a PV line without a new parameter. `cut_node` stays a runtime argument,
+/// a PV line without an extra parameter. `cut_node` stays a runtime argument,
 /// so an all-node is `!PV && !cut_node`.
 pub(super) trait NodeType {
     /// On the principal variation: searched with an open window.

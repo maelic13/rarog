@@ -781,7 +781,7 @@ fn stack_unwind_four_threads() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// The brief's process variant: deep, long-line positions searched at a
+/// The process variant: deep, long-line positions searched at a
 /// large depth (or infinite) and stopped; the engine answers bestmove, stays
 /// responsive and searches again, at Threads 1 and 4.
 #[test]

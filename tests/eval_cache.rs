@@ -1,10 +1,10 @@
-//! Phase 3.14 regression guard: the evaluator's caches must be true
-//! memoisation — a cached evaluation must equal a cold recompute.
+//! Regression guard: the evaluator's caches must be true memoisation — a
+//! cached evaluation must equal a cold recompute.
 //!
 //! The bug this protects against: a term whose value depends on state *not*
 //! captured by the cache key (e.g. the passed-pawn free-stop / safe-stop bonus,
-//! which depends on non-pawn occupancy, once lived inside the pawn-structure
-//! cache keyed by pawns only). Such a term makes `evaluate()` impure, so a
+//! which depends on non-pawn occupancy, inside the pawn-structure cache keyed
+//! by pawns only). Such a term makes `evaluate()` impure, so a
 //! long-lived evaluator returns stale values for positions that collide on the
 //! key. Here we walk many positions through one long-lived evaluator (which
 //! exercises the pawn and imbalance caches) and assert every result matches

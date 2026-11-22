@@ -131,8 +131,8 @@ fn iteration_line(record: &InfoRecord<'_>) -> String {
 }
 
 /// Nodes per second for an `info` line. The elapsed time is floored at one
-/// millisecond, as Stockfish floors it: dividing by a zero elapsed time made
-/// the first lines of every search report `nps` a thousand times too low.
+/// millisecond, as Stockfish floors it, so a line printed at zero elapsed time
+/// still reports a rate.
 fn nps(nodes: u64, elapsed_ms: u128) -> u128 {
     u128::from(nodes) * 1000 / elapsed_ms.max(1)
 }
@@ -156,8 +156,8 @@ pub(crate) fn format_score(score: i32, material: i32) -> String {
 mod tests {
     use super::*;
 
-    /// A line printed inside the first millisecond used to divide by zero and
-    /// fall back to the raw node count: `nodes 49 nps 49` instead of 49,000.
+    /// A line printed inside the first millisecond reports `nps` from a
+    /// one-millisecond floor: 49 nodes read 49,000, not the raw count.
     #[test]
     fn nps_floors_the_elapsed_time_at_one_millisecond() {
         assert_eq!(nps(49, 0), 49_000);
@@ -166,9 +166,8 @@ mod tests {
         assert_eq!(nps(0, 0), 0);
     }
 
-    /// An ordinary score at or above the tablebase band's display printed raw,
-    /// so the rule-50-downgraded mate read `cp 31743`, above every tablebase
-    /// win.
+    /// An ordinary score is held below the tablebase band's display, so the
+    /// rule-50-downgraded mate never reads above a tablebase win.
     #[test]
     fn ordinary_scores_print_below_every_tablebase_win() {
         for material in [0, 17, 30, 58, 78, 100] {

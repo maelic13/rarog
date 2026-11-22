@@ -257,8 +257,8 @@ fn rule50_quiet_position_at_clock_100_is_a_draw() {
 
 // --------------------------------------------- packaged FEN legality ----
 
-/// Basilisk's strict `try_set_fen(fen, true)` plus the castling and en-passant
-/// consistency the brief asks for. Basilisk fails on: field syntax, back-rank
+/// Basilisk's strict `try_set_fen(fen, true)` plus castling and en-passant
+/// consistency. Basilisk fails on: field syntax, back-rank
 /// pawns, king count, more than 8 pawns, promoted pieces beyond missing pawns,
 /// an en-passant square whose target or origin is occupied or whose pushed
 /// pawn is missing, the side not to move in check, and the side to move in
@@ -587,7 +587,7 @@ fn kbnk_playout(fen: &str, nodes: u64) -> Result<(), String> {
     Ok(())
 }
 
-/// `kbnk_keeps_both_minors`: the BAS-E41 anchor at the cohort's 60,000 nodes;
+/// `kbnk_keeps_both_minors`: Basilisk's anchor at the cohort's 60,000 nodes;
 /// the board carries the game's history, as Basilisk's does.
 #[test]
 fn kbnk_keeps_both_minors() {

@@ -1,4 +1,5 @@
-//! Search behaviour through the public API: root edge cases, `searchmoves`, node limits, quit and ponderhit, disabled tablebases.
+//! Search behaviour through the public API: root edge cases, `searchmoves`,
+//! node limits, quit and ponderhit, disabled tablebases.
 
 use rarog::board::{Board, Move};
 use rarog::search::DRAW_SPREAD;

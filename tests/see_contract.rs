@@ -1,6 +1,5 @@
 //! External legal-exchange truth and explicit production policy boundaries.
 //! Regenerate with tools/diag/see_contract_oracle.py (python-chess).
-//! Historical debt rows have active acceptance tests after the 4.11b.5 repair.
 
 use rarog::board::{Board, CROSS_ENGINE_SEE_VALUES, PRODUCTION_SEE_VALUES, SeeValues};
 
@@ -241,7 +240,7 @@ fn threshold_parity_on_deterministic_legal_walks() {
         }
     }
     // The walks are deterministic: a different count means they changed, and
-    // the count moves only once the new walk is checked to cover as much.
+    // the count moves only once the changed walk is checked to cover as much.
     assert_eq!(checked, 1802, "capture coverage changed: {checked}");
     println!("SEE parity: {checked} legal captures across four deterministic walks");
 }

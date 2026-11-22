@@ -145,7 +145,7 @@ fn a_drawn_tablebase_root_reports_only_the_drawing_moves() {
     assert_eq!(report[0], bestmove);
 }
 
-/// The record's six-man positions (B.5.2): each reports a tablebase win, a
+/// Six-man positions: each reports a tablebase win, a
 /// ponder move and a PV legal to its end. Local only: needs the 6-man set.
 #[test]
 #[ignore = "needs RAROG_SYZYGY_PATH with the 6-man set"]

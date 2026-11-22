@@ -230,10 +230,9 @@ pub fn advertised() -> Vec<String> {
 
 /// The value of a string option, with the `<empty>` placeholder read as the
 /// empty string. A GUI echoes back the default the engine advertised, and
-/// CuteChess sends this one literally (GitHub issue maelic13/rarog#1): taken
-/// at face value it made `SyzygyPath` search a folder called `<empty>` and
-/// report "loaded no usable tablebases" at every game. Stockfish maps the same
-/// token to an empty string in `ucioption.cpp`.
+/// CuteChess sends this one literally: taken at face value, `SyzygyPath` would
+/// search a folder called `<empty>`. Stockfish maps the same token to an empty
+/// string in `ucioption.cpp`.
 fn string_option_value(raw: &str) -> String {
     if raw.trim() == "<empty>" {
         String::new()
@@ -382,8 +381,7 @@ fn set_family_mask(family: MaskedFamily, value: &str) -> OptionUpdate {
 mod tests {
     use super::*;
 
-    /// The table reproduces the list the engine advertised before it existed,
-    /// line for line.
+    /// The table advertises the engine's option list, line for line.
     #[test]
     fn the_table_advertises_the_engine_s_option_list() {
         let hash = format!(

@@ -39,6 +39,10 @@ pub mod counters {
         };
     }
 
+    // Most counters below are never incremented and dump 0: the search
+    // increments only its root, clock and endgame-family counters (`asp_*`,
+    // `iter_*`, `search_*`, `root_*`, `tm_*`, `eg_*`), and the board its own
+    // (`board_*`). The node-level ones have no caller.
     declare!(
         // Denominators. `qnodes` is EXACT, unlike `sampled_qnodes`: the
         // oracle differential needs a qsearch denominator collected the same
@@ -452,8 +456,7 @@ pub(crate) fn record_endgame_family(w: [u32; 5], b: [u32; 5]) {
 
     for (i, (strong, weak)) in [(w, b), (b, w)].into_iter().enumerate() {
         // A SYMMETRIC family matches in both orientations and would be counted
-        // twice. KPKP is the only one in this table, and it read 370 instead of
-        // 185 before this guard.
+        // twice. KPKP is the only one in this table.
         if i == 1 && w == b {
             break;
         }

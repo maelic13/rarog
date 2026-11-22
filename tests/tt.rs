@@ -75,13 +75,9 @@ fn transposition_table_store_probe_replace_clear_and_mate_scores() {
     assert_eq!(shared_entry.score, 123);
     assert_eq!(shared_entry.bound(), Some(Bound::Exact));
     assert_eq!(shared_entry.best_move(), Some(best));
-    // Verification is the low-16 tag, NOT the full 64-bit key. The shared
-    // table used to store `key ^ data` alongside `data` — 16 B per slot — to
-    // verify all 64 bits. That bought a guarantee the single-threaded table
-    // has never had (it compares a plain `key16`) at the price of 60% more
-    // memory per entry, which halved the positions a multi-threaded search
-    // could remember. The slot is now 10 B and verifies 16 bits, matching the
-    // local backend exactly; a differing tag must still be rejected.
+    // Verification is the low-16 tag, not the full 64-bit key: the slot is
+    // 10 B and verifies 16 bits, as the local backend does, instead of 16 B
+    // to verify all 64. A differing tag must still be rejected.
     assert!(
         table.probe(key ^ 0x8000).is_none(),
         "shared TT must reject a key whose verification tag differs"
@@ -236,10 +232,9 @@ fn transposition_table_hashfull_counts_only_current_generation_entries() {
         is_pv: false,
     });
     // `hashfull` reports per-mille of SLOTS over the sampled clusters, so two
-    // entries in a 1 MiB shared table legitimately round to zero — it only
-    // read non-zero before because the slot count per cluster was small enough
-    // to flatter the integer division. Fill enough of the sampled region to
-    // give the generation logic under test a real reading to move off.
+    // entries in a 1 MiB shared table legitimately round to zero. Fill enough
+    // of the sampled region to give the generation logic under test a real
+    // reading to move off.
     for filler in 3..64u64 {
         shared.store(TtStore {
             key: sampled_key(filler),

@@ -714,8 +714,8 @@ fn new_local_table(mb: usize) -> Option<LocalTable> {
 }
 
 fn new_shared_table(mb: usize, age: u8) -> Option<SharedTable> {
-    // Sized from the byte budget with SharedCluster's own size — see
-    // `make_shared` for why inheriting the local cluster count was wrong.
+    // Sized from the byte budget with SharedCluster's own size, not the local
+    // cluster count (see `make_shared`).
     let count = cluster_count::<SharedCluster>(mb);
     let mut clusters = Vec::new();
     clusters.try_reserve_exact(count).ok()?;
@@ -1138,8 +1138,8 @@ mod tests {
         );
     }
 
-    /// `Hash` is the size asked for: these were floored to 512, 1024, 2048 and
-    /// 16384 when a table's size had to be a power of two.
+    /// `Hash` is the size asked for, not the power of two below it: 1000 MiB
+    /// is not floored to 512.
     #[test]
     fn a_table_takes_the_whole_hash_at_any_size() {
         for mb in [1000usize, 2000, 3000, 32_000] {

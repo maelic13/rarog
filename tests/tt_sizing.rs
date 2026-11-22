@@ -1,12 +1,10 @@
-//! 9.4 regression guard: `Hash` is a contract.
+//! `Hash` is a contract: the table's bytes stay within it in both forms.
 //!
-//! Before 9.4, `make_shared` inherited the LOCAL cluster count. A
-//! `SharedCluster` is 64 B against `LocalCluster`'s 32 B, so the first
-//! multi-threaded search silently allocated twice the `Hash` the user set —
-//! and, because the local table was still alive during the conversion, peaked
-//! at three times it, at `go` time, mid-game. Nothing reported this; it would
-//! have surfaced as swapping and time losses in a tournament and been
-//! diagnosed as engine weakness.
+//! A `SharedCluster` is 64 B against `LocalCluster`'s 32 B, so `make_shared`
+//! must size the shared table from the byte budget, not inherit the local
+//! cluster count: that would silently allocate twice the `Hash` the user set,
+//! and peak at three times it while the local table is still alive during the
+//! conversion, which a tournament sees as swapping and time losses.
 
 use rarog::tt::TranspositionTable;
 
@@ -37,7 +35,7 @@ fn shared_table_fits_the_same_budget_as_local() {
             "shared table at Hash={mb} MiB allocated {shared} bytes, budget {}",
             mb * MIB
         );
-        // The pre-9.4 bug in one line: shared must not exceed local.
+        // Shared must not exceed local.
         assert!(
             shared <= local,
             "going multi-threaded grew the table from {local} to {shared} bytes \
@@ -48,12 +46,10 @@ fn shared_table_fits_the_same_budget_as_local() {
 
 /// Bytes are the `Hash` contract; ENTRIES are what the search spends.
 ///
-/// The shared table honoured the byte budget while storing far fewer
-/// positions: an `AtomicTtEntry` is 16 B against `TtEntry`'s 10 B, and the
-/// 64 B cluster held only 3 of them (48 B used, 16 B padding), so going
-/// multi-threaded silently HALVED the number of positions the engine could
-/// remember. Nothing reported it — it surfaced only as `hashfull` hitting
-/// ~970/1000 within a 3-second Threads=4 search.
+/// Two backends can honour the same byte budget while one stores far fewer
+/// positions. The shared table must hold at least half the local table's
+/// entries, so going multi-threaded does not silently shrink what the engine
+/// can remember.
 #[test]
 fn shared_table_does_not_shrink_entry_capacity() {
     for mb in [1usize, 16, 64, 256] {
@@ -69,8 +65,7 @@ fn shared_table_does_not_shrink_entry_capacity() {
     }
 }
 
-/// `Hash` is the size asked for, in both forms: these were floored to 64 and
-/// 256 when the table's size had to be a power of two.
+/// `Hash` is the size asked for, in both forms, not the power of two below it.
 #[test]
 fn hash_need_not_be_a_power_of_two() {
     for mb in [100, 300] {

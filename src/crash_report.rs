@@ -23,8 +23,7 @@
 //! stdout means Rust panicked and names the line, and no report narrows the
 //! next search to the ways a process dies without the runtime noticing.
 //!
-//! Two constraints shape the writer, and both cost real work elsewhere in this
-//! repo when they were violated:
+//! Two constraints shape the writer:
 //!
 //! * **No `println!`, no `info_string!`.** Both panic if the write fails, and a
 //!   panic inside the panic hook aborts immediately with nothing printed —
@@ -161,8 +160,7 @@ mod tests {
     }
 
     /// The wire, not the formatter: install the hook, panic for real, and
-    /// require the report to arrive. Without this the module could be dead in
-    /// exactly the way `--rset` was dead for two screens.
+    /// require the report to arrive, so the module cannot be dead unnoticed.
     #[test]
     fn the_installed_hook_fires_on_a_real_panic() {
         let _guard = hook_guard();
@@ -186,9 +184,7 @@ mod tests {
     }
 
     /// A helper thread's panic reaches the same report: the hook is the
-    /// process's, not the installing thread's (an engine whose handler was
-    /// kept per thread lost its helpers' crashes), and the line names the
-    /// helper.
+    /// process's, not the installing thread's, and the line names the helper.
     #[test]
     fn a_panic_on_a_helper_thread_is_reported_with_its_name() {
         let _guard = hook_guard();

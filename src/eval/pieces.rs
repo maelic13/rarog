@@ -197,10 +197,7 @@ impl Evaluator {
             //
             // Each piece type gets its OWN loop, so the table pair is
             // a compile-time constant rather than a `match piece` re-evaluated
-            // for every piece on the board. The match was loop-invariant across
-            // the whole `while pieces.any()` — the same duplicated-dispatch
-            // shape move scoring once had, and the Rust equivalent of
-            // Basilisk's `if constexpr` specialisation (+0.89% there).
+            // for every piece on the board.
             macro_rules! mob_loop {
                 ($piece:expr, $mgf:ident, $egf:ident) => {{
                     let mut pieces = board.pieces(color, $piece);

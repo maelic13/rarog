@@ -664,9 +664,8 @@ impl Snapshot {
             hash: board.hash(),
             in_check: board.is_in_check(),
             checkers: board.checkers(),
-            // 9.5: these four are incrementally maintained CACHE KEYS (pawn
-            // cache, correction history, pawn history) that `to_fen()` cannot
-            // express, so nothing checked them before.
+            // These four are incrementally maintained CACHE KEYS (pawn cache,
+            // correction history, pawn history) that `to_fen()` cannot express.
             pawn_key: board.pawn_key(),
             minor_key: board.minor_key(),
             non_pawn_keys: [

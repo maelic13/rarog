@@ -1,4 +1,4 @@
-//! 9.5 fuzz-lite: malformed input must be REJECTED, never panic.
+//! Fuzz-lite: malformed input must be REJECTED, never panic.
 //!
 //! Two reasons this matters more than usual here. The release profile sets
 //! `panic = "abort"`, so a panic on a malformed `position` line is not a
@@ -119,40 +119,16 @@ fn truncations_and_extensions_never_panic() {
     }
 }
 
-/// 9.5-A RESOLVED (2026-07-19): a malformed `position` command exits the
-/// process with status 1 after printing an `info string CRITICAL ERROR: ...`
-/// diagnostic. That is DELIBERATE and matches the reference implementation.
+/// A malformed `position` command exits the process with status 1 after
+/// printing an `info string CRITICAL ERROR: ...` diagnostic. That is
+/// DELIBERATE and matches Stockfish's current design. An engine that
+/// "survives" a bad FEN keeps the PREVIOUS position and will search it, so the
+/// GUI receives a legal-looking move for the wrong board: a forfeit too, just
+/// slower and harder to diagnose.
 ///
-/// Measured across 11 engines before deciding (`D:/chess/engines`):
-///
-/// | engine                  | bad FEN            | illegal move in `moves` |
-/// |-------------------------|--------------------|-------------------------|
-/// | Stockfish dev-20260716  | exit 1 + diagnostic| exit 1 + diagnostic     |
-/// | Stockfish 18 (release)  | CRASH (139)        | survives                |
-/// | Critter 1.6a            | survives           | survives                |
-/// | Fruit 2.1               | exit 1             | survives                |
-/// | SaberTooth 0.2.0        | survives           | survives                |
-/// | Whitespine 1.4.0        | survives           | survives                |
-/// | Basilisk 1.9.0          | survives           | survives                |
-/// | Hydra 1.5.0             | survives           | survives                |
-/// | Beast 4.0.0             | exit 1             | exit 1                  |
-/// | Lynx 1.3.3              | exit 1             | exit 1                  |
-/// | Rarog (this engine)     | exit 1 + diagnostic| exit 1 + diagnostic     |
-///
-/// Current Stockfish prints the identical message format and exits the same
-/// way on both cases, so Rarog is not merely defensible here — it matches the
-/// reference engine's current design. It is also strictly better than
-/// Stockfish 18's release behaviour, which segfaults silently on a bad FEN.
-/// The permissive majority is not obviously right either: an engine that
-/// "survives" a bad FEN keeps the PREVIOUS position and will search it, so
-/// the GUI receives a legal-looking move for the wrong board — a forfeit too,
-/// just slower and harder to diagnose.
-///
-/// So this test is INVERTED from how it was first written. It no longer
-/// complains that the engine exits; it now GUARDS the intended contract:
-/// exit code exactly 1, a `CRITICAL ERROR` diagnostic on stdout, and prompt
-/// termination. A future change that crashes (any other exit code), hangs, or
-/// dies silently instead will fail here.
+/// These tests guard that contract: exit code exactly 1, a `CRITICAL ERROR`
+/// diagnostic on stdout, and prompt termination. A change that crashes (any
+/// other exit code), hangs, or dies silently instead fails here.
 mod malformed_position {
     use std::io::Write;
     use std::process::{Command, Stdio};
@@ -252,10 +228,9 @@ mod malformed_position {
     ///
     /// RELEASE ONLY, deliberately. Each case needs its own process (a fatal
     /// one kills the session), and a debug engine spends ~5 s per start on
-    /// unoptimised table init, so in debug this cost 343 s on its own. The
-    /// property under test — that the SHIPPED binary cannot be crashed or
-    /// wedged by a GUI — is a property of the release build anyway, and CI
-    /// runs both profiles, so release coverage loses nothing real.
+    /// unoptimised table init. The property under test — that the SHIPPED
+    /// binary cannot be crashed or wedged by a GUI — is a property of the
+    /// release build anyway.
     #[cfg(not(debug_assertions))]
     #[test]
     fn random_position_garbage_never_crashes_or_hangs() {

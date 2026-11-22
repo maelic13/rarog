@@ -939,8 +939,7 @@ mod tests {
         let shallow = limits(
             0,
             &SearchLimits {
-                // A fractional depth is now unrepresentable (Option<u32>);
-                // Some(0) exercises the same lower clamp this test was written for.
+                // Some(0) exercises the lower clamp to depth 1.
                 depth: Some(0),
                 ..SearchLimits::default()
             },

@@ -1,4 +1,4 @@
-//! Phase 3 gate — per-term eval regression assertions (the production half).
+//! Per-term eval regression assertions (the production half).
 //!
 //! **Colour symmetry.** A correct evaluation must be invariant under a
 //! colour-flip + vertical mirror: mirroring every piece to the other colour,
@@ -6,7 +6,7 @@
 //! *same position from the other player's view*, so `evaluate()` (side-to-move
 //! relative) must return the identical score. This single invariant exercises
 //! every term at once — any colour-asymmetric bug (a sign error, a one-sided
-//! table, the kind of inverted-corner mistake found in 3.11) breaks it.
+//! table, an inverted corner) breaks it.
 //!
 //! (The trace-side assertions — nonzero activation and seeded-zero liveness —
 //! need the eval trace and live in `src/eval/trace.rs` under `--features texel`.)

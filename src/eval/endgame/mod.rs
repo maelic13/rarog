@@ -64,8 +64,8 @@ pub(super) fn scale_endgame(board: &Board, mut score: i32) -> i32 {
 /// the defender's pawn is what makes the win possible: it has to stay on the
 /// board and stay back, blockaded by a knight on the square in front of it,
 /// while the king and the other knight drive the defending king into a corner.
-/// The generic evaluation says neither: the engine let the pawn run, or moved
-/// the blockading knight away to help the drive. This adds a corner drive, king
+/// The generic evaluation says neither: it lets the pawn run, or moves the
+/// blockading knight away to help the drive. This adds a corner drive, king
 /// proximity, a penalty for the pawn's advance and the blockade (held, or
 /// reachable next move) to the generic score; it never replaces it, because a
 /// replacement loses the knights' material value and the search then gives a
@@ -135,8 +135,7 @@ pub(super) fn knnkp_adjustment(board: &Board) -> Option<i32> {
 /// Specialised known-endgame scale factor, in `0..=SCALE_NORMAL`.
 /// Returns `Some(sf)` for a recognised material pattern (the caller multiplies
 /// the tapered score by `sf / SCALE_NORMAL`), or `None` to fall through to the
-/// general scaling. Each pattern fires only on exact material absent from the
-/// bench suite, so `bench 13` is unchanged.
+/// general scaling. Each pattern fires only on exact material.
 ///
 /// Implemented: KPK bitbase, KBP wrong-corner draw, pawnless
 /// insufficient-mating-material draws (KK/KNK/KBK/minor-vs-minor), the KQKP
@@ -173,8 +172,7 @@ pub(super) fn specialized_endgame_scale(board: &Board) -> Option<i32> {
     if let Some(sf) = krkp_drawish_scale(board) {
         return Some(sf);
     }
-    // KRP vs KR: the most frequent family the reference engine converts
-    // better, at 10.04% of real games.
+    // KRP vs KR: draw zones only.
     if let Some(sf) = krpkr_scale(board) {
         return Some(sf);
     }
@@ -295,15 +293,6 @@ fn kbp_wrong_corner_draw(board: &Board) -> bool {
     false
 }
 
-// ---------------------------------------------------------------------------
-// Narrow, high-confidence endgame knowledge. Each fires only on an exact
-// material pattern (verified absent from the bench suite, so the fingerprint
-// is unchanged). Two deliberate omissions:
-//   * KQ-vs-KR is a *win*, so it is never scaled toward draw; and
-//   * general rook-endgame drawishness is a term for the fit, not a
-//     hardcoded rule that could wrongly draw a won R+P vs R.
-// ---------------------------------------------------------------------------
-
 /// KQ vs KP fortress draw. The weak side has K+P with the pawn on the 7th, and
 /// — crucially — it is a **rook or bishop pawn** (a/c/f/h), the only files where
 /// KQ-vs-KP is a fortress draw. Its king must guard the queening square and the
@@ -333,21 +322,14 @@ fn kqkp_fortress_scale(board: &Board) -> Option<i32> {
     None
 }
 
-/// KR vs KP drawish heuristic. When the weak side's pawn is on the 7th escorted
-/// by its king and the rook's king is far (> 4 — deliberately conservative), the
-/// ending is usually drawn (the rook must give itself for the pawn). A
-/// *partial* scale (≈¼) only — never a forced draw — so an actually-won KRKP
-/// keeps a clearly winning score and a wrong guess cannot throw the game.
-/// KRP vs KB. The rook side is winning almost everywhere, so
-/// the drawn subset is small -- 94 of 4,000 sampled positions, 2.35% -- and the
-/// evaluator was wrong about nearly all of it: **95.74% of drawn KRP-KB
-/// positions scored above +100 cp, mean +347.2, max +771**.
+/// KRP vs KB. The rook side is winning almost everywhere, so the drawn subset
+/// is small, and the generic evaluation scores nearly all of it as a win
+/// (above +100 cp in 95.74% of 94 sampled drawn positions).
 ///
-/// **The reference only addresses ROOK pawns**, so it can reach at most about a
-/// quarter of that cohort by construction; a non-rook-pawn KRP-KB draw is
-/// outside its case analysis entirely. Ported from `sf_11` `endgame.cpp`, which
-/// returns partial scales here (24, 48, 8 on the same `/64` basis) and never a
-/// forced draw -- appropriate for a family this close to won.
+/// The reference (`sf_11` `endgame.cpp`) addresses only ROOK pawns, so a
+/// non-rook-pawn KRP-KB draw is outside its case analysis and falls through.
+/// It returns partial scales here (24, 48, 8 on the same `/64` basis) and
+/// never a forced draw, appropriate for a family this close to won.
 ///
 /// Rank-normalised so the strong side is White and the pawn pushes `+8`. Every
 /// predicate used below -- square colour agreement, diagonal alignment,
@@ -408,30 +390,19 @@ fn krpkb_scale(board: &Board) -> Option<i32> {
     None
 }
 
-/// KRP vs KR, the most frequent family the reference engine converts better:
-/// 10.04% of real games.
+/// KRP vs KR draw recognition. The generic evaluation scores many
+/// theoretically drawn positions of this family as wins (37.1% of 124 sampled
+/// drawn positions above +100 cp), so the engine steers into drawn rook
+/// endings; `tools/diag/endgame_drawn.py` measures that.
 ///
-/// WHAT THE DEFECT ACTUALLY IS. The conversion number looks alarming and is
-/// not the problem: Stockfish 18 converted this family at
-/// 47.9% against Rarog's 43.8% at the same node budget, so the reachable mark
-/// is about four points away, not fifty-five. The measured defect is the
-/// complementary cohort -- **37.1% of theoretically DRAWN KRP-KR positions
-/// scored above +100 cp** (46 of 124, mean +93.8, max +473), which makes the
-/// engine steer into dead-drawn rook endings from positions it could have won
-/// another way. No measurement taken inside the ending can see that happen;
-/// `tools/diag/endgame_drawn.py` is the instrument for it.
+/// The case analysis follows the final pre-NNUE Stockfish (`sf_11`
+/// `endgame.cpp`), whose own comment calls it "far from perfect". Both engines
+/// use a `/64` scale basis, so the constants transfer without rescaling.
 ///
-/// The case analysis is ported from the final pre-NNUE Stockfish (`sf_11`
-/// `endgame.cpp`), whose own comment calls it "far from perfect" and notes it
-/// descends from Glaurung. Both engines use a `/64` scale basis, so the
-/// constants transfer without rescaling -- a seed, not a result.
-///
-/// **The reference's two WINNING branches are deliberately NOT ported.** They
-/// return `SCALE_FACTOR_MAX - k*distance`, i.e. above the neutral 64, which
-/// AMPLIFIES the score. Rarog's surface is Texel-fitted and its magnitudes are
-/// not the reference's, so an untested amplifier interacts with a fitted
-/// evaluation in a way the drawn cohort cannot measure. Only the draw
-/// detection is taken, which is what the measured defect calls for.
+/// The reference's two WINNING branches are deliberately NOT taken: they
+/// return `SCALE_FACTOR_MAX - k*distance`, above the neutral 64, which
+/// AMPLIFIES the score, and an amplifier interacts with a fitted evaluation in
+/// a way the drawn cohort cannot measure. Only the draw detection is taken.
 fn krpkr_scale(board: &Board) -> Option<i32> {
     for strong in [Color::White, Color::Black] {
         let weak = !strong;
@@ -519,6 +490,11 @@ fn krpkr_scale(board: &Board) -> Option<i32> {
     None
 }
 
+/// KR vs KP drawish heuristic. When the weak side's pawn is on the 7th escorted
+/// by its king and the rook's king is far (> 4 — deliberately conservative), the
+/// ending is usually drawn (the rook must give itself for the pawn). A
+/// *partial* scale (≈¼) only — never a forced draw — so an actually-won KRKP
+/// keeps a clearly winning score and a wrong guess cannot throw the game.
 fn krkp_drawish_scale(board: &Board) -> Option<i32> {
     for strong in [Color::White, Color::Black] {
         let weak = !strong;
@@ -552,11 +528,10 @@ const PURE_OCB_MIN_PAWNS: i32 = 3;
 /// A pure bishop ending (no knight, rook or queen) with three pawns or more is
 /// mostly drawn whatever the pawn balance, so its scale starts near zero and
 /// rises with passed pawns: `1 + 2·pawns + 10·passers`, fitted against game
-/// outcomes. Below three pawns, and with other pieces on the board, the older
-/// `32 + 4·pawns + 4·passers` stays, because the fitted rule applied there
-/// cost conversion of won two-pawn endings at a fixed node budget. The two
-/// regimes do not meet continuously: an exchange from three pawns to two can
-/// raise the score.
+/// outcomes. Below three pawns, and with other pieces on the board, the scale is
+/// `32 + 4·pawns + 4·passers`, because the fitted rule there cost conversion
+/// of won two-pawn endings at a fixed node budget. The two regimes do not meet
+/// continuously: an exchange from three pawns to two can raise the score.
 pub(super) fn opposite_bishop_scale(board: &Board) -> Option<i32> {
     let white_bishops = board.pieces(Color::White, Piece::Bishop);
     let black_bishops = board.pieces(Color::Black, Piece::Bishop);
@@ -993,15 +968,10 @@ mod recogniser_tests {
         );
     }
 
-    /// KRP-vs-KB rook-pawn fortresses. Both FENs are Syzygy DRAW.
-    ///
-    /// This is also the **live-wire proof** the null result needs: the drawn
-    /// cohort's overclaim rate did not move at all (0.9574 before and after),
-    /// because the reference addresses only rook pawns -- at most a quarter of
-    /// that cohort -- and its partial scales leave a +350 score above the
-    /// 100 cp threshold even where they fire. A null from a dead wire and a
-    /// null from a narrow mechanism look identical in the aggregate, so the
-    /// mechanism is asserted directly here instead.
+    /// KRP-vs-KB rook-pawn fortresses. Both FENs are Syzygy DRAW. The partial
+    /// scales leave a +350 score above 100 cp even where they fire, so an
+    /// aggregate overclaim rate cannot show the recogniser is live; this
+    /// asserts the mechanism directly.
     #[test]
     fn krpkb_scales_rook_pawn_fortresses() {
         // Pawn a5, bishop on the pawn's own colour, defending king next to the
@@ -1065,8 +1035,8 @@ mod recogniser_tests {
         }
     }
 
-    /// Won endings must keep a clearly winning static score — guards against the
-    /// earlier bug of scaling wins (knight-pawn KQKP, and KQ-vs-KR) toward draw.
+    /// Won endings (knight-pawn KQKP, KQ-vs-KR) keep a clearly winning static
+    /// score and are not scaled toward draw.
     #[test]
     fn won_endings_are_not_scaled_toward_draw() {
         let kqkp_knight_pawn = static_eval("8/8/6K1/8/8/8/kp6/7Q w - - 0 1");
@@ -1081,7 +1051,7 @@ mod recogniser_tests {
         );
     }
 
-    /// Below three pawns a pure bishop ending keeps the older rule, which
+    /// Below three pawns a pure bishop ending takes the `32 + ...` rule, which
     /// passed pawns relax upward.
     #[test]
     fn opposite_bishop_scale_relaxed_by_passers() {
@@ -1096,7 +1066,7 @@ mod recogniser_tests {
     }
 
     /// From three pawns a pure bishop ending takes the fitted rule; other
-    /// pieces on the board keep the older one at any pawn count.
+    /// pieces on the board keep the `32 + ...` rule at any pawn count.
     #[test]
     fn opposite_bishop_scale_pure_endings_from_three_pawns() {
         assert_eq!(

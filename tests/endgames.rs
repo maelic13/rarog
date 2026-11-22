@@ -1,4 +1,4 @@
-//! Phase 3.11 permanent endgame regression suite.
+//! Permanent endgame regression suite.
 //!
 //! Protects the scale-factor framework (insufficient-material draws) and the
 //! KBNK corner-drive mate against future eval/search changes. The position
@@ -25,36 +25,22 @@ use rarog::search::{SearchEvent, Searcher};
 const ENDGAMES_EPD: &str = include_str!("endgames.epd");
 
 /// Move budget (plies) for a KBNK playout. Perfect play mates in <= ~33 plies;
-/// from the near-corner suite positions far fewer are needed.
-/// 40 was too small for any position the anchor could actually discriminate
-/// on: the head needs 45-75 plies from a centre-king start, so a 40-ply budget
-/// admitted only near-corner cases -- which mate even with a broken drive.
+/// from the near-corner suite positions far fewer are needed. A 40-ply budget
+/// admits only near-corner cases, which mate even with a broken drive: the
+/// drive needs 45-75 plies from a centre-king start.
 const KBNK_MOVE_BUDGET: usize = 90;
 /// Node budget per move during a KBNK playout.
 ///
-/// PLAN 4.10.4. This was a fixed DEPTH of 10 with a fresh `Searcher` -- and so
-/// a fresh, empty transposition table -- for every move of the game. Both
-/// halves of that were wrong, and wrong in the direction that makes an anchor
-/// pass when it should fail:
+/// The playout is a node budget with ONE searcher, so one table, for the whole
+/// game. A depth cap is a different budget and a fresh table each move is a
+/// different search; both make a playout pass where the conversion failure
+/// this suite exists to catch would show. 60,000 nodes per move is the figure
+/// of `tools/diag/endgame_truth.py`.
 ///
-/// * The conversion failure this suite exists to catch was measured at 60,000
-///   nodes per move with ONE table persisting across the game
-///   (`tools/diag/endgame_truth.py`). A depth cap is a different budget, and
-///   an empty table each move is a different search.
-/// * Basilisk hit exactly this: an anchor written for a specific losing line
-///   PASSED under the very vector it was written to catch, for these two
-///   reasons, and only reproducing the original conditions made it fail
-///   correctly (BAS-E39).
-///
-/// So the playout now matches the instrument: a node budget, and one searcher
-/// for the whole game. 60,000 is the instrument's figure.
-///
-/// One budget is not enough, though. Replayed at 40k, 50k, 60k, 80k and 120k
-/// nodes, the accepted engine mates `7N/8/7B/8/8/8/8/2K2k2 w` at three of the
-/// five and a selectivity-core candidate misses `8/8/K3B3/8/5N2/8/7k/8 w` at
-/// exactly 60k while mating at the other four: whether a single playout lands
-/// inside 90 plies is chaotic in the node budget. So each position is played
-/// at these five budgets, one searcher per budget, and must mate at a
+/// One budget is not enough: whether a single playout lands inside 90 plies is
+/// chaotic in the node budget (the same engine mates a position at three of
+/// five budgets, another build misses one only at 60k). So each position is
+/// played at these five budgets, one searcher per budget, and must mate at a
 /// majority. The discrimination survives: with the corner drive scaled to
 /// 1/24 the three discriminator positions mate at 2, 2 and 0 of the five.
 const KBNK_NODE_BUDGETS: [u64; 5] = [40_000, 50_000, 60_000, 80_000, 120_000];
@@ -284,42 +270,35 @@ fn won_positions_are_clearly_winning() {
 /// mate in these tiny trees, shallow enough to stay fast in debug.
 const TB_DRAW_SEARCH_DEPTH: u32 = 12;
 
-// WHY THERE IS NO MATE-DRIVE GRADIENT TEST HERE (4.9a.4).
+// WHY THERE IS NO MATE-DRIVE GRADIENT TEST HERE.
 //
-// The 4.9a.4 defect was that the drive used pure Chebyshev distance, which is
-// flat: 94% of won KBNK positions had a TIED best move, so the engine shuffled
-// until the fifty-move rule and converted 19.4% of them. Every test in this
-// file stayed green throughout -- the mate-in-one passed, the direction was
-// correct, the recognizer was present and wired. That is a gap worth closing if
-// it can be closed cheaply, and two attempts show it cannot:
+// A drive on pure Chebyshev distance is flat: 94% of won KBNK positions had a
+// TIED best move, so the engine shuffled until the fifty-move rule and
+// converted 19.4% of them, while every test in this file stayed green. Two
+// cheap tests of the gradient cannot catch it:
 //
-//   1. Tie rate over `static_eval` across legal moves. PASSED on the broken
+//   1. Tie rate over `static_eval` across legal moves passes on the flat
 //      drive: static_eval is the WHOLE evaluation, and its other terms break
-//      ties that the mop-up alone cannot. It measured something real, just not
-//      the thing named.
-//   2. Corner progress over 24 plies at depth 6, aggregated over the frozen
-//      KBNK cases. Also PASSED on the broken drive: at short range the SEARCH
-//      finds progress without needing an eval gradient, so the bar cannot be
-//      set anywhere that separates 19.4% conversion from 57.1%.
+//      ties that the mop-up alone cannot.
+//   2. Corner progress over 24 plies at depth 6 over the frozen KBNK cases
+//      passes too: at short range the SEARCH finds progress without an eval
+//      gradient, so no bar separates 19.4% conversion from 57.1%.
 //
-// What actually separates them is conversion rate over ~100 positions per
-// family at 60,000 nodes -- about two minutes of compute, and a statistic with
-// real sampling noise rather than an absolute property. That belongs in
-// `tools/diag/endgame_floors.json`, compared with a noise allowance and
-// ratcheted after accepted improvements, which is exactly where it lives.
+// What separates them is conversion rate over ~100 positions per family at
+// 60,000 nodes: about two minutes of compute, and a statistic with real
+// sampling noise rather than an absolute property. That lives in
+// `tools/diag/endgame_floors.json`, compared with a noise allowance.
 //
-// The lesson generalises: a term can be present, correctly signed, and
-// individually tested, and still fail to steer a search. Direction is testable
-// here; ORDERING is not, and asserting the wrong one produces a green suite
-// over a broken engine.
+// A term can be present, correctly signed and individually tested, and still
+// fail to steer a search. Direction is testable here; ORDERING is not.
 
 #[test]
 fn syzygy_won_positions_are_not_scored_as_drawn_or_lost() {
     // HARD VETO, not a tuning target. Syzygy says the side to move wins; the
     // static score must at least have the right sign. This is deliberately
-    // loose: RAR-E09 measured a won KR-K scoring +426 cornered and +487
-    // centralised, and pinning a floor near those would turn a correctness test
-    // into a calibration test that any refit could trip.
+    // loose: a won KR-K measured +426 cornered and +487 centralised, and
+    // pinning a floor near those would turn a correctness test into a
+    // calibration test that any refit could trip.
     let mut checked = 0;
     for case in parse_cases().iter().filter(|c| c.verdict == "tb-win") {
         let eval = static_eval(&case.fen);
@@ -449,9 +428,9 @@ fn search_draw(searcher: &mut Searcher, fen: &str, depth: u32, nodes: u64) -> i3
 }
 
 /// Dead draws must read as draws at every depth, from cleared tables and
-/// after the lost positions have trained them. The correction no longer
-/// moves the recogniser's verdict, which took most of these to won scores;
-/// some still misread through leaves the recogniser does not cover.
+/// after the lost positions have trained them. The correction must not move
+/// the recogniser's verdict; some positions still misread through leaves the
+/// recogniser does not cover.
 #[test]
 #[ignore = "D.6.23: after D.6.15, 7 of 28 cleared and 9 of 28 trained searches still read beyond +-75"]
 fn wrong_bishop_draws_read_as_draws_with_cleared_and_trained_tables() {

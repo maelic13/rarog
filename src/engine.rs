@@ -219,8 +219,8 @@ impl Engine {
                 };
 
                 if detailed {
-                    // Floored at 1 ms like the `info` lines: a position solved
-                    // inside the first millisecond printed its node count.
+                    // Floored at 1 ms like the `info` lines, so a position
+                    // solved inside the first millisecond still gets a rate.
                     let nps = result.nodes as u128 * 1000 / result.elapsed_ms.max(1);
                     crate::uci_println!(
                         "bench {}/{}  depth {}  score {}  nodes {}  ebf {:.2}  time {}ms  nps {}",
@@ -271,7 +271,7 @@ impl Engine {
 
         // Robust diagnostics so the node total is read as a fingerprint, not a
         // strength/speed proxy (it is hypersensitive and non-monotonic to tiny
-        // threshold changes — see PLAN.md §9). Geomean EBF is the selectivity
+        // threshold changes). Geomean EBF is the selectivity
         // trend; median + top-share expose how concentrated the total is.
         let top_share = if fingerprint_nodes > 0 {
             max_nodes as f64 * 100.0 / fingerprint_nodes as f64

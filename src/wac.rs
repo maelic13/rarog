@@ -1,6 +1,6 @@
 //! Win At Chess (WAC) tactical suite — a `bench`-style diagnostic, not a gate.
 //!
-//! 300 classic tactical positions (`wac.epd`, standard public EPD with `bm`
+//! 300 well-known tactical positions (`wac.epd`, standard public EPD with `bm`
 //! best moves in SAN). The `wac [depth]` engine command searches each position
 //! to a fixed depth and reports how many found an accepted best move, plus the
 //! ids of the failures. The solved count is a *tactical-regression telltale*

@@ -1,8 +1,7 @@
 /// Declares every tunable search parameter **once**: one line generates the
 /// struct field, its `Default` value, the tune build's UCI `option` string and
 /// the setter's clamp range, so the four cannot disagree and a bake changes
-/// one number. Written separately, twelve UCI declarations once advertised
-/// stale defaults.
+/// one number.
 ///
 /// Syntax: `struct Name, checks_module; field = default, "UciName", min..=max;`
 /// — doc comments and plain `//` section comments pass through as normal.
@@ -15,9 +14,9 @@ macro_rules! search_params {
         )+
     ) => {
         /// Tunable search parameters — every field is a UCI `spin` option in
-        /// tune builds. Defaults are the current accepted integration-head
-        /// values; the trailing comment on each declaration records its bake
-        /// history. To re-tune, copy the weather-factory configs from
+        /// tune builds. Defaults are the current accepted values; the trailing
+        /// comment on each declaration gives its real value. To re-tune, copy
+        /// the weather-factory configs from
         /// `tools/spsa_configs/` and run `./tools/spsa.ps1` (see that
         /// directory's README).
         #[derive(Clone, Debug, PartialEq, Eq)]
@@ -82,7 +81,7 @@ macro_rules! search_params {
             use super::*;
 
             /// Every default must sit inside its own declared range. Cheap, but
-            /// it is the invariant the four-way duplication used to break.
+            /// it is the invariant that keeps the four generated forms in step.
             #[test]
             fn defaults_are_within_declared_ranges() {
                 let p = $name::default();

@@ -102,7 +102,7 @@ struct UnmakeInfo {
 ///
 /// - `Board` is 264 bytes. The six-board variant would save 48 and neither
 ///   figure is near any cache boundary that matters, while the extra mask would
-///   land on 208 `pieces()` call sites, 102 of them inside evaluation.
+///   land on every `pieces()` call site, over a hundred of them in evaluation.
 /// - `UnmakeInfo` is 24 bytes, so a 128-ply search stack costs 3 KiB and stays
 ///   comfortably in L1. Copying whole board state per ply instead would cost
 ///   128 x 264 = 33 KiB and leave it.
@@ -1340,12 +1340,11 @@ impl Board {
     ///
     /// `Board` keeps five redundant representations of the same position —
     /// the 12 piece bitboards, the two occupancies, `all_occ`, the mailbox,
-    /// and five Zobrist keys. Only the mailbox and `hash` were ever verified
-    /// (`to_fen()` reads the mailbox, so the FEN comparison in the existing
-    /// make/unmake test validates the mailbox and nothing else). A desync in
-    /// the rest is silent: the auxiliary keys are CACHE KEYS for the pawn
-    /// cache, correction history and pawn history, so a drifted key returns
-    /// another position's cached evaluation rather than crashing.
+    /// and five Zobrist keys. `to_fen()` reads the mailbox, so a FEN
+    /// comparison validates the mailbox and nothing else. A desync in the
+    /// rest is silent: the auxiliary keys are CACHE KEYS for the pawn cache,
+    /// correction history and pawn history, so a drifted key returns another
+    /// position's cached evaluation rather than crashing.
     ///
     /// Returns `Err` with the first mismatch rather than panicking, so tests
     /// can report instead of aborting. Not on any hot path.
@@ -1616,8 +1615,7 @@ impl Board {
     /// `gain` is 0 for a plain quiet move — so against any negative threshold
     /// it is trivially true and the caller learns nothing. That makes it
     /// impossible to ask the one question a quiet SEE prune exists to ask:
-    /// does this move hang the piece it just moved? The reference's SEE
-    /// answers it, and prices the pruning it enables at ~20 Elo.
+    /// does this move hang the piece it just moved?
     ///
     /// The exchange body needs no special case: `captured_piece` is `None` for
     /// a quiet move, so the immediate balance starts at 0, which is exactly
@@ -1802,9 +1800,9 @@ impl Board {
     // Make / Unmake
     // -----------------------------------------------------------------------
 
-    /// Apply a move in-place.  The move must be legal.
+    /// Apply a move in-place, computing the new checker set from scratch. The
+    /// move must be legal.
     #[inline(always)]
-    /// Play `mv`, computing the new checker set from scratch.
     pub fn make_move(&mut self, mv: Move) {
         crate::diag_count!(board_make_plain_calls);
         self.make_move_inner(mv, None);
@@ -2255,11 +2253,9 @@ impl Board {
             return Err("FEN must contain exactly one king for each side".to_string());
         }
 
-        // Pawn count and promoted-piece consistency (mirrors Basilisk's
-        // try_set_fen). Rarog's parser already rejects back-rank pawns, bad king
-        // counts, adjacency, and side-not-to-move-in-check, but did not count
-        // pawns — a corrupt bench FEN with 9 pawns was silently searched until
-        // Basilisk's stricter set_fen flagged it (2026-07-01).
+        // Pawn count and promoted-piece consistency, which the other checks
+        // (back-rank pawns, king counts, adjacency, side not to move in check)
+        // do not cover: a FEN with 9 pawns must be rejected, not searched.
         for color in [Color::White, Color::Black] {
             let pawns = infra::to_i32(self.pieces(color, Piece::Pawn).count());
             if pawns > 8 {
@@ -3082,7 +3078,7 @@ mod tests {
     }
 
     /// A queen pushed onto a defended square is taken: the compact kernel's
-    /// test plays that exchange, the classic forms credit the promotion's
+    /// test plays that exchange, the other forms credit the promotion's
     /// gain, and a capture or an undefended push reads the same in all.
     #[test]
     fn the_exchange_test_puts_a_promotion_push_at_risk() {

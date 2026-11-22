@@ -77,24 +77,21 @@ pub(super) fn generate_quiets_pinned_into(
     crate::diag_add!(board_gen_staged_quiet_moves, moves.len() as u64);
 }
 
-/// Generate only legal captures (for quiescence search).
+/// Generate only legal captures.
 ///
-/// Captures-only terminal callers (qsearch, ProbCut) keep the
-/// [`has_pseudo_capture`] pre-scan: nothing else runs at this node, so a
-/// negative answer really does save the pin computation and the whole
-/// generation pass. The pre-scan measured firing on **19.1%** of these
-/// calls, and the 80.9% that do find a capture exit the scan early (king/pawn
-/// tests come first), so the pre-scan is cheap when it fails and pays a full
+/// A captures-only call keeps the [`has_pseudo_capture`] pre-scan: nothing
+/// else runs, so a negative answer saves the pin computation and the whole
+/// generation pass. A position with a capture exits the scan early (king and
+/// pawn tests come first), so the scan is cheap when it fails and pays a full
 /// generation when it succeeds.
 pub(super) fn generate_captures_into(board: &mut Board, moves: &mut MoveList) {
     gen_captures_only::<false>(board, moves);
 }
 
 /// Legal captures plus the legal non-capturing queen promotions: what a
-/// captures-only search (quiescence outside check, ProbCut) plays. Without the
-/// push, a pawn one step from queening on a free square never promotes there,
-/// and the leaf is read at its static value. The rook, bishop and knight pushes
-/// stay quiet; the staged picker keeps the queen push in its quiet stage.
+/// captures-only search plays. Without the push, a pawn one step from queening
+/// on a free square never promotes there, and the leaf is read at its static
+/// value. The rook, bishop and knight pushes stay quiet.
 pub(super) fn generate_noisy_into(board: &mut Board, moves: &mut MoveList) {
     gen_captures_only::<true>(board, moves);
 }
@@ -199,8 +196,7 @@ pub(super) fn generate_captures(board: &mut Board) -> MoveList {
 /// captures-only sibling. A staged node usually goes on to generate
 /// quiets, and the pre-scan's saving is then illusory: `compute_pinned` is four
 /// slider lookups plus a short sniper walk, while a *failing* pre-scan is a
-/// full attack pass over every one of our pieces — and 78.5% of the nodes where
-/// it fired then paid for the pins anyway in `generate_quiets`. Computing pins
+/// full attack pass over every one of our pieces. Computing pins
 /// unconditionally is therefore less work in the common case and lets every
 /// stage at this node share one pinned set.
 pub(super) fn generate_captures_pinned_into(
@@ -355,11 +351,9 @@ fn gen_moves<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(board: &Boar
 /// [`gen_moves`] for callers that already hold the pinned set for this
 /// position.
 ///
-/// `compute_pinned` is four slider lookups plus a per-sniper `between` scan, and
-/// it was being repeated: `generate_captures` computed it and then handed off
-/// to `gen_moves`, which computed the very same thing again; and a staged node
-/// paid for it once more when quiets were finally generated. Pins are a pure
-/// function of the position, so one computation per node serves every stage.
+/// `compute_pinned` is four slider lookups plus a per-sniper `between` scan.
+/// Pins are a pure function of the position, so one computation per node
+/// serves every stage.
 ///
 /// `king_danger`, when the caller has it, is every square the side not to
 /// move attacks with our king lifted off the board ([`Board::threats`]): a

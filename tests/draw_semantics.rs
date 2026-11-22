@@ -63,8 +63,8 @@ fn stalemate_at_clock_100_is_a_draw() {
 
 #[test]
 fn search_finds_mate_in_one_at_clock_99() {
-    // Pre-7.1 the mating child (clock 100) returned draw 0 from negamax's
-    // rule-50 check, so the search scored the position ~cp 0.
+    // The mating child has clock 100: its mate must outrank the rule-50 draw
+    // in the search, which would otherwise score the position ~cp 0.
     let board = Board::from_fen("6k1/5ppp/8/8/8/8/8/R5K1 w - - 99 80").unwrap();
     let (score, bestmove) = search_to_depth(board, 4);
     assert_eq!(bestmove, "a1a8");
@@ -118,9 +118,8 @@ fn a_stored_win_never_answers_a_position_repeating_the_game_history() {
 
     let mut after_d1d2 = Board::from_fen(START).unwrap();
     after_d1d2.make_move(mv(&after_d1d2, "d1d2"));
-    // Two plies past the first depth whose search stores the win: 13 on
-    // the fitted seeds of 2026-11-21 (12 on the seeds before them, at
-    // -1,113 there, so with no margin).
+    // Two plies past the first depth whose search stores the win, which is
+    // depth 13 with the current seeds.
     let stored = search(&mut searcher, &after_d1d2, None, 15);
     assert!(
         stored <= -1_000,
@@ -151,10 +150,10 @@ fn three_occurrences_are_a_threefold_for_the_arbiter() {
     assert!(board.can_declare_draw());
 }
 
-/// 4.11b.15: the repetition identity is the position hash and NOTHING else.
+/// The repetition identity is the position hash and NOTHING else.
 ///
-/// PLAN forbids putting rule-50 buckets into the repetition identity merely
-/// because a transposition-table key might want them. This pins the separation
+/// Rule-50 buckets must not enter the repetition identity merely because a
+/// transposition-table key might want them. This pins the separation
 /// executably: two positions that differ only in the halfmove clock must share
 /// one hash, so the clock cannot leak into repetition matching. If a future
 /// change mixes the clock into the Zobrist key, repetition detection silently
