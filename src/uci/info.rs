@@ -170,12 +170,29 @@ mod tests {
     /// rule-50-downgraded mate never reads above a tablebase win.
     #[test]
     fn ordinary_scores_print_below_every_tablebase_win() {
+        // The band's width moves with the ply cap; the display keeps every
+        // tablebase win above every ordinary score, and both far above any
+        // evaluation.
+        let top = MAX_ORDINARY_CP;
+        assert!(top > 19_000, "{top}");
         for material in [0, 17, 30, 58, 78, 100] {
-            assert_eq!(format_score(TB_WIN_SCORE - 1, material), "cp 19872");
-            assert_eq!(format_score(-(TB_WIN_SCORE - 1), material), "cp -19872");
-            assert_eq!(format_score(TB_WIN_SCORE, material), "cp 19873");
+            assert_eq!(
+                format_score(TB_WIN_SCORE - 1, material),
+                format!("cp {top}")
+            );
+            assert_eq!(
+                format_score(-(TB_WIN_SCORE - 1), material),
+                format!("cp -{top}")
+            );
+            assert_eq!(
+                format_score(TB_WIN_SCORE, material),
+                format!("cp {}", top + 1)
+            );
             assert_eq!(format_score(TB_VALUE, material), "cp 20000");
-            assert_eq!(format_score(-TB_WIN_SCORE, material), "cp -19873");
+            assert_eq!(
+                format_score(-TB_WIN_SCORE, material),
+                format!("cp -{}", top + 1)
+            );
             assert_eq!(format_score(MATE_SCORE - 3, material), "mate 2");
             assert_eq!(format_score(-(MATE_SCORE - 4), material), "mate -2");
         }
