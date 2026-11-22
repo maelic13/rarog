@@ -8,7 +8,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Kind:** PLAN D.6.7's repair, AGENTS' repair case 2: expected near zero
   in the rated configuration, where a small loss is acceptable for
   correctness (maintainer decision 2026-11-22: "zero-game read, then case 2").
-- Disposition: open — part A read 2026-11-22: no correctness fault where the cap binds; part B, 2,000 games, prepared and the maintainer's to run.
+- Disposition: retained — read 2026-11-22: part A, no correctness fault where the cap binds; part B, nElo −11.6 ± 15.2 over 2,000 games against the −13 harm rule; kept (`91bc561`).
 
 ## The change
 
@@ -146,3 +146,31 @@ The dry run of `-Step stc` passed every preflight (host idle 7%, the pinned
 runner, both fingerprints, equal build flavour and compiler, the policy):
 `tools/results/colosseum_match_rar-s138-stc_20261122_172233.dry-run.json`.
 Part B is the maintainer's to run.
+
+### Part B (read 2026-11-22, once, after the dry run)
+
+Played 2026-11-22 16:33 to 16:57 UTC by the maintainer,
+`tools/results/colosseum_match_rar-s138-stc_20261122_173317.manifest.txt`:
+`exit_code: 0 (completed)`, 2,000 scored games in 1,000 complete pairs,
+`faults: time: 0-0; other: 0-0`, `time_losses: d67cap240 0, d67base 0`,
+both engines' hashes and commits the registered ones, `git_dirty: False`.
+
+- **Result:** `d67cap240` against `d67base` **nElo −11.6 ± 15.2** (Elo
+  −5.2 ± 6.8), W/D/L 510/950/540, pentanomial 4, 199, 625, 167, 5 (the
+  manifest's recount of `games.pgn` agrees).
+- **By the frozen rule:** −11.6 is above −13, so the harm rule does not
+  fire. **`91bc561` is kept, D.6.7 closes, and the fingerprint record moves
+  to 3,374,901 / EBF 2.316.** As registered, "kept" means no harm beyond
+  roughly −20 nElo; the interval reaches −26.8, so this read does not
+  exclude a loss near the rule's line, and `3+0.03` cannot see the cap
+  itself (RAR-S137: no search reaches it there).
+- **Beside the verdict:** depth 17.96 against 17.94 a move, 127,254 against
+  127,561 nodes a move, 2.015M against 2.023M nodes a second in the games.
+- **Calibration.** Predicted 0 ± 8 nElo (80% band) and 0.93 that the rule
+  does not fire. The rule did not fire, but −11.6 lies below the band: the
+  basis, RAR-S124 and RAR-S125, were changes that moved every search a
+  little, while this one moves decisions inside the decisive band, which
+  the prediction treated as too rare to show. Whether it costs anything is
+  not resolved at 2,000 games.
+- **Artifacts:** `tools/results/rar-s138-stc/` (ignored): `results.txt`
+  (`8693D9D0…`), `games.pgn` (`818E6259…`), `result.json` (`445527FB…`).

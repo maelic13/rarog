@@ -63,7 +63,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **3,390,842 / EBF 2.317** at engine source `16f93cb`, on `master` as `94d7f72` since PR #20 (2026-11-22) (D.7.11.8: RAR-S135's centres at 2,000 baked into the kernel's seeds; before it 3,320,355 / EBF 2.317 at `4271031`, D.7.8.3: the root ordered by the kernel's own scorer, kept by RAR-S132; before it 3,348,508 / EBF 2.329 at `e363908`, D.7.8.2: quiescence and evaluation-only entries at the donor's depth, kept by RAR-S131; before it 3,278,226 / EBF 2.313 at `e63b652`, D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
+| Fingerprint | `bench 13` **3,374,901 / EBF 2.316** at engine source `91bc561` on `d6-review` since 2026-11-22 (D.6.7: the ply cap at the donor's 240, its score bands with it, kept by RAR-S138); before it 3,390,842 / EBF 2.317 at engine source `16f93cb`, on `master` as `94d7f72` since PR #20 (2026-11-22) (D.7.11.8: RAR-S135's centres at 2,000 baked into the kernel's seeds; before it 3,320,355 / EBF 2.317 at `4271031`, D.7.8.3: the root ordered by the kernel's own scorer, kept by RAR-S132; before it 3,348,508 / EBF 2.329 at `e363908`, D.7.8.2: quiescence and evaluation-only entries at the donor's depth, kept by RAR-S131; before it 3,278,226 / EBF 2.313 at `e63b652`, D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -395,7 +395,6 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.7 | RESEARCH | R2 | Reviewed 2026-11-22 (RAR-S137): no search reaches the cap at `3+0.03`'s or ten-thirds of its node counts, 0.511% at twenty times them, all endings at iteration 16 or deeper, where the eight-times line bound passes the cap; the maintainer chooses the form before any change |
 | D.6.8 | RESEARCH | R2 | Review after D.7: one count per move made; confirm the hand-off to quiescence, the exclusion search and the verification count nothing twice |
 | D.6.9 | RESEARCH | R2 | Review after D.7: an evaluation item, which the kernel does not change; its screen as written, read through the kernel's wrapper |
 | D.6.10 | RESEARCH | R2 | Review after D.7: an evaluation item; its screen as written, read through the kernel's wrapper |
@@ -1005,7 +1004,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      donor's do. The picker test that drains every stage asserts the TT
      move comes first; no further test pins the order, which changes cost
      alone, and RAR-S120 priced that cost below any resolvable read.
-    - **D.6.7 The ply cap — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-11 on the classic kernel).** (NODE-8): `MAX_PLY = 128` is below the extension budget's
+    - **D.6.7 The ply cap — `R2`, DONE 2026-11-22 on the new kernel (reopened 2026-11-19; done 2026-11-11 on the classic kernel).** (NODE-8): `MAX_PLY = 128` is below the extension budget's
      bound (about twice the iteration depth plus 16); from about iteration 56
      the cap, not the budget, ends lines and the node returns a static eval
      with no in-check or draw handling (the donor: 240, a draw in check). The
@@ -1101,6 +1100,20 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      0.511% do (21 of 4,107, in 14 of 60 games), all in endings at
      iterations 16 to 99, above RAR-S122's 0.1% trigger. **Open, for the
      maintainer's decision on the form, before any change.**
+     Repaired 2026-11-22 (maintainer decision: the donor's cap, read at zero
+     games and then by case 2): `91bc561` raises `MAX_PLY` to 240 in the
+     search and the table, the mate band, the tablebase band and the
+     decisive floor with it, as the donor's do; a test ties the table's cap
+     to the search's, and the score display's test reads its band edges from
+     the constants (`788c216`, its own commit). `bench 13` moves to
+     3,374,901 / EBF 2.316, through the bands, not the cap (one bench
+     position in forty). RAR-S138's part A, the 21 cap searches replayed:
+     no correctness fault, 12 moves differ, Stockfish with Syzygy reads 10
+     of them equal and 1 each way. Part B, 2,000 games at `3+0.03`: nElo
+     −11.6 ± 15.2 against the −13 harm rule, **kept**. That rules out harm
+     beyond roughly −20, not a loss near the line, and `3+0.03` cannot see
+     the cap. Retry trigger: a loss read at a rated time control traced to
+     the decisive band's lower floor.
     - **D.6.8 A depth-0 entry is counted as two nodes — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-13 on the classic kernel).** (DRIVER-11): `check_stop` at
      the `negamax` entry and again at the `quiescence` entry it hands to, so
      reported nodes, `go nodes`, the bench count and the LMR spread's phase

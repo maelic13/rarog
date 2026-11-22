@@ -31,6 +31,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Fixed
 
+- **Long searches reach deeper.** In long searches of endgames a line could
+  be cut short at 128 plies and judged on a static score; lines now run to
+  240.
 - **A found mate is kept.** When a deeper search lost sight of a mate it
   had already found, the engine could switch to another move and take
   longer to win; it now keeps the mating move.
