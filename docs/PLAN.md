@@ -395,7 +395,6 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.3 | RESEARCH | R2 | Review after D.7: the kernel types the null-move and ProbCut children as its donor does; confirm, and whether the classic's finding has an instance left |
 | D.6.4 | RESEARCH | R2 | Review after D.7: the kernel stores no move at a fail low, as its donor; confirm what the store carries and which consumers read it |
 | D.6.5 | RESEARCH | R2 | Review after D.7: the exclusion search's estimate in the kernel is its donor's form; confirm against RAR-S118's and RAR-S119's reads |
 | D.6.6 | RESEARCH | R2 | Review after D.7: the staged picker hands the table move before generating captures; confirm the cycles RAR-S120 priced are gone |
@@ -690,7 +689,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      quiescence test (`7fb73e4`) has a free push raise the score above the
      stand pat and head the line, and a rook-guarded one do neither, and it
      fails when the generator's queen pushes are switched off.
-    - **D.6.3 Null-move and ProbCut children typed `cut_node = true` — `R2`, reopened 2026-11-19 for review on the new kernel (no change 2026-11-11 on the classic kernel).** (NODE-1): the
+    - **D.6.3 Null-move and ProbCut children typed `cut_node = true` — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; no change 2026-11-11 on the classic kernel).** (NODE-1): the
      donor passes `false` for the null child (`search.rs:606`) and both
      ProbCut searches (`664–684`); Rarog passes `true` at `node.rs:988`,
      `1203` and `1221`. The type feeds the child's TT-cutoff admission, the
@@ -800,6 +799,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      same fit, or on a change to ProbCut's margin, depth or
      verification. NODE-14's test keeps every recursive call's type
      pinned, ProbCut's children `true`.
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. Each of the kernel's nine recursive calls types
+     its child as Reckless's matching call does: the null-move child, its
+     verification and both ProbCut verification searches `false`, the PV
+     search `false`, a reduced late move `true`, its re-search and the
+     full-depth zero window the opposite of the parent, the exclusion
+     search the parent's own type. RAR-S114's concern, a ProbCut margin
+     fitted under the other typing, is gone too: D.7.11 fitted the
+     kernel's ProbCut and cut-node terms with this typing in place, so the
+     retry at the search re-fit has in effect run. NODE-14's test left
+     with the classic kernel; its place is taken by
+     `each_recursive_call_types_its_child_by_its_rule` (`9507abd`): test
+     builds tag each call and count the type its child receives, the test
+     holds the rule table and requires every call reached, and it fails on
+     the null child typed `true` (8,125 children against the rule) and on a
+     ProbCut child typed `true` (7).
     - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`, reopened 2026-11-19 for review on the new kernel (no change 2026-11-11 on the classic kernel).** (NODE-2):
      `best_move` is set on every new best score, so an `Upper` entry carries
      the refuted move and overwrites the position's earlier move; the donor
