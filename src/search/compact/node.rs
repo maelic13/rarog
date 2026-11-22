@@ -12,6 +12,8 @@ use super::super::movepick::{MovePicker, ScoredMoveList, diversify_root_scores};
 use super::super::node::{NodeType, NonPv, Pv, TbVerdict, tb_verdict};
 #[cfg(feature = "pricing")]
 use super::super::pricing::{ReSearch, Rule, Verdict};
+#[cfg(test)]
+use super::super::thread::ChildCall;
 use super::super::{MAX_PLY, SearchEvent, Searcher};
 use super::picker::{CompactPicker, Stage};
 use super::rules::{self, is_decisive};
@@ -81,6 +83,10 @@ impl Searcher {
             self.td.stack[ply].mv.is_null(),
             "ply {ply} entered with a move left in its frame"
         );
+        #[cfg(test)]
+        if let Some((call, parent_cut)) = self.td.child_call.take() {
+            self.td.child_types[call as usize][usize::from(parent_cut)][usize::from(cut_node)] += 1;
+        }
         let has_excluded = !excluded.is_null();
         #[cfg(feature = "pricing")]
         let pricing_entry = super::pricing::CompactEntry {
@@ -432,6 +438,10 @@ impl Searcher {
             self.td.stack[ply].laterality = 0;
             board.make_null_move();
             self.shared.tt.prefetch(board.hash());
+            #[cfg(test)]
+            {
+                self.td.child_call = Some((ChildCall::Null, cut_node));
+            }
             let score = -self.compact_negamax::<NonPv, _>(
                 board,
                 -null_beta,
@@ -476,6 +486,10 @@ impl Searcher {
                 }
                 rules::NullOutcome::Verify(verify_depth) => {
                     self.td.nmp_min_ply = infra::to_i32(ply) + 3 * verify_depth / 4;
+                    #[cfg(test)]
+                    {
+                        self.td.child_call = Some((ChildCall::NullVerify, cut_node));
+                    }
                     let verified = self.compact_negamax::<NonPv, _>(
                         board,
                         beta - 1,
@@ -557,6 +571,10 @@ impl Searcher {
                 let mut probcut_depth = verification.depth;
                 if score >= probcut_beta && probcut_depth > 0 {
                     let adjusted = verification.adjusted_beta;
+                    #[cfg(test)]
+                    {
+                        self.td.child_call = Some((ChildCall::ProbCut, cut_node));
+                    }
                     score = -self.compact_negamax::<NonPv, _>(
                         board,
                         -adjusted,
@@ -570,6 +588,10 @@ impl Searcher {
                     );
                     if score < adjusted && probcut_beta < adjusted {
                         probcut_depth = verification.base;
+                        #[cfg(test)]
+                        {
+                            self.td.child_call = Some((ChildCall::ProbCut, cut_node));
+                        }
                         score = -self.compact_negamax::<NonPv, _>(
                             board,
                             -probcut_beta,
@@ -642,6 +664,10 @@ impl Searcher {
             );
             let singular_beta = tt_score - margin;
             let nodes_before = self.td.nodes;
+            #[cfg(test)]
+            {
+                self.td.child_call = Some((ChildCall::Singular, cut_node));
+            }
             singular_score = self.compact_negamax::<NonPv, _>(
                 board,
                 singular_beta - 1,
@@ -962,6 +988,10 @@ impl Searcher {
                 let reduced = rules::lmr_depth(new_depth, reduction, NODE::PV);
                 probe!(self, Lmr, true);
                 self.td.stack[ply].reduction = reduction;
+                #[cfg(test)]
+                {
+                    self.td.child_call = Some((ChildCall::Reduced, cut_node));
+                }
                 score = -self.compact_negamax::<NonPv, _>(
                     board,
                     -alpha - 1,
@@ -1006,6 +1036,10 @@ impl Searcher {
                     );
                     probe!(self, Research, new_depth > reduced);
                     if new_depth > reduced {
+                        #[cfg(test)]
+                        {
+                            self.td.child_call = Some((ChildCall::Research, cut_node));
+                        }
                         score = -self.compact_negamax::<NonPv, _>(
                             board,
                             -alpha - 1,
@@ -1059,6 +1093,10 @@ impl Searcher {
                 );
                 let reduced = rules::unreduced_depth(self.seeds(), new_depth, reduction);
                 probe!(self, Unreduced, reduced < new_depth);
+                #[cfg(test)]
+                {
+                    self.td.child_call = Some((ChildCall::FullDepth, cut_node));
+                }
                 score = -self.compact_negamax::<NonPv, _>(
                     board,
                     -alpha - 1,
@@ -1104,6 +1142,10 @@ impl Searcher {
             if NODE::PV && (move_count == 1 || score > alpha) {
                 if mv == tt_move && tt_depth > 1 {
                     new_depth = new_depth.max(1);
+                }
+                #[cfg(test)]
+                {
+                    self.td.child_call = Some((ChildCall::Pv, cut_node));
                 }
                 score = -self.compact_negamax::<Pv, _>(
                     board,
@@ -1668,6 +1710,57 @@ mod tests {
                 score.abs() < TB_WIN_SCORE || score.abs() >= MATE_SCORE - infra::to_i32(MAX_PLY),
                 "{fen}: {score} is neither an evaluation nor a mate"
             );
+        }
+    }
+
+    /// Each recursive call types its child as the donor does: the null move,
+    /// its verification, ProbCut's searches and the PV search all nodes, a
+    /// reduced late move a cut node, its re-search and a full-depth zero
+    /// window the opposite of their parent, and the exclusion search its
+    /// parent's own type. Every call must be reached, so none passes unseen.
+    #[test]
+    fn each_recursive_call_types_its_child_by_its_rule() {
+        fn rule(call: ChildCall, parent_cut: bool) -> bool {
+            match call {
+                ChildCall::Null | ChildCall::NullVerify | ChildCall::ProbCut | ChildCall::Pv => {
+                    false
+                }
+                ChildCall::Reduced => true,
+                ChildCall::Singular => parent_cut,
+                ChildCall::Research | ChildCall::FullDepth => !parent_cut,
+            }
+        }
+        let mut counts = [[[0u64; 2]; 2]; ChildCall::COUNT];
+        // A bench position whose null move is verified by depth 12, beside
+        // every fourth bench position at depth 10.
+        let verified = ("1Q4R1/5k2/4rpp1/3K4/8/7p/8/8 b - - 2 9", 12);
+        let searches = crate::bench::BENCH_FENS
+            .iter()
+            .step_by(4)
+            .map(|&fen| (fen, 10))
+            .chain([verified]);
+        for (fen, depth) in searches {
+            let (searcher, _) = compact_search(fen, depth);
+            for (total, seen) in counts.iter_mut().zip(searcher.td.child_types) {
+                for (total, seen) in total.iter_mut().zip(seen) {
+                    for (total, seen) in total.iter_mut().zip(seen) {
+                        *total += seen;
+                    }
+                }
+            }
+        }
+        for call in ChildCall::ALL {
+            let by_parent = counts[call as usize];
+            let seen: u64 = by_parent.iter().flatten().sum();
+            assert!(seen > 0, "{call:?} was never searched");
+            for parent_cut in [false, true] {
+                let wrong =
+                    by_parent[usize::from(parent_cut)][usize::from(!rule(call, parent_cut))];
+                assert_eq!(
+                    wrong, 0,
+                    "{call:?} under a parent typed {parent_cut}: {wrong} children against the rule"
+                );
+            }
         }
     }
 
