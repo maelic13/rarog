@@ -295,6 +295,34 @@ mod tests {
         assert_eq!(i32::from(entry.depth), Q_DEPTH);
     }
 
+    /// Quiescence searches a quiet queen promotion as a noisy move: with no
+    /// capture on the board, a push to a free queening square raises the
+    /// score above the stand pat and heads the line, and a push to a square a
+    /// rook guards does neither.
+    #[test]
+    fn a_free_queen_push_is_searched_and_a_guarded_one_gains_nothing() {
+        let stand_pat_of = |searcher: &mut Searcher, board: &Board| {
+            let raw = bounded_raw(searcher.raw_eval(board));
+            let material = kernel_material(board, searcher.exchange_values());
+            searcher.compact_eval(board, raw, material, 1).0
+        };
+
+        let free = "8/P6k/8/8/8/8/8/K7 w - - 0 1";
+        let (mut searcher, board, score) = search::<Pv>(free, -INF_SCORE, INF_SCORE);
+        let stand_pat = stand_pat_of(&mut searcher, &board);
+        assert_eq!(searcher.td.pv_table[1][1].to_string(), "a7a8q");
+        assert!(score > stand_pat, "{score} after a8=Q from {stand_pat}");
+
+        let guarded = "7r/P6k/8/8/8/8/8/K7 w - - 0 1";
+        let (mut searcher, board, score) = search::<Pv>(guarded, -INF_SCORE, INF_SCORE);
+        let stand_pat = stand_pat_of(&mut searcher, &board);
+        assert_ne!(searcher.td.pv_table[1][1].to_string(), "a7a8q");
+        assert!(
+            score <= stand_pat,
+            "{score} with the push guarded, from {stand_pat}"
+        );
+    }
+
     #[test]
     fn quiescence_stops_before_ply_stack_overflow() {
         let mut searcher = Searcher::default();
