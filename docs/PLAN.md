@@ -395,7 +395,6 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.13 | RESEARCH | R2 | Review after D.7: the kernel's window is its donor's; confirm the classic's fail-low form has no instance left, close if moot |
 | D.6.15 | RESEARCH | R2 | Review after D.7: `compact_eval` passes a draw verdict as 0 with no correction and no optimism; confirm by its test and the three draw anchors |
 | D.6.16 | RESEARCH | R2 | Review after D.7: quiescence is the donor's form; re-evaluate the gain pruning against a decisive material edge on it |
 | D.6.17 | RESEARCH | R2 | Review after D.7: the ignored transposing-rook anchor and the promotion anchors run on the new kernel and its root order (D.7.8.3) |
@@ -1217,7 +1216,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      D.6.26's. **Closed here, moved into E.4.2** (maintainer decision
      2026-11-22), where the card's next read, the Syzygy drawn-overclaim
      read, runs over every endgame family together.
-    - **D.6.13 The aspiration fail-low window — `R2`.** (DRIVER-13): the code halves toward
+    - **D.6.13 The aspiration fail-low window — `R2`, NO_CHANGE 2026-11-22 on the new kernel.** (DRIVER-13): the code halves toward
       the new alpha; a counter of fail-lows whose re-search fails high
       (`asp_fail_high` straight after `asp_fail_low` at one depth); above 15%
       the old-alpha form is a `[0,3]` candidate.
@@ -1225,6 +1224,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `analysis/triumviratus_review_2026-11-03.md`): a decisive aspiration
       fail-high +0.7 ± 4.2, root depth recovery after a fail-high −1.82 ±
       4.54, a cap on root-move reductions −5.80 ± 5.93.
+      Review read 2026-11-22 on the compact kernel (zero games): the
+      problem is not there. The kernel's `window_fail_low` sets alpha to
+      the failing score less the half-width and beta to that alpha plus
+      the half-width, so beta falls to the failing score, not halfway, as
+      Reckless's root loop does line for line; the fail-high side matches
+      too. D.7.11 fitted both growth seeds, and the parity test replays
+      both window rules against the donor's recorded decisions. The
+      classic's halving form has no instance left, so the counter that was
+      to choose between it and another form has no use.
   Added 2026-11-02 from the Basilisk cross-check (`analysis/basilisk_crosscheck_2026-11-02.md`):
     - **D.6.15 The correction is added to the evaluator's draw verdicts — `I1`, reopened 2026-11-19 for review on the new kernel (done 2026-11-03 on the classic kernel).**
       `3a16fbb`: the search no longer adds its correction to the
