@@ -395,7 +395,6 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.8 | RESEARCH | R2 | Review after D.7: one count per move made; confirm the hand-off to quiescence, the exclusion search and the verification count nothing twice |
 | D.6.9 | RESEARCH | R2 | Review after D.7: an evaluation item, which the kernel does not change; its screen as written, read through the kernel's wrapper |
 | D.6.10 | RESEARCH | R2 | Review after D.7: an evaluation item; its screen as written, read through the kernel's wrapper |
 | D.6.13 | RESEARCH | R2 | Review after D.7: the kernel's window is its donor's; confirm the classic's fail-low form has no instance left, close if moot |
@@ -1114,7 +1113,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      beyond roughly −20, not a loss near the line, and `3+0.03` cannot see
      the cap. Retry trigger: a loss read at a rated time control traced to
      the decisive band's lower floor.
-    - **D.6.8 A depth-0 entry is counted as two nodes — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-13 on the classic kernel).** (DRIVER-11): `check_stop` at
+    - **D.6.8 A depth-0 entry is counted as two nodes — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; done 2026-11-13 on the classic kernel).** (DRIVER-11): `check_stop` at
      the `negamax` entry and again at the `quiescence` entry it hands to, so
      reported nodes, `go nodes`, the bench count and the LMR spread's phase
      read the double count; the donor counts once per move made. Screen: the
@@ -1166,6 +1165,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      ×0.826, the count's own ratio on the bench's fixed tree. The
      fingerprint moves to 9,077,016 / EBF 2.481. Kept means no harm
      beyond roughly −20 nElo.
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. The kernel counts a node in three places, each
+     right after a move is made: the main move loop, ProbCut and
+     quiescence; nothing else adds to the count. The null move (D.6.31),
+     the hand-off to quiescence, the exclusion search, re-searches and the
+     null-move verification make no move and count nothing. Reckless counts
+     the same way, once in its `make_move`, which those three call, and not
+     for its null move. Pinned by the bench-positions test and the mate
+     test (the count equals a test-only tally of moves made) and by
+     `a_depth_one_search_counts_each_root_move_once` (20 from the start).
     - **D.6.9 The endgame scale's target — `R2`.** (EVAL-5): `evaluate` adds tempo to `mg`,
      tapers, then `scale_endgame` multiplies the whole; both donor commits
      scale the endgame half only (`v = mg·p + eg·(128−p)·sf/64`), so the forms
