@@ -395,7 +395,6 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.2 | RESEARCH | R2 | Review after D.7: a queen push is noisy in the kernel's partition; confirm quiescence and ProbCut generate and search it |
 | D.6.3 | RESEARCH | R2 | Review after D.7: the kernel types the null-move and ProbCut children as its donor does; confirm, and whether the classic's finding has an instance left |
 | D.6.4 | RESEARCH | R2 | Review after D.7: the kernel stores no move at a fail low, as its donor; confirm what the store carries and which consumers read it |
 | D.6.5 | RESEARCH | R2 | Review after D.7: the exclusion search's estimate in the kernel is its donor's form; confirm against RAR-S118's and RAR-S119's reads |
@@ -645,7 +644,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      under-promotions noisy, is read only by tests; its comment claimed
      otherwise and was corrected (`f22bf1d`, comment only). Folding the
      two partitions into one is a cleanup for D.8's census (D.8.1).
-    - **D.6.2 Quiescence cannot see a non-capturing queen promotion — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-10 on the classic kernel).** (BOARD-2): pawn
+    - **D.6.2 Quiescence cannot see a non-capturing queen promotion — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; done 2026-11-10 on the classic kernel).** (BOARD-2): pawn
      captures target enemy occupancy only, every non-capture promotion is
      generated with the quiets, and quiescence outside check generates
      captures only, so a safe promotion to a queen is invisible to the
@@ -673,6 +672,24 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      raise alpha, legal in 54% of gate games, so no closing rule fired; the
      push is `ee0b3e4` on `d6` (bench 13,038,236), accepted by its SPRT
      `[0,3]` on 2026-11-10 at nElo +12.2 ± 6.5 over 11,108 games.
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. The kernel's noisy stage
+     (`generate_legal_noisy_staged_into`) emits the legal captures, then
+     every legal non-capturing queen promotion through checks and pins, with
+     no capture pre-scan to skip it; the quiet stage leaves queen pushes out,
+     so none is handed over twice, and the rook, bishop and knight pushes
+     stay quiet. Quiescence takes the picker with quiets skipped, so the push
+     is generated and searched like a capture, its exchange test putting the
+     promoted queen at risk; ProbCut takes the same picker and stops at the
+     bad noisy moves, so a push that clears its bar is tried there too.
+     Reckless generates promotions the same way (its queen push with the
+     noisy moves, before the captures where Rarog's follows them; the picker
+     orders by score, so only an exact tie could differ). Checks: the
+     noisy-list test now runs through the staged generator and passes,
+     against the legal moves on five positions walked two plies; a new
+     quiescence test (`7fb73e4`) has a free push raise the score above the
+     stand pat and head the line, and a rook-guarded one do neither, and it
+     fails when the generator's queen pushes are switched off.
     - **D.6.3 Null-move and ProbCut children typed `cut_node = true` — `R2`, reopened 2026-11-19 for review on the new kernel (no change 2026-11-11 on the classic kernel).** (NODE-1): the
      donor passes `false` for the null child (`search.rs:606`) and both
      ProbCut searches (`664–684`); Rarog passes `true` at `node.rs:988`,
