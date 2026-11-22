@@ -395,7 +395,7 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.7 | RESEARCH | R2 | Review after D.7: the kernel's line bound is eight times the depth; RAR-S121's replay on it, the searches reaching the ply cap counted; the eight was chosen at zero games and no fit holds it (D.7.11) |
+| D.6.7 | RESEARCH | R2 | Reviewed 2026-11-22 (RAR-S137): no search reaches the cap at `3+0.03`'s or ten-thirds of its node counts, 0.511% at twenty times them, all endings at iteration 16 or deeper, where the eight-times line bound passes the cap; the maintainer chooses the form before any change |
 | D.6.8 | RESEARCH | R2 | Review after D.7: one count per move made; confirm the hand-off to quiescence, the exclusion search and the verification count nothing twice |
 | D.6.9 | RESEARCH | R2 | Review after D.7: an evaluation item, which the kernel does not change; its screen as written, read through the kernel's wrapper |
 | D.6.10 | RESEARCH | R2 | Review after D.7: an evaluation item; its screen as written, read through the kernel's wrapper |
@@ -1090,6 +1090,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      constants or by the donor's in-check and draw handling at the cap, if a
      read at a rated time control finds more than 0.1% of searches reaching
      it.
+     Review read 2026-11-22 on the compact kernel (RAR-S137, a replay of 60
+     of RAR-M91's games, zero new games): the kernel ends a line at ply 127
+     as the donor does, a draw by rule first and a draw in check, so the
+     classic's static evaluation there is gone, and RAR-S108's race
+     position no longer reaches the cap by depth 10 (seldepth 70). But the
+     kernel's line bound is eight times the iteration's depth, so from
+     iteration 16 the cap binds before it. No search reaches the cap at
+     the games' node counts or at ten-thirds of them; at twenty times them
+     0.511% do (21 of 4,107, in 14 of 60 games), all in endings at
+     iterations 16 to 99, above RAR-S122's 0.1% trigger. **Open, for the
+     maintainer's decision on the form, before any change.**
     - **D.6.8 A depth-0 entry is counted as two nodes — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-13 on the classic kernel).** (DRIVER-11): `check_stop` at
      the `negamax` entry and again at the `quiescence` entry it hands to, so
      reported nodes, `go nodes`, the bench count and the LMR spread's phase

@@ -5,7 +5,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Date / owner:** registered 2026-11-22, before any replay count was
   read. The read is the agent's (deterministic, no games).
 - **Kind:** a zero-game screen, PLAN D.6.7's review on the new kernel.
-- Disposition: open — registered 2026-11-22, no count read yet.
+- Disposition: open — read 2026-11-22: 0.511% of searches reach the cap at 20 times the games' node counts (none at 1 or 10/3), all in endings at iteration 16 or deeper; D.6.7 stays open for the maintainer's decision on the form.
 - **Baseline:** `d6-review` at `b90e983`, the engine source of `9507abd`
   (behaviour of `master`'s `94d7f72`), `bench 13` 3,390,842 / EBF 2.317.
 
@@ -85,4 +85,37 @@ and depth 18 had not finished after 60 seconds. Unexposed: every replay count.
 
 ## Result
 
-Not read yet.
+Read 2026-11-22, once, after registration. 60 of the kernel's 8,800 games,
+4,107 searches at each scale, every replay exit 0; a watchdog sampling each
+engine's CPU time every 20 seconds flagged no stalled process.
+
+| k | Searches at the cap | Games with one | At iteration 16 or deeper | Median depth | Largest seldepth |
+|---|---|---|---|---|---|
+| 1 | 0 (0.000%) | 0 | 18.3% | 13 | 123 |
+| 10/3 | 0 (0.000%) | 0 | 53.3% | 16 | 108 |
+| 20 | 21 (0.511%) | 14 | 80.8% | 21 | 128 |
+
+**Verdict by the frozen rule:** X_20 is 0.511%, above 0.1%, so the defect
+has an instance on the kernel. D.6.7 stays open and goes to the maintainer
+with this exposure and the forms, before any change.
+
+**Where the cap is reached.** All 21 searches are endings, 4 to 12 men,
+none in check at the root, at iterations 16 to 99: 13 at 16 to 25, where the
+line bound (eight times the depth) lets a line run past the cap, and 8 at 37
+or deeper, 4 of them at 64 or more, where twice the iteration reaches the
+cap by itself. Below iteration 16 the bound holds every line under the cap,
+which is why no search reaches it at k = 1 or 10/3.
+
+**Calibration.** All three predictions held: X_1 = 0, X_10/3 at or under
+0.1%, X_20 above 0.1%. The failure mode named, more reach at k = 10/3, did
+not occur: the largest seldepth there was 108.
+
+**Beside the verdict.** Bench position 15, `8/8/p1p5/1p5p/1P5P/P1P5/8/K1k5 w`,
+reaches the cap at depth 17 (11.6M nodes, 3.3 s), and depth 18 had not
+finished after 60 seconds: a fixed-depth search can sink time in such an
+ending once its lines meet the cap. That is the clock's question, D.6.20's.
+
+**Artifacts** (`analysis/artifacts/d67-review-2026-11-22/`, ignored):
+`replay_x1.jsonl` (`8ea39245…`), `replay_x10_3.jsonl` (`effec9cd…`),
+`replay_x20.jsonl` (`d3b4d12b…`), their `.log` files, `run.sh`,
+`run_status.txt`, `watchdog.ps1` and `watchdog.log`.
