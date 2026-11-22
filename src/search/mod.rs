@@ -54,7 +54,10 @@ use time::{IterationSignals, MateWatch, RuntimeLimits, TbExtension, compute_runt
 
 const MAX_DEPTH: usize = 100;
 
-pub(crate) const MAX_PLY: usize = 128;
+/// The deepest ply a line reaches, the donor's 240: from iteration 16 the
+/// line bound's eight times the depth passes a 128-ply cap, and long
+/// searches in endings met it.
+pub(crate) const MAX_PLY: usize = 240;
 /// The most a draw's score lies from zero. The kernel scores a draw a unit
 /// either side of it by the node count, so a line that can draw is not
 /// scored level with every other draw.

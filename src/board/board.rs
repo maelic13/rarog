@@ -101,9 +101,9 @@ struct UnmakeInfo {
 /// - `Board` is 264 bytes. The six-board variant would save 48 and neither
 ///   figure is near any cache boundary that matters, while the extra mask would
 ///   land on every `pieces()` call site, over a hundred of them in evaluation.
-/// - `UnmakeInfo` is 24 bytes, so a 128-ply search stack costs 3 KiB and stays
-///   comfortably in L1. Copying whole board state per ply instead would cost
-///   128 x 264 = 33 KiB and leave it.
+/// - `UnmakeInfo` is 24 bytes, so a 240-ply search stack costs under 6 KiB
+///   and stays comfortably in L1. Copying whole board state per ply instead
+///   would cost 240 x 264 = 62 KiB and leave it.
 ///
 /// Upper bounds, not equalities: padding may differ between supported targets,
 /// and only growth would invalidate the decision.
@@ -113,7 +113,7 @@ const _: () = assert!(
 );
 const _: () = assert!(
     core::mem::size_of::<UnmakeInfo>() <= 24,
-    "UnmakeInfo grew past 24 bytes; a 128-ply stack no longer costs 3 KiB and PLAN 4.11b.14's per-ply restoration argument needs re-checking"
+    "UnmakeInfo grew past 24 bytes; a 240-ply stack no longer costs under 6 KiB and PLAN 4.11b.14's per-ply restoration argument needs re-checking"
 );
 
 /// By piece type, the masks of the derived keys a piece's key enters: the
@@ -2787,12 +2787,13 @@ mod tests {
     fn a_reserved_history_does_not_reallocate_through_a_full_depth_walk() {
         let mut board = Board::starting_position();
         walk(&mut board, 40);
-        board.reserve_history(128);
+        let plies = crate::search::MAX_PLY;
+        board.reserve_history(plies);
         let reserved = board.history.capacity();
 
-        // 128 plies is the search's MAX_PLY; the reservation must absorb all
-        // of it without a single reallocation.
-        let played = walk(&mut board, 128);
+        // The search reserves its ply cap; the reservation must absorb a line
+        // that long without a single reallocation.
+        let played = walk(&mut board, plies);
         assert_eq!(
             board.history.capacity(),
             reserved,

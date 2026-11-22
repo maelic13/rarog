@@ -39,7 +39,7 @@ const MOPUP_MAX: i32 = MOPUP_DIAGONAL * 7 + MOPUP_KING_CHEB * 7 + MOPUP_KING_MAN
 /// the search to know its own safety bound. `search::tests::
 /// mopup_mirror_matches_the_real_ply_horizon` ties the two together in a module
 /// that legitimately sees both, so the mirror cannot drift silently.
-pub(crate) const MOPUP_ASSUMED_MAX_PLY: i32 = 128;
+pub(crate) const MOPUP_ASSUMED_MAX_PLY: i32 = 240;
 
 /// A guidance term must never reach the band the search reads as a forced mate.
 ///
