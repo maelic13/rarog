@@ -388,6 +388,10 @@ to run in ascending order (D.7.7 to D.7.15; HISTORY's number map), D.6.28
 moved into them as D.7.9, and every step of D.6, closed or open, was
 reopened for a review on the new kernel after D.7, in the next pull
 request. D.7 closed 2026-11-21; the rows below are D.6's in number order.
+On 2026-11-22 (maintainer decision) E.0, the research on where the
+remaining strength is, moved ahead of D.8: it runs right after the last
+D.6 review row, keeps its number, and its ranking may reorder D.8 to
+D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
@@ -416,6 +420,7 @@ request. D.7 closed 2026-11-21; the rows below are D.6's in number order.
 | D.6.30 | RESEARCH | R2 | Review after D.7: the proven-win rule is the root driver's and stays; confirm it under the kernel's narrow windows and fail-high reduction |
 | D.6.31 | RESEARCH | R2 | Review after D.7: the kernel counts no null move; confirm by the test that nodes equal moves made |
 | D.6.32 | RESEARCH | R2 | Review after D.7: the depth at which the shortest mate first shows moves with the seeds, KQK's mate in three from depth 8 to 20 at the bake; why, and whether a mate-distance contract is worth a repair |
+| E.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-22 (maintainer decision): after the D.6 review, before D.8.1; zero games first, its ranking may reorder the steps after it |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -4418,7 +4423,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   2026-11-22 (maintainer request, after RAR-M91). Research only: zero
   games first, no code changed, nothing implemented. It ranks the levers;
   each one it proposes becomes a step of its own, numbered where it runs,
-  and E.4 is ranked among them. It is the first step of Phase E.
+  and E.4 is ranked among them. It runs right after D.6's review and
+  ahead of D.8 (maintainer decision 2026-11-22), so its ranking can reorder
+  what remains of Phase D, D.12's board rebuild among it; its number
+  stays E.0.
   **The question.** The merged kernel rates 100.2 below Stockfish 16 HCE
   in RAR-M91 (−103.3 [−121.0, −86.0] head to head) and 35 to 49 below
   Berserk 4.7.0 HCE and Stockfish 11. Which part of that gap can Rarog
