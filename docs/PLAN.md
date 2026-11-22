@@ -395,7 +395,6 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.5 | RESEARCH | R2 | Review after D.7: the exclusion search's estimate in the kernel is its donor's form; confirm against RAR-S118's and RAR-S119's reads |
 | D.6.6 | RESEARCH | R2 | Review after D.7: the staged picker hands the table move before generating captures; confirm the cycles RAR-S120 priced are gone |
 | D.6.7 | RESEARCH | R2 | Review after D.7: the kernel's line bound is eight times the depth; RAR-S121's replay on it, the searches reaching the ply cap counted; the eight was chosen at zero games and no fit holds it (D.7.11) |
 | D.6.8 | RESEARCH | R2 | Review after D.7: one count per move made; confirm the hand-off to quiescence, the exclusion search and the verification count nothing twice |
@@ -921,7 +920,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      gate were made with the donor's store. The classic's search-side test
      left with that kernel; no kernel test pins the fail-low store
      (maintainer decision 2026-11-22: closed without one).
-    - **D.6.5 The exclusion search uses the table-refined estimate — `R2`, reopened 2026-11-19 for review on the new kernel (no change 2026-11-11 on the classic kernel).** (NODE-4):
+    - **D.6.5 The exclusion search uses the table-refined estimate — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; no change 2026-11-11 on the classic kernel).** (NODE-4):
      `eval_for_pruning` has no `excluded` guard; in a singular exclusion node
      the TT bound is Lower or Exact and the window sits below `tt_score`, so
      the refined estimate always exceeds `alpha + margin`, LDSE can never fire
@@ -967,6 +966,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      after a change to LDSE's depth or margin, razoring's margins, the
      singular margins or the alpha-gap term, or at the search re-fit
      (F.6), and only if the probe then reads 2% or more.
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. The kernel's `estimated_score` takes the stored
+     score only out of check, outside an exclusion node, with a valid
+     score whose bound tightens the evaluation, which is Reckless's rule;
+     the node passes its exclusion flag, so an exclusion node prunes on the
+     plain evaluation, the direction RAR-S119 found right. The re-entry
+     sub-item matches the donor as well: an exclusion node reuses its
+     ply's stored evaluation, and the singular search restores only
+     `tt_pv`. The guard is pinned by
+     `a_stored_score_replaces_the_evaluation_only_where_its_bound_tightens_it`,
+     and the parity test replays the rule against the donor's decisions.
     - **D.6.6 Captures generated and scored before the TT move — `R2`, reopened 2026-11-19 for review on the new kernel (no change 2026-11-11 on the classic kernel).** (NODE-5):
      `fill_noisy` runs before the loop; the donor generates after the hash
      move fails to cut, and the TT move cuts at about 35% of loop nodes
