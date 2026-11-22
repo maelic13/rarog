@@ -395,7 +395,6 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.6 | RESEARCH | R2 | Review after D.7: the staged picker hands the table move before generating captures; confirm the cycles RAR-S120 priced are gone |
 | D.6.7 | RESEARCH | R2 | Review after D.7: the kernel's line bound is eight times the depth; RAR-S121's replay on it, the searches reaching the ply cap counted; the eight was chosen at zero games and no fit holds it (D.7.11) |
 | D.6.8 | RESEARCH | R2 | Review after D.7: one count per move made; confirm the hand-off to quiescence, the exclusion search and the verification count nothing twice |
 | D.6.9 | RESEARCH | R2 | Review after D.7: an evaluation item, which the kernel does not change; its screen as written, read through the kernel's wrapper |
@@ -977,7 +976,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      `tt_pv`. The guard is pinned by
      `a_stored_score_replaces_the_evaluation_only_where_its_bound_tightens_it`,
      and the parity test replays the rule against the donor's decisions.
-    - **D.6.6 Captures generated and scored before the TT move — `R2`, reopened 2026-11-19 for review on the new kernel (no change 2026-11-11 on the classic kernel).** (NODE-5):
+    - **D.6.6 Captures generated and scored before the TT move — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; no change 2026-11-11 on the classic kernel).** (NODE-5):
      `fill_noisy` runs before the loop; the donor generates after the hash
      move fails to cut, and the TT move cuts at about 35% of loop nodes
      (`analysis/c12_speed_review_2026-10-18.md`: the one lead worth several
@@ -996,6 +995,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      C.12's "several percent" is superseded. Retry only if capture
      generation or scoring becomes materially dearer, or a later profile
      puts it at 8% or more of search cycles (H.4).
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. The staged picker's first stage hands over the
+     TT move, and noisy moves are generated only in the next stage, so a
+     TT move that cuts never pays for capture generation; Reckless's picker
+     starts at its hash-move stage the same way. The stored move is checked
+     by `legal_move`, which tests it directly and generates nothing.
+     Quiescence and ProbCut build their pickers without a TT move, as the
+     donor's do. The picker test that drains every stage asserts the TT
+     move comes first; no further test pins the order, which changes cost
+     alone, and RAR-S120 priced that cost below any resolvable read.
     - **D.6.7 The ply cap — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-11 on the classic kernel).** (NODE-8): `MAX_PLY = 128` is below the extension budget's
      bound (about twice the iteration depth plus 16); from about iteration 56
      the cap, not the budget, ends lines and the node returns a static eval
