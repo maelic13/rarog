@@ -1,16 +1,13 @@
-//! Search diagnostics — compile-time gated counters and sampled traces.
+//! Search diagnostics — compile-time gated counters.
 //!
 //! Enabled only with `--features diag`. The default build contains **no**
 //! counter code at all (`diag_count!` expands to nothing), so `bench` stays a
 //! stable fingerprint — the gate for this feature is *bench identical with diag
 //! off*. When enabled, counters are process-global atomics (the search may run
 //! several worker threads), reset at each `go`, and dumped as `info string diag
-//! <name> <value>` lines when the search completes.
-//!
-//! Event counters are exact. A deterministic 1/1024 position sample feeds the
-//! wider interaction map; this bounds diagnostic cost
-//! while making repeated runs on the same tree directly comparable. Sampled
-//! counters are observational only and may never steer search.
+//! <name> <value>` lines when the search completes. Every counter is exact and
+//! observational only: none may steer the search. The kernel's per-node rule
+//! counts are its probes (`search/compact/probes.rs`), not these.
 
 #[cfg(feature = "diag")]
 // Counter statics are deliberately lower_snake_case: the name is emitted
@@ -39,95 +36,7 @@ pub mod counters {
         };
     }
 
-    // Most counters below are never incremented and dump 0: the search
-    // increments only its root, clock and endgame-family counters (`asp_*`,
-    // `iter_*`, `search_*`, `root_*`, `tm_*`, `eg_*`), and the board its own
-    // (`board_*`). The node-level ones have no caller.
     declare!(
-        // Denominators. `qnodes` is EXACT, unlike `sampled_qnodes`: the
-        // oracle differential needs a qsearch denominator collected the same
-        // way the oracle collects it, and a 1/1024 sample cannot be joined
-        // against an exact count (analysis/phase4_counter_spec.md).
-        nodes,
-        qnodes,
-        // Check-node cost.
-        nodes_in_check,
-        // Draws (repetition, rule 50, material) returned below the root, in
-        // the main search and in the quiescence.
-        draw_return,
-        q_draw_return,
-        // A stale PV bit vetoes pruning at a non-PV node.
-        tt_pv_veto,
-        // Forward-pruning families (successful cutoffs / skips).
-        rfp_cut,
-        // Hindsight reductions: a reduced child searched deeper or shallower.
-        hindsight_up,
-        // Nodes whose depth the line bound cut to twice the iteration's depth.
-        line_room_clamp,
-        hindsight_down,
-        razor_drop,
-        nmp_cut,
-        probcut_cut,
-        // Per-MOVE: every quiet skipped by move-count/history pruning.
-        // Rarog-only -- the oracle cannot count this without generating the
-        // quiets it is declining to generate.
-        lmp_prune,
-        // Per-NODE: nodes at which at least one quiet was suppressed. THIS is
-        // the comparable one; see analysis/phase4_counter_spec.md.
-        lmp_nodes,
-        quiet_futility_prune,
-        see_prune,
-        // Selectivity core: nodes whose quiets were skipped by late-move or
-        // quiet-futility pruning, and the per-move prunes it adds.
-        skip_quiets_nodes,
-        quiet_see_prune,
-        // LMR reduction and its verification re-search.
-        lmr_applied,
-        lmr_research,
-        // Reductions clamped to one ply.
-        lmr_floor_hits,
-        // History / correction learning events. `cutoff_quiet + cutoff_capture`
-        // is also the count of every beta cutoff at a real (non-excluded)
-        // interior node, i.e. the DENOMINATOR of the ordering metric below.
-        cutoff_quiet,
-        cutoff_capture,
-        // FIRST-MOVE CUTOFF RATE, the standard move-ordering readout:
-        // `cutoff_first_move / (cutoff_quiet + cutoff_capture)`. Counted where
-        // the move that failed high was the FIRST move the node searched.
-        //
-        // The over-reduction ratio (`lmr_research / lmr_applied`) reads the
-        // PRUNING-DEPTH side of how the search converts nodes into decisions;
-        // this counter reads the ORDERING side, and the two imply opposite
-        // fixes. Healthy engines sit ~90%+; materially below implicates
-        // ordering rather than the selectivity surface.
-        //
-        // Excluded-move (singular-verification) searches do NOT count: their
-        // best move is deliberately withheld, so a first-move cutoff there
-        // measures the exclusion, not the ordering. That is automatic — this
-        // sits inside the same `excluded.is_null()` guard as the two above, so
-        // numerator and denominator always cover the same node set.
-        cutoff_first_move,
-        correction_updates,
-        // Residual magnitude of quiet-caused residuals, exact: the mean
-        // |residual| is `corr_resid_quiet_sum / corr_resid_quiet_n`.
-        corr_resid_quiet_n,
-        corr_resid_quiet_sum,
-        // Residual by HALFMOVE-CLOCK context. A new correction context needs
-        // held-out unique signal, so the measurement comes before any proposal.
-        // Rule-50 proximity is the
-        // plausible mechanism: near the horizon a position's value stops being a
-        // function of its structure.
-        //
-        // A check/evasion context is NOT measured, because
-        // it is structurally unreachable: correction only trains where
-        // `static_eval != VALUE_NONE`, which IS the not-in-check condition, so
-        // its population is zero by construction rather than by observation.
-        corr_resid_hm_low_n,
-        corr_resid_hm_low_sum,
-        corr_resid_hm_mid_n,
-        corr_resid_hm_mid_sum,
-        corr_resid_hm_high_n,
-        corr_resid_hm_high_sum,
         // SMP quality: where does helper work go when more threads buy nodes
         // but little depth?
         //
@@ -137,79 +46,12 @@ pub mod counters {
         // rate that climbs with thread count indicts pool-seeded windows.
         asp_fail_high,
         asp_fail_low,
-        // Does helper work actually REACH the main thread? Probe/hit counted
-        // on thread 0 only. If helpers contribute, main's hit rate should rise
-        // with thread count; if it is flat, the helpers are searching in vain.
-        main_tt_probes,
-        main_tt_hits,
-        // Sampled node and TT outcome map.
-        sampled_qnodes,
-        tt_sample_hit,
-        tt_sample_miss,
-        tt_cut_exact,
-        tt_cut_lower,
-        tt_cut_upper,
-        // Deep enough at an eligible node, but the stored bound resolves some
-        // OTHER window — a store/window question.
-        tt_bound_not_usable,
-        // Why an entry that HIT could not be used, split by cause,
-        // because the three imply different fixes and only one of them can
-        // grow with thread count.
-        //
-        // `_pv` and `_excluded` are structural: those nodes refuse the entry
-        // however deep it is, and their populations do not depend on how many
-        // threads are searching. `_shallow` is the one the "helpers add entries
-        // that cannot cut" hypothesis predicts should rise with threads, and
-        // `_deficit` sums how many plies short each one was, so a marginal miss
-        // (a replacement-policy question) is distinguishable from a hopeless
-        // one (not worth chasing).
-        tt_reject_pv,
-        tt_reject_excluded,
-        tt_reject_shallow,
-        tt_reject_shallow_deficit,
-        tt_bound_contradicts_window,
-        tt_eval_refined,
-        tt_eval_delta_sum,
-        main_store_lower,
-        main_store_exact,
-        main_store_upper,
-        // qsearch authority: distinguish unsearched stand pat from searched moves.
-        q_in_check,
-        q_tt_hit,
-        q_tt_cut,
-        q_stand_pat_cut,
-        q_stand_pat_store,
-        q_move_cut,
-        q_move_store,
-        q_tail_exact_store,
-        q_tail_upper_store,
-        // Evasions tried at in-check qnodes, EXACT. An in-check qnode scores
-        // every evasion before picking any, so the scored count minus this
-        // is what a staged in-check quiescence would save.
-        q_check_moves_tried,
         // The aspiration loop's cost, all EXACT and Rarog-only: nodes of every
         // root window search from depth 4, and of those that failed low or
         // high and were searched again.
         asp_search_nodes,
         asp_fail_low_nodes,
         asp_fail_high_nodes,
-        // A quiet evasion skipped because the side in check already has a
-        // line that is not a loss.
-        q_evasion_skip,
-        // Where the quiescence search spends and prunes, all
-        // EXACT and Rarog-only. `q_qply0` counts entries from the main
-        // search, ProbCut and razoring; `q_tt_hit_pv` counts probes whose
-        // entry carries the PV bit a depth-0 store would clear.
-        q_qply0,
-        q_tt_hit_pv,
-        q_tt_hit_pv_shallow,
-        // Quiescence nodes out of check whose side to move has only king
-        // and pawns, EXACT; those with no legal move, a stalemate the
-        // quiescence scores as its stand pat; and those of them that reach
-        // the stand pat with it 100 cp or more from the draw.
-        q_kp_nodes,
-        q_kp_stalemate,
-        q_kp_stalemate_misread,
         // Completed single-PV root iterations, EXACT: those that prove a
         // win; later ones in the same search that no longer do; and of those,
         // the ones whose move differs from the last proving iteration's.
@@ -221,129 +63,6 @@ pub mod counters {
         // move differs from the last proving iteration's.
         search_mate_win_dropped,
         search_mate_win_dropped_move,
-        // The interior estimate refined by a stored bound, split by the
-        // entry's origin: depth 0 is a quiescence result.
-        est_refined_from_q,
-        est_refined_from_q_lower,
-        est_refined_from_q_upper,
-        // |estimate - static eval| summed over the depth-0-origin refinements:
-        // the total a quiescence bound moves the estimate by, which a mean
-        // over the refined population cannot show once small refinements
-        // drop out of it.
-        est_refined_from_q_delta_sum,
-        q_stand_pat_refined,
-        q_delta_prune,
-        q_capture_considered,
-        q_capture_searched,
-        q_futility_skip,
-        q_count_skip,
-        q_see_threshold_skip,
-        q_bad_floor_skip,
-        // A capture the count rule would have skipped past its limit,
-        // searched because it recaptures on the previous move's square or
-        // gives check.
-        q_recapture_exempt,
-        q_check_exempt,
-        // Unit census: the verdict of a margin consumer that mixes the
-        // search's 100/320/330/500/900 scale with evaluation units, re-read
-        // with the evaluator's middlegame material; each counts one verdict
-        // that would change, at the consumer's own threshold.
-        q_delta_flip_eval_units,
-        q_futility_flip_eval_units,
-        q_see_flip_eval_units,
-        probcut_see_flip_eval_units,
-        main_see_flip_eval_units,
-        bnfp_flip_eval_units,
-        // NMP/ProbCut/singular/IIR cooperation.
-        nmp_attempt,
-        nmp_sample_cut,
-        nmp_verify_attempt,
-        nmp_verify_pass,
-        nmp_verify_fail,
-        // `nmp_cut` by the node's depth: 6 and below, 7 to 12, 13 and more.
-        // Each set sums to `nmp_cut`.
-        nmp_cut_d3_6,
-        nmp_cut_d7_12,
-        nmp_cut_d13_plus,
-        // Proof searches: a null move every other gate admitted
-        // but a verification region refused; a null search run against the
-        // stored lower bound below beta instead of beta; a verification whose
-        // region covered at least one ply below the node and failed.
-        nmp_skip_region,
-        nmp_bound_shortcut,
-        nmp_verify_region_fail,
-        // Per-NODE: nodes passing the ProbCut entry gate, counted before
-        // capture generation, so nodes with no eligible capture are included.
-        // Per-MOVE: `probcut_attempt` -- a ProbCut search was actually started,
-        // which is what the spec says and what the oracle counts. The two are
-        // different units; never difference one against the other.
-        probcut_nodes,
-        probcut_attempt,
-        probcut_qpass,
-        // Proof searches, per node: refused by the stored score
-        // (below `probcut_beta`, or decisive) or, without one, by the
-        // estimate below beta. Per move: a shallow verification that
-        // failed its raised bound and was repeated at the full depth.
-        probcut_tt_gate_reject,
-        probcut_deeper_research,
-        // What a qsearch pass is verified by, per move. A pass at base depth
-        // 0 (depth 4, or 5 while improving) is verified by nothing deeper
-        // than the qsearch it already passed. `probcut_verify` counts passes
-        // verified by a search of at least one ply, `probcut_verify_fail`
-        // those that then failed, `probcut_verify_raised` those verified
-        // shallower than the base against a raised bound.
-        probcut_qpass_base0,
-        probcut_verify,
-        probcut_verify_raised,
-        probcut_verify_fail,
-        singular_attempt,
-        singular_extend_one,
-        singular_extend_two,
-        singular_multicut,
-        singular_negative_extension,
-        // Proof searches: a singular move extended three
-        // plies; a TT move that lost its first slot because the exclusion
-        // search beat its score; a low-depth singular extension of a cut
-        // node's first move; a late-move reduction the singular margin term
-        // raised.
-        singular_extend_three,
-        singular_ttmove_demoted,
-        ldse_applied,
-        lmr_singular_term,
-        // Proof-search arm, the singular population: attempts at expected
-        // cut nodes; extensions at nodes off the PV, where the two-ply bar is
-        // at most zero; negative extensions held to a one-ply child (depth 4).
-        singular_attempt_cut_node,
-        singular_extend_non_pv,
-        singular_negative_clamped,
-        // Proof-search arm: exclusion searches whose only legal move was the
-        // excluded one (they return alpha); positive singular or low-depth
-        // singular extensions cut short by the line's extension budget.
-        singular_lone_move,
-        singular_extension_truncated,
-        iir_applied,
-        iir_pv,
-        iir_no_tt_move,
-        iir_shallow_tt,
-        // Move-stage recall and pruning overlap. Counts cover sampled nodes only.
-        move_seen_tt,
-        move_seen_good_capture,
-        move_seen_quiet,
-        move_seen_bad_capture,
-        // Core (comparable): rank at which a beta cutoff occurred. Exact, and
-        // counted in the same block as cutoff_quiet/cutoff_capture so the
-        // buckets sum to that denominator.
-        best_rank_1,
-        best_rank_2_3,
-        best_rank_4_7,
-        best_rank_8_plus,
-        prune_shadow_moves,
-        reduction_depth_sum,
-        // Correction attribution and hashed-table quality.
-        corr_slot_first,
-        corr_slot_repeat,
-        corr_slot_collision,
-        corr_slot_near_saturation,
         // Root iteration census.
         root_iterations,
         root_best_changes,
@@ -366,9 +85,8 @@ pub mod counters {
         // Endgame-family occurrence in the SEARCH TREE, which differs from
         // occurrence on the board in real games: a bare-king minor mate drive
         // can leave `bench 13` byte-identical (no bench tree reaches one at
-        // depth 13) while a rook-ending scale moves it by 14%. EXACT, not
-        // sampled -- these are cheap and a ratio against
-        // `nodes` must be joinable (analysis/phase4_counter_spec.md).
+        // depth 13) while a rook-ending scale moves it by 14%. Counted on every
+        // evaluation call, a unit apart from the node count (moves made).
         eg_krpkr,
         eg_krpkb,
         eg_kpsk,
@@ -400,20 +118,16 @@ pub mod counters {
         board_gen_vec_moves,
         board_gen_full_calls,
         board_gen_full_moves,
-        board_gen_capture_calls,
-        board_gen_capture_moves,
         board_gen_staged_capture_calls,
         board_gen_staged_capture_moves,
         board_gen_staged_quiet_calls,
         board_gen_staged_quiet_moves,
         board_compute_pinned_calls,
         board_check_info_calls,
-        board_gives_check_fast_calls,
         board_gives_check_full_calls,
         board_calculate_checkers_calls,
         board_see_full_calls,
         board_see_threshold_calls,
-        board_see_quiet_threshold_calls,
         board_make_plain_calls,
         board_make_with_check_calls,
         board_unmake_calls,
@@ -535,46 +249,6 @@ pub(crate) fn record_endgame_family(w: [u32; 5], b: [u32; 5]) {
     }
 }
 
-/// Sampling stride mask, read once from `RAROG_DIAG_SAMPLE_STRIDE`.
-///
-/// The differential suite needs the CORE counters exact, because the
-/// oracle collects them exactly and a 1/1024 sample cannot be joined against an
-/// exact count — the ratio reads 1024x off while looking plausible. Rather than
-/// lift seventeen counters out of their sampling guards in the hottest file in
-/// the engine, the stride itself is configurable, so `RAROG_DIAG_SAMPLE_STRIDE=1`
-/// makes every sampled counter exact in one place.
-///
-/// The stride must be a power of two; anything else falls back to the 1024
-/// default, which keeps every historical reading reproducible by simply not
-/// setting the variable.
-#[cfg(feature = "diag")]
-fn sample_mask() -> u64 {
-    use std::sync::OnceLock;
-    static MASK: OnceLock<u64> = OnceLock::new();
-    *MASK.get_or_init(|| {
-        std::env::var("RAROG_DIAG_SAMPLE_STRIDE")
-            .ok()
-            .and_then(|raw| raw.trim().parse::<u64>().ok())
-            .filter(|stride| *stride >= 1 && stride.is_power_of_two())
-            .map_or(1023, |stride| stride - 1)
-    })
-}
-
-/// Deterministic position sampler, 1/1024 by default. It is deliberately
-/// available only in diagnostic builds: production code must contain neither
-/// the mix nor a branch.
-///
-/// With a stride of 1 the mask is 0, so the test is always true and every
-/// position is sampled — the exact mode the oracle differential requires.
-#[cfg(feature = "diag")]
-#[inline]
-pub fn sampled(hash: u64, ply: usize, domain: u64) -> bool {
-    let mut value = hash ^ domain ^ (ply as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15);
-    value = (value ^ (value >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-    value = (value ^ (value >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-    ((value ^ (value >> 31)) & sample_mask()) == 0
-}
-
 /// Increment a diagnostic counter by name. Expands to nothing without the
 /// `diag` feature, so instrumentation sites cost zero in production builds.
 #[cfg(feature = "diag")]
@@ -626,33 +300,7 @@ mod tests {
 
     use crate::board::{Board, MoveList};
 
-    use super::{counters, sampled};
-
-    /// Two sampling domains: stable domains keep independent samples from
-    /// selecting exactly the same positions.
-    const SAMPLE_MAIN: u64 = 0x4D41_494E_5F34_2E31;
-    const SAMPLE_QSEARCH: u64 = 0x5153_4541_5243_4831;
-
-    #[test]
-    fn sampler_is_stable_sparse_and_domain_separated() {
-        let first: Vec<_> = (0..65_536_u64)
-            .filter(|hash| sampled(*hash, 7, SAMPLE_MAIN))
-            .collect();
-        let repeated: Vec<_> = (0..65_536_u64)
-            .filter(|hash| sampled(*hash, 7, SAMPLE_MAIN))
-            .collect();
-        let qsearch: Vec<_> = (0..65_536_u64)
-            .filter(|hash| sampled(*hash, 7, SAMPLE_QSEARCH))
-            .collect();
-
-        assert_eq!(first, repeated);
-        assert!(
-            (40..=88).contains(&first.len()),
-            "sample size {}",
-            first.len()
-        );
-        assert_ne!(first, qsearch);
-    }
+    use super::counters;
 
     #[test]
     fn board_profile_counters_are_live() {

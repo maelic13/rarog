@@ -8,11 +8,10 @@
 //! Every generating workload writes into a caller-owned `MoveList` built
 //! before timing starts, which is what the peer harnesses do and what the
 //! search itself does. The by-value form returns a 520-byte aggregate that the
-//! fat-LTO build copies on the normal return path, and RAR-M44 measured that
-//! copy at +11.2% on legal generation and +40.5% on captures -- it was inside
-//! the timed region and reported as move generation. `see_captures` and
-//! `perft` deliberately keep their own delivery: they are the untouched
-//! controls for the 4.11b.19 sessions.
+//! fat-LTO build copies on the normal return path; inside the timed region
+//! that copy cost +11.2% on legal generation and +40.5% on captures, reported
+//! as move generation. `see_captures` and `perft` keep their own delivery, so
+//! their numbers stay comparable across sessions.
 //!
 //! The profile is shared with Basilisk (`tests/board_performance.cpp`) and
 //! Manta (`tools/board_bench.zig`); the contract they all implement is written
@@ -31,7 +30,7 @@ use std::time::{Duration, Instant};
 use rarog::board::{Board, CROSS_ENGINE_SEE_VALUES, MoveList, SeeValues};
 
 const WARMUP: Duration = Duration::from_millis(150);
-// 9.7: N shorter samples instead of one 750 ms shot. A single sample on a
+// N shorter samples instead of one 750 ms shot. A single sample on a
 // desktop is hostage to whatever the OS scheduler did during those 750 ms —
 // we have measured several-percent swings on IDENTICAL binaries — so one
 // number cannot distinguish a real 2% change from noise. The median resists
@@ -356,7 +355,7 @@ fn legal_movegen(boards: &[Board], moves: &mut MoveList) -> u64 {
 fn capture_gen(boards: &mut [Board], moves: &mut MoveList) -> u64 {
     let mut total = 0u64;
     for board in boards {
-        black_box(&mut *board).generate_legal_captures_into(moves);
+        let _pinned = black_box(&mut *board).generate_legal_captures_pinned_into(moves);
         total += moves.len() as u64;
         black_box(&*moves);
     }
@@ -377,22 +376,13 @@ fn make_unmake(boards: &mut [Board], moves: &mut MoveList) -> u64 {
     ops
 }
 
-// Measures `see_ge(mv, 0)`, the threshold form, not the full-value `see()`.
-// Two independent reasons, and the cross-engine one is the weaker of them:
-//
-//   OWN HOT PATH — search.rs calls `see_ge` in twelve places (capture pruning,
-//   the qsearch bad-capture floor, LMR/ordering gates) and full `see()` in
-//   exactly one (move-ordering score at 3657). The threshold form is what
-//   actually dominates the search loop, so it is what a board benchmark should
-//   report. The old workload measured the rarer call.
-//
-//   COMPARABILITY — the peer engines measure `see_ge(m, 0)` over the same five
-//   FENs. Measuring the same operation makes the numbers a comparison rather
-//   than a coincidence of labels.
-//
-// The two are genuinely different operations, not two spellings of one: the
-// threshold form early-exits as soon as the running balance settles the
-// question, so it is expected to be the faster of the two. Both are pin-aware.
+// Measures `see_ge(mv, 0)`, the threshold form, not the full-value `see()`:
+// the search asks only threshold questions (`see_ge_exchange_with_values`),
+// and on a capture every threshold form reads the same; the peer engines
+// measure `see_ge(m, 0)` over the same five FENs, so the numbers compare the
+// same operation. The threshold form early-exits once the running balance
+// settles the question, so it is expected to be faster than `see()`. Both are
+// pin-aware.
 fn see_captures(boards: &mut [Board], values: SeeValues) -> u64 {
     let mut ops = 0u64;
     for board in boards {

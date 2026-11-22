@@ -117,7 +117,15 @@ fn pinned_pawn_may_capture_the_pinner_on_its_ray() {
 // ---- pinner removed mid-exchange re-enables the pinned piece ---------------
 
 #[test]
-fn capturing_the_pinner_frees_the_blocker() {
+fn a_pinner_leaving_its_line_frees_the_pinned_recapturer() {
+    // The white rook on e2 pins the black bishop on e5 to its king. Rxb2 takes
+    // a pawn and leaves the e-file, so the bishop is free and Bxb2 wins the
+    // rook: 100 - 500.
+    assert_eq!(check("4k3/8/8/4b3/8/8/1p2R3/7K w - - 0 1", "e2b2"), -400);
+}
+
+#[test]
+fn a_queen_defended_along_its_file() {
     // The white rook on e4 takes the black queen on e6, which the rook on e7
     // defends along the file. Oracle and SEE must agree through the
     // whole sequence.

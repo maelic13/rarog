@@ -997,7 +997,8 @@ impl Searcher {
                 }
                 // A failed window re-centres on the failing score and grows;
                 // after `asp_max_fails` failures the failing side opens fully,
-                // so the loop ends.
+                // and each fail high's growth opens both sides in a bounded
+                // number of fails.
                 if score <= alpha {
                     crate::diag_count!(asp_fail_low);
                     crate::diag_add!(asp_fail_low_nodes, window_nodes);

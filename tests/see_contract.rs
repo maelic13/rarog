@@ -23,9 +23,10 @@ fn report_see_contract_observations() {
         let truth: i32 = f[4].parse().unwrap();
         let thresholds = [truth - 1, truth, truth + 1, 0];
         let ordinary = thresholds.map(|t| board.see_ge(mv, t));
-        let quiet_aware = thresholds.map(|t| board.see_ge_quiet_aware(mv, t));
+        let exchange =
+            thresholds.map(|t| board.see_ge_exchange_with_values(mv, t, PRODUCTION_SEE_VALUES));
         println!(
-            "{}|{}|tree={truth}|see={}|thresholds={thresholds:?}|ge={ordinary:?}|quiet={quiet_aware:?}",
+            "{}|{}|tree={truth}|see={}|thresholds={thresholds:?}|ge={ordinary:?}|exchange={exchange:?}",
             f[0],
             f[1],
             board.see(mv)
@@ -71,15 +72,12 @@ fn verify(selected_debt: Option<&str>) {
                 "{} threshold {threshold}",
                 f[0]
             );
-            let aware_expected = if f[1] == "policy-quiet" {
-                truth
-            } else {
-                full_expected
-            };
+            // The search's form plays every move through the exchange, so it
+            // reads the independent tree's value, policy rows included.
             assert_eq!(
-                board.see_ge_quiet_aware(mv, threshold),
-                aware_expected >= threshold,
-                "{} quiet-aware {threshold}",
+                board.see_ge_exchange_with_values(mv, threshold, PRODUCTION_SEE_VALUES),
+                truth >= threshold,
+                "{} exchange {threshold}",
                 f[0]
             );
         }
@@ -185,11 +183,10 @@ fn production_and_cross_engine_injection_match_independent_contracts() {
                 "{} cross threshold {threshold}",
                 f[0]
             );
-            let aware = if f[1] == "policy-quiet" { truth } else { full };
             assert_eq!(
-                board.see_ge_quiet_aware_with_values(mv, threshold, CROSS_ENGINE_SEE_VALUES),
-                aware >= threshold,
-                "{} cross quiet threshold {threshold}",
+                board.see_ge_exchange_with_values(mv, threshold, CROSS_ENGINE_SEE_VALUES),
+                truth >= threshold,
+                "{} cross exchange threshold {threshold}",
                 f[0]
             );
         }
@@ -228,7 +225,10 @@ fn threshold_parity_on_deterministic_legal_walks() {
                         "{} {mv} at {threshold}, full={value}",
                         board.to_fen()
                     );
-                    assert_eq!(board.see_ge_quiet_aware(*mv, threshold), value >= threshold);
+                    assert_eq!(
+                        board.see_ge_exchange_with_values(*mv, threshold, PRODUCTION_SEE_VALUES),
+                        value >= threshold
+                    );
                 }
                 checked += 1;
             }

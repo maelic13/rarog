@@ -36,8 +36,8 @@ default = []
 # as `info string rates ...` before `bestmove`, for the tree statistics that
 # compare it with its donor. Instrument-only; it observes and changes nothing.
 probes = []
-# Search diagnostics: exact events plus deterministic sampled
-# interaction traces, dumped as `info string diag ...` at search end.
+# Search diagnostics: exact root, clock, endgame-family and board counters,
+# dumped as `info string diag ...` at search end.
 # Diagnostic-only — never in a shipped or SPRT binary. The feature may observe
 # but must not change nodes or best moves; production compiles it out entirely.
 diag = []

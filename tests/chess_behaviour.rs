@@ -306,7 +306,7 @@ fn no_mate_in_one_is_missed() {
 /// once late-move pruning or futility fires, its picker skips every quiet
 /// left, the quiet mating check among them.
 #[test]
-#[ignore = "the kernel's quiet skip drops direct checks; a dropped Rarog form, not retried inside D.7 (PLAN D.7, 2026-11-19 decision 6)"]
+#[ignore = "the kernel's quiet skip drops direct checks, as its donor's does; keeping them is a Rarog form not yet tried on the kernel"]
 fn no_mate_in_one_is_allowed() {
     let mut avoidable = 0;
     for (position, result) in searched_tactics(3) {

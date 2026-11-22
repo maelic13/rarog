@@ -110,9 +110,11 @@ search_params! {
     struct SearchParams, generated_param_checks;
 
     /// ⛔ TERMINATION BY CONSTRUCTION. After this many failed searches of one
-    /// root window, a side that fails opens to ±INF unconditionally, so it
-    /// cannot fail again; a window is searched at most `asp_max_fails + 2`
-    /// times whatever the score's magnitude, mate scores included.
+    /// root window, the side that fails opens to ±INF. A fail high still
+    /// raises alpha and a fail low lowers beta, so an unstable score can fail
+    /// on the other side again; every fail high widens the half-width, so both
+    /// sides reach ±INF after a bounded number of searches, mate scores
+    /// included. A score that stays consistent ends within `asp_max_fails + 2`.
     ///
     /// A lower value bounds the re-searches of a runaway iteration, as engines
     /// that open fully after a few fails do; that is the direction the tune

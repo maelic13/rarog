@@ -67,10 +67,8 @@ pub const PRODUCTION_SEE_VALUES: SeeValues = SeeValues::new(100, 320, 330, 500, 
 enum QuietSee {
     /// Answered by its immediate gain: nothing, or a promotion's gain.
     Gain,
-    /// Played through the exchange, the moved piece at risk; a promotion
-    /// push is answered by its gain.
-    ExchangeButPromotions,
-    /// Played through the exchange, a promotion push included.
+    /// Played through the exchange, the moved piece at risk, a promotion push
+    /// included.
     Exchange,
 }
 
@@ -823,19 +821,11 @@ impl Board {
         super::movegen::generate_legal_into(self, moves);
     }
 
+    /// The legal captures, by the generator the search's noisy stage uses.
     pub fn generate_legal_captures(&mut self) -> MoveList {
-        super::movegen::generate_captures(self)
-    }
-
-    /// [`Board::generate_legal_captures`] into a caller-owned list.
-    pub fn generate_legal_captures_into(&mut self, moves: &mut MoveList) {
-        super::movegen::generate_captures_into(self, moves);
-    }
-
-    /// The legal captures and non-capturing queen promotions, into a
-    /// caller-owned list: the moves of a captures-only search.
-    pub fn generate_legal_noisy_into(&mut self, moves: &mut MoveList) {
-        super::movegen::generate_noisy_into(self, moves);
+        let mut moves = MoveList::new();
+        super::movegen::generate_captures_pinned_into(self, None, &mut moves);
+        moves
     }
 
     pub fn generate_legal_quiets(&self) -> MoveList {
@@ -1608,42 +1598,12 @@ impl Board {
         self.see_ge_impl(mv, threshold, QuietSee::Gain, values)
     }
 
-    /// As [`Board::see_ge`], but a QUIET move is put through the full exchange
-    /// instead of being answered with its immediate gain.
-    ///
-    /// `see_ge` short-circuits every non-capture to `gain >= threshold`, and
-    /// `gain` is 0 for a plain quiet move — so against any negative threshold
-    /// it is trivially true and the caller learns nothing. That makes it
-    /// impossible to ask the one question a quiet SEE prune exists to ask:
-    /// does this move hang the piece it just moved?
-    ///
-    /// The exchange body needs no special case: `captured_piece` is `None` for
-    /// a quiet move, so the immediate balance starts at 0, which is exactly
-    /// right — nothing was won, and the moved piece is now the thing at risk.
-    pub fn see_ge_quiet_aware(&self, mv: Move, threshold: i32) -> bool {
-        crate::diag_count!(board_see_quiet_threshold_calls);
-        self.see_ge_impl(
-            mv,
-            threshold,
-            QuietSee::ExchangeButPromotions,
-            PRODUCTION_SEE_VALUES,
-        )
-    }
-
-    pub fn see_ge_quiet_aware_with_values(
-        &self,
-        mv: Move,
-        threshold: i32,
-        values: SeeValues,
-    ) -> bool {
-        self.see_ge_impl(mv, threshold, QuietSee::ExchangeButPromotions, values)
-    }
-
     /// The compact kernel's exchange test, as its donor's: every move is
     /// played through the exchange, a promotion push with the promoted piece
-    /// at risk. A queen pushed onto a defended square is taken, so the push
-    /// loses its pawn, where [`Board::see_ge_quiet_aware_with_values`]
-    /// credits it with the promotion's gain.
+    /// at risk. A quiet move asks whether it hangs the piece it moved: nothing
+    /// was won, so the balance starts at 0 with the moved piece at risk, where
+    /// [`Board::see_ge`] answers it by its gain alone. A queen pushed onto a
+    /// defended square is taken, so the push loses its pawn.
     pub fn see_ge_exchange_with_values(&self, mv: Move, threshold: i32, values: SeeValues) -> bool {
         self.see_ge_impl(mv, threshold, QuietSee::Exchange, values)
     }
@@ -1652,7 +1612,6 @@ impl Board {
         let answered_by_gain = !mv.is_capture()
             && match quiet {
                 QuietSee::Gain => true,
-                QuietSee::ExchangeButPromotions => mv.is_promo(),
                 QuietSee::Exchange => false,
             };
         if answered_by_gain {
@@ -2612,10 +2571,7 @@ impl fmt::Display for Board {
 
 #[cfg(test)]
 mod tests {
-    /// The partition, judged from what each legal move does on the board and
-    /// not from its flags: a piece taken, a pawn changing file, or a pawn
-    /// reaching the last rank is noisy, and everything else is quiet.
-    /// The captures-only search's list is the legal captures plus the legal
+    /// The noisy stage's list is the legal captures plus the legal
     /// non-capturing queen promotions, each once, through checks and pins.
     #[test]
     fn the_noisy_list_is_the_captures_and_the_queen_pushes() {
@@ -2631,7 +2587,8 @@ mod tests {
         }
         fn noisy(board: &mut Board) -> Vec<String> {
             let mut list = MoveList::new();
-            board.generate_legal_noisy_into(&mut list);
+            let threats = board.threats();
+            board.generate_legal_noisy_staged_into(&threats, &mut list);
             let mut moves: Vec<String> = list.iter().map(|mv| mv.to_string()).collect();
             moves.sort_unstable();
             moves
@@ -2686,6 +2643,9 @@ mod tests {
         assert!(board.generate_legal_captures().is_empty());
     }
 
+    /// The partition, judged from what each legal move does on the board and
+    /// not from its flags: a piece taken, a pawn changing file, or a pawn
+    /// reaching the last rank is noisy, and everything else is quiet.
     #[test]
     fn every_legal_move_is_quiet_or_noisy_by_what_it_does() {
         let extra = [
@@ -3078,8 +3038,8 @@ mod tests {
     }
 
     /// A queen pushed onto a defended square is taken: the compact kernel's
-    /// test plays that exchange, the other forms credit the promotion's
-    /// gain, and a capture or an undefended push reads the same in all.
+    /// test plays that exchange, the gain form credits the promotion's gain,
+    /// and a capture or an undefended push reads the same in both.
     #[test]
     fn the_exchange_test_puts_a_promotion_push_at_risk() {
         let values = PRODUCTION_SEE_VALUES;
@@ -3090,7 +3050,6 @@ mod tests {
         assert!(push.is_promo() && !push.is_capture());
         assert!(defended.see_ge_exchange_with_values(push, -pawn, values));
         assert!(!defended.see_ge_exchange_with_values(push, -pawn + 1, values));
-        assert!(defended.see_ge_quiet_aware_with_values(push, gain, values));
         assert!(defended.see_ge_with_values(push, gain, values));
 
         let free = Board::from_fen("4k3/P7/8/8/8/8/8/4K3 w - - 0 1").unwrap();
@@ -3102,7 +3061,6 @@ mod tests {
         let rook_and_gain = values.value(Piece::Rook) + gain;
         for see_ge in [
             Board::see_ge_exchange_with_values,
-            Board::see_ge_quiet_aware_with_values,
             Board::see_ge_with_values,
         ] {
             assert!(see_ge(&defended, taking, rook_and_gain, values));
