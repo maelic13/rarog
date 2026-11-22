@@ -1,5 +1,8 @@
 . "$PSScriptRoot\uci_probe.ps1"
 
+# NOTE: the node counters it reads are emitted only by builds before the compact kernel;
+# today's engine prints none of them,
+# so read archived binaries with it, or the kernel's rate probes (tools/oracle-hybrids/tree_stats.py).
 # SMP diagnostic sweep. Same two positions as the scaling run so the two
 # measurements are comparable. 3 reps because Lazy SMP has ~2 iterations of
 # rep-to-rep spread and a single reading already produced one false conclusion.

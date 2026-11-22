@@ -1446,8 +1446,10 @@ fn elf_runtime_dependencies(text: &str) -> Vec<String> {
 
 /// Linker overrides a target needs on top of its codegen flags.
 ///
-/// WORKAROUND — REMOVE WHEN FIXED UPSTREAM (rust-lang/rust#156675, open as of
-/// rustc 1.97.1 / LLVM 22.1.6).
+/// WORKAROUND — REMOVE WHEN FIXED UPSTREAM. The empty-name symptom below was
+/// last reproduced on rustc 1.97.1 / LLVM 22.1.6; a related report on this
+/// target, rust-lang/rust#156675 (an instrumented binary that segfaults), was
+/// still open on 2026-11-22.
 ///
 /// `aarch64-pc-windows-msvc` only. Linked with MSVC's `link.exe`, the
 /// instrumented binary runs correctly but writes a `.profraw` whose
