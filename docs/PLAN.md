@@ -395,7 +395,6 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.9 | RESEARCH | R2 | Review after D.7: an evaluation item, which the kernel does not change; its screen as written, read through the kernel's wrapper |
 | D.6.10 | RESEARCH | R2 | Review after D.7: an evaluation item; its screen as written, read through the kernel's wrapper |
 | D.6.13 | RESEARCH | R2 | Review after D.7: the kernel's window is its donor's; confirm the classic's fail-low form has no instance left, close if moot |
 | D.6.15 | RESEARCH | R2 | Review after D.7: `compact_eval` passes a draw verdict as 0 with no correction and no optimism; confirm by its test and the three draw anchors |
@@ -1175,7 +1174,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      for its null move. Pinned by the bench-positions test and the mate
      test (the count equals a test-only tally of moves made) and by
      `a_depth_one_search_counts_each_root_move_once` (20 from the start).
-    - **D.6.9 The endgame scale's target — `R2`.** (EVAL-5): `evaluate` adds tempo to `mg`,
+    - **D.6.9 The endgame scale's target — `R2`, CLOSED 2026-11-22: moved into E.4's refit.** (EVAL-5): `evaluate` adds tempo to `mg`,
      tapers, then `scale_endgame` multiplies the whole; both donor commits
      scale the endgame half only (`v = mg·p + eg·(128−p)·sf/64`), so the forms
      differ for the opposite-bishop rule with pieces on the board and the
@@ -1184,6 +1183,25 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      with the scale on the endgame half on RAR-E26's cohort and compare
      held-out loss; then case 2 at most (OCB-with-pieces positions only).
      Under the evaluation freeze this is a registered repair.
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     deviation is still there, since the kernel's wrapper adds correction
+     and material scaling after `evaluate` and leaves the scale where it
+     was. Its reach in the kernel's own games is small. Over 69,555
+     positions the kernel moved in, from 1,000 of RAR-M91's games:
+     - opposite bishops with other pieces, scaled (three pawns or fewer):
+       0.05%, the forms about 5% of the score apart;
+     - pure opposite-bishop endings: 1.5%, about 4% apart;
+     - pure, under three pawns: 0.3%, about 2% apart;
+     - the partial recognisers at small phase: not measured.
+
+     The middlegame case the card names almost never arises: with pieces
+     on the board the scale bites only at three pawns or fewer. **Closed
+     here, moved into E.4's refit** (maintainer decision 2026-11-22): that
+     refit fits both forms and lets held-out loss and its gate choose, so
+     the constants stay consistent with the form. The count:
+     `analysis/artifacts/d69-review-2026-11-22/ocb_exposure.py` (SHA-256
+     `34c97b8d…`, its output `b967dfc7…`), on RAR-M91's PGN, seed
+     20261122.
     - **D.6.10 The pawnless default factor — `R2`.** (EVAL-6): `material.cpp:195–203` scales
       a side with no pawns and a small material edge to 0, 4 or 14 of 64;
       Rarog's pawnless branch covers at most one minor in total or one each,
@@ -4848,7 +4866,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   half of +0.194; if so, the unit is an attack-map producer change that moves
   mobility, threats and king danger together (gate 3 with a refit), otherwise
   the lead is weights, cap or structure and the rebuild above is the owner.
-  Also for the refit: the bishop pair's three representations fold exactly
+  Also for the refit: the endgame scale's target (D.6.9, moved here
+  2026-11-22): fit both forms, the whole score scaled as now and the
+  endgame half only as Stockfish 11 scales it, with the scale constants
+  refitted under each, and let held-out loss and the gate choose; the
+  forms differ mostly in pure opposite-bishop endings, 1.5% of the
+  kernel's positions. The bishop pair's three representations fold exactly
   (EVAL-11), and a second-difference penalty on the mobility tables and the
   pawn PST (EVAL-13). And the piece-term definitions no experiment read
   (EVAL-10; D.6.11 until 2026-11-05): outposts use the current enemy pawn
