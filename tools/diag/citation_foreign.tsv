@@ -133,3 +133,6 @@ af110e02	Stockfish commit: the hand-crafted evaluation removed (RAR-M89)
 d75d459	Basilisk commit (the HCE donor evidence read, 2026-11-22)
 6a8767a0	Stockfish commit: the parent of the hand-crafted evaluation's removal
 68e1e9b	Stockfish commit: the sf_16 release (Basilisk's BAS-O09 donor build)
+d2d046c2a	Stockfish commit: quiescence's stalemate test added (2025-04-15)
+5f3dcb92e	Stockfish commit: quiescence's stalemate test narrowed (2026-04-15)
+c3c89eae3	Reckless commit: the main search's stalemate score (2023-02-07)
