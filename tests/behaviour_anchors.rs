@@ -1,6 +1,6 @@
 //! Search, evaluation and endgame behaviour that Basilisk's suite pins, read
 //! against Rarog and kept as regression anchors; each test names the Basilisk
-//! test it follows. Three are `#[ignore]`d: each is the acceptance test of
+//! test it follows. Two are `#[ignore]`d: each is the acceptance test of
 //! the repair that owns it, named in its reason.
 //!
 //! Every test holds one process-wide lock, because the Syzygy tables are global
@@ -196,12 +196,10 @@ fn promotion_on_f8_wins_where_the_rook_transposes() {
 }
 
 /// `rook_promotions` 3, the tie-break: where the rook only transposes into
-/// the queen line, the root plays the queen though it searched the rook
-/// first. Nothing in the search breaks that tie; Basilisk's root rule does.
+/// the queen line, the root plays the queen. The picker orders the queen's
+/// capture-promotion ahead of the rook's; a search that tried the rook first
+/// kept it, the tie Basilisk's root rule breaks.
 #[test]
-#[ignore = "D.6.17: the root keeps a transposing rook it searched first; with \
-            ProbCut's children typed false, 100k nodes play g7f8r (528 at depth \
-            14); searched apart at depth 14 the queen reads 896, the rook 768"]
 fn queen_promotion_though_the_rook_was_searched_first() {
     let _g = serial();
     let r = search(ROOK_TRANSPOSES, None, 100_000);
