@@ -405,10 +405,9 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.16.3.1 | RESEARCH | R2 | Added 2026-11-23 (maintainer decision on E.0's packet), first of D.16: a fresh profile of the head beside Stockfish 16's on game positions, function by function, with D.7.8.5's counters; zero games; no neutral item of 1% or more closes D.16.3 `NO_CHANGE` |
 | D.16.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-23 (maintainer request) from Trinity's bench-against-game speed miss: a fresh-process, fixed-node speed read on positions from gate games, pooled PGO builds; no dependency |
 | D.16.2 | RESEARCH | V | After D.16.1: the bench and game-position reads on two accepted speed changes of different kinds; agreement closes D.16, a disagreement opens D.16.3 |
-| D.16.3 | RESEARCH | R2 | Opened 2026-11-23 by the maintainer on E.0's packet: its card is D.16.3.1; its items, each behaviour-neutral, are priced by the read D.16.2 chose; Stockfish the reference |
+| D.16.3 | READY_FOR_IMPLEMENTATION | R2 | Opened 2026-11-23 by the maintainer on E.0's packet; D.16.3.1's card (done 2026-11-23) leaves one behaviour-neutral item (`I1`), the quiet-scoring history loads prefetched ahead (ceiling 3.5% of samples), built after D.16.2 and priced by the read it chose |
 | E.4.0.1 | RESEARCH | I2 | Added 2026-11-23 (maintainer decision on E.0's packet), E.4.0's first read: Stockfish's classical evaluation inside the kernel through a diagnostic bridge, against the kernel, at equal nodes; under +25 a rebuild is not indicated |
 | E.4.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-23 (maintainer decision on E.0's packet), research only: the donor and the form, decided on E.4.0.1's reads; E.4's units stay after the release |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
@@ -442,7 +441,7 @@ rows; then Phase E as numbered. E.4's units stay after the release
 | D.15.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: each download a `.zip` or `.tar.gz` with the binary, the licences, the README and the changelog, where D.11's notices ship; before the next release |
 | D.15.2 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: the release notes as the section's summary and highlights, with a link to the full changelog; before the next release |
 | D.17 | RESEARCH | R2 | Added 2026-11-23 (maintainer request): not before the end of Phase D; a card on GitHub-hosted runners as a lane for self-play SPRTs and tunes, then a maintainer decision on the rules it changes |
-| D.12.1 | RESEARCH | R2 | Held 2026-11-23 (maintainer decision on E.0's packet): the board's work a node is level with Stockfish 16's; reopens when D.16.3.1's profile or D.12.0 shows a board function that costs more than the donor's |
+| D.12.1 | RESEARCH | R2 | Held 2026-11-23 (maintainer decision on E.0's packet): the board's work a node is level with Stockfish 16's; D.16.3.1's profile showed no board function above the donor's (2026-11-23); reopens when D.12.0 shows one |
 | D.12.1.1 | RESEARCH | I2 | Held 2026-11-23 with D.12.1 |
 | D.12.1.2 | RESEARCH | V | Held 2026-11-23 with D.12.1 |
 | D.12.2 | RESEARCH | R2 | Held 2026-11-23 with D.12.1 |
@@ -4273,7 +4272,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   rebuild has no strength case against the engines above Rarog. D.12.0's
   research stays, for F.1's board events; D.12.1 to D.12.4 are held until
   D.16.3.1's profile or D.12.0 shows a board function that costs more
-  than the donor's.
+  than the donor's. D.16.3.1's profile did not (2026-11-23): once
+  boundaries are matched, make with check information is 31.4 against
+  32.9 ns a node, the exchange with its attacker query 26.3 against
+  27.1, generation and legality 30.6 against 27.9 (0.6% of samples,
+  within the cross-build uncertainty); D.12.0 alone can lift the hold.
     - **D.12.0 Rarog's own board interactions, and whether Basilisk's leads are Rarog's best options — `R3`.**
       Added 2026-11-14 (maintainer: what worked in Basilisk is a hint,
       not the best solution for Rarog). Research only, before any of
@@ -4853,7 +4856,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       D.7.8.12's form: the fingerprint exact at every commit, AGENTS'
       per-node rule, no new `unsafe` site (the floor is 17), each item
       priced by the read D.16.2 chose.
-        - **D.16.3.1 The kernel's node beside Stockfish's, function by function — `R2`.**
+      *Handoff from D.16.3.1 (2026-11-23,* `analysis/d1631_node_profile_2026-11-23.md`*):* one item. In
+      the quiet-scoring loop, prefetch the six history entries of the
+      move a few places ahead before scoring the current one, through
+      `tt.rs`'s `prefetch_ptr` (no new `unsafe` site, no buffer beyond
+      the move list); the fingerprint exact. Ceiling 3.5% of samples,
+      expected small. Stop rule: a read whose interval does not exclude
+      zero reverts it, and D.16.3 then closes `NO_CHANGE`: the rest of
+      the gap is the tree, its mechanisms and the evaluation's form.
+        - **D.16.3.1 The kernel's node beside Stockfish's, function by function — `R2`, DONE 2026-11-23.**
           Added 2026-11-23 (maintainer decision on E.0's packet) and run
           first of D.16. E.0 profiled Stockfish 16's classical build on 281
           game positions and set it beside D.7.8.12's profile of the
@@ -4871,6 +4882,31 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           of the gap is the tree's own cost; D.7.8.5 reopens only at 2% of
           searches discarding a new best or failed-high move. E.0's band
           for the pass is 4% to 12% of node rate.
+          *Done 2026-11-23* (`analysis/d1631_node_profile_2026-11-23.md`; zero games, no engine source
+          changed). The head (`4ea670f`, pext PGO with its PDB archived,
+          `bench 13` 3,694,298 / EBF 2.324) profiled on E.0's 281 positions
+          at 150,000 nodes, 42,055 samples, beside E.0's Stockfish 16
+          samples under one attribution rule. Today's gap is 412.7 against
+          311.2 ns a node, +101.5: search side +76.7 (186.8 against 110.1),
+          evaluation +31.5 (107.1 against 75.6), table −7.3, board +0.2.
+          Quiescence nodes are 32.7% of the kernel's tree and 46.9% of
+          Stockfish's; a full-width node's body costs 93.7 against 89.1 ns.
+          The search side splits into the tree's shape (about 22 ns: more
+          full-width nodes, 5.00 quiets scored a node against 3.27) and the
+          kernel's own mechanisms Stockfish 16 lacks (about 54: correction
+          14.3, threat maps every node 7.7, a quiet costing 9.73 against
+          3.31 ns). One behaviour-neutral item reaches 1% of the samples:
+          the quiet-scoring history loads prefetched a few moves ahead
+          (3.5% of samples wait on them; D.7.8.12's analogous prefetch read
+          +0.14%), so by the frozen rule D.16.3 does not close and keeps
+          that one item. The band for the pass becomes 0% to 3.6% of node
+          rate (0 to +6 Elo at RAR-M92's price, inferred), replacing E.0's
+          4% to 12%. No board function costs clearly more than the donor's
+          once boundaries are matched, so D.12.1 to D.12.4 stay held.
+          D.7.8.5's counters on the head's diag build at `3000+30`: 0 of 300
+          searches stopped inside an iteration, 0% against the frozen 2%,
+          so D.7.8.5 stays closed; what E.0's 4.0% of time after the last
+          report is stays unknown.
 - **D.17 GitHub-hosted runners as a test lane for self-play SPRTs and tunes — `R2` card, then a maintainer decision.**
   Added 2026-11-23 (maintainer request), to open at the end of Phase D at
   the earliest, from Trinity's testing lane
@@ -5015,6 +5051,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   its number (the register's note of that date): D.16 with D.16.3.1
   first, E.4.0 with E.4.0.1 first, D.8 to D.11, D.12.0 alone with D.12.1
   to D.12.4 held, D.13 to D.17, then Phase E as numbered.
+  **Superseded in part 2026-11-23 by D.16.3.1** (the head's fresh
+  profile): the gap is 101.5 ns a node, three quarters search side, a
+  third evaluation (107.1 against 75.6, not 18 ns), the table −7.3;
+  lever 2's band, search-side work a node, is 0 to +6 (0% to 3.6% of
+  rate), not +6 to +20: most of the search side is the tree's shape
+  and the kernel's own mechanisms.
 - **E.1 Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — `V`.** Re-run the B.2.0 architecture review
   on the B.9 and C.11 heads first. Final head against 2.3.2 and against
   the B.9 and C.11 heads at STC, `10+0.1` and 4T; attributed Elo per programme

@@ -324,3 +324,23 @@ the donor's evaluation inside the kernel (E.4.0.1) first; D.8 to D.11;
 D.12.0 alone, D.12.1 to D.12.4 held; D.13, D.14, D.15, D.17; then Phase E
 as numbered, E.4's units after the release. PLAN's register and GUIDE's
 order list carry it. E.0 is closed.
+
+## Superseded in part by D.16.3.1 (added 2026-11-23)
+
+The head's fresh profile (`analysis/d1631_node_profile_2026-11-23.md`) corrects section 1's node table and
+lever 2; the measurements above stand as read on their binaries.
+
+- The gap on these positions is 101.5 ns a node (412.7 against 311.2),
+  not 117: the head reads 4.6% faster than `94d7f72`.
+- Search side +76.7 (three quarters, not two thirds); evaluation +31.5
+  (107.1 against 75.6, a third, not a sixth); table −7.3 (D.7.8.12's
+  prefetch); board +0.2.
+- Quiescence nodes are 32.7% of the kernel's tree and 46.9% of
+  Stockfish's (the unknown above, now read). A full-width node's body
+  costs 93.7 against 89.1 ns, so most of the search side is the tree's
+  shape and the kernel's own mechanisms, not a heavier node.
+- Lever 2's band: **0 to +6** (0% to 3.6% of node rate, one neutral item
+  with a 3.5% ceiling), replacing +6 to +20. Levers 5 and 9 find no
+  neutral item at 1% or more.
+- Lever 6: no search stopped inside an iteration at `3000+30` (0 of
+  300); D.7.8.5 stays closed, and the 4.0% stays unexplained.
