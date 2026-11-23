@@ -395,14 +395,7 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.15 | RESEARCH | R2 | Review after D.7: `compact_eval` passes a draw verdict as 0 with no correction and no optimism; confirm by its test and the three draw anchors |
-| D.6.16 | RESEARCH | R2 | Review after D.7: quiescence is the donor's form; re-evaluate the gain pruning against a decisive material edge on it |
-| D.6.17 | RESEARCH | R2 | Review after D.7: the ignored transposing-rook anchor and the promotion anchors run on the new kernel and its root order (D.7.8.3) |
-| D.6.20 | RESEARCH | R2 | Review after D.7: the ignored won-ending clock test run on the new kernel; the fail-high stop is the root driver's and stays |
-| D.6.27 | RESEARCH | R2 | Review after D.7: the kernel has no IIR, as its donor; close if moot |
-| D.6.29 | RESEARCH | R2 | Review after D.7: the kernel's quiescence scores no stalemate, as its donor's; the replay that read 19.2% of searches on the 2.7.0 kernel, taken again |
-| D.6.30 | RESEARCH | R2 | Review after D.7: the proven-win rule is the root driver's and stays; confirm it under the kernel's narrow windows and fail-high reduction |
-| D.6.31 | RESEARCH | R2 | Review after D.7: the kernel counts no null move; confirm by the test that nodes equal moves made |
+| D.6.29 | RESEARCH | R2 | Reviewed 2026-11-23: present on the kernel (its quiescence, like the donor's, has no stalemate test); the form (Stockfish's narrow test, a departure from Reckless) and a case-3 gate wait on the maintainer; a re-read of its exposure needs the kernel's quiescence counters first |
 | D.6.32 | RESEARCH | R2 | Review after D.7: the depth at which the shortest mate first shows moves with the seeds, KQK's mate in three from depth 8 to 20 at the bake; why, and whether a mate-distance contract is worth a repair |
 | E.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-22 (maintainer decision): after the D.6 review, before D.8.1; zero games first, its ranking may reorder the steps after it |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
@@ -1234,14 +1227,20 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       classic's halving form has no instance left, so the counter that was
       to choose between it and another form has no use.
   Added 2026-11-02 from the Basilisk cross-check (`analysis/basilisk_crosscheck_2026-11-02.md`):
-    - **D.6.15 The correction is added to the evaluator's draw verdicts — `I1`, reopened 2026-11-19 for review on the new kernel (done 2026-11-03 on the classic kernel).**
+    - **D.6.15 The correction is added to the evaluator's draw verdicts — `I1`, NO_CHANGE 2026-11-23 on the new kernel (reopened 2026-11-19; done 2026-11-03 on the classic kernel).**
       `3a16fbb`: the search no longer adds its correction to the
       evaluator's draw verdicts; the fingerprint moved from 13,987,223 to
       14,749,043, accepted by repair case 1 on a confined per-FEN
       differential, and no verdict leaf keeps a moved value. 7 of 28
       wrong-bishop draws still misread from cleared tables: D.6.23.
       Record: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
-    - **D.6.16 Quiescence prunes by gain against a decisive material edge — `R2`.** (A2;
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      problem is not there. `compact_eval` returns 0 with no correction and no
+      optimism when the evaluator's raw score is a draw verdict;
+      `a_draw_verdict_takes_no_correction` trains the tables on a wrong-bishop
+      draw and requires exactly (0, 0) there, while an ordinary position takes
+      its correction. Reckless has no verdicts to compare.
+    - **D.6.16 Quiescence prunes by gain against a decisive material edge — `R2`, NO_CHANGE 2026-11-23 on the new kernel.** (A2;
       Basilisk `d8d30e9`): futility (`node.rs:2355-2362`) and the SEE
       threshold (`node.rs:2392-2396`) read a capture's gain as the piece
       taken, which is false when the capture removes the opponent's
@@ -1251,7 +1250,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       Basilisk's fixture, and a `diag` count of skipped captures that
       leave the opponent without mating material on the conversion
       families. `R2` card first.
-    - **D.6.17 Underpromotions and Saavedra's study — `R2`.** (an investigation): Basilisk
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      problem is not there. The kernel's quiescence has no gain-based futility
+      and no delta pruning, only the donor's exchange-threshold prune and its
+      three-move stop. Basilisk's fixture (`d8d30e9`: four wrong-bishop draws,
+      depths 8 to 14, 200,000 nodes, a fresh table) reads a draw in all 28
+      searches; one, `7k/7P/6K1/8/8/3B4/8/8 w`, finishes depth 14 at 201,399
+      nodes, just past the fixture's cap, and stays a draw to depth 16
+      (`analysis/artifacts/d6-review-rest-2026-11-23/`).
+    - **D.6.17 Underpromotions and Saavedra's study — `R2`, NO_CHANGE 2026-11-23 on the new kernel.** (an investigation): Basilisk
       lost Saavedra's `c8=R` when it pruned underpromotions below the root,
       and its search picked a rook promotion over the queen in 59 of 228
       gate positions where a rook line merely transposed (BAS-S33,
@@ -1286,7 +1293,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       that hold was lifted 2026-11-13 (maintainer decision): the rook is a
       true tie that changes no result, and D.7 replaces the root order
       that breaks it, so the review after D.7 asks first.
-    - **D.6.20 The fail-high stop's hole — `R2`.** (H24): the stop at twice the target is
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      wrong pick is not there. At 100,000 nodes the kernel plays `g7f8q` with a
+      positive score in the transposing rook position: its picker orders the
+      queen's capture-promotion ahead of the rook's.
+      `queen_promotion_though_the_rook_was_searched_first` passes and runs again
+      (`dfb593c`); Saavedra's `c7c8r` (a mate in 7) and the stalemate escape
+      `f7f8r` (a mate in 2) are right and pinned by active tests. Basilisk's
+      root rule is not needed.
+    - **D.6.20 The fail-high stop's hole — `R2`, NO_CHANGE 2026-11-23 on the new kernel.** (H24): the stop at twice the target is
       checked only when a window returns (`search/mod.rs:977-978`), so a
       window that never fails high runs to the maximum (RAR-R26's rec3,
       97.9 s at `180000+2000`); Basilisk adds the give-up window as a
@@ -1312,6 +1327,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       (maintainer decision): the hole is older than 2.6.0, the hard
       maximum bounds it, and the stop sits in the loop D.7 replaces, so
       the review after D.7 asks first.
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      measured instance is gone. `won_ending_does_not_sink_the_clock` takes 2.17
+      to 2.20 s in three runs on an idle host (limit 8 s; 9.46 to 9.82 s on the
+      classic), keeps the win (`e3f4`, depth 20), and runs again (`dfb593c`). The
+      hole itself, a window that never fails high running on to the hard limit,
+      is the donor's shape: Reckless checks its soft limit only after an
+      iteration and inside one only its hard bound, so Rarog's fail-high stop is
+      an addition that closes part of it, and the hard maximum bounds the rest.
+      The card's per-window read has no decision left to feed.
     - **D.6.21 Won KPK positions read at or below 0 — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (D.5.19's read,
       2026-11-02; Basilisk's A3): 88 of 445,128 won KPK positions read at
       or below 0 for the winner, 78 of the wrong sign and 10 exactly 0,
@@ -1418,7 +1442,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      **Closed here, moved into E.4.2** (maintainer decision 2026-11-22),
      before its review on the kernel; its screen runs there with the
      other endgame families'.
-    - **D.6.27 IIR has no node-type condition — `R2`.** (found 2026-11-11,
+    - **D.6.27 IIR has no node-type condition — `R2`, NO_CHANGE 2026-11-23 on the new kernel.** (found 2026-11-11,
       RAR-S117): IIR reduces any node of depth 4 or more that has no table
       move. Stockfish 19 reduces only PV and cut nodes, at depth 6 or more,
       and Reckless at its head of 2026-10-29 has no IIR. Local evidence:
@@ -1437,6 +1461,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       LMR term, and D.6.4's store, which is an ordering change alone once
       IIR ignores those nodes. Gate: `[0,3]` if the card predicts a gain,
       else case 3. `R2` card.
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      problem is not there. The kernel has no IIR, as Reckless has none; a
+      missing TT move is read only by the cut-node reduction terms and by the
+      singular search's need for one, both the donor's and fitted with the
+      kernel (D.7.11).
     - **D.6.29 Quiescence never scores a stalemate — `R2`.** (found
       2026-11-13, the Basilisk check, `analysis/basilisk_check_2026-11-13.md` §1): out of
       check with no capture to search, quiescence never asks whether the
@@ -1483,7 +1512,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       from Colosseum's database at registration. The diag counters
       (`q_kp_nodes`, `q_kp_stalemate`, `q_kp_stalemate_misread`) stay as
       its activation check.
-    - **D.6.30 A later iteration can overwrite a proven mate — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-13 on the classic kernel).**
+      Review read 2026-11-23 on the compact kernel (zero games): **the
+      problem is there.** The kernel's quiescence, like its donor's, never asks
+      whether a side out of check with no capture has a legal move, so a
+      stalemate reached through a capture still reads as its stand pat. The diag
+      counters named above were the classic kernel's: the compact kernel's
+      quiescence never fed them, and they were removed with the other dead
+      counters on 2026-11-22 (`84f80de`), so the screen's re-read on the kernel
+      needs them added to its quiescence first. **Open, for the maintainer's
+      decision** on the form (Stockfish's narrow test, a departure from
+      Reckless) and on whether to re-read the exposure first; the gate stays
+      case 3, as above.
+    - **D.6.30 A later iteration can overwrite a proven mate — `R2`, NO_CHANGE 2026-11-23 on the new kernel (reopened 2026-11-19; done 2026-11-13 on the classic kernel).**
       (found 2026-11-13, the Basilisk check, `analysis/basilisk_check_2026-11-13.md` §1):
       each completed iteration replaces the root's score and move
       (`search/mod.rs:1074-1080`); the mate watch stops the search and
@@ -1517,7 +1557,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       positions left), so it is repair case 1. Activation read on the
       frozen replay: searches ending without a proven win 15 → 0, playing
       another move 3 → 0.
-    - **D.6.31 A null move adds a node to the count — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-15 on the classic kernel).**
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      repair is intact. The root driver keeps the last proving iteration's move,
+      score and line after every completed iteration, whatever window or depth
+      produced it, so the kernel's narrow windows and fail-high reduction reach
+      it unchanged. A `diag` build's `bench 13` reads 13 proving iterations and
+      none lost (`iter_mate_win`, `iter_mate_win_lost`): the counters are live,
+      and bench does not exercise the keep. No test pins the rule; its
+      activation read was the replay above.
+    - **D.6.31 A null move adds a node to the count — `R2`, NO_CHANGE 2026-11-23 on the new kernel (reopened 2026-11-19; done 2026-11-15 on the classic kernel).**
       Added 2026-11-15 (maintainer: every engine compared here counts as
       Stockfish does). Stockfish counts in `do_move` and Reckless in its
       search `make_move`, once per move made, quiescence's and
@@ -1539,6 +1587,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       against the −13 rule; nodes a move ×0.990 at the same depth and
       time. Rarog's head now counts as Stockfish, Reckless and Basilisk
       (`838a3c6`) do; fingerprint 9,067,595 / EBF 2.479.
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      problem is not there. The kernel counts no null move; the bench-positions
+      test and the mate test require the count to equal a test-only tally of
+      moves made, in trees that make null moves (D.6.8's review).
     - **D.6.32 The shortest mate's depth moves with the seeds — `R2`, added 2026-11-21 for the review after D.7.**
       (found by D.7.11.8's bake, RAR-S135, *The bake*; maintainer
       decision 2026-11-21 to investigate it here, after D.7, and not
