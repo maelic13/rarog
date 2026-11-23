@@ -417,7 +417,10 @@ D.15 and E.4.
 | D.8.21 | RESEARCH | V | Added 2026-11-20 from D.7.11, open since D.7.14's adoption (2026-11-21); a count on replayed gate games of how often each of eight seeds' terms binds, a seed deleted only if its term never does |
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
-| D.11 | RESEARCH | R2 | The originality disclosure, moved from E.3.0; its hold is lifted for 2.7.0 (maintainer decision 2026-11-13) and stands for the release after it |
+| D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
+| D.11.2 | RESEARCH | R2 | After D.11.1: the card and the maintainer's licence decision, AGPL-3.0-or-later or GPL-3.0 by rewriting the Reckless-derived parts, either with Reckless's authors asked |
+| D.11.3 | RESEARCH | I1 | After D.11.2: the decision carried out; registered experiments under the GPL route |
+| D.11.4 | RESEARCH | M | After D.11.3: the disclosure on Coda's model; its notices ship in D.15.1's archives |
 | D.12.0 | RESEARCH | R3 | Added 2026-11-14 (maintainer: Basilisk's findings are hints, not Rarog's best answer); not started: Rarog's own board interactions mapped and its options ranked before any of D.12's leaves runs |
 | D.12.1 | RESEARCH | R2 | Added 2026-11-14 (maintainer: the board revisited in depth); not started: the contract audit and the instruments, Basilisk's cross-engine harness reused; D.7 keeps Rarog's board, so nothing waits for D.7 |
 | D.12.1.1 | RESEARCH | I2 | Added 2026-11-14 from Basilisk's board findings; after D.12.0, which may reshape it: the search replay with its verify mode and stub control, and the engine screen calibrated on C.12's pairs |
@@ -4105,6 +4108,112 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   - **The reported score:** Stockfish's win-rate form and its
     `UCI_ShowWDL` option, with Rarog's own constants (D.7.12).
   Step 1's rerun reads the release head with these in it.
+  *Widened 2026-11-23* (maintainer request, from Coda's read,
+  `analysis/coda_read_2026-11-23.md`; the maintainer wants Coda's
+  disclosure as the model). The step is larger than drafted:
+  - Reckless's licence by date: MIT from 2023-04-16, none from
+    2025-02-22, AGPL-3.0 from 2026-01-26. Every Reckless commit Rarog
+    cites for its code is later, so what crossed is AGPL material.
+  - GPL-3.0 and AGPL-3.0 may be combined (section 13 of each), but the
+    AGPL-derived parts keep AGPL terms and Reckless's notice, and AGPL's
+    network clause covers the whole. Rarog's only licence statement is
+    GPL-3.0-or-later and README names Reckless for inspiration only:
+    that labelling gap is a defect whichever licence is chosen.
+  - Tracked AGPL material: the three Reckless patches in
+    `tools/oracle-hybrids/` carry Reckless's source in their context
+    lines, unlabelled.
+  - The dependence has grown since the step was written: D.7 rebuilt the
+    kernel on Reckless's shape and took its clock whole (*Named at
+    D.7.14*), and Phase F names Reckless a primary source for the network
+    runtime and trainer pipeline (maintainer decision 2026-11-23). Coda's
+    one finding of copied expression was in that area: threat-feature
+    indexing and SIMD kernels modelled on Reckless's.
+  - No release carries the compact kernel yet; its source is on public
+    `master` since PR #20.
+  The step's four items are carried by D.11.1 to D.11.4 below, item 4
+  with D.15.1; the falsifier and stop rule above stand. Refitting donor
+  constants stays outside this step under route 1 of D.11.2; under
+  route 2 each refit is its own registered experiment, named by D.11.3.
+  D.11 closes when D.11.1 to D.11.4 are done and D.15.1 ships the
+  notices.
+    - **D.11.1 The donor inventory by licence, on the release head — `R2`.**
+      Item 1's rerun, widened from `src/` to everything tracked:
+      - each donor's licence at each version Rarog read (Reckless's three
+        periods above; Stockfish and Triumviratus GPL-3.0; Fathom MIT), in
+        a table of Coda's form;
+      - the Reckless-derived parts by kind: the kernel's shape, the clock
+        and its constants, the constants still at the donor's values
+        (*What stays unfitted*), the two transcribed places, and B.2's
+        constants that 2.5.0 to 2.7.0 shipped;
+      - the Stockfish-derived parts: Stockfish 11's evaluation design and
+        the reported score's form;
+      - tracked files holding donor text: the oracle patches, and the
+        fifteen files that cite donor source by path (most with line
+        numbers), read for quotation beyond a few words;
+      - source comments that name a donor, checked against what the code
+        is: Coda's own comments called reimplementations "verbatim" and
+        "ports", which read as copies.
+
+      Output: the inventory in the review (`analysis/`), which D.11.2
+      decides on and D.11.4 publishes. Closes when it covers the source,
+      the tools and the documents at the release head.
+    - **D.11.2 The licence decision — `R2` card, then a maintainer decision.**
+      After D.11.1. The card states, from the inventory, what each route
+      costs (`analysis/coda_read_2026-11-23.md`, *What AGPL is*):
+      1. *Relicense as AGPL-3.0-or-later.* `LICENSE`, `Cargo.toml`, README
+         and the archives change. Rarog's duties are GPL's plus section 13:
+         a modified Rarog that others play or query over a network offers
+         its source, which the public repository and a link meet. Rating
+         lists are unaffected, and Reckless stays readable at its latest
+         commit as PROCESS has it. Releases up to 2.7.0 stay as published.
+      2. *Stay GPL-3.0, Coda's route.* Each Reckless-derived part is
+         reimplemented from ideas with constants derived from Rarog's own
+         quantities, or removed, each a registered experiment; the patches
+         are labelled AGPL or leave the tree; PROCESS's boundary becomes
+         ideas only for an AGPL engine, with no constant crossing, and
+         Phase F's sourcing decision of 2026-11-23 changes with it. The
+         kernel's shape stays the one point where an argument can be made.
+      3. *Ask Reckless's authors* (the maintainer sends): a courtesy with
+         either route, and a written permission settles what it covers.
+
+      The decision also settles whether README says how Rarog is
+      developed, as Coda's opening does (AGENTS bars agents from adding AI
+      attribution, so the line is the maintainer's); whether donor study
+      material (the patches, any quoted donor code in `analysis/`) stays
+      in the public repository; and whether the git history stays as it
+      is and is said to. Not legal advice.
+      *Recommendation of the 2026-11-23 read:* route 1 with route 3. It
+      settles compliance for the kernel, the clock and the patches in one
+      change and keeps D.7's design and PROCESS's donor. Route 2 only if
+      Rarog's code must stay reusable under plain GPL-3.0.
+    - **D.11.3 The decision carried out — `I1`, or registered experiments under route 2.**
+      After D.11.2. Route 1: the licence files, `Cargo.toml`, Reckless's
+      copyright notice where its material is, the patches labelled,
+      PROCESS and AGENTS where they name the licence, and a `CHANGELOG.md`
+      entry. Route 2: each part D.11.1 lists reimplemented or refitted as
+      its own registered experiment (the clock's constants as a registered
+      tune, read as Coda read its retune: values that return near the
+      donor's are functional optima, not a failure), the patches out of
+      the tree or labelled, and the boundary rewritten. Engine and
+      documentation changes in separate commits.
+    - **D.11.4 The disclosure, on Coda's model — `M`.**
+      After D.11.3; item 3 in Coda's form (the read, *How Coda discloses
+      its sources*):
+      - the review in `analysis/`, dated and kept as a living record: why
+        it exists, the principle applied (ideas and functional constants
+        against expression), the licence table at the version read, one
+        section per donor (what was taken, what was not, what was done,
+        with the commits), its scope and what is still open, "not legal
+        advice", and an invitation to open an issue;
+      - a notices file at the root for derived and studied material
+        (Reckless's notice where its material is, Fathom's MIT notice),
+        separate from `LICENSE`, shipped in D.15.1's archives;
+      - README's *Acknowledgements* and *License*, short and for users:
+        the donors by licence with what each gave (Stockfish 11's
+        evaluation design, Reckless's search shape, clock and some
+        constants, Fathom's probing) and the licence's history in a
+        sentence or two;
+      - PROCESS's boundary saying what crossed and that it is disclosed.
 - **D.12 Board review and rebuild: the contract audited, each component read against the donors' boards, rebuilt where another form measures better — `R2`, then `I2`/`V`.**
   Added 2026-11-14 (maintainer: the board implementation is revisited in
   depth), on the model of Basilisk's B.7 (audit and instruments, review,
@@ -4621,6 +4730,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     2,000 games) takes about 1 hour 45 minutes. A gain needs an SPRT,
     priced in the card as D.13's was (`[0,5]` about 13 to 18 hours).
     One thread must reproduce the fingerprint and play the same.
+  - *ARM ordering, if built:* a withdrawn vote is one thread's state read
+    by the others, so it is published with release and read with acquire,
+    as Coda requires of every reader-publish pattern (x86 hides the bug,
+    ARM shows it; `analysis/coda_read_2026-11-23.md`, lead 7), and checked
+    on the ARM compatibility host.
 
 - **D.15 Release packaging from Basilisk 1.11.0 — `I1`.**
   Added 2026-11-21 (maintainer request) from Basilisk's release work
@@ -4638,7 +4752,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       Each release asset becomes a `.zip` (Windows) or a `.tar.gz` (Linux,
       macOS; the executable bit kept) holding one folder
       `rarog-<ver>-<os>-<arch>/` with the binary, `LICENSE`, Fathom's
-      licence (`vendor/fathom/LICENSE`), `README.md` and `CHANGELOG.md`,
+      licence (`vendor/fathom/LICENSE`), D.11.4's notices file,
+      `README.md` and `CHANGELOG.md`,
       as Basilisk's (`87de6fa`) and Stockfish's releases do. It is where
       D.11's notices ship with the binaries. The workflow's publish step,
       the README's download table and an upgrade note for the renamed
@@ -4782,6 +4897,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   interrupted iteration, RAR-O09) separates work a node from speed, and
   the same pair with Rarog's clock raised by the measured NPS ratio
   prices speed parity.
+  **Leads from Coda** (added 2026-11-23;
+  `analysis/coda_read_2026-11-23.md`, *Search and tooling leads*; its
+  numbers are its own NNUE engine's short-control SPRTs and order tests
+  only): a transition correction keyed by the hash of the last move in
+  its position, which Rarog lacks (explanation 4); LMR adjusted by the
+  child's static evaluation against alpha, +1.2 ± 1.0 there (2); two
+  removals that gained, +1.9 ± 1.8 each, beside switches that record
+  each feature's measured cost (2); each thread ordering its root by its
+  own latest best move, +1.2 ± 1.4 at four threads (threads).
   **Output:** a short packet in `analysis/`, each lever with its evidence,
   its prior band frozen before any game, the cheapest test that kills it
   and the step that would own it; a lever without a discriminating read is
@@ -5279,6 +5403,18 @@ Stockfish:
    for capacity and up to 10× for more epochs (F.6);
 8. a budget point: 600 superbatches of 16,384 × 6,104 positions took 5.0
    GPU-hours on an RTX 3080 (F.3, F.4).
+
+**Licence notes from Coda** (added 2026-11-23;
+`analysis/coda_read_2026-11-23.md`). Reckless is AGPL-3.0, so what may
+cross from it as a primary source follows D.11.2's decision. Coda's one
+finding of copied expression was in this phase's area: a threat-feature
+index construction and SIMD kernels modelled on Reckless's. It
+reimplemented both and kept the feature mapping, which its trained net
+depends on, so a mapping a net is trained on is an interface chosen once
+(F.5, F.7). The own-data rule keeps the data licence simple, where
+Coda's LC0-trained nets owe ODbL attribution. Coda names its network
+files by content hash with no architecture prefix, since the header
+carries the architecture (F.6).
 
 - **F.0 Investigation: board events, accumulator ownership, trainer choice, data format, first architecture — `R3`.**
   Board event interface and accumulator ownership (dirty pieces, per-thread
