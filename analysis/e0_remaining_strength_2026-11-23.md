@@ -303,3 +303,24 @@ Stockfish 16's static accuracy; where decisive games are decided.
 Taken from the ledger: every Elo figure, Rarog's profile shares, the
 slope. Inferred: the price of the rate gap, the three-term split, the
 kernel's standing at an equal rate, the conversion ceiling, every band.
+
+## RAR-M92 read (added 2026-11-23)
+
+The kernel on `4.050+0.041` against Stockfish 16 HCE on `3+0.03`:
+**−43.7 ± 11.8 Elo** over 1,600 games, no fault or time loss, at 0.953
+of Stockfish's reported nodes a move. Against the baseline's −102.0 ±
+12.7 the gain is **+58.3 ± 17.3**, predicted +55 [+35, +75]: 1.67 Elo
+for 1% of node rate, 135 a doubling. By the frozen rule the speed bands
+stand and the speed pass keeps its place. The first term of the split
+above is now measured: about −58 of the −102 is node rate; with RAR-O07's
+−99 the kernel's tree comes to about +55 by subtraction, still inferred.
+At Stockfish 16 HCE's node rate the kernel is 44 behind it.
+
+## The order, decided (added 2026-11-23)
+
+The maintainer approved the proposed order the same day, every step
+keeping its number: D.16 with its profile (D.16.3.1) first; E.4.0 with
+the donor's evaluation inside the kernel (E.4.0.1) first; D.8 to D.11;
+D.12.0 alone, D.12.1 to D.12.4 held; D.13, D.14, D.15, D.17; then Phase E
+as numbered, E.4's units after the release. PLAN's register and GUIDE's
+order list carry it. E.0 is closed.

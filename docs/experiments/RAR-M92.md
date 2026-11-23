@@ -1,4 +1,4 @@
-# RAR-M92 — The price of the node-rate gap: the kernel on 1.35 times the clock against Stockfish 16 HCE, 1,600 games — REGISTERED 2026-11-23, before any game
+# RAR-M92 — The price of the node-rate gap: the kernel on 1.35 times the clock against Stockfish 16 HCE, 1,600 games — REGISTERED 2026-11-23, before any game; READ 2026-11-23: −43.7 ± 11.8 Elo, a gain of +58.3 ± 17.3
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -6,7 +6,8 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
   Preparation and the dry run are the agent's; the run is the maintainer's
   command, one fixed match of 1,600 games, about 25 minutes.
 - **Kind:** observation with a frozen use. It accepts and rejects nothing.
-- Disposition: open
+- Disposition: observation — read 2026-11-23: −43.7 ± 11.8 Elo at an equal node rate, a gain of
+  +58.3 ± 17.3 over the baseline; 1.67 Elo for 1% of node rate.
 - **Use, named before the read:** it prices E.0's speed levers. The packet
   (`analysis/e0_remaining_strength_2026-11-23.md`) states those levers in
   percent of node rate; this read gives the Elo each percent is worth
@@ -129,6 +130,46 @@ Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](..
   the resolved configuration against `-BaseMs`, `-IncrementMs` and
   `-MarginMs`. Without them it refuses the run, as its first dry run
   showed.
-- **Result:** not played.
-- **Artifacts / commits:** this registration; the zero-game reads and the
-  dry run's console in `analysis/artifacts/e0-2026-11-23/` (ignored).
+- **Result (played 2026-11-23 10:55 to 11:17 UTC by the maintainer, 22
+  minutes; `tools/results/rar-m92-speed-price/`, manifest
+  `tools/results/colosseum_match_rar-m92-speed-price_20261123_115519.manifest.txt`):**
+  - *Validity.* 1,600 games in 800 complete pairs, every one to a rules
+    result (978 mates, 288 repetitions, 215 insufficient material, 100
+    fifty-move draws, 19 stalemates), no fault and no time loss; the host
+    at 5.7% before the start. Nodes a move 173,767 for the kernel and
+    182,426 for Stockfish 16 HCE, **0.953**, inside 0.90 to 1.10; 89.8 ms
+    a move against 66.2, 1.36.
+  - *Score* (the runner's report; the wrapper's recount of `games.pgn`
+    agrees): the kernel 389-622-589, 43.75%, pentanomial
+    [74, 247, 311, 141, 27], **−43.7 ± 11.8 Elo** (nElo −63.8 ± 17.0).
+  - *The gain* over the baseline's −102.0 ± 12.7: **+58.3 ± 17.3**
+    [+41.0, +75.6], the two reads taken as independent. The price:
+    **1.67 Elo for 1% of node rate** (58.3 / 35), 135 a doubling
+    [95, 175].
+  - *Beside it, not Elo:* depth without mate scores 17.88 for the kernel
+    on the longer clock and 19.30 for Stockfish 16 HCE; reported rates
+    1.934M and 2.755M, 1.42 as in RAR-M90.
+  - *Frozen use.* The gain is at +45 or more: the packet's speed bands
+    stand (at 1.67 a percent they read +7 to +20, 0 to +8 and 0 to +5,
+    against +6 to +20, 0 to +8 and 0 to +5 as written), and the speed
+    pass keeps its place ahead of E.4.0. The kernel's deficit to
+    Stockfish 16 HCE at an equal node rate is recorded as −43.7 ± 11.8.
+- **PREDICTION CALIBRATION (appended after exposure):** the gain +58.3
+  against +55 [+35, +75], a hit, 3.3 above the centre; the match −43.7
+  against −47 [−67, −27], a hit. At +45 or more (0.70): it happened. At
+  +63 or more (0.30): not at the point, and the interval reaches it.
+  Nodes a move 0.953 against 0.95 to 1.05: inside, at the lower edge,
+  where the kernel's 4% under-report puts an equal rate. The hypothesis
+  holds: 135 Elo a doubling against this opponent, 0.93 of the self-play
+  slope. Competing hypothesis (1) put it at 0.81, and the interval covers
+  both, so a discount against a foreign engine is neither shown nor
+  excluded; (3), the unit of work, is not touched by a time-odds read.
+- **Conditional lesson:** the kernel's self-play speed slope carries to
+  the meter's engine at a 35% step; against the pre-NNUE goal a speed
+  change is worth about 1.7 Elo a percent at `3+0.03`.
+- **Retry trigger or `closed`:** closed. A speed pass that claims a gain
+  against the meter reads the meter, not this.
+- **Artifacts / commits:** this registration (`6f28b4d`); the zero-game reads and the
+  dry run's console in `analysis/artifacts/e0-2026-11-23/` (ignored); the run
+  in `tools/results/rar-m92-speed-price/` (`games.pgn` SHA-256 `AFB770F6…69B7`,
+  `results.txt` `4B83A1C0…B13D`).
