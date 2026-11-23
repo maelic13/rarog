@@ -147,6 +147,10 @@ field, about 3,475 on CCRL's Blitz scale.
 - [ ] **D.15** Release packaging from Basilisk 1.11.0 — **I1**
     - [ ] **D.15.1** Each download an archive — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.15.2** Release notes as a summary and highlights — **READY_FOR_IMPLEMENTATION / I1**
+- [ ] **D.16** Speed read on game positions: the bench read checked against play, and one more speed pass on the compact kernel if they disagree — **I1**
+    - [ ] **D.16.1** The game-position speed read — **READY_FOR_IMPLEMENTATION / I1**
+    - [ ] **D.16.2** The bench read against play — **RESEARCH / V**
+    - [ ] **D.16.3** One more speed pass on the compact kernel — **RESEARCH / R2**
 
 ## Phase E — Classical checkpoint and release
 
