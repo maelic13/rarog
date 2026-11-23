@@ -395,7 +395,6 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.32 | RESEARCH | R2 | Review after D.7: the depth at which the shortest mate first shows moves with the seeds, KQK's mate in three from depth 8 to 20 at the bake; why, and whether a mate-distance contract is worth a repair |
 | E.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-22 (maintainer decision): after the D.6 review, before D.8.1; zero games first, its ranking may reorder the steps after it |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -549,7 +548,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   correction bonus, D.5.24 refuses a `Hash` above physical memory. What
   the tests found wrong in play is D.6.24 to D.6.26. Full record, D.5.1 to
   D.5.24: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
-- **D.6 Strength candidates from the engine review: kernel and evaluation deviations from the donor, each behind a zero-game screen and a registered gate — `R2` cards, then `I1`/`I2`/`V`.**
+- **D.6 Strength candidates from the engine review: kernel and evaluation deviations from the donor, each behind a zero-game screen and a registered gate — `R2` cards, then `I1`/`I2`/`V`, DONE 2026-11-23.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` (§3.1, §3.2,
   §3.5). Each item is an unrecorded deviation from the donor's shape with a
   plausible mechanism; none is a measured strength defect, so each enters at
@@ -1607,7 +1606,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       problem is not there. The kernel counts no null move; the bench-positions
       test and the mate test require the count to equal a test-only tally of
       moves made, in trees that make null moves (D.6.8's review).
-    - **D.6.32 The shortest mate's depth moves with the seeds — `R2`, added 2026-11-21 for the review after D.7.**
+    - **D.6.32 The shortest mate's depth moves with the seeds — `R2`, NO_CHANGE 2026-11-23 on the new kernel (added 2026-11-21 for the review after D.7).**
       (found by D.7.11.8's bake, RAR-S135, *The bake*; maintainer
       decision 2026-11-21 to investigate it here, after D.7, and not
       to hold the bake on it.) On the kernel's seeds before the bake,
@@ -1638,6 +1637,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the kernel's seeds and with the table's mate entries not kept
       over quiescence stores; a repair is registered only if a
       mechanism is located. `R2` card.
+      Review read 2026-11-23 on the compact kernel (zero games,
+      `analysis/artifacts/d632-2026-11-23/mate_depths.py`, one search a
+      position to depth 30, Hash 64, one thread): **the late shortest mate
+      is the donor's, not Rarog's.** First depth of the shortest mate,
+      Rarog (`64993ff`) / Reckless (`8d7d1dd`) / Stockfish 11 /
+      Stockfish 18: KQK's mate in three 20 / 20 / 4 / 27; KQK's mate in
+      four 9 / 16 / 16 / not by 30; KRK's mate in two 6 / 3 / 2 / 5; KRK's
+      mate in five not by 30 (six reported) / 22 / not by 30 / 23. No
+      engine holds a contract of a mate in n by a fixed depth past
+      2n − 1; the reductions, pruning and mate entries of the shared shape
+      make the shortest line late. The cost in games is nil: Rarog reaches
+      depth 20 on KQK in 21,534 nodes, about 11 ms, within one move at
+      `3+0.03`, and every reported mate is its line's. The arm with mate
+      entries not kept over quiescence stores is not run: it needs a code
+      change, and a repair it pointed to would depart from the donor for an
+      effect with no game cost. **Closed `NO_CHANGE`** (maintainer decision
+      2026-11-23).
   Evidence for items already here (H18–H21, H25): item 4 (NODE-2), the
   donor form read +3.3 ± 9.1 in Basilisk (2,000 games) and each of its
   consumers alone (IIR, the no-TT-move LMR term) threw a promotion fixture
