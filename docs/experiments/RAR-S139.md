@@ -1,4 +1,4 @@
-# RAR-S139 — D.6.29's repair: quiescence scores a stalemate in Stockfish's narrow form; a zero-game replay first, then SPRT `[-5,5]` at `3+0.03` — REGISTERED 2026-11-23, before either part is read
+# RAR-S139 — D.6.29's repair: quiescence scores a stalemate in Stockfish's narrow form; a zero-game replay first, then SPRT `[-5,5]` at `3+0.03` — REGISTERED 2026-11-23, before either part is read; READ 2026-11-23
 
 Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
@@ -8,7 +8,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Kind:** PLAN D.6.29's repair, AGENTS' repair case 3 as the card froze
   it on 2026-11-13: it moves shared quiescence scores and could matter
   either way (maintainer decision 2026-11-23: Stockfish's form, gated).
-- Disposition: open — part A read 2026-11-23: scores differ in 31.1% of replayed searches, so the gate runs; the gate is prepared and the maintainer's to run.
+- Disposition: accepted — read 2026-11-23: part A, scores differ in 31.1% of replayed searches, so the gate ran; part B accepted 2026-11-23 by the maintainer's decision at 6,046 games, nElo +1.8 ± 8.8, LLR +0.90, the SPRT unresolved; kept (`64993ff`).
 
 ## The change
 
@@ -140,3 +140,34 @@ The dry run of `-Step sprt` passed every preflight (host idle 0%, the pinned
 runner, both fingerprints, equal build flavour and compiler, the policy):
 `tools/results/colosseum_sprt_rar-s139-sprt_20261123_080405.dry-run.json`.
 The gate is the maintainer's to run.
+
+### Part B (read 2026-11-23, stopped by the maintainer at 6,046 games)
+
+The run was stopped at half its cap and the candidate accepted by the
+maintainer's decision, in their words: "You set the game limit too high,
+this is ok, accepted by decision." The SPRT had not reached a bound, so
+this is an acceptance by decision, not by the frozen rule, which kept the
+candidate only on H1 or at the cap without H0.
+
+The last progress report (`tools/results/rar-s139-sprt/run.log`):
+
+```
+Elo             +0.9 +/- 4.2
+nElo            +1.8 +/- 8.8
+W/D/L           1540/2981/1525
+Ptnml           [35, 543, 1859, 544, 42]
+faults          time: 1-0; other: 0-0; 1 of 30 allowed
+LLR             +0.90 in [-2.94, 2.94] (continue)
+```
+
+- **What the read shows.** The 95% interval, about −7.0 to +10.6 nElo,
+  excludes harm beyond about −7, tighter than the case-2 harm rule's
+  standard (which catches a true −20 with probability 0.82). It shows no
+  gain. One time loss, the candidate's, within the 30 allowed.
+- **Calibration.** Predicted nElo 0 ± 4 (80% band); +1.8 lies inside it.
+  Stockfish's no-regression reads carried over.
+- **Consequence.** `64993ff` is kept and D.6.29 closes; the fingerprint
+  record moves to 3,694,298 / EBF 2.324.
+- **Artifacts:** `tools/results/rar-s139-sprt/` (`games.pgn` SHA-256
+  `2fef9116…`, `run-record.json` `24838095…`, which still reads
+  `running`, since the run was interrupted rather than finished).

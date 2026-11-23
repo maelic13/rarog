@@ -31,6 +31,9 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Fixed
 
+- **Stalemates after a capture.** When a capture left a side with only its
+  king and blocked pawns, the engine could miss the stalemate and count the
+  lost material; it now sees the draw.
 - **Long searches reach deeper.** In long searches of endgames a line could
   be cut short at 128 plies and judged on a static score; lines now run to
   240.
