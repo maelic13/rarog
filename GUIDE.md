@@ -151,6 +151,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [ ] **D.16.1** The game-position speed read — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.16.2** The bench read against play — **RESEARCH / V**
     - [ ] **D.16.3** One more speed pass on the compact kernel — **RESEARCH / R2**
+- [ ] **D.17** GitHub-hosted runners as a test lane for self-play SPRTs and tunes — **RESEARCH / R2**
 
 ## Phase E — Classical checkpoint and release
 

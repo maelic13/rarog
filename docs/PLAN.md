@@ -434,6 +434,7 @@ D.15 and E.4.
 | D.16.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-23 (maintainer request) from Trinity's bench-against-game speed miss: a fresh-process, fixed-node speed read on positions from gate games, pooled PGO builds; no dependency |
 | D.16.2 | RESEARCH | V | After D.16.1: the bench and game-position reads on two accepted speed changes of different kinds; agreement closes D.16, a disagreement opens D.16.3 |
 | D.16.3 | RESEARCH | R2 | Opened only by D.16.2's disagreement or by the maintainer: one more speed pass on the compact kernel, Reckless as the reference, priced by the read D.16.2 chose |
+| D.17 | RESEARCH | R2 | Added 2026-11-23 (maintainer request): not before the end of Phase D; a card on GitHub-hosted runners as a lane for self-play SPRTs and tunes, then a maintainer decision on the rules it changes |
 
 ## Phase D — Clock, threads, robustness
 
@@ -4689,6 +4690,38 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       D.7.8.12's form: the fingerprint exact at every commit, AGENTS'
       per-node rule, no new `unsafe` site (the floor is 17), each item
       priced by the read D.16.2 chose.
+- **D.17 GitHub-hosted runners as a test lane for self-play SPRTs and tunes — `R2` card, then a maintainer decision.**
+  Added 2026-11-23 (maintainer request), to open at the end of Phase D at
+  the earliest, from Trinity's testing lane
+  (`analysis/trinity_read_2026-11-23.md`, *The testing lane on GitHub
+  Actions*). The use: more games for registered self-play SPRTs and tunes
+  without the match host. GitHub's standard hosted runners are free for a
+  public repository (4 vCPU, 16 GB; 6 hours a job, 20 jobs at once on the
+  Free plan); the terms allow developing and testing the application and
+  bar a burden disproportionate to its benefit, so the lane runs in bursts
+  for registered work, never as a standing farm. Trinity's checks there:
+  identical engines +0.15 over 9,000 games, and one candidate +16.3 ± 4.4
+  against +19.1 ± 8.5 on its PC. The card answers, before anything is
+  built:
+  1. *The harness:* the pinned Colosseum CLI on a hosted runner (its
+     Windows build, or its Linux build pinned by hash), the engine built
+     on the runner from a committed tree, its fingerprint checked before
+     any game.
+  2. *The instrument:* a null pair of identical binaries that reads about
+     zero, a registered pair read both there and on the match host that
+     agrees within the intervals, and forfeits at `3+0.03` at the chosen
+     concurrency no more often than on the host.
+  3. *A tune longer than one job:* one registered run spread over jobs as
+     large-batch steps (every job plays at the same parameters, a final
+     job updates them, the next run continues from them), not independent
+     chains averaged; PLAN rules 4 and 7c are unchanged.
+  4. *The evidence:* each run's games and reports copied into
+     `tools/results/` with a manifest before the artifacts expire.
+  5. *The rules it changes:* AGENTS' idle host and pinned runner, and who
+     starts a long run; speed and timing reads never run there.
+  Falsifier and stop: a null pair away from zero, a cross-check outside
+  the intervals or more forfeits than on the host rejects the lane, and
+  it closes `NO_CHANGE`; the maintainer decides on adoption.
 
 ## Phase E — Classical checkpoint and release
 
