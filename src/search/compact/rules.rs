@@ -677,7 +677,7 @@ impl Seeds {
         probcut_depth_per: 131,
         probcut_raise_16: 1_316,
         probcut_t: 2_682,
-        // The donor's form, which RAR-S130's read kept.
+        // The donor's form.
         probcut_see_scale: 2_630,
 
         singular_depth: 7,

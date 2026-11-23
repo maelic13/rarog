@@ -2,10 +2,9 @@
 //!
 //! The 1-thread bench fingerprint — the project's usual safety net — cannot
 //! see this backend at all: it is only ever constructed when `Threads > 1`.
-//! So the shared store/probe path had no direct coverage while it was being
-//! repacked from 16 B slots (`key ^ data`, `data`) down to 10 B (payload plus
-//! a `key16 ^ fold16(data)` tag). These tests pin the properties that repack
-//! had to preserve: what goes in comes back out bit-exact, and what was never
+//! These tests cover the shared store/probe path directly, a 10 B slot
+//! (payload plus a `key16 ^ fold16(data)` tag), and pin what it must
+//! guarantee: what goes in comes back out bit-exact, and what was never
 //! stored is essentially never returned.
 
 use rarog::board::Move;

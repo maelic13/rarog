@@ -7,7 +7,8 @@ use std::sync::{
 use crate::board::Move;
 use crate::eval::{MATE_SCORE, VALUE_NONE};
 
-const MAX_PLY: i32 = 128;
+/// The search's ply cap (`search::MAX_PLY`), which places the mate band.
+const MAX_PLY: i32 = 240;
 /// The decisive band's floor: a tablebase win or anything better. Below
 /// the mate band (`MATE_SCORE - MAX_PLY` and up) lies the tablebase band,
 /// `TB_VALUE - ply` for a win found `ply` plies from the root. Window
@@ -714,8 +715,8 @@ fn new_local_table(mb: usize) -> Option<LocalTable> {
 }
 
 fn new_shared_table(mb: usize, age: u8) -> Option<SharedTable> {
-    // Sized from the byte budget with SharedCluster's own size — see
-    // `make_shared` for why inheriting the local cluster count was wrong.
+    // Sized from the byte budget with SharedCluster's own size, not the local
+    // cluster count (see `make_shared`).
     let count = cluster_count::<SharedCluster>(mb);
     let mut clusters = Vec::new();
     clusters.try_reserve_exact(count).ok()?;
@@ -923,8 +924,8 @@ fn entry_quality(entry: TtEntry, age: u8) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::{
-        LocalCluster, SharedCluster, TB_VALUE, TB_WIN_SCORE, TtProbe, cluster_count, cluster_index,
-        key16_of, score_from_tt, score_to_tt, size_of,
+        LocalCluster, MAX_PLY, SharedCluster, TB_VALUE, TB_WIN_SCORE, TtProbe, cluster_count,
+        cluster_index, key16_of, score_from_tt, score_to_tt, size_of,
     };
     use crate::eval::MATE_SCORE;
 
@@ -1042,9 +1043,16 @@ mod tests {
         );
     }
 
+    /// The table places the mate band by the search's ply cap, so its copy
+    /// must be the search's.
+    #[test]
+    fn the_tables_ply_cap_is_the_searchs() {
+        assert_eq!(usize::try_from(MAX_PLY).ok(), Some(crate::search::MAX_PLY));
+    }
+
     #[test]
     fn decisive_scores_round_trip_through_the_table_at_any_ply() {
-        for ply in [0usize, 1, 127] {
+        for ply in [0, 1, MAX_PLY - 1].map(|p| usize::try_from(p).expect("a ply")) {
             let p = i32::try_from(ply).expect("small ply");
             for score in [
                 TB_VALUE - p,
@@ -1064,9 +1072,9 @@ mod tests {
             }
         }
         // Every tablebase value at every ply is decisive and below the mates.
-        for ply in 0..128 {
+        for ply in 0..MAX_PLY {
             let win = TB_VALUE - ply;
-            assert!((TB_WIN_SCORE..MATE_SCORE - 128).contains(&win), "{win}");
+            assert!((TB_WIN_SCORE..MATE_SCORE - MAX_PLY).contains(&win), "{win}");
         }
     }
 
@@ -1138,8 +1146,8 @@ mod tests {
         );
     }
 
-    /// `Hash` is the size asked for: these were floored to 512, 1024, 2048 and
-    /// 16384 when a table's size had to be a power of two.
+    /// `Hash` is the size asked for, not the power of two below it: 1000 MiB
+    /// is not floored to 512.
     #[test]
     fn a_table_takes_the_whole_hash_at_any_size() {
         for mb in [1000usize, 2000, 3000, 32_000] {

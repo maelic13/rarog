@@ -1,5 +1,5 @@
-//! Phase 7.2 SEE pin-awareness tests, checked against an *independent* legal
-//! capture-tree oracle (not a `see_ge`-vs-`see` mirror — lesson 11).
+//! SEE pin-awareness tests, checked against an *independent* legal
+//! capture-tree oracle (not a `see_ge`-vs-`see` mirror).
 //!
 //! The oracle plays the exchange out with real legal moves via
 //! `generate_legal_moves` + make/unmake, so pins, pin-ray-legal captures,
@@ -79,13 +79,12 @@ fn check(fen: &str, uci: &str) -> i32 {
     see
 }
 
-// ---- The reported bug: a pinned recapturer must not defend the square ------
+// ---- A pinned recapturer must not defend the square ------
 
 #[test]
 fn pinned_pawn_cannot_recapture_off_its_file() {
     // Black d7 pawn is pinned to its king (d8) by the white rook on d1, so it
     // cannot play dxc6. White's Bxc6 therefore just wins the c6 pawn.
-    // Pre-7.2 SEE counted the pinned pawn and returned -230.
     let v = check("3k4/3p4/2p5/8/4B3/8/8/3RK3 w - - 0 1", "e4c6");
     assert_eq!(v, 100, "winning a free pawn, no legal recapture");
 }
@@ -118,11 +117,18 @@ fn pinned_pawn_may_capture_the_pinner_on_its_ray() {
 // ---- pinner removed mid-exchange re-enables the pinned piece ---------------
 
 #[test]
-fn capturing_the_pinner_frees_the_blocker() {
-    // White rook e4 attacks e6; black rook e6 is pinned to e8 by... nothing
-    // extra — instead: white queen and rook both attack e6, black has a pinned
-    // defender that becomes legal once the pinning line is broken. Oracle and
-    // SEE must agree through the whole sequence.
+fn a_pinner_leaving_its_line_frees_the_pinned_recapturer() {
+    // The white rook on e2 pins the black bishop on e5 to its king. Rxb2 takes
+    // a pawn and leaves the e-file, so the bishop is free and Bxb2 wins the
+    // rook: 100 - 500.
+    assert_eq!(check("4k3/8/8/4b3/8/8/1p2R3/7K w - - 0 1", "e2b2"), -400);
+}
+
+#[test]
+fn a_queen_defended_along_its_file() {
+    // The white rook on e4 takes the black queen on e6, which the rook on e7
+    // defends along the file. Oracle and SEE must agree through the
+    // whole sequence.
     check("4k3/4r3/4q3/8/4R3/8/8/4K2R w - - 0 1", "e4e6");
 }
 

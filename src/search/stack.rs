@@ -16,8 +16,8 @@ const STACK_SENTINELS: usize = 8;
 /// `array[ply]` is the entry of a real ply (`ply >= 0`); [`Self::back`] reads
 /// `back` plies before one, which below the root lands on a sentinel entry.
 /// Sentinels are written only by construction, so they hold their default
-/// value forever: a null move and `VALUE_NONE`, which is exactly what each
-/// removed guard substituted.
+/// value forever: a null move and `VALUE_NONE`, which is what a look-back
+/// past the root must read.
 #[derive(Clone)]
 pub(super) struct PlyArray<T> {
     data: [T; MAX_PLY + STACK_SENTINELS],
@@ -140,8 +140,8 @@ mod tests {
     use super::*;
 
     /// A look-back below the root reads a sentinel holding the default entry,
-    /// which is what every removed `ply >= n` guard substituted; above the
-    /// root it reads the same slot `Index` does.
+    /// so no `ply >= n` guard is needed; above the root it reads the same
+    /// slot `Index` does.
     #[test]
     fn look_back_below_the_root_reads_a_default_sentinel() {
         let mut stack = PlyArray::new(StackEntry::default());

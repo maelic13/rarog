@@ -130,7 +130,7 @@ impl Square {
         // Mask to the valid 0..=63 range. Identity for every legal
         // square (move encoding only produces 6-bit squares), and it lets
         // LLVM elide the bounds check on EVERY `[_; 64]` table indexed with
-        // `sq.index()` across the codebase — the type now carries the
+        // `sq.index()` across the codebase — the type carries the
         // invariant instead of each call site paying a check (or an unsafe).
         (self.0 & 63) as usize
     }

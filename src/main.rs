@@ -25,8 +25,7 @@ static ALLOCATOR: rarog::large_pages::PageAllocator = rarog::large_pages::PageAl
 fn main() {
     // FIRST, before any thread exists. A panic on the engine thread
     // is otherwise reported only on stderr, which the tournament harness
-    // drains asynchronously and loses to a fast abort -- the reason the
-    // 2026-09-04 EngineCrash could not be diagnosed. See `crash_report`.
+    // drains asynchronously and loses to a fast abort. See `crash_report`.
     crash_report::install_stdout_reporter();
     request_fine_grained_scheduling();
 
@@ -68,14 +67,12 @@ fn main() {
         .expect("Engine thread failed to start.");
 
     // Arguments are commands, run through the very same dispatch stdin
-    // uses. Before this, `main` ignored `std::env::args()` entirely, so
-    // `rarog.exe bench 13` printed the banner, hit EOF, benched nothing and
-    // exited 0 — a silent no-op with a success code, which is the one outcome
-    // a command-line tool must never produce.
+    // uses, so `rarog.exe bench 13` runs the bench instead of reading EOF and
+    // exiting 0 having done nothing.
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut protocol = UciProtocol::new(commands, control);
     let outcome = if args.is_empty() {
-        // No arguments: a GUI's path, byte-identical to before.
+        // No arguments: a GUI's path.
         protocol.uci_loop()
     } else {
         protocol.run_once(&args.join(" "))

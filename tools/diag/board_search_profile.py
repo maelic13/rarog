@@ -45,20 +45,16 @@ BOARD_COUNTERS = (
     "board_gen_vec_moves",
     "board_gen_full_calls",
     "board_gen_full_moves",
-    "board_gen_capture_calls",
-    "board_gen_capture_moves",
     "board_gen_staged_capture_calls",
     "board_gen_staged_capture_moves",
     "board_gen_staged_quiet_calls",
     "board_gen_staged_quiet_moves",
     "board_compute_pinned_calls",
     "board_check_info_calls",
-    "board_gives_check_fast_calls",
     "board_gives_check_full_calls",
     "board_calculate_checkers_calls",
     "board_see_full_calls",
     "board_see_threshold_calls",
-    "board_see_quiet_threshold_calls",
     "board_make_plain_calls",
     "board_make_with_check_calls",
     "board_unmake_calls",
@@ -327,20 +323,17 @@ def print_summary(aggregates: dict[str, dict], diagnostics_present: bool) -> Non
         generation = (
             counters["board_gen_vec_calls"]
             + counters["board_gen_full_calls"]
-            + counters["board_gen_capture_calls"]
             + counters["board_gen_staged_capture_calls"]
             + counters["board_gen_staged_quiet_calls"]
         )
         checks = (
             counters["board_check_info_calls"]
-            + counters["board_gives_check_fast_calls"]
             + counters["board_gives_check_full_calls"]
             + counters["board_calculate_checkers_calls"]
         )
         see = (
             counters["board_see_full_calls"]
             + counters["board_see_threshold_calls"]
-            + counters["board_see_quiet_threshold_calls"]
         )
         makes = counters["board_make_plain_calls"] + counters["board_make_with_check_calls"]
         print(

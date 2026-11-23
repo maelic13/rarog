@@ -385,7 +385,7 @@ mod tests {
         // Not `isready`: it blocks on a reply from the engine thread, and this
         // fixture deliberately has none.
         // Blank and whitespace-only lines are not errors; the interactive loop
-        // has always skipped them and argv must agree.
+        // skips them and argv must agree.
         assert_eq!(protocol.handle_command(""), CommandOutcome::Handled);
         assert_eq!(protocol.handle_command("   "), CommandOutcome::Handled);
         assert_eq!(

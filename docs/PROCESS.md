@@ -141,7 +141,9 @@ games until the end destroys attribution and lets losing structures hide.
    seam must preserve the exact accepted fingerprint when disabled.
 5. **Explain** — use the frozen suite at fixed depth/nodes to compare nodes,
    qnodes, move source, cutoff index, TT use, reductions and re-searches,
-   pruning, extensions and aspiration against the oracle. Counters explain a
+   pruning, extensions and aspiration against the oracle; on the compact
+   kernel these are its rate probes (`--features probes`,
+   `tools/oracle-hybrids/tree_stats.py`). Counters explain a
    candidate; they cannot accept it. For extension/depth-authority changes,
    pair average depth at fixed nodes with the tactical suite at both fixed
    depth and equal node cost. Register floors and the treatment of disagreement

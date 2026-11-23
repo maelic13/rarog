@@ -11,8 +11,8 @@
 //!    like the fast choice — is our *slowest* engine, and nothing said so.
 //!
 //! **Why the obvious implementation does not work, and what this does instead.**
-//! `src/main.rs` records that the previous startup CPU guard never once fired in
-//! a shipped binary: `is_x86_feature_detected!` expands to
+//! `src/main.rs` explains why a startup CPU guard cannot fire in a shipped
+//! binary: `is_x86_feature_detected!` expands to
 //! `cfg!(target_feature = "...") || runtime_detect(...)`, so in a tier that
 //! *statically requires* the feature the macro folds to a compile-time `true`,
 //! the branch becomes dead code and the message string is stripped from the

@@ -428,9 +428,8 @@ fn a_little_blitzer_fullmove_zero_fen_is_accepted() {
 }
 
 /// A GUI echoes back the `<empty>` default the engine advertises for a string
-/// option - CuteChess does (GitHub issue maelic13/rarog#1) - and taking it
-/// literally made `SyzygyPath` search a folder called `<empty>` and report
-/// "loaded no usable tablebases" at the start of every game.
+/// option (CuteChess does), and taking it literally would make `SyzygyPath`
+/// search a folder called `<empty>`.
 #[test]
 fn the_empty_placeholder_sets_a_string_option_to_nothing() {
     let mut engine = EngineOptions::default();

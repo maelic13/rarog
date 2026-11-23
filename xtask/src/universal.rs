@@ -1,4 +1,4 @@
-//! The universal x86-64 binary (PLAN E.3.3, `analysis/universal_binary_2026-09.md`).
+//! The universal x86-64 binary (`analysis/universal_binary_2026-09.md`).
 //!
 //! One executable holds four complete engines, one per tier, behind a
 //! dispatcher compiled for the baseline (`universal/dispatch.rs`):

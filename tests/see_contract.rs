@@ -1,6 +1,5 @@
 //! External legal-exchange truth and explicit production policy boundaries.
 //! Regenerate with tools/diag/see_contract_oracle.py (python-chess).
-//! Historical debt rows have active acceptance tests after the 4.11b.5 repair.
 
 use rarog::board::{Board, CROSS_ENGINE_SEE_VALUES, PRODUCTION_SEE_VALUES, SeeValues};
 
@@ -24,9 +23,10 @@ fn report_see_contract_observations() {
         let truth: i32 = f[4].parse().unwrap();
         let thresholds = [truth - 1, truth, truth + 1, 0];
         let ordinary = thresholds.map(|t| board.see_ge(mv, t));
-        let quiet_aware = thresholds.map(|t| board.see_ge_quiet_aware(mv, t));
+        let exchange =
+            thresholds.map(|t| board.see_ge_exchange_with_values(mv, t, PRODUCTION_SEE_VALUES));
         println!(
-            "{}|{}|tree={truth}|see={}|thresholds={thresholds:?}|ge={ordinary:?}|quiet={quiet_aware:?}",
+            "{}|{}|tree={truth}|see={}|thresholds={thresholds:?}|ge={ordinary:?}|exchange={exchange:?}",
             f[0],
             f[1],
             board.see(mv)
@@ -72,15 +72,12 @@ fn verify(selected_debt: Option<&str>) {
                 "{} threshold {threshold}",
                 f[0]
             );
-            let aware_expected = if f[1] == "policy-quiet" {
-                truth
-            } else {
-                full_expected
-            };
+            // The search's form plays every move through the exchange, so it
+            // reads the independent tree's value, policy rows included.
             assert_eq!(
-                board.see_ge_quiet_aware(mv, threshold),
-                aware_expected >= threshold,
-                "{} quiet-aware {threshold}",
+                board.see_ge_exchange_with_values(mv, threshold, PRODUCTION_SEE_VALUES),
+                truth >= threshold,
+                "{} exchange {threshold}",
                 f[0]
             );
         }
@@ -186,11 +183,10 @@ fn production_and_cross_engine_injection_match_independent_contracts() {
                 "{} cross threshold {threshold}",
                 f[0]
             );
-            let aware = if f[1] == "policy-quiet" { truth } else { full };
             assert_eq!(
-                board.see_ge_quiet_aware_with_values(mv, threshold, CROSS_ENGINE_SEE_VALUES),
-                aware >= threshold,
-                "{} cross quiet threshold {threshold}",
+                board.see_ge_exchange_with_values(mv, threshold, CROSS_ENGINE_SEE_VALUES),
+                truth >= threshold,
+                "{} cross exchange threshold {threshold}",
                 f[0]
             );
         }
@@ -229,7 +225,10 @@ fn threshold_parity_on_deterministic_legal_walks() {
                         "{} {mv} at {threshold}, full={value}",
                         board.to_fen()
                     );
-                    assert_eq!(board.see_ge_quiet_aware(*mv, threshold), value >= threshold);
+                    assert_eq!(
+                        board.see_ge_exchange_with_values(*mv, threshold, PRODUCTION_SEE_VALUES),
+                        value >= threshold
+                    );
                 }
                 checked += 1;
             }
@@ -241,7 +240,7 @@ fn threshold_parity_on_deterministic_legal_walks() {
         }
     }
     // The walks are deterministic: a different count means they changed, and
-    // the count moves only once the new walk is checked to cover as much.
+    // the count moves only once the changed walk is checked to cover as much.
     assert_eq!(checked, 1802, "capture coverage changed: {checked}");
     println!("SEE parity: {checked} legal captures across four deterministic walks");
 }

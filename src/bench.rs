@@ -5,13 +5,13 @@ pub(crate) const DEFAULT_BENCH_DEPTH: u16 = 13;
 // deterministic search fingerprint; the per-position spread also feeds the
 // geometric-mean EBF / median / top-share diagnostics printed by `run_bench`.
 //
-// Positions 1-16 are the original curated suite. Positions 17-40 are legal
+// Positions 1-16 are a curated suite. Positions 17-40 are legal
 // self-play positions sampled across piece counts (30 down to 8) so that no
 // single bushy middlegame dominates the node total — the 16-position suite had
 // one position at ~35% of all nodes, which made the fingerprint lurch ~15% on
 // sub-1-Elo parameter changes.
 pub const BENCH_FENS: [&str; 40] = [
-    // --- 1-16: original curated suite -----------------------------------------
+    // --- 1-16: curated suite -----------------------------------------------
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
     "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
@@ -60,9 +60,8 @@ mod tests {
     use super::BENCH_FENS;
     use crate::board::Board;
 
-    // Guards against corrupt bench FENs (a copy-paste typo once put 9 black
-    // pawns on position 4, silently searched until Basilisk's stricter parser
-    // flagged it). `from_fen` now rejects illegal material, so this catches it.
+    // Guards against corrupt bench FENs, such as illegal material from a
+    // copy-paste typo: `from_fen` rejects them.
     #[test]
     fn all_bench_positions_are_legal() {
         for (i, fen) in BENCH_FENS.iter().enumerate() {

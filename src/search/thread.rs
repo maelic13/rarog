@@ -87,6 +87,13 @@ pub(super) struct ThreadData {
     /// Moves made in the tree, for the test of the node count.
     #[cfg(test)]
     pub(super) moves_made: u64,
+    /// The call a parent is about to make and its own node type, taken by the
+    /// child it starts, for the test of the kernel's child types.
+    #[cfg(test)]
+    pub(super) child_call: Option<(ChildCall, bool)>,
+    /// Children counted by call, by the parent's node type and by their own.
+    #[cfg(test)]
+    pub(super) child_types: [[[u64; 2]; 2]; ChildCall::COUNT],
     /// A clock for the tests of the clock's stops: from this node count on,
     /// the search reads this many elapsed milliseconds, and none before it.
     #[cfg(test)]
@@ -134,6 +141,10 @@ impl Default for ThreadData {
             #[cfg(test)]
             moves_made: 0,
             #[cfg(test)]
+            child_call: None,
+            #[cfg(test)]
+            child_types: [[[0; 2]; 2]; ChildCall::COUNT],
+            #[cfg(test)]
             test_clock: None,
             #[cfg(feature = "pricing")]
             pricing: super::pricing::Pricing::default(),
@@ -149,4 +160,34 @@ impl ThreadData {
         self.corr = CorrectionTables::default();
         self.evaluator.reallocate_pawn_table();
     }
+}
+
+/// Each recursive call of the kernel's node search, for the test that pins
+/// the node type its child receives.
+#[cfg(test)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(super) enum ChildCall {
+    Null,
+    NullVerify,
+    ProbCut,
+    Singular,
+    Reduced,
+    Research,
+    FullDepth,
+    Pv,
+}
+
+#[cfg(test)]
+impl ChildCall {
+    pub(super) const COUNT: usize = 8;
+    pub(super) const ALL: [ChildCall; Self::COUNT] = [
+        ChildCall::Null,
+        ChildCall::NullVerify,
+        ChildCall::ProbCut,
+        ChildCall::Singular,
+        ChildCall::Reduced,
+        ChildCall::Research,
+        ChildCall::FullDepth,
+        ChildCall::Pv,
+    ];
 }

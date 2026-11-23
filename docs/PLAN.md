@@ -32,6 +32,8 @@ hand-crafted evaluation: get as close to it as possible, and beat it if it
 can be done. The meter is Rarog's gap to it, read head to head and in a
 rated field. On 2026-11-18 Rarog 2.7.0 is **160 below** it in a 13-engine
 field and **−164.8** [−187.1, −143.6] head to head at `3+0.03` 1T (RAR-M89).
+RAR-M91 (2026-11-22) reads the merged kernel 100.2 below it in a twelve-engine
+round robin, **−103.3** [−121.0, −86.0] head to head.
 On 2026-11-21 the adopted kernel is **96.6 below** it in the same field,
 pinned at RAR-M89's ratings, and **−100.6** [−119.4, −82.3] head to head
 (RAR-M90).
@@ -61,7 +63,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **3,390,842 / EBF 2.317** at engine source `16f93cb` (D.7.11.8: RAR-S135's centres at 2,000 baked into the kernel's seeds; before it 3,320,355 / EBF 2.317 at `4271031`, D.7.8.3: the root ordered by the kernel's own scorer, kept by RAR-S132; before it 3,348,508 / EBF 2.329 at `e363908`, D.7.8.2: quiescence and evaluation-only entries at the donor's depth, kept by RAR-S131; before it 3,278,226 / EBF 2.313 at `e63b652`, D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
+| Fingerprint | `bench 13` **3,694,298 / EBF 2.324** at engine source `64993ff` on `d6-review` since 2026-11-23 (D.6.29: quiescence scores a stalemate in Stockfish's narrow form, kept by RAR-S139 on the maintainer's decision); before it 3,374,901 / EBF 2.316 at engine source `91bc561` since 2026-11-22 (D.6.7: the ply cap at the donor's 240, its score bands with it, kept by RAR-S138); before it 3,390,842 / EBF 2.317 at engine source `16f93cb`, on `master` as `94d7f72` since PR #20 (2026-11-22) (D.7.11.8: RAR-S135's centres at 2,000 baked into the kernel's seeds; before it 3,320,355 / EBF 2.317 at `4271031`, D.7.8.3: the root ordered by the kernel's own scorer, kept by RAR-S132; before it 3,348,508 / EBF 2.329 at `e363908`, D.7.8.2: quiescence and evaluation-only entries at the donor's depth, kept by RAR-S131; before it 3,278,226 / EBF 2.313 at `e63b652`, D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -386,35 +388,14 @@ to run in ascending order (D.7.7 to D.7.15; HISTORY's number map), D.6.28
 moved into them as D.7.9, and every step of D.6, closed or open, was
 reopened for a review on the new kernel after D.7, in the next pull
 request. D.7 closed 2026-11-21; the rows below are D.6's in number order.
+On 2026-11-22 (maintainer decision) E.0, the research on where the
+remaining strength is, moved ahead of D.8: it runs right after the last
+D.6 review row, keeps its number, and its ranking may reorder D.8 to
+D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.1 | RESEARCH | R2 | Review on the new kernel after D.7: the kernel's partition counts castling quiet (`is_quiet_move`); confirm it in pruning, the histories and SEE |
-| D.6.2 | RESEARCH | R2 | Review after D.7: a queen push is noisy in the kernel's partition; confirm quiescence and ProbCut generate and search it |
-| D.6.3 | RESEARCH | R2 | Review after D.7: the kernel types the null-move and ProbCut children as its donor does; confirm, and whether the classic's finding has an instance left |
-| D.6.4 | RESEARCH | R2 | Review after D.7: the kernel stores no move at a fail low, as its donor; confirm what the store carries and which consumers read it |
-| D.6.5 | RESEARCH | R2 | Review after D.7: the exclusion search's estimate in the kernel is its donor's form; confirm against RAR-S118's and RAR-S119's reads |
-| D.6.6 | RESEARCH | R2 | Review after D.7: the staged picker hands the table move before generating captures; confirm the cycles RAR-S120 priced are gone |
-| D.6.7 | RESEARCH | R2 | Review after D.7: the kernel's line bound is eight times the depth; RAR-S121's replay on it, the searches reaching the ply cap counted; the eight was chosen at zero games and no fit holds it (D.7.11) |
-| D.6.8 | RESEARCH | R2 | Review after D.7: one count per move made; confirm the hand-off to quiescence, the exclusion search and the verification count nothing twice |
-| D.6.9 | RESEARCH | R2 | Review after D.7: an evaluation item, which the kernel does not change; its screen as written, read through the kernel's wrapper |
-| D.6.10 | RESEARCH | R2 | Review after D.7: an evaluation item; its screen as written, read through the kernel's wrapper |
-| D.6.13 | RESEARCH | R2 | Review after D.7: the kernel's window is its donor's; confirm the classic's fail-low form has no instance left, close if moot |
-| D.6.15 | RESEARCH | R2 | Review after D.7: `compact_eval` passes a draw verdict as 0 with no correction and no optimism; confirm by its test and the three draw anchors |
-| D.6.16 | RESEARCH | R2 | Review after D.7: quiescence is the donor's form; re-evaluate the gain pruning against a decisive material edge on it |
-| D.6.17 | RESEARCH | R2 | Review after D.7: the ignored transposing-rook anchor and the promotion anchors run on the new kernel and its root order (D.7.8.3) |
-| D.6.20 | RESEARCH | R2 | Review after D.7: the ignored won-ending clock test run on the new kernel; the fail-high stop is the root driver's and stays |
-| D.6.21 | RESEARCH | R2 | Review after D.7: an evaluation item; screen: does a one- or two-ply search of the new kernel already read the 88 above 0; minutes |
-| D.6.22 | RESEARCH | R2 | Review after D.7: an evaluation item; screen: a per-site scale that keeps the draws near 0 and the wins above it; minutes |
-| D.6.23 | RESEARCH | R2 | Review after D.7: an evaluation item; screen: raw against corrected at the non-verdict leaves near the verdicts in the 63 fixture searches; minutes |
-| D.6.24 | RESEARCH | R2 | Review after D.7: an evaluation item; screen: a narrowed or discounted fortress on the same enumeration, draws kept at 0 and wins lifted; minutes |
-| D.6.25 | RESEARCH | R2 | Review after D.7: an evaluation item; screen: does any search at the gate's budget pick the bishop promotion, or score the same-coloured pair above a draw at the root; minutes |
-| D.6.26 | RESEARCH | R2 | Review after D.7: an evaluation item; screen: the pawnless one-minor-ahead classes against Syzygy over an enumeration, and their exposure in the new kernel's games; minutes |
-| D.6.27 | RESEARCH | R2 | Review after D.7: the kernel has no IIR, as its donor; close if moot |
-| D.6.29 | RESEARCH | R2 | Review after D.7: the kernel's quiescence scores no stalemate, as its donor's; the replay that read 19.2% of searches on the 2.7.0 kernel, taken again |
-| D.6.30 | RESEARCH | R2 | Review after D.7: the proven-win rule is the root driver's and stays; confirm it under the kernel's narrow windows and fail-high reduction |
-| D.6.31 | RESEARCH | R2 | Review after D.7: the kernel counts no null move; confirm by the test that nodes equal moves made |
-| D.6.32 | RESEARCH | R2 | Review after D.7: the depth at which the shortest mate first shows moves with the seeds, KQK's mate in three from depth 8 to 20 at the bake; why, and whether a mate-distance contract is worth a repair |
+| E.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-22 (maintainer decision): after the D.6 review, before D.8.1; zero games first, its ranking may reorder the steps after it |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -450,6 +431,10 @@ request. D.7 closed 2026-11-21; the rows below are D.6's in number order.
 | D.14 | RESEARCH | R2 | Added 2026-11-20 (maintainer request): the donor's soft-stop vote on the new clock, after the fit and D.7.14, beside D.13; a four-thread withdrawal screen at zero games first, 2% floor |
 | D.15.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: each download a `.zip` or `.tar.gz` with the binary, the licences, the README and the changelog, where D.11's notices ship; before the next release |
 | D.15.2 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: the release notes as the section's summary and highlights, with a link to the full changelog; before the next release |
+| D.16.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-23 (maintainer request) from Trinity's bench-against-game speed miss: a fresh-process, fixed-node speed read on positions from gate games, pooled PGO builds; no dependency |
+| D.16.2 | RESEARCH | V | After D.16.1: the bench and game-position reads on two accepted speed changes of different kinds; agreement closes D.16, a disagreement opens D.16.3 |
+| D.16.3 | RESEARCH | R2 | Opened only by D.16.2's disagreement or by the maintainer: one more speed pass on the compact kernel, Reckless as the reference, priced by the read D.16.2 chose |
+| D.17 | RESEARCH | R2 | Added 2026-11-23 (maintainer request): not before the end of Phase D; a card on GitHub-hosted runners as a lane for self-play SPRTs and tunes, then a maintainer decision on the rules it changes |
 
 ## Phase D — Clock, threads, robustness
 
@@ -567,7 +552,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   correction bonus, D.5.24 refuses a `Hash` above physical memory. What
   the tests found wrong in play is D.6.24 to D.6.26. Full record, D.5.1 to
   D.5.24: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
-- **D.6 Strength candidates from the engine review: kernel and evaluation deviations from the donor, each behind a zero-game screen and a registered gate — `R2` cards, then `I1`/`I2`/`V`.**
+- **D.6 Strength candidates from the engine review: kernel and evaluation deviations from the donor, each behind a zero-game screen and a registered gate — `R2` cards, then `I1`/`I2`/`V`, DONE 2026-11-23.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` (§3.1, §3.2,
   §3.5). Each item is an unrecorded deviation from the donor's shape with a
   plausible mechanism; none is a measured strength defect, so each enters at
@@ -603,7 +588,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   its card. The closed steps are reopened for that review; their records
   below stay as written and describe the classic kernel, which D.7.7
   deleted. D.6.28, clock use, moved into D.7 as D.7.9, with its text.
-    - **D.6.1 Castling is neither quiet nor noisy — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-10 on the classic kernel).** (NODE-3, BOARD-1):
+    - **D.6.1 Castling is neither quiet nor noisy — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; done 2026-11-10 on the classic kernel).** (NODE-3, BOARD-1):
      `is_quiet_move` is `flags <= DOUBLE_PUSH` while castling has flags 2 and
      3, and `is_noisy` is capture or promotion, so in the move loop castling
      skips late-move, futility and history pruning, takes the noisy SEE
@@ -621,7 +606,25 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      1 in 381 moves in the loop, between 49% and 71% of them decided differently,
      castling legal in 95% of gate games, so no closing rule fired; the repair is
      `72c4e60` on `d6`, kept by its harm read on 2026-11-10 at nElo −4.9 ± 15.2.
-    - **D.6.2 Quiescence cannot see a non-capturing queen promotion — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-10 on the classic kernel).** (BOARD-2): pawn
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. The kernel reads one partition, `is_quiet_move`
+     (`src/search/compact/mod.rs`): any move but a capture or a queen
+     promotion, so castling is quiet, as in Reckless's `is_quiet`
+     (its `types/moves.rs`). Every reader takes it: the move loop's
+     pruning, exchange threshold, reductions and history read, the tried
+     moves' bonuses and maluses, the parent and fail-low rewards, the
+     continuation key and the picker's table-move tier. Castling comes
+     from the quiet generator and never enters a noisy table. The exchange
+     test passes castling only at a threshold at or below zero, where
+     Reckless's passes it always; no caller asks above zero, since every
+     quiet threshold is capped at 0, the good-noisy bar reads noisy moves
+     only and quiescence never generates a castle. Check: the kernel's
+     seven picker tests (`compact::picker`, one asserting `e1g1` quiet)
+     pass, exit 0. The board's own `Move::is_quiet`, which counts
+     under-promotions noisy, is read only by tests; its comment claimed
+     otherwise and was corrected (`f22bf1d`, comment only). Folding the
+     two partitions into one is a cleanup for D.8's census (D.8.1).
+    - **D.6.2 Quiescence cannot see a non-capturing queen promotion — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; done 2026-11-10 on the classic kernel).** (BOARD-2): pawn
      captures target enemy occupancy only, every non-capture promotion is
      generated with the quiets, and quiescence outside check generates
      captures only, so a safe promotion to a queen is invisible to the
@@ -649,7 +652,25 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      raise alpha, legal in 54% of gate games, so no closing rule fired; the
      push is `ee0b3e4` on `d6` (bench 13,038,236), accepted by its SPRT
      `[0,3]` on 2026-11-10 at nElo +12.2 ± 6.5 over 11,108 games.
-    - **D.6.3 Null-move and ProbCut children typed `cut_node = true` — `R2`, reopened 2026-11-19 for review on the new kernel (no change 2026-11-11 on the classic kernel).** (NODE-1): the
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. The kernel's noisy stage
+     (`generate_legal_noisy_staged_into`) emits the legal captures, then
+     every legal non-capturing queen promotion through checks and pins, with
+     no capture pre-scan to skip it; the quiet stage leaves queen pushes out,
+     so none is handed over twice, and the rook, bishop and knight pushes
+     stay quiet. Quiescence takes the picker with quiets skipped, so the push
+     is generated and searched like a capture, its exchange test putting the
+     promoted queen at risk; ProbCut takes the same picker and stops at the
+     bad noisy moves, so a push that clears its bar is tried there too.
+     Reckless generates promotions the same way (its queen push with the
+     noisy moves, before the captures where Rarog's follows them; the picker
+     orders by score, so only an exact tie could differ). Checks: the
+     noisy-list test now runs through the staged generator and passes,
+     against the legal moves on five positions walked two plies; a new
+     quiescence test (`7fb73e4`) has a free push raise the score above the
+     stand pat and head the line, and a rook-guarded one do neither, and it
+     fails when the generator's queen pushes are switched off.
+    - **D.6.3 Null-move and ProbCut children typed `cut_node = true` — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; no change 2026-11-11 on the classic kernel).** (NODE-1): the
      donor passes `false` for the null child (`search.rs:606`) and both
      ProbCut searches (`664–684`); Rarog passes `true` at `node.rs:988`,
      `1203` and `1221`. The type feeds the child's TT-cutoff admission, the
@@ -759,7 +780,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      same fit, or on a change to ProbCut's margin, depth or
      verification. NODE-14's test keeps every recursive call's type
      pinned, ProbCut's children `true`.
-    - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`, reopened 2026-11-19 for review on the new kernel (no change 2026-11-11 on the classic kernel).** (NODE-2):
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. Each of the kernel's nine recursive calls types
+     its child as Reckless's matching call does: the null-move child, its
+     verification and both ProbCut verification searches `false`, the PV
+     search `false`, a reduced late move `true`, its re-search and the
+     full-depth zero window the opposite of the parent, the exclusion
+     search the parent's own type. RAR-S114's concern, a ProbCut margin
+     fitted under the other typing, is gone too: D.7.11 fitted the
+     kernel's ProbCut and cut-node terms with this typing in place, so the
+     retry at the search re-fit has in effect run. NODE-14's test left
+     with the classic kernel; its place is taken by
+     `each_recursive_call_types_its_child_by_its_rule` (`9507abd`): test
+     builds tag each call and count the type its child receives, the test
+     holds the rule table and requires every call reached, and it fails on
+     the null child typed `true` (8,125 children against the rule) and on a
+     ProbCut child typed `true` (7).
+    - **D.6.4 A fail-low node stores its least-bad move as the TT move — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; no change 2026-11-11 on the classic kernel).** (NODE-2):
      `best_move` is set on every new best score, so an `Upper` entry carries
      the refuted move and overwrites the position's earlier move; the donor
      sets it only when alpha rises and keeps the old move. Consumers at the
@@ -851,7 +888,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      ordering change with a predicted node saving at equal
      consumers. The store's contract is pinned by
      `a_fail_low_store_carries_its_best_scoring_move`.
-    - **D.6.5 The exclusion search uses the table-refined estimate — `R2`, reopened 2026-11-19 for review on the new kernel (no change 2026-11-11 on the classic kernel).** (NODE-4):
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. The kernel's best move changes only when a
+     score raises alpha, as Reckless's does, so a fail-low node stores no
+     move, and the table keeps the entry's older move when a store for the
+     same position brings none (`src/tt.rs`, pinned there by "a store
+     without a move keeps the move"), as Reckless's `write` does. Neither
+     kernel has IIR, the consumer that carried RAR-S115's loss; a missing
+     TT move is read by the cut-node reduction terms and the singular
+     search's need for a TT move, both the donor's and fitted with this
+     store in place (D.7.11). The classic's own form, the best-scoring
+     move kept, is not retried: its ordering evidence was 1.022 of the
+     nodes (0.990 to 1.043) on another kernel, and the kernel's fit and
+     gate were made with the donor's store. The classic's search-side test
+     left with that kernel; no kernel test pins the fail-low store
+     (maintainer decision 2026-11-22: closed without one).
+    - **D.6.5 The exclusion search uses the table-refined estimate — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; no change 2026-11-11 on the classic kernel).** (NODE-4):
      `eval_for_pruning` has no `excluded` guard; in a singular exclusion node
      the TT bound is Lower or Exact and the window sits below `tt_score`, so
      the refined estimate always exceeds `alpha + margin`, LDSE can never fire
@@ -897,7 +949,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      after a change to LDSE's depth or margin, razoring's margins, the
      singular margins or the alpha-gap term, or at the search re-fit
      (F.6), and only if the probe then reads 2% or more.
-    - **D.6.6 Captures generated and scored before the TT move — `R2`, reopened 2026-11-19 for review on the new kernel (no change 2026-11-11 on the classic kernel).** (NODE-5):
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. The kernel's `estimated_score` takes the stored
+     score only out of check, outside an exclusion node, with a valid
+     score whose bound tightens the evaluation, which is Reckless's rule;
+     the node passes its exclusion flag, so an exclusion node prunes on the
+     plain evaluation, the direction RAR-S119 found right. The re-entry
+     sub-item matches the donor as well: an exclusion node reuses its
+     ply's stored evaluation, and the singular search restores only
+     `tt_pv`. The guard is pinned by
+     `a_stored_score_replaces_the_evaluation_only_where_its_bound_tightens_it`,
+     and the parity test replays the rule against the donor's decisions.
+    - **D.6.6 Captures generated and scored before the TT move — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; no change 2026-11-11 on the classic kernel).** (NODE-5):
      `fill_noisy` runs before the loop; the donor generates after the hash
      move fails to cut, and the TT move cuts at about 35% of loop nodes
      (`analysis/c12_speed_review_2026-10-18.md`: the one lead worth several
@@ -916,7 +979,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      C.12's "several percent" is superseded. Retry only if capture
      generation or scoring becomes materially dearer, or a later profile
      puts it at 8% or more of search cycles (H.4).
-    - **D.6.7 The ply cap — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-11 on the classic kernel).** (NODE-8): `MAX_PLY = 128` is below the extension budget's
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. The staged picker's first stage hands over the
+     TT move, and noisy moves are generated only in the next stage, so a
+     TT move that cuts never pays for capture generation; Reckless's picker
+     starts at its hash-move stage the same way. The stored move is checked
+     by `legal_move`, which tests it directly and generates nothing.
+     Quiescence and ProbCut build their pickers without a TT move, as the
+     donor's do. The picker test that drains every stage asserts the TT
+     move comes first; no further test pins the order, which changes cost
+     alone, and RAR-S120 priced that cost below any resolvable read.
+    - **D.6.7 The ply cap — `R2`, DONE 2026-11-22 on the new kernel (reopened 2026-11-19; done 2026-11-11 on the classic kernel).** (NODE-8): `MAX_PLY = 128` is below the extension budget's
      bound (about twice the iteration depth plus 16); from about iteration 56
      the cap, not the budget, ends lines and the node returns a static eval
      with no in-check or draw handling (the donor: 240, a draw in check). The
@@ -1001,7 +1074,32 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      constants or by the donor's in-check and draw handling at the cap, if a
      read at a rated time control finds more than 0.1% of searches reaching
      it.
-    - **D.6.8 A depth-0 entry is counted as two nodes — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-13 on the classic kernel).** (DRIVER-11): `check_stop` at
+     Review read 2026-11-22 on the compact kernel (RAR-S137, a replay of 60
+     of RAR-M91's games, zero new games): the kernel ends a line at ply 127
+     as the donor does, a draw by rule first and a draw in check, so the
+     classic's static evaluation there is gone, and RAR-S108's race
+     position no longer reaches the cap by depth 10 (seldepth 70). But the
+     kernel's line bound is eight times the iteration's depth, so from
+     iteration 16 the cap binds before it. No search reaches the cap at
+     the games' node counts or at ten-thirds of them; at twenty times them
+     0.511% do (21 of 4,107, in 14 of 60 games), all in endings at
+     iterations 16 to 99, above RAR-S122's 0.1% trigger. **Open, for the
+     maintainer's decision on the form, before any change.**
+     Repaired 2026-11-22 (maintainer decision: the donor's cap, read at zero
+     games and then by case 2): `91bc561` raises `MAX_PLY` to 240 in the
+     search and the table, the mate band, the tablebase band and the
+     decisive floor with it, as the donor's do; a test ties the table's cap
+     to the search's, and the score display's test reads its band edges from
+     the constants (`788c216`, its own commit). `bench 13` moves to
+     3,374,901 / EBF 2.316, through the bands, not the cap (one bench
+     position in forty). RAR-S138's part A, the 21 cap searches replayed:
+     no correctness fault, 12 moves differ, Stockfish with Syzygy reads 10
+     of them equal and 1 each way. Part B, 2,000 games at `3+0.03`: nElo
+     −11.6 ± 15.2 against the −13 harm rule, **kept**. That rules out harm
+     beyond roughly −20, not a loss near the line, and `3+0.03` cannot see
+     the cap. Retry trigger: a loss read at a rated time control traced to
+     the decisive band's lower floor.
+    - **D.6.8 A depth-0 entry is counted as two nodes — `R2`, NO_CHANGE 2026-11-22 on the new kernel (reopened 2026-11-19; done 2026-11-13 on the classic kernel).** (DRIVER-11): `check_stop` at
      the `negamax` entry and again at the `quiescence` entry it hands to, so
      reported nodes, `go nodes`, the bench count and the LMR spread's phase
      read the double count; the donor counts once per move made. Screen: the
@@ -1053,7 +1151,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      ×0.826, the count's own ratio on the bench's fixed tree. The
      fingerprint moves to 9,077,016 / EBF 2.481. Kept means no harm
      beyond roughly −20 nElo.
-    - **D.6.9 The endgame scale's target — `R2`.** (EVAL-5): `evaluate` adds tempo to `mg`,
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     problem is not there. The kernel counts a node in three places, each
+     right after a move is made: the main move loop, ProbCut and
+     quiescence; nothing else adds to the count. The null move (D.6.31),
+     the hand-off to quiescence, the exclusion search, re-searches and the
+     null-move verification make no move and count nothing. Reckless counts
+     the same way, once in its `make_move`, which those three call, and not
+     for its null move. Pinned by the bench-positions test and the mate
+     test (the count equals a test-only tally of moves made) and by
+     `a_depth_one_search_counts_each_root_move_once` (20 from the start).
+    - **D.6.9 The endgame scale's target — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (EVAL-5): `evaluate` adds tempo to `mg`,
      tapers, then `scale_endgame` multiplies the whole; both donor commits
      scale the endgame half only (`v = mg·p + eg·(128−p)·sf/64`), so the forms
      differ for the opposite-bishop rule with pieces on the board and the
@@ -1062,14 +1170,48 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      with the scale on the endgame half on RAR-E26's cohort and compare
      held-out loss; then case 2 at most (OCB-with-pieces positions only).
      Under the evaluation freeze this is a registered repair.
-    - **D.6.10 The pawnless default factor — `R2`.** (EVAL-6): `material.cpp:195–203` scales
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     deviation is still there, since the kernel's wrapper adds correction
+     and material scaling after `evaluate` and leaves the scale where it
+     was. Its reach in the kernel's own games is small. Over 69,555
+     positions the kernel moved in, from 1,000 of RAR-M91's games:
+     - opposite bishops with other pieces, scaled (three pawns or fewer):
+       0.05%, the forms about 5% of the score apart;
+     - pure opposite-bishop endings: 1.5%, about 4% apart;
+     - pure, under three pawns: 0.3%, about 2% apart;
+     - the partial recognisers at small phase: not measured.
+
+     The middlegame case the card names almost never arises: with pieces
+     on the board the scale bites only at three pawns or fewer. **Closed
+     here, moved into E.4's refit, now E.4.2** (maintainer decision
+     2026-11-22): it fits both forms and lets held-out loss and its gate choose, so
+     the constants stay consistent with the form. The count:
+     `analysis/artifacts/d69-review-2026-11-22/ocb_exposure.py` (SHA-256
+     `34c97b8d…`, its output `b967dfc7…`), on RAR-M91's PGN, seed
+     20261122.
+    - **D.6.10 The pawnless default factor — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (EVAL-6): `material.cpp:195–203` scales
       a side with no pawns and a small material edge to 0, 4 or 14 of 64;
       Rarog's pawnless branch covers at most one minor in total or one each,
       so K+B+N v K+B keeps two thirds of about a knight. Never a ranked family
       (the family list is SF11's endgame functions). Screen: the families'
       share of the game record; at 0.5% of games or more the Syzygy
       drawn-overclaim read of RAR-E36. Case 2.
-    - **D.6.13 The aspiration fail-low window — `R2`.** (DRIVER-13): the code halves toward
+     Review read 2026-11-22 on the compact kernel (zero games): the
+     gap is still there, an evaluation rule the kernel leaves as it was.
+     Stockfish 11 scales a side with no pawns whose non-pawn material
+     leads by at most a bishop (to a draw under a rook's worth, else 4 or
+     14 of 64); Rarog's branch only scales a board with no pawns at all, no
+     rooks or queens, and one minor or a minor each. The card's screen fires:
+     1,320 of the kernel's 8,800 games in RAR-M91 (15.0%) reach a position
+     the donor's rule scales and Rarog's does not, 4.2% of all positions,
+     and fifteen families pass 0.5% of games each, KRN-KR, KB-KP, KR-KB,
+     KR-KN and KRB-KR at 1.1% to 1.3%
+     (`analysis/artifacts/d610-review-2026-11-22/pawnless_exposure.py`,
+     SHA-256 `66f18f80…`, its output `0f841fb0…`). The same mechanism is
+     D.6.26's. **Closed here, moved into E.4.2** (maintainer decision
+     2026-11-22), where the card's next read, the Syzygy drawn-overclaim
+     read, runs over every endgame family together.
+    - **D.6.13 The aspiration fail-low window — `R2`, NO_CHANGE 2026-11-22 on the new kernel.** (DRIVER-13): the code halves toward
       the new alpha; a counter of fail-lows whose re-search fails high
       (`asp_fail_high` straight after `asp_fail_low` at one depth); above 15%
       the old-alpha form is a `[0,3]` candidate.
@@ -1077,15 +1219,30 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `analysis/triumviratus_review_2026-11-03.md`): a decisive aspiration
       fail-high +0.7 ± 4.2, root depth recovery after a fail-high −1.82 ±
       4.54, a cap on root-move reductions −5.80 ± 5.93.
+      Review read 2026-11-22 on the compact kernel (zero games): the
+      problem is not there. The kernel's `window_fail_low` sets alpha to
+      the failing score less the half-width and beta to that alpha plus
+      the half-width, so beta falls to the failing score, not halfway, as
+      Reckless's root loop does line for line; the fail-high side matches
+      too. D.7.11 fitted both growth seeds, and the parity test replays
+      both window rules against the donor's recorded decisions. The
+      classic's halving form has no instance left, so the counter that was
+      to choose between it and another form has no use.
   Added 2026-11-02 from the Basilisk cross-check (`analysis/basilisk_crosscheck_2026-11-02.md`):
-    - **D.6.15 The correction is added to the evaluator's draw verdicts — `I1`, reopened 2026-11-19 for review on the new kernel (done 2026-11-03 on the classic kernel).**
+    - **D.6.15 The correction is added to the evaluator's draw verdicts — `I1`, NO_CHANGE 2026-11-23 on the new kernel (reopened 2026-11-19; done 2026-11-03 on the classic kernel).**
       `3a16fbb`: the search no longer adds its correction to the
       evaluator's draw verdicts; the fingerprint moved from 13,987,223 to
       14,749,043, accepted by repair case 1 on a confined per-FEN
       differential, and no verdict leaf keeps a moved value. 7 of 28
       wrong-bishop draws still misread from cleared tables: D.6.23.
       Record: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
-    - **D.6.16 Quiescence prunes by gain against a decisive material edge — `R2`.** (A2;
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      problem is not there. `compact_eval` returns 0 with no correction and no
+      optimism when the evaluator's raw score is a draw verdict;
+      `a_draw_verdict_takes_no_correction` trains the tables on a wrong-bishop
+      draw and requires exactly (0, 0) there, while an ordinary position takes
+      its correction. Reckless has no verdicts to compare.
+    - **D.6.16 Quiescence prunes by gain against a decisive material edge — `R2`, NO_CHANGE 2026-11-23 on the new kernel.** (A2;
       Basilisk `d8d30e9`): futility (`node.rs:2355-2362`) and the SEE
       threshold (`node.rs:2392-2396`) read a capture's gain as the piece
       taken, which is false when the capture removes the opponent's
@@ -1095,7 +1252,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       Basilisk's fixture, and a `diag` count of skipped captures that
       leave the opponent without mating material on the conversion
       families. `R2` card first.
-    - **D.6.17 Underpromotions and Saavedra's study — `R2`.** (an investigation): Basilisk
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      problem is not there. The kernel's quiescence has no gain-based futility
+      and no delta pruning, only the donor's exchange-threshold prune and its
+      three-move stop. Basilisk's fixture (`d8d30e9`: four wrong-bishop draws,
+      depths 8 to 14, 200,000 nodes, a fresh table) reads a draw in all 28
+      searches; one, `7k/7P/6K1/8/8/3B4/8/8 w`, finishes depth 14 at 201,399
+      nodes, just past the fixture's cap, and stays a draw to depth 16
+      (`analysis/artifacts/d6-review-rest-2026-11-23/`).
+    - **D.6.17 Underpromotions and Saavedra's study — `R2`, NO_CHANGE 2026-11-23 on the new kernel.** (an investigation): Basilisk
       lost Saavedra's `c8=R` when it pruned underpromotions below the root,
       and its search picked a rook promotion over the queen in 59 of 228
       gate positions where a rook line merely transposed (BAS-S33,
@@ -1130,7 +1295,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       that hold was lifted 2026-11-13 (maintainer decision): the rook is a
       true tie that changes no result, and D.7 replaces the root order
       that breaks it, so the review after D.7 asks first.
-    - **D.6.20 The fail-high stop's hole — `R2`.** (H24): the stop at twice the target is
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      wrong pick is not there. At 100,000 nodes the kernel plays `g7f8q` with a
+      positive score in the transposing rook position: its picker orders the
+      queen's capture-promotion ahead of the rook's.
+      `queen_promotion_though_the_rook_was_searched_first` passes and runs again
+      (`dfb593c`); Saavedra's `c7c8r` (a mate in 7) and the stalemate escape
+      `f7f8r` (a mate in 2) are right and pinned by active tests. Basilisk's
+      root rule is not needed.
+    - **D.6.20 The fail-high stop's hole — `R2`, NO_CHANGE 2026-11-23 on the new kernel.** (H24): the stop at twice the target is
       checked only when a window returns (`search/mod.rs:977-978`), so a
       window that never fails high runs to the maximum (RAR-R26's rec3,
       97.9 s at `180000+2000`); Basilisk adds the give-up window as a
@@ -1156,7 +1329,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       (maintainer decision): the hole is older than 2.6.0, the hard
       maximum bounds it, and the stop sits in the loop D.7 replaces, so
       the review after D.7 asks first.
-    - **D.6.21 Won KPK positions read at or below 0 — `R2`.** (D.5.19's read,
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      measured instance is gone. `won_ending_does_not_sink_the_clock` takes 2.17
+      to 2.20 s in three runs on an idle host (limit 8 s; 9.46 to 9.82 s on the
+      classic), keeps the win (`e3f4`, depth 20), and runs again (`dfb593c`). The
+      hole itself, a window that never fails high running on to the hard limit,
+      is the donor's shape: Reckless checks its soft limit only after an
+      iteration and inside one only its hard bound, so Rarog's fail-high stop is
+      an addition that closes part of it, and the hard maximum bounds the rest.
+      The card's per-window read has no decision left to feed.
+    - **D.6.21 Won KPK positions read at or below 0 — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (D.5.19's read,
       2026-11-02; Basilisk's A3): 88 of 445,128 won KPK positions read at
       or below 0 for the winner, 78 of the wrong sign and 10 exactly 0,
       all where the bitbase correctly passes a win to the generic
@@ -1171,7 +1353,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `every_won_kpk_reads_above_zero_for_the_winner` in
       `tests/kpk_syzygy.rs`; gate case 1 by a static differential over KPK
       positions. `R2` read, minutes.
-    - **D.6.22 `krpkr_scale`'s hard zeros on won positions — `R2`.** (D.5.19's read,
+     **Closed here, moved into E.4.2** (maintainer decision 2026-11-22),
+     before its review on the kernel; its screen runs there with the
+     other endgame families'.
+    - **D.6.22 `krpkr_scale`'s hard zeros on won positions — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (D.5.19's read,
       2026-11-02; Basilisk's BAS-E54 found 18 of 3,000): over 2,000,000
       quiet random KRPKR positions the five `Some(0)` sites fired 65,865
       times, 97.6% on Syzygy draws; 1,137 (1.7%) are wins for the pawn
@@ -1187,7 +1372,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       registration states its measured exposure and the gate case follows
       (a static differential confines it, case 1; a refitted scale is a
       value change, case 2's fixed read). `R2` card.
-    - **D.6.23 Wrong-bishop draws still misread through leaves the recogniser does not cover — `R2`.**
+     **Closed here, moved into E.4.2** (maintainer decision 2026-11-22),
+     before its review on the kernel; its screen runs there with the
+     other endgame families'.
+    - **D.6.23 Wrong-bishop draws still misread through leaves the recogniser does not cover — `R2`, CLOSED 2026-11-22: moved into E.4.2.**
       D.6.15's falsifier (2026-11-03): with the correction kept off every
       verdict, Basilisk's four wrong-bishop KBP-K draws still read beyond
       ±75 in 7 of 28 searches from cleared tables (+83 to +103) and in 9 of
@@ -1206,7 +1394,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       leaves within a move of a verdict, raw against corrected, on the 63
       searches. Acceptance test: `wrong_bishop_draws_read_as_draws_with_cleared_and_trained_tables`
       in `tests/endgames.rs`, committed `#[ignore]`d. `R2` read, minutes.
-    - **D.6.24 The KQKP fortress's hard zeros on won positions — `R2`.** (D.5.19's read,
+     **Closed here, moved into E.4.2** (maintainer decision 2026-11-22),
+     before its review on the kernel; its screen runs there with the
+     other endgame families'.
+    - **D.6.24 The KQKP fortress's hard zeros on won positions — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (D.5.19's read,
       2026-11-08): over every legal KQvKP position with the pawn on the
       defender's seventh, 5,552,520 of them, `kqkp_fortress_scale` returns 0
       at 172,256: 131,256 Syzygy draws, 32,360 wins for the queen side and
@@ -1223,7 +1414,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       lifted. The registration states measured exposure (gate games
       reaching KQKP with a seventh-rank rook or bishop pawn); a narrowed zone
       that a static differential confines is case 1. `R2` card, minutes.
-    - **D.6.25 Two same-coloured bishops outscore a queen against a bare king — `R2`.** (D.5.21's
+     **Closed here, moved into E.4.2** (maintainer decision 2026-11-22),
+     before its review on the kernel; its screen runs there with the
+     other endgame families'.
+    - **D.6.25 Two same-coloured bishops outscore a queen against a bare king — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (D.5.21's
       port of Basilisk's `bare_king_material_is_monotone`, 2026-11-08): from
       `1B6/5P2/8/2k2K2/8/8/8/8 w` the promotions evaluate queen 1433, rook
       990, knight 1097 and bishop 1537, and the bishop's position, two
@@ -1235,7 +1429,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       chooses the drawn material, and the exposure of KBB-K with one colour
       in gate games. Acceptance test: `bare_king_promotion_order` in
       `tests/behaviour_anchors.rs`, committed `#[ignore]`d. `R2` card.
-    - **D.6.26 Pawnless endings a minor ahead read as wins — `R2`.** (D.5.21's port of Basilisk's
+     **Closed here, moved into E.4.2** (maintainer decision 2026-11-22),
+     before its review on the kernel; its screen runs there with the
+     other endgame families'.
+    - **D.6.26 Pawnless endings a minor ahead read as wins — `R2`, CLOSED 2026-11-22: moved into E.4.2.** (D.5.21's port of Basilisk's
       `pawnless_scale_truth_table`, 2026-11-08): Rarog has no scale for a
       pawnless side only a minor ahead, so Syzygy draws read KR-KB 277,
       KRB-KR 253 and KRN-KR 173, where the dead KB-KN draw reads 0 and three
@@ -1244,7 +1441,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the repair form is a scale, as Stockfish 11's. Acceptance test:
       `pawnless_scale_truth_table` in `tests/behaviour_anchors.rs`, committed
       `#[ignore]`d (needs `RAROG_SYZYGY_PATH`). `R2` card.
-    - **D.6.27 IIR has no node-type condition — `R2`.** (found 2026-11-11,
+     **Closed here, moved into E.4.2** (maintainer decision 2026-11-22),
+     before its review on the kernel; its screen runs there with the
+     other endgame families'.
+    - **D.6.27 IIR has no node-type condition — `R2`, NO_CHANGE 2026-11-23 on the new kernel.** (found 2026-11-11,
       RAR-S117): IIR reduces any node of depth 4 or more that has no table
       move. Stockfish 19 reduces only PV and cut nodes, at depth 6 or more,
       and Reckless at its head of 2026-10-29 has no IIR. Local evidence:
@@ -1263,7 +1463,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       LMR term, and D.6.4's store, which is an ordering change alone once
       IIR ignores those nodes. Gate: `[0,3]` if the card predicts a gain,
       else case 3. `R2` card.
-    - **D.6.29 Quiescence never scores a stalemate — `R2`.** (found
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      problem is not there. The kernel has no IIR, as Reckless has none; a
+      missing TT move is read only by the cut-node reduction terms and by the
+      singular search's need for one, both the donor's and fitted with the
+      kernel (D.7.11).
+    - **D.6.29 Quiescence never scores a stalemate — `R2`, DONE 2026-11-23 on the new kernel (RAR-S139, accepted by the maintainer's decision).** (found
       2026-11-13, the Basilisk check, `analysis/basilisk_check_2026-11-13.md` §1): out of
       check with no capture to search, quiescence never asks whether the
       side to move has a legal move, so a stalemate reached through a
@@ -1309,7 +1514,35 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       from Colosseum's database at registration. The diag counters
       (`q_kp_nodes`, `q_kp_stalemate`, `q_kp_stalemate_misread`) stay as
       its activation check.
-    - **D.6.30 A later iteration can overwrite a proven mate — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-13 on the classic kernel).**
+      Review read 2026-11-23 on the compact kernel (zero games): **the
+      problem is there.** The kernel's quiescence, like its donor's, never asks
+      whether a side out of check with no capture has a legal move, so a
+      stalemate reached through a capture still reads as its stand pat. The diag
+      counters named above were the classic kernel's: the compact kernel's
+      quiescence never fed them, and they were removed with the other dead
+      counters on 2026-11-22 (`84f80de`), so the screen's re-read on the kernel
+      needs them added to its quiescence first. **Open, for the maintainer's
+      decision** on the form (Stockfish's narrow test, a departure from
+      Reckless) and on whether to re-read the exposure first; the gate stays
+      case 3, as above.
+      Implemented 2026-11-23 (maintainer decision: Stockfish's form, gated)
+      as `64993ff`: after quiescence's move loop, out of check with no
+      move searched, a side with no free pawn push, no piece but pawns, a
+      knight or more just taken and no legal move reads the draw. `bench 13`
+      3,694,298 / EBF 2.324; fresh, only bench positions 15, 38, 39 and 40
+      move. `a_stalemate_after_losing_the_last_piece_reads_as_a_draw` pins
+      it both ways and fails with the rule off. Stockfish's own record: the
+      test gains no Elo and passed as a no-regression change, against a
+      tactical blind spot; Reckless, like most engines, has none.
+      **Gate registered as RAR-S139**, before any game: its replay moved
+      the score in 31.1% of searches, so SPRT `[-5,5]` at `3+0.03`, cap
+      6,000 pairs, against `626d06b`; the binaries are built and the dry
+      run passed; the maintainer's command.
+      **Done 2026-11-23:** the maintainer stopped the gate at 6,046 games
+      and accepted the candidate by decision (the SPRT unresolved, nElo
+      +1.8 ± 8.8, LLR +0.90; harm beyond about −7 excluded, no gain
+      shown). `64993ff` is kept; fingerprint 3,694,298 / EBF 2.324.
+    - **D.6.30 A later iteration can overwrite a proven mate — `R2`, NO_CHANGE 2026-11-23 on the new kernel (reopened 2026-11-19; done 2026-11-13 on the classic kernel).**
       (found 2026-11-13, the Basilisk check, `analysis/basilisk_check_2026-11-13.md` §1):
       each completed iteration replaces the root's score and move
       (`search/mod.rs:1074-1080`); the mate watch stops the search and
@@ -1343,7 +1576,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       positions left), so it is repair case 1. Activation read on the
       frozen replay: searches ending without a proven win 15 → 0, playing
       another move 3 → 0.
-    - **D.6.31 A null move adds a node to the count — `R2`, reopened 2026-11-19 for review on the new kernel (done 2026-11-15 on the classic kernel).**
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      repair is intact. The root driver keeps the last proving iteration's move,
+      score and line after every completed iteration, whatever window or depth
+      produced it, so the kernel's narrow windows and fail-high reduction reach
+      it unchanged. A `diag` build's `bench 13` reads 13 proving iterations and
+      none lost (`iter_mate_win`, `iter_mate_win_lost`): the counters are live,
+      and bench does not exercise the keep. No test pins the rule; its
+      activation read was the replay above.
+    - **D.6.31 A null move adds a node to the count — `R2`, NO_CHANGE 2026-11-23 on the new kernel (reopened 2026-11-19; done 2026-11-15 on the classic kernel).**
       Added 2026-11-15 (maintainer: every engine compared here counts as
       Stockfish does). Stockfish counts in `do_move` and Reckless in its
       search `make_move`, once per move made, quiescence's and
@@ -1365,7 +1606,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       against the −13 rule; nodes a move ×0.990 at the same depth and
       time. Rarog's head now counts as Stockfish, Reckless and Basilisk
       (`838a3c6`) do; fingerprint 9,067,595 / EBF 2.479.
-    - **D.6.32 The shortest mate's depth moves with the seeds — `R2`, added 2026-11-21 for the review after D.7.**
+      Review read 2026-11-23 on the compact kernel (zero games): the
+      problem is not there. The kernel counts no null move; the bench-positions
+      test and the mate test require the count to equal a test-only tally of
+      moves made, in trees that make null moves (D.6.8's review).
+    - **D.6.32 The shortest mate's depth moves with the seeds — `R2`, NO_CHANGE 2026-11-23 on the new kernel (added 2026-11-21 for the review after D.7).**
       (found by D.7.11.8's bake, RAR-S135, *The bake*; maintainer
       decision 2026-11-21 to investigate it here, after D.7, and not
       to hold the bake on it.) On the kernel's seeds before the bake,
@@ -1396,6 +1641,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the kernel's seeds and with the table's mate entries not kept
       over quiescence stores; a repair is registered only if a
       mechanism is located. `R2` card.
+      Review read 2026-11-23 on the compact kernel (zero games,
+      `analysis/artifacts/d632-2026-11-23/mate_depths.py`, one search a
+      position to depth 30, Hash 64, one thread): **the late shortest mate
+      is the donor's, not Rarog's.** First depth of the shortest mate,
+      Rarog (`64993ff`) / Reckless (`8d7d1dd`) / Stockfish 11 /
+      Stockfish 18: KQK's mate in three 20 / 20 / 4 / 27; KQK's mate in
+      four 9 / 16 / 16 / not by 30; KRK's mate in two 6 / 3 / 2 / 5; KRK's
+      mate in five not by 30 (six reported) / 22 / not by 30 / 23. No
+      engine holds a contract of a mate in n by a fixed depth past
+      2n − 1; the reductions, pruning and mate entries of the shared shape
+      make the shortest line late. The cost in games is nil: Rarog reaches
+      depth 20 on KQK in 21,534 nodes, about 11 ms, within one move at
+      `3+0.03`, and every reported mate is its line's. The arm with mate
+      entries not kept over quiescence stores is not run: it needs a code
+      change, and a repair it pointed to would depart from the donor for an
+      effect with no game cost. **Closed `NO_CHANGE`** (maintainer decision
+      2026-11-23).
   Evidence for items already here (H18–H21, H25): item 4 (NODE-2), the
   donor form read +3.3 ± 9.1 in Basilisk (2,000 games) and each of its
   consumers alone (IIR, the no-TT-move LMR term) threw a promotion fixture
@@ -4392,9 +4654,139 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       section, 4,300 words). `cargo xtask release-check --notes` writes
       them; its tests and a run on a dated section are the check. PROCESS
       *Release* and the changelog's convention change with it.
+- **D.16 Speed read on game positions: the bench read checked against play, and one more speed pass on the compact kernel if they disagree — `I1`, then `V`; `R2` card for the pass.**
+  Added 2026-11-23 (maintainer request: more speed work on the compact
+  kernel is coming) from Trinity's record
+  (`analysis/trinity_read_2026-11-23.md`, *Measurement lessons*): a picker
+  change there read +5.6% nodes per second on its bench, while its half
+  that drops the quiet moves pruning has already skipped, the same search,
+  ran 18% faster on 60 game positions at 300 ms and gained +18.6 ± 3.9 Elo
+  where the bench priced about +3. Rarog's speed read is `bench 13 3`
+  (PROCESS); D.7.8.12's profile found game play the same shape, which is a
+  profile, not a paired delta, and a memory-bound engine's price for a
+  change can move with the table size and the position mix. This step
+  decides which instrument prices the coming speed work.
+    - **D.16.1 The game-position speed read — `I1`.**
+      A frozen position set sampled from recent gate games (Rarog to move,
+      spread over the phases, from Colosseum's database), each position
+      searched in a fresh process (bench shares its table across
+      positions) at a fixed node budget with the rated `Hash`; the arms
+      are PROCESS's pooled PGO builds and the estimate and interval are
+      the bench read's. Checked by a self pair that reads about 0.00% and
+      a manifest of the set's hashes; it goes into PROCESS beside the
+      bench read.
+    - **D.16.2 The bench read against play — `V`.**
+      Both reads on the same pools for at least two accepted speed
+      changes of different kinds, rebuilt from their committed trees: a
+      memory change (D.7.8.12's table prefetch) and a move-loop or
+      evaluation change. Stop rule: when each change's two deltas agree
+      within their combined intervals, the bench read stays the speed
+      read, D.16.3 is not opened and D.16 closes; a change whose deltas
+      differ beyond that makes the game-position read the speed read for
+      its kind of change and opens D.16.3.
+    - **D.16.3 One more speed pass on the compact kernel — `R2` card, `I1` items, `V` reads.**
+      Opened by D.16.2's discrepancy or by the maintainer. A profile on
+      game positions with Reckless as the reference, items in
+      D.7.8.12's form: the fingerprint exact at every commit, AGENTS'
+      per-node rule, no new `unsafe` site (the floor is 17), each item
+      priced by the read D.16.2 chose.
+- **D.17 GitHub-hosted runners as a test lane for self-play SPRTs and tunes — `R2` card, then a maintainer decision.**
+  Added 2026-11-23 (maintainer request), to open at the end of Phase D at
+  the earliest, from Trinity's testing lane
+  (`analysis/trinity_read_2026-11-23.md`, *The testing lane on GitHub
+  Actions*). The use: more games for registered self-play SPRTs and tunes
+  without the match host. GitHub's standard hosted runners are free for a
+  public repository (4 vCPU, 16 GB; 6 hours a job, 20 jobs at once on the
+  Free plan); the terms allow developing and testing the application and
+  bar a burden disproportionate to its benefit, so the lane runs in bursts
+  for registered work, never as a standing farm. Trinity's checks there:
+  identical engines +0.15 over 9,000 games, and one candidate +16.3 ± 4.4
+  against +19.1 ± 8.5 on its PC. The card answers, before anything is
+  built:
+  1. *The harness:* the pinned Colosseum CLI on a hosted runner (its
+     Windows build, or its Linux build pinned by hash), the engine built
+     on the runner from a committed tree, its fingerprint checked before
+     any game.
+  2. *The instrument:* a null pair of identical binaries that reads about
+     zero, a registered pair read both there and on the match host that
+     agrees within the intervals, and forfeits at `3+0.03` at the chosen
+     concurrency no more often than on the host.
+  3. *A tune longer than one job:* one registered run spread over jobs as
+     large-batch steps (every job plays at the same parameters, a final
+     job updates them, the next run continues from them), not independent
+     chains averaged; PLAN rules 4 and 7c are unchanged.
+  4. *The evidence:* each run's games and reports copied into
+     `tools/results/` with a manifest before the artifacts expire.
+  5. *The rules it changes:* AGENTS' idle host and pinned runner, and who
+     starts a long run; speed and timing reads never run there.
+  Falsifier and stop: a null pair away from zero, a cross-check outside
+  the intervals or more forfeits than on the host rejects the lane, and
+  it closes `NO_CHANGE`; the maintainer decides on adoption.
 
 ## Phase E — Classical checkpoint and release
 
+- **E.0 Where the remaining strength is: speed, search, evaluation and how they fit each other, against the strongest hand-crafted engines — `R3`.** Added
+  2026-11-22 (maintainer request, after RAR-M91). Research only: zero
+  games first, no code changed, nothing implemented. It ranks the levers;
+  each one it proposes becomes a step of its own, numbered where it runs,
+  and E.4 is ranked among them. It runs right after D.6's review and
+  ahead of D.8 (maintainer decision 2026-11-22), so its ranking can reorder
+  what remains of Phase D, D.12's board rebuild among it; its number
+  stays E.0.
+  **The question.** The merged kernel rates 100.2 below Stockfish 16 HCE
+  in RAR-M91 (−103.3 [−121.0, −86.0] head to head) and 35 to 49 below
+  Berserk 4.7.0 HCE and Stockfish 11. Which part of that gap can Rarog
+  take, where, at what cost and in which order: the cost of a node, the
+  tree the kernel searches, the evaluation, the fit of search and
+  evaluation to each other, or elsewhere (clock, threads, tablebases, the
+  board), alone or in combination.
+  **What RAR-M91's games show** (its record, *Speed and depth by engine*):
+  NPS and mean depth a move, Stockfish 16 HCE 2.16M and 25.2, Stockfish
+  11 2.22M and 21.8, Berserk 2.41M and 19.8, Ethereal 14.40 HCE 2.99M and
+  19.6, Basilisk 1.11.0 1.69M and 18.9, the kernel 1.58M and 15.0, Rarog
+  2.7.0 1.52M and 12.7. These are leads, not measurements: each engine
+  counts and reports in its own way, and Colosseum's depth includes moves
+  with a mate score. Rarog is the slowest of the twelve. Since D.6.31 it
+  counts nodes as Stockfish does, so Stockfish 16 HCE's 1.37 times its
+  rate is one unit; Rarog's own slope at `3+0.03`, about 145 Elo a
+  doubling (RAR-S98, RAR-S99), puts that ratio near +65 if all of it
+  could be closed, which is not assumed, since the two evaluations cost
+  differently. Depth does not order the field: Basilisk is 3.9 plies
+  deeper than the kernel and 94.6 weaker, and the kernel is 2.3 plies
+  deeper than 2.7.0 and 79 stronger. Depth is a symptom to explain, not a
+  target.
+  **Explanations to separate,** each with what already speaks to it:
+  1. *The cost of a node:* evaluation, board and memory traffic. The last
+     profile is D.7.8.12's (`analysis/d7812_profile_2026-11-20.md`); D.12
+     owns the board's part.
+  2. *The tree:* the kernel is Reckless's form, built for a network
+     evaluation, its margins fitted on Rarog's evaluation at `3+0.03`
+     (D.7.11). Against a search built for a hand-crafted evaluation doing
+     better here: RAR-O08 put Stockfish classical's search on Rarog's
+     evaluation 59.8 ± 8.1 below the head of the day.
+  3. *The evaluation:* RAR-O07's same-search meter read 99 at C.11; RAR-O10
+     read Rarog's evaluation as more accurate than Basilisk's against
+     Stockfish 19, with no read against Stockfish 16 HCE's or Berserk's.
+  4. *Search and evaluation together:* the evaluation's scale, noise and
+     cost against the kernel's margins; `LazyMargin` not refitted on the
+     kernel (*What stays unfitted*); the fit's labels from the B.9 head's
+     games (RAR-M67; E.4's method question).
+  5. *The instrument:* the node and depth conventions themselves.
+  **The cheapest reads, zero games first:** NPS and depth by phase, mate
+  moves out, from RAR-M91's database; the kernel's cost by component on
+  the bench beside D.7.8.12's profile; RAR-O10's accuracy instrument on
+  Stockfish 16 HCE's and Berserk's static evaluations beside Rarog's.
+  Games only where they separate explanations, each registered with its
+  use named first: the kernel against Stockfish 16 HCE at equal nodes
+  (D.7.1.1's per-side budget, corrected for Rarog's driver discarding the
+  interrupted iteration, RAR-O09) separates work a node from speed, and
+  the same pair with Rarog's clock raised by the measured NPS ratio
+  prices speed parity.
+  **Output:** a short packet in `analysis/`, each lever with its evidence,
+  its prior band frozen before any game, the cheapest test that kills it
+  and the step that would own it; a lever without a discriminating read is
+  listed as unknown, not ranked. The maintainer orders the steps it
+  proposes before any is built.
 - **E.1 Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — `V`.** Re-run the B.2.0 architecture review
   on the B.9 and C.11 heads first. Final head against 2.3.2 and against
   the B.9 and C.11 heads at STC, `10+0.1` and 4T; attributed Elo per programme
@@ -4631,62 +5023,176 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       squash-merged once `CI` and `Release` are green; the
       `vX.Y.Z` tag pushed on instruction through E.3.1's workflow, by
       PROCESS *Release*.
-- **E.4 The king-danger index rebuilt in the donor's structure; the classical line's next release if it wins — `R2` card, then `I2`/`V`.** The
-  one hand-crafted lead Phase C left (added 2026-10-22, maintainer
-  decision: classical work resumes only after Phases D and E). Evidence:
-  RAR-E72 read the donor's king signal in the middlegame band as
-  conditioning, +0.28% static over the comparator; RAR-E73 refitted our 23
-  danger coordinates from the donor's seeds and lost held-out loss, closing
-  the lead as the index's structure, not its weights; RAR-E21 put 92% of the
-  king residual in the danger map, its safe checks and weak ring foremost.
-  Independent of Phase F's data, so it runs after E.3's release and before
-  F.0; a win also strengthens F.4's labels, which the classical head
-  generates. Research card first: which structural difference carries
-  the signal, the cheapest static falsifier, the unit's handoff. Then the
-  unit in Rarog's own structure, fitted on `hce-v4-tb` by C.3's pipeline and
-  gated by PROCESS's *Evaluation change under a fitted search* (gate 1
-  `[0,3]`, the margin block if flagged, gate 2), with RAR-O07's same-search
-  meter re-read at the close. Prior from Phase C's units: +10 to +25 Elo,
-  frozen with its band at the registration. Accepted, it is released as the
-  classical line's next version through E.3.1's flow and becomes the
-  classical reference of Phase F's rule; `NO_CHANGE` closes the family work
-  and leaves F.4.1 as the classical programme's last experiment.
-  **First step, from the 2026-11-01 review (EVAL-3 in
-  `analysis/engine_review_2026-11-01.md`):** the king-danger inputs are
-  computed on plain attack maps, while the donor's bishop attacks see through
-  queens, its rook attacks through queens and own rooks, and a pinned piece's
-  attacks are cut to the king line (`evaluate.cpp:269–274`); C.3's fixture
-  came from a donor patched to plain maps, so it proves nothing about the
-  donor as played, and RAR-E72 put the king lead in the four inputs that read
-  those maps. Zero games: stack `tools/diag/patches/sf9587_plain_maps.patch`
-  on the sub-term patch and read RAR-E72's (B) with each bundle; frozen rule:
-  x-ray and pin lines are the carrier if the plain bundle's (B) is at most
-  half of +0.194; if so, the unit is an attack-map producer change that moves
-  mobility, threats and king danger together (gate 3 with a refit), otherwise
-  the lead is weights, cap or structure and the rebuild above is the owner.
-  Also for the refit: the bishop pair's three representations fold exactly
-  (EVAL-11), and a second-difference penalty on the mobility tables and the
-  pawn PST (EVAL-13). And the piece-term definitions no experiment read
-  (EVAL-10; D.6.11 until 2026-11-05): outposts use the current enemy pawn
-  attacks rather than the attack span; minor-behind-pawn counts own pawns
-  only; the long diagonal reads the enemy king zone rather than the two
-  centre squares. Screen before the fit: an E62-style direction read, zero
-  games; a term at the line enters this unit's refit. If the rebuild
-  moves the endgame king danger, read the
-  phase with it (H32): with piece-count phase weights the middlegame share
-  in simplified endings is far above the donor's (double rook 33% against
-  10%, R+B against R+N 25% against 3%, Q against Q 33% against 13%).
+- **E.4 The hand-crafted evaluation in its donor's shape: the donor, a rebuild or repairs, endgame knowledge and the fit; the classical line's next release if it wins — `R3` card, then `I2`/`V`.**
+  Reworked 2026-11-22 (maintainer decision, after D.6's review on the
+  compact kernel): the review found Rarog's evaluation off its donor's
+  shape in several places, most of them endgame knowledge, so the
+  programme opens with research on the donor and the form, as D.7's
+  research opened the search's rebuild, and the endgame items D.6 found
+  are consolidated in it. Classical work resumes after Phases D and E's
+  release (maintainer decision 2026-10-22), and E.0's ranking places this
+  programme among the other levers. The sub-steps run in number order; the
+  king-danger unit, E.4's whole content until this rework, is E.4.3.
+  Every evaluation change here runs PROCESS's *Evaluation change under a
+  fitted search*.
   *From D.7.11 (2026-11-20):* this is the first evaluation change under
   the fitted kernel, so its margin block (PROCESS, *Evaluation change
   under a fitted search*, restated at D.7.14) is where `LazyMargin` is
   refitted. It was last fitted with the classic search (RAR-S104, 423 to
   475, no gradient past noise), and D.7.11 held it at 475 with the
   kernel's margins fitted against it.
+    - **E.4.0 The donor and the form — `R3`.** Research only, no engine
+      change; added 2026-11-22 (maintainer decision). Its questions:
+      1. *The donor.* Stockfish 11's classical evaluation, the design
+         Rarog's follows today, or Stockfish 16's (`sf_16`), the last
+         Stockfish shipped and Basilisk's donor, or `9587eeeb`'s
+         (`SF_classical`), the last classical master. The evidence so far,
+         Basilisk's included, is copied into
+         `analysis/hce_donor_evidence_2026-11-22.md` so that it does not
+         depend on Basilisk: in games `sf_16`'s and `9587eeeb`'s
+         evaluations are equal within about 8 Elo in either search
+         (BAS-O09), statically `9587eeeb`'s leads slightly (BAS-E58), and
+         Basilisk kept `sf_16` by its frozen rule. Stockfish 11 was never
+         measured against them, and Rarog's evaluation has not been read
+         against either.
+      2. *The form.* Rebuild Rarog's evaluation whole in the chosen donor's
+         form, as D.7 rebuilt the search (one unit, parity with the donor by
+         fixture before any fit, then one whole-surface fit and one gate),
+         or repair it family by family. Decide by evidence in this engine:
+         a static read of Rarog's evaluation against the donor's on the
+         kernel's game positions by phase and by family (BAS-E58's
+         method), and where Rarog's own terms carry information the
+         donor's lack.
+      3. *The interactions with the compact kernel:* its evaluation
+         wrapper (the correction, the material scaling), `LazyMargin`, the
+         draw verdicts, and the kernel's margins, fitted on today's
+         evaluation (D.7.11).
+      4. *The fitting method,* below, moved here from the refit.
+
+      Output: a packet in `analysis/` whose decision is the maintainer's
+      before anything is built; it adds the sub-steps the decision needs,
+      and a rebuild takes E.4.2 and E.4.3 into its own units.
+      **And the method itself (maintainer request, 2026-11-22).** Before the
+      refit, research whether this pipeline is still the best way to fit
+      Rarog's evaluation, and what would do better, by evidence in this
+      engine: the labels (game results, or a blend with the kernel's own
+      search scores; RAR-E03's Stockfish-distilled fit lost 17.11 Elo and
+      stays the prior against distillation); the corpus (`hce-v4-tb`'s games
+      were played by the B.9 head at 8,000 nodes, two searches ago, RAR-M67,
+      against games of the kernel itself; RAR-E12 measured a corpus change
+      alone at +11.8 ± 5.3 Elo); the optimiser (full-batch Adam on a fixed
+      schedule against a converged second-order method); K by phase band; and
+      fitting the evaluation together with the search margins it feeds
+      (PROCESS's margin block) rather than after them. Held-out loss chooses
+      candidates and accepts none (RAR-E03 improved it and lost); a method
+      that changes the fit's result reaches E.4's gate, one that does not
+      closes `NO_CHANGE`. E.0's ranking may reorder this work.
+    - **E.4.1 The tuner before any fit — `I1`.** The five checks below,
+      added 2026-11-22 to the refit and moved here when E.4 became the
+      programme, land before the programme's first fit.
+      **The tuner before the refit (added 2026-11-22, from Basilisk's C.2.1.2,
+      read on Rarog's tuner the same day).** Rarog's tuner already fits the
+      played score: the lazy gate applies under `texel`, the base score is
+      `evaluate()`'s own, `linear_delta_scale` calls the evaluator's scale
+      rules in its order, and `--verify` compares against the evaluator's own
+      sum, so Basilisk's defect is not here. Five gaps remain, each closed by
+      a check that can fail:
+      1. `fit_k` searches [0.5, 2.5] and says nothing at a bound: K at a bound
+         fails the run.
+      2. `clamp_weights` applies sign priors, passer ranks 0 and 7 at zero
+         and a running maximum on the passer ranks to every coordinate after
+         each step, and no manifest lists them: the run asserts that the
+         clamps leave the seed unchanged, and the fitting manifest lists them.
+      3. Rows the evaluator does not score linearly. A draw verdict scores 0
+         with every coefficient 0, so it moves neither K nor a gradient and
+         only adds a constant to the reported loss. The mop-up's rows (KBNK,
+         KXK) carry large frozen terms and may move K, as Basilisk's override
+         rows moved its K from 0.00606 to 0.00428: read K and the held-out
+         loss with and without them on `hce-v4-tb`, and report the loss over
+         the rows the fit can move.
+      4. Adam moves a one-signed coordinate about `lr` an epoch, so 200 epochs
+         at 0.3 bound its travel near 60 cp whatever the data say, and the
+         tuner prints its best epoch but accepts a run whose best epoch is its
+         last (Basilisk's T1): fail such a run, or one whose travel reaches 0.9
+         of the bound.
+      5. `extract.py` labels a game however it ended: reject by termination,
+         as Basilisk's row contract does. No row of `hce-v4` changes (612,745
+         normal endings, 2 adjudicated draws, no forfeit), so this binds only
+         a new corpus.
+    - **E.4.2 Endgame knowledge — `R2`, then `I2`/`V`.** Consolidated
+      2026-11-22 (maintainer decision) from D.6's review on the compact
+      kernel: D.6.9 (the endgame scale's target), D.6.10 (the pawnless
+      default factor), D.6.21 (won KPK positions at or below 0), D.6.22
+      (`krpkr_scale`'s hard zeros), D.6.23 (wrong-bishop draws through
+      uncovered leaves), D.6.24 (the KQKP fortress's hard zeros), D.6.25
+      (two same-coloured bishops above a queen) and D.6.26 (pawnless endings
+      a minor ahead read as wins). Each keeps its card and screens in D.6.
+      One Syzygy screen over all their families on the kernel's own game
+      positions comes first (RAR-E36's drawn-overclaim method), D.6.10's
+      families with it: 15% of the kernel's games reach a pawnless family
+      Stockfish 11 scales and Rarog does not
+      (`analysis/artifacts/d610-review-2026-11-22/`). Then repairs grouped by
+      the families they touch, each gated as a repair (AGENTS, *Gating*).
+      If E.4.0 decides a rebuild, these become its endgame cluster.
+      Also for the refit: the endgame scale's target (D.6.9, moved here
+      2026-11-22): fit both forms, the whole score scaled as now and the
+      endgame half only as Stockfish 11 scales it, with the scale constants
+      refitted under each, and let held-out loss and the gate choose; the
+      forms differ mostly in pure opposite-bishop endings, 1.5% of the
+      kernel's positions.
+    - **E.4.3 The king-danger index rebuilt in the donor's structure — `R2` card, then `I2`/`V`.** The
+      one hand-crafted lead Phase C left (added 2026-10-22, maintainer
+      decision: classical work resumes only after Phases D and E). Evidence:
+      RAR-E72 read the donor's king signal in the middlegame band as
+      conditioning, +0.28% static over the comparator; RAR-E73 refitted our 23
+      danger coordinates from the donor's seeds and lost held-out loss, closing
+      the lead as the index's structure, not its weights; RAR-E21 put 92% of the
+      king residual in the danger map, its safe checks and weak ring foremost.
+      Independent of Phase F's data, so it runs after E.3's release and before
+      F.0; a win also strengthens F.4's labels, which the classical head
+      generates. Research card first: which structural difference carries
+      the signal, the cheapest static falsifier, the unit's handoff. Then the
+      unit in Rarog's own structure, fitted on `hce-v4-tb` by C.3's pipeline and
+      gated by PROCESS's *Evaluation change under a fitted search* (gate 1
+      `[0,3]`, the margin block if flagged, gate 2), with RAR-O07's same-search
+      meter re-read at the close. Prior from Phase C's units: +10 to +25 Elo,
+      frozen with its band at the registration. Accepted, it is released as the
+      classical line's next version through E.3.1's flow and becomes the
+      classical reference of Phase F's rule; `NO_CHANGE` closes the family work
+      and leaves F.4.1 as the classical programme's last experiment.
+      **First step, from the 2026-11-01 review (EVAL-3 in
+      `analysis/engine_review_2026-11-01.md`):** the king-danger inputs are
+      computed on plain attack maps, while the donor's bishop attacks see through
+      queens, its rook attacks through queens and own rooks, and a pinned piece's
+      attacks are cut to the king line (`evaluate.cpp:269–274`); C.3's fixture
+      came from a donor patched to plain maps, so it proves nothing about the
+      donor as played, and RAR-E72 put the king lead in the four inputs that read
+      those maps. Zero games: stack `tools/diag/patches/sf9587_plain_maps.patch`
+      on the sub-term patch and read RAR-E72's (B) with each bundle; frozen rule:
+      x-ray and pin lines are the carrier if the plain bundle's (B) is at most
+      half of +0.194; if so, the unit is an attack-map producer change that moves
+      mobility, threats and king danger together (gate 3 with a refit), otherwise
+      the lead is weights, cap or structure and the rebuild above is the owner.
+      The bishop pair's three representations fold exactly
+      (EVAL-11), and a second-difference penalty on the mobility tables and the
+      pawn PST (EVAL-13). And the piece-term definitions no experiment read
+      (EVAL-10; D.6.11 until 2026-11-05): outposts use the current enemy pawn
+      attacks rather than the attack span; minor-behind-pawn counts own pawns
+      only; the long diagonal reads the enemy king zone rather than the two
+      centre squares. Screen before the fit: an E62-style direction read, zero
+      games; a term at the line enters this unit's refit. If the rebuild
+      moves the endgame king danger, read the
+      phase with it (H32): with piece-count phase weights the middlegame share
+      in simplified endings is far above the donor's (double rook 33% against
+      10%, R+B against R+N 25% against 3%, Q against Q 33% against 13%).
+      If E.4.0 decides a rebuild, this unit folds into it.
 ## Phase F — NNUE (own data only)
 
 **Rules.** Own data only, generated by Rarog's classical head and later by its
-NNUE heads. Reckless is the runtime and trainer-pipeline donor; the
-architecture ladder is ours. The classical evaluation stays in the tree as the
+NNUE heads. Reckless and Stockfish are the primary sources for the runtime,
+the trainer pipeline and the network's design, as for the search
+(maintainer decision 2026-11-23); Triumviratus, Gyatso and Trinity are
+secondary inputs read as research. The architecture ladder is ours. The classical evaluation stays in the tree as the
 datagen baseline and the fallback until F.9 replaces it in releases.
 
 **The classical evaluator in releases** (maintainer's rule, 2026-10-22; the
@@ -4736,6 +5242,43 @@ a later one): the engine reads a network exactly before any is trained (F.1,
 F.2), the trainer is proved on a pilot slice and sizes the corpus (F.3)
 before the corpus is generated (F.4), and the first nets are judged in games
 only once inference runs at speed (F.5, F.6).
+
+**Inputs from Trinity's network path** (added 2026-11-23, maintainer
+request; `analysis/trinity_read_2026-11-23.md`). Trinity holds CCRL 40/15
+3522 at 1.0.0 with a plain search and a 768×8-king-bucket → 1024 → 8-output-bucket
+SCReLU net trained with bullet on Leela-derived labels, so its data results
+do not carry over as they stand. Its measurements are research inputs to
+the leaves named, each to be confirmed here, and weigh below Reckless and
+Stockfish:
+
+1. run-to-run spread: three runs of one recipe that differed only in the
+   seed read 0, −9.7 ± 4.9 and −0.2 ± 5.0 (a sample SD of about 5.5), and
+   a pair read as one change had also changed the seed; F.3's two seeds per
+   configuration stand, and the arms of a comparison share the seed and
+   the data order (F.3, F.7);
+2. held-out loss did not rank nets across recipes: 0.27% lower loss read
+   −2.1 ± 2.9, 1.3% lower (L1 2048) −29.8 ± 4.2; whether holdout loss here
+   ranks anything beyond the checkpoints of one run is a question F.3
+   answers before loss chooses between recipes (F.3, F.6);
+3. capacity carried to rated engines (king buckets +17, 512 → 1024 +50 in
+   its calibration), more epochs or data on a converged net did not (about
+   0; a restart at a high rate −13.8; checkpoint averages about 0): item 6
+   above, confirmed independently (F.7);
+4. L1 2048 cost 28% to 33% of nodes per second and lost at 3.65 billion
+   positions; 1536 cost 19%: a first layer wider than 1024 starts with a
+   negative prior at Rarog's corpus size (F.0, F.7);
+5. a float-against-quantised read beside integer-exact conformance: mean
+   |gap| 6.4 cp, and a bias of −4.1 to +5.2 cp by output bucket, so a
+   capture across a bucket boundary moves about 7 cp (F.2);
+6. length and the result weight interact: 900 superbatches beat 600 at a
+   result weight of 0.5 (+5.7 ± 2.7), 0.25 beat 0.5 (+5.5 ± 3.8; λ = 0.75
+   in this document's sense, the value Triumviratus's fix used), and length
+   then added nothing (−1.0 ± 3.9); Rarog's λ and length come from its own
+   curve (F.3);
+7. self-play overstated network gains against rated engines by about 1.1×
+   for capacity and up to 10× for more epochs (F.6);
+8. a budget point: 600 superbatches of 16,384 × 6,104 positions took 5.0
+   GPU-hours on an RTX 3080 (F.3, F.4).
 
 - **F.0 Investigation: board events, accumulator ownership, trainer choice, data format, first architecture — `R3`.**
   Board event interface and accumulator ownership (dirty pieces, per-thread

@@ -54,7 +54,10 @@ use time::{IterationSignals, MateWatch, RuntimeLimits, TbExtension, compute_runt
 
 const MAX_DEPTH: usize = 100;
 
-pub(crate) const MAX_PLY: usize = 128;
+/// The deepest ply a line reaches, the donor's 240: from iteration 16 the
+/// line bound's eight times the depth passes a 128-ply cap, and long
+/// searches in endings met it.
+pub(crate) const MAX_PLY: usize = 240;
 /// The most a draw's score lies from zero. The kernel scores a draw a unit
 /// either side of it by the node count, so a line that can draw is not
 /// scored level with every other draw.
@@ -812,8 +815,7 @@ impl Searcher {
     }
 
     /// A root with no legal move: report the position's value and then
-    /// `bestmove`, as both donors do. Printing nothing at all left a GUI with
-    /// a `bestmove` and no score to show (the 2026-09-16 review, item 2).
+    /// `bestmove`, as both donors do, so a GUI has a score to show.
     fn no_legal_moves_result(&mut self, board: &Board, emit_info: bool) -> SearchResult {
         let result = self.result_for_no_legal_moves(board);
         if emit_info {
@@ -998,7 +1000,8 @@ impl Searcher {
                 }
                 // A failed window re-centres on the failing score and grows;
                 // after `asp_max_fails` failures the failing side opens fully,
-                // so the loop ends.
+                // and each fail high's growth opens both sides in a bounded
+                // number of fails.
                 if score <= alpha {
                     crate::diag_count!(asp_fail_low);
                     crate::diag_add!(asp_fail_low_nodes, window_nodes);
@@ -1991,9 +1994,8 @@ impl Searcher {
     }
 
     /// An aspiration re-search's line: the score is only a bound, so it carries
-    /// `lowerbound` or `upperbound`. Printing nothing until the window closed
-    /// left a long iteration silent, and left a stopped iteration reporting the
-    /// previous depth (the 2026-09-16 review, item 5).
+    /// `lowerbound` or `upperbound`. It is printed before the window closes so
+    /// a long iteration is not silent and a stopped one reports its own depth.
     fn send_bounded_info_line(&self, depth: usize, score: i32, bound: RootBound, fallback: Move) {
         let mut pv: Vec<Move> = self.td.pv_table[0][..self.td.pv_len[0].min(MAX_PLY)]
             .iter()
@@ -2056,7 +2058,7 @@ impl Searcher {
     /// line already describes its move. That line can name another move: an
     /// iteration stopped after a window failed high or low on a move it never
     /// confirmed leaves that move's bound line last, and the pool's vote can
-    /// choose a helper's move no line mentioned (GitHub issue #1).
+    /// choose a helper's move no line mentioned.
     pub(super) fn report_result_line(&self, result: &SearchResult) {
         if self.td.last_reported_move.get() != result.bestmove {
             self.report_line(result);
@@ -2128,14 +2130,6 @@ mod tests {
     use crate::eval::VALUE_NONE;
     use crate::tt::{Bound, TtStore};
 
-    /// Every search parameter is live: set to either end of its declared
-    /// range, it moves the tree of a fixed-depth search on a named position,
-    /// or, for a clock parameter, the time limits or the soft stop on a named
-    /// clock. The SPSA coverage audit reads the source; this reads behaviour,
-    /// so a parameter the search no longer consults, or consults only where no
-    /// named position reaches, fails here by name. The kernel's seeds are not
-    /// search parameters: a tuning build's sets them (see the seed test above).
-    /// Release only: the sweep is about 25 searches at depth 8.
     /// A tuning build's compact seeds reach the compact search: a seed set
     /// through the options changes its tree, its own value leaves the tree
     /// alone, and a searcher given new values and then the old ones searches
@@ -2172,6 +2166,14 @@ mod tests {
         assert_eq!(tree(&mut reused, &donor), base);
     }
 
+    /// Every search parameter is live: set to either end of its declared
+    /// range, it moves the tree of a fixed-depth search on a named position,
+    /// or, for a clock parameter, the time limits or the soft stop on a named
+    /// clock. The SPSA coverage audit reads the source; this reads behaviour,
+    /// so a parameter the search no longer consults, or consults only where no
+    /// named position reaches, fails here by name. The kernel's seeds are not
+    /// search parameters: a tuning build's sets them (see the seed test above).
+    /// Release only: the sweep is about 25 searches at depth 8.
     #[test]
     #[cfg_attr(
         debug_assertions,
@@ -2450,7 +2452,7 @@ mod tests {
         let printed = lines.lock().unwrap().clone();
         assert_eq!(printed.len(), 2, "{printed:?}");
         assert!(printed[1].ends_with(" pv d2d4"), "{printed:?}");
-        // The last line now names d2d4, so nothing more is printed.
+        // The last line names d2d4, so nothing more is printed.
         searcher.report_result_line(&result);
         assert_eq!(lines.lock().unwrap().len(), 2);
     }
@@ -2994,23 +2996,14 @@ mod tests {
         );
     }
 
-    /// The single-legal-move shortcut must save clock time WITHOUT truncating
-    /// an analysis search.
-    ///
-    /// On `1k3Q1r/pPpP2p1/P1P3P1/8/8/1p6/1P6/K6N b` only `Rxf8` is legal.
-    /// `search_root` breaks after depth 2 on a single root move — correct under
-    /// a clock, since that move gets played regardless of score, but under
-    /// `go infinite`/`go ponder` it would freeze a GUI's analysis at depth 2 on
-    /// a meaningless score. Both halves are asserted: the shortcut fires for a
-    /// move request and not in analysis mode.
     /// The SMP machinery (pool root scores, stop voting, reduction
     /// jitter, pool-seeded aspiration) must be INERT at Threads=1.
     ///
     /// Every SMP feature gates on the thread count, which only a parallel
     /// search raises above one. This guards the property every 1-thread gate
     /// and the bench fingerprint rely on: a serial search must be
-    /// deterministic and free of any pool machinery. If a gate ever leaks into the serial
-    /// path, the run-to-run identity below breaks.
+    /// deterministic and free of any pool machinery. If a gate ever leaks into
+    /// the serial path, the run-to-run identity below breaks.
     #[test]
     fn smp_machinery_is_inert_on_a_single_thread() {
         let board = Board::default();
@@ -3073,6 +3066,15 @@ mod tests {
         );
     }
 
+    /// The single-legal-move shortcut must save clock time WITHOUT truncating
+    /// an analysis search.
+    ///
+    /// On `1k3Q1r/pPpP2p1/P1P3P1/8/8/1p6/1P6/K6N b` only `Rxf8` is legal.
+    /// `search_root` breaks after depth 2 on a single root move — correct under
+    /// a clock, since that move gets played regardless of score, but under
+    /// `go infinite`/`go ponder` it would freeze a GUI's analysis at depth 2 on
+    /// a meaningless score. Both halves are asserted: the shortcut fires for a
+    /// move request and not in analysis mode.
     #[test]
     fn single_legal_move_shortcut_skips_analysis_but_not_move_requests() {
         const FORCED: &str = "1k3Q1r/pPpP2p1/P1P3P1/8/8/1p6/1P6/K6N b - - 0 1";
@@ -3347,8 +3349,7 @@ mod tests {
         assert!(fail_high.depth >= 4);
 
         // The score trend pinned at a half keeps every soft target below 99%
-        // of the maximum; the stop is read at the target itself, where it was
-        // registered.
+        // of the maximum; the stop is read at the target itself.
         let mut options = EngineOptions::default();
         options.search_params.tm_trend_low = 5_000;
         options.search_params.tm_trend_high = 5_000;
@@ -3390,7 +3391,7 @@ mod tests {
         );
         assert_eq!(stopped.depth, fail_high.depth - 1);
 
-        // Short of the soft target the fail-high is searched again as before.
+        // Short of the soft target the fail-high is searched again.
         let (unstopped, lines) = clock_search(fen, &clock, &options, FROZEN_CLOCK, usize::MAX);
         assert_eq!(unstopped.depth, DEPTH as usize);
         assert!(lines.last().expect("a line was printed").bound.is_empty());

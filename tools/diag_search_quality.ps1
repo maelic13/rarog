@@ -8,6 +8,10 @@
     per-position `info string diag <name> <value>` dumps. Exact event
     counters and deterministic 1/1024 samples are reported separately.
 
+    NOTE: the node counters it reads are emitted only by builds before the compact kernel;
+    today's engine prints none of them,
+    so read archived binaries with it, or the kernel's rate probes (tools/oracle-hybrids/tree_stats.py).
+
     WHY THESE TWO. Rarog's eval measured at parity with Basilisk 1.9.1
     (paired Texel loss -0.0003 +/- 0.0012 over 8,000 quiet positions) and its
     NPS as equal, yet Rarog plays 38-55 Elo weaker at one thread at BOTH time

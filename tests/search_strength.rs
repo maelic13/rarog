@@ -23,20 +23,11 @@ fn threaded_search_finds_fools_mate_in_one() {
 
 /// KQ vs K must be PROVEN as a forced mate of sane length.
 ///
-/// Rewritten 2026-07-19 after it turned out to be a zero-margin tripwire. It
-/// asserted `score >= MATE_SCORE - 9`; production scored exactly 31,991 —
-/// mate in 9 plies, passing with NO headroom at all. Any eval change costing
-/// a single ply of mate distance broke the build. Disabling lazy eval (what
-/// `--features texel` does) scores 31,989, mate in 11 plies — still a
-/// perfectly correct forced win, one move slower — and the test failed.
-///
-/// That is exactly the shape-vs-correctness mistake the 2026-07-16 Basilisk
-/// canary post-mortem called out; the earlier pass relaxed the `depth ==`
-/// assertion but left the mate-distance one just as tight. The real property
-/// is "the search proves a forced mate and does not wander": KQvK is at most
-/// 10 moves from any position with correct play, so a bound of 8 moves still
-/// catches genuine breakage (no mate proven, or a mate 20 moves out) while
-/// tolerating the ±1-move wobble any legitimate eval change can cause.
+/// The property is "the search proves a forced mate and does not wander", not
+/// an exact mate distance: KQvK is at most 10 moves from any position with
+/// correct play, so a bound of 8 moves catches genuine breakage (no mate
+/// proven, or a mate 20 moves out) while tolerating the ±1-move wobble any
+/// legitimate eval change can cause.
 ///
 /// Measured at depth 18: 5 moves with lazy eval on (shipped), 6 with it off.
 #[test]
@@ -63,10 +54,9 @@ fn search_continues_to_resolve_shorter_mate() {
     assert!(!result.bestmove.is_null());
 }
 
-/// Robust mate-recognition canary (Basilisk search-doc §14 lesson, adopted
-/// 2026-07-16): legal positions a few moves from mate must return a mate score
-/// at a moderate depth. Unlike a fixed-depth *conversion trajectory*, this does
-/// not depend on the exact search path, so it stays stable across benign
+/// Robust mate-recognition canary: legal positions a few moves from mate must
+/// return a mate score at a moderate depth. Unlike a fixed-depth *conversion
+/// trajectory*, this does not depend on the exact search path, so it stays stable across benign
 /// eval/search/TT changes while still catching lost mate-finding or — crucially
 /// — a stalemate blunder (the winning side accepting a draw it could avoid).
 #[test]

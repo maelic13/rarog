@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn saturating_i16_matches_clamp_then_truncate() {
-        // The idiom it replaced, checked across the boundaries and beyond.
+        // The clamp-then-truncate idiom, checked across the boundaries and beyond.
         for v in [
             0,
             1,

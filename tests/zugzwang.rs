@@ -9,20 +9,18 @@
 //! A change that breaks null soundness should fail a test here rather than
 //! quietly cost Elo in a 16,000-game gate.
 //!
-//! # Two design rules, both learned the hard way
+//! # Two design rules
 //!
-//! **Assert bounds and legality, not exact moves or scores.** The KQvK
-//! post-mortem in `search_strength.rs` is the precedent: a zero-margin
+//! **Assert bounds and legality, not exact moves or scores.** A zero-margin
 //! assertion becomes a tripwire that fires on any legitimate eval change
-//! instead of on real breakage. The only exact-move assertion here is on a
-//! position with exactly one legal reply.
+//! instead of on real breakage, as the KQvK mate bound in `search_strength.rs`
+//! avoids. The only exact-move assertion here is on a position with exactly
+//! one legal reply.
 //!
-//! **Every premise below was measured, not eyed.** The first draft of this file
-//! asserted properties of positions that did not have them — a "one legal move"
-//! position that was actually stalemate, a "blocked draw" that the engine
-//! correctly scored at −1352 because the kings were not symmetric, and two
-//! "in check" positions that were checkmate. Each FEN's legal-move count, check
-//! status and score are stated in comments as observed at depth 12.
+//! **Every premise below was measured, not eyed.** A position's legal-move
+//! count, check status and score are stated in comments as observed at depth
+//! 12, so none claims a property (one legal move, a blocked draw, being in
+//! check) that the position lacks.
 
 use rarog::board::{Board, Move};
 use rarog::search::options::SearchOptions;
@@ -51,9 +49,9 @@ fn assert_legal(fen: &str, mv: Move, context: &str) {
 /// score is a tempo at most. A null cutoff manufactures the tempo White cannot
 /// actually keep and reports a decisive edge.
 ///
-/// The mirror matters. An earlier draft used blocked pawns with kings on a1/h1,
-/// which the engine scored at −914 — correctly, because Black's king was far
-/// more active. Blocked pawns alone do not make a draw.
+/// The mirror matters. Blocked pawns with kings on a1/h1 score −914, correctly,
+/// because Black's king is far more active. Blocked pawns alone do not make a
+/// draw.
 ///
 /// Observed at depth 12: all three score exactly 0, 5 legal moves each.
 #[test]
@@ -96,11 +94,10 @@ fn classic_king_pawn_zugzwang_stays_balanced() {
 
 /// A null move must never be attempted while in check — passing would leave the
 /// king capturable and any resulting score is meaningless. Swept across depths
-/// because NMP is depth-gated at 3, so one depth could miss it.
+/// because the null move's margin depends on depth, so one depth could miss it.
 ///
-/// All five were verified to be in check WITH legal replies (3–4 each); two
-/// candidates from the first draft were dropped because they were checkmate,
-/// which tests nothing about null moves.
+/// All five are in check WITH legal replies (3–4 each); a checkmate position
+/// would test nothing about null moves.
 #[test]
 fn in_check_never_returns_a_null_artifact() {
     let fens = [
@@ -134,8 +131,7 @@ fn in_check_never_returns_a_null_artifact() {
 /// escape a forced continuation.
 ///
 /// Observed: 1 legal move (`h1g2`, capturing the checking queen), in check,
-/// score 0. The premise is asserted rather than trusted, because the first draft
-/// used a stalemate position by mistake.
+/// score 0. The premise is asserted rather than trusted.
 #[test]
 fn a_single_legal_reply_is_always_returned() {
     let fen = "7k/8/8/8/8/8/6q1/7K w - - 0 1";
@@ -156,9 +152,9 @@ fn a_single_legal_reply_is_always_returned() {
     }
 }
 
-/// Pawn-only endgames are refused by NMP's existing `has_non_pawn_material`
-/// guard. This pins it from both sides, so the suite catches over-restriction as
-/// well as an unsound cutoff.
+/// The null move is refused below a floor of material on the board, pawns
+/// included, and both pawn endings here sit under it. This pins it from both
+/// sides, so the suite catches over-restriction as well as an unsound cutoff.
 #[test]
 fn pawn_only_endgames_stay_sound_in_both_directions() {
     // Observed: Black is not merely better but mating (score 31,991). A weakened
@@ -180,9 +176,7 @@ fn pawn_only_endgames_stay_sound_in_both_directions() {
 }
 
 /// Mate-range windows are where a null cutoff is least defensible: a pass cannot
-/// refute a forced mate. `NmpDecisiveGuard` used to target this and was removed
-/// in 4.10a as an efficiency guard; the property must hold regardless, and this
-/// is what checks that removing it changed nothing.
+/// refute a forced mate, so the search must still prove them.
 #[test]
 fn forced_mates_are_still_proven() {
     // Observed: 31,999 via a1a8, i.e. mate in one is found and proven.

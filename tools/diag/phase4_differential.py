@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Run the oracle differential suite against Rarog and the oracle.
 
+NOTE: the node counters it reads are emitted only by builds before the compact kernel;
+today's engine prints none of them,
+so read archived binaries with it, or the kernel's rate probes (tools/oracle-hybrids/tree_stats.py).
+
 Drives both engines over tools/diag/phase4_suite_v1.epd at a fixed depth, one
 thread, and joins their `info string diag <name> <value>` output by counter
 name and by cohort.

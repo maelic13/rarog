@@ -67,10 +67,8 @@ pub const PRODUCTION_SEE_VALUES: SeeValues = SeeValues::new(100, 320, 330, 500, 
 enum QuietSee {
     /// Answered by its immediate gain: nothing, or a promotion's gain.
     Gain,
-    /// Played through the exchange, the moved piece at risk; a promotion
-    /// push is answered by its gain.
-    ExchangeButPromotions,
-    /// Played through the exchange, a promotion push included.
+    /// Played through the exchange, the moved piece at risk, a promotion push
+    /// included.
     Exchange,
 }
 
@@ -102,10 +100,10 @@ struct UnmakeInfo {
 ///
 /// - `Board` is 264 bytes. The six-board variant would save 48 and neither
 ///   figure is near any cache boundary that matters, while the extra mask would
-///   land on 208 `pieces()` call sites, 102 of them inside evaluation.
-/// - `UnmakeInfo` is 24 bytes, so a 128-ply search stack costs 3 KiB and stays
-///   comfortably in L1. Copying whole board state per ply instead would cost
-///   128 x 264 = 33 KiB and leave it.
+///   land on every `pieces()` call site, over a hundred of them in evaluation.
+/// - `UnmakeInfo` is 24 bytes, so a 240-ply search stack costs under 6 KiB
+///   and stays comfortably in L1. Copying whole board state per ply instead
+///   would cost 240 x 264 = 62 KiB and leave it.
 ///
 /// Upper bounds, not equalities: padding may differ between supported targets,
 /// and only growth would invalidate the decision.
@@ -115,7 +113,7 @@ const _: () = assert!(
 );
 const _: () = assert!(
     core::mem::size_of::<UnmakeInfo>() <= 24,
-    "UnmakeInfo grew past 24 bytes; a 128-ply stack no longer costs 3 KiB and PLAN 4.11b.14's per-ply restoration argument needs re-checking"
+    "UnmakeInfo grew past 24 bytes; a 240-ply stack no longer costs under 6 KiB and PLAN 4.11b.14's per-ply restoration argument needs re-checking"
 );
 
 /// By piece type, the masks of the derived keys a piece's key enters: the
@@ -823,19 +821,11 @@ impl Board {
         super::movegen::generate_legal_into(self, moves);
     }
 
+    /// The legal captures, by the generator the search's noisy stage uses.
     pub fn generate_legal_captures(&mut self) -> MoveList {
-        super::movegen::generate_captures(self)
-    }
-
-    /// [`Board::generate_legal_captures`] into a caller-owned list.
-    pub fn generate_legal_captures_into(&mut self, moves: &mut MoveList) {
-        super::movegen::generate_captures_into(self, moves);
-    }
-
-    /// The legal captures and non-capturing queen promotions, into a
-    /// caller-owned list: the moves of a captures-only search.
-    pub fn generate_legal_noisy_into(&mut self, moves: &mut MoveList) {
-        super::movegen::generate_noisy_into(self, moves);
+        let mut moves = MoveList::new();
+        super::movegen::generate_captures_pinned_into(self, None, &mut moves);
+        moves
     }
 
     pub fn generate_legal_quiets(&self) -> MoveList {
@@ -1340,12 +1330,11 @@ impl Board {
     ///
     /// `Board` keeps five redundant representations of the same position —
     /// the 12 piece bitboards, the two occupancies, `all_occ`, the mailbox,
-    /// and five Zobrist keys. Only the mailbox and `hash` were ever verified
-    /// (`to_fen()` reads the mailbox, so the FEN comparison in the existing
-    /// make/unmake test validates the mailbox and nothing else). A desync in
-    /// the rest is silent: the auxiliary keys are CACHE KEYS for the pawn
-    /// cache, correction history and pawn history, so a drifted key returns
-    /// another position's cached evaluation rather than crashing.
+    /// and five Zobrist keys. `to_fen()` reads the mailbox, so a FEN
+    /// comparison validates the mailbox and nothing else. A desync in the
+    /// rest is silent: the auxiliary keys are CACHE KEYS for the pawn cache,
+    /// correction history and pawn history, so a drifted key returns another
+    /// position's cached evaluation rather than crashing.
     ///
     /// Returns `Err` with the first mismatch rather than panicking, so tests
     /// can report instead of aborting. Not on any hot path.
@@ -1609,43 +1598,12 @@ impl Board {
         self.see_ge_impl(mv, threshold, QuietSee::Gain, values)
     }
 
-    /// As [`Board::see_ge`], but a QUIET move is put through the full exchange
-    /// instead of being answered with its immediate gain.
-    ///
-    /// `see_ge` short-circuits every non-capture to `gain >= threshold`, and
-    /// `gain` is 0 for a plain quiet move — so against any negative threshold
-    /// it is trivially true and the caller learns nothing. That makes it
-    /// impossible to ask the one question a quiet SEE prune exists to ask:
-    /// does this move hang the piece it just moved? The reference's SEE
-    /// answers it, and prices the pruning it enables at ~20 Elo.
-    ///
-    /// The exchange body needs no special case: `captured_piece` is `None` for
-    /// a quiet move, so the immediate balance starts at 0, which is exactly
-    /// right — nothing was won, and the moved piece is now the thing at risk.
-    pub fn see_ge_quiet_aware(&self, mv: Move, threshold: i32) -> bool {
-        crate::diag_count!(board_see_quiet_threshold_calls);
-        self.see_ge_impl(
-            mv,
-            threshold,
-            QuietSee::ExchangeButPromotions,
-            PRODUCTION_SEE_VALUES,
-        )
-    }
-
-    pub fn see_ge_quiet_aware_with_values(
-        &self,
-        mv: Move,
-        threshold: i32,
-        values: SeeValues,
-    ) -> bool {
-        self.see_ge_impl(mv, threshold, QuietSee::ExchangeButPromotions, values)
-    }
-
     /// The compact kernel's exchange test, as its donor's: every move is
     /// played through the exchange, a promotion push with the promoted piece
-    /// at risk. A queen pushed onto a defended square is taken, so the push
-    /// loses its pawn, where [`Board::see_ge_quiet_aware_with_values`]
-    /// credits it with the promotion's gain.
+    /// at risk. A quiet move asks whether it hangs the piece it moved: nothing
+    /// was won, so the balance starts at 0 with the moved piece at risk, where
+    /// [`Board::see_ge`] answers it by its gain alone. A queen pushed onto a
+    /// defended square is taken, so the push loses its pawn.
     pub fn see_ge_exchange_with_values(&self, mv: Move, threshold: i32, values: SeeValues) -> bool {
         self.see_ge_impl(mv, threshold, QuietSee::Exchange, values)
     }
@@ -1654,7 +1612,6 @@ impl Board {
         let answered_by_gain = !mv.is_capture()
             && match quiet {
                 QuietSee::Gain => true,
-                QuietSee::ExchangeButPromotions => mv.is_promo(),
                 QuietSee::Exchange => false,
             };
         if answered_by_gain {
@@ -1802,9 +1759,9 @@ impl Board {
     // Make / Unmake
     // -----------------------------------------------------------------------
 
-    /// Apply a move in-place.  The move must be legal.
+    /// Apply a move in-place, computing the new checker set from scratch. The
+    /// move must be legal.
     #[inline(always)]
-    /// Play `mv`, computing the new checker set from scratch.
     pub fn make_move(&mut self, mv: Move) {
         crate::diag_count!(board_make_plain_calls);
         self.make_move_inner(mv, None);
@@ -2255,11 +2212,9 @@ impl Board {
             return Err("FEN must contain exactly one king for each side".to_string());
         }
 
-        // Pawn count and promoted-piece consistency (mirrors Basilisk's
-        // try_set_fen). Rarog's parser already rejects back-rank pawns, bad king
-        // counts, adjacency, and side-not-to-move-in-check, but did not count
-        // pawns — a corrupt bench FEN with 9 pawns was silently searched until
-        // Basilisk's stricter set_fen flagged it (2026-07-01).
+        // Pawn count and promoted-piece consistency, which the other checks
+        // (back-rank pawns, king counts, adjacency, side not to move in check)
+        // do not cover: a FEN with 9 pawns must be rejected, not searched.
         for color in [Color::White, Color::Black] {
             let pawns = infra::to_i32(self.pieces(color, Piece::Pawn).count());
             if pawns > 8 {
@@ -2616,10 +2571,7 @@ impl fmt::Display for Board {
 
 #[cfg(test)]
 mod tests {
-    /// The partition, judged from what each legal move does on the board and
-    /// not from its flags: a piece taken, a pawn changing file, or a pawn
-    /// reaching the last rank is noisy, and everything else is quiet.
-    /// The captures-only search's list is the legal captures plus the legal
+    /// The noisy stage's list is the legal captures plus the legal
     /// non-capturing queen promotions, each once, through checks and pins.
     #[test]
     fn the_noisy_list_is_the_captures_and_the_queen_pushes() {
@@ -2635,7 +2587,8 @@ mod tests {
         }
         fn noisy(board: &mut Board) -> Vec<String> {
             let mut list = MoveList::new();
-            board.generate_legal_noisy_into(&mut list);
+            let threats = board.threats();
+            board.generate_legal_noisy_staged_into(&threats, &mut list);
             let mut moves: Vec<String> = list.iter().map(|mv| mv.to_string()).collect();
             moves.sort_unstable();
             moves
@@ -2690,6 +2643,9 @@ mod tests {
         assert!(board.generate_legal_captures().is_empty());
     }
 
+    /// The partition, judged from what each legal move does on the board and
+    /// not from its flags: a piece taken, a pawn changing file, or a pawn
+    /// reaching the last rank is noisy, and everything else is quiet.
     #[test]
     fn every_legal_move_is_quiet_or_noisy_by_what_it_does() {
         let extra = [
@@ -2831,12 +2787,13 @@ mod tests {
     fn a_reserved_history_does_not_reallocate_through_a_full_depth_walk() {
         let mut board = Board::starting_position();
         walk(&mut board, 40);
-        board.reserve_history(128);
+        let plies = crate::search::MAX_PLY;
+        board.reserve_history(plies);
         let reserved = board.history.capacity();
 
-        // 128 plies is the search's MAX_PLY; the reservation must absorb all
-        // of it without a single reallocation.
-        let played = walk(&mut board, 128);
+        // The search reserves its ply cap; the reservation must absorb a line
+        // that long without a single reallocation.
+        let played = walk(&mut board, plies);
         assert_eq!(
             board.history.capacity(),
             reserved,
@@ -3082,8 +3039,8 @@ mod tests {
     }
 
     /// A queen pushed onto a defended square is taken: the compact kernel's
-    /// test plays that exchange, the classic forms credit the promotion's
-    /// gain, and a capture or an undefended push reads the same in all.
+    /// test plays that exchange, the gain form credits the promotion's gain,
+    /// and a capture or an undefended push reads the same in both.
     #[test]
     fn the_exchange_test_puts_a_promotion_push_at_risk() {
         let values = PRODUCTION_SEE_VALUES;
@@ -3094,7 +3051,6 @@ mod tests {
         assert!(push.is_promo() && !push.is_capture());
         assert!(defended.see_ge_exchange_with_values(push, -pawn, values));
         assert!(!defended.see_ge_exchange_with_values(push, -pawn + 1, values));
-        assert!(defended.see_ge_quiet_aware_with_values(push, gain, values));
         assert!(defended.see_ge_with_values(push, gain, values));
 
         let free = Board::from_fen("4k3/P7/8/8/8/8/8/4K3 w - - 0 1").unwrap();
@@ -3106,7 +3062,6 @@ mod tests {
         let rook_and_gain = values.value(Piece::Rook) + gain;
         for see_ge in [
             Board::see_ge_exchange_with_values,
-            Board::see_ge_quiet_aware_with_values,
             Board::see_ge_with_values,
         ] {
             assert!(see_ge(&defended, taking, rook_and_gain, values));

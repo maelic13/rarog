@@ -32,23 +32,20 @@ const TEST_NODES: u64 = 50_000;
 /// A band around the calibrated count, not the count itself, so ordinary
 /// search changes do not flap it: about 8% each way. Below it a tactical
 /// regression has likely landed; above it the band is stale, and both bounds
-/// move to the new count, in the commit that moved it. Calibrated 2026-11-19
-/// at 201/300 on the compact kernel (3,488,485); the classic kernel solved
-/// 232 on this budget.
-const CALIBRATED: usize = 201;
-const FLOOR: usize = 185;
-const CEILING: usize = 217;
+/// move to the new count, in the commit that moved it. Calibrated at 218/300
+/// on the compact kernel with quiescence's stalemate rule.
+const CALIBRATED: usize = 218;
+const FLOOR: usize = 201;
+const CEILING: usize = 235;
 
 #[test]
 fn aspiration_terminates_on_sudden_mate_scores() {
-    // WAC.005: depth 3 scores cp -78, depth 4 finds mate-in-3 — the exact
-    // shape that made the pre-7.0b widening loop fail high forever (the
-    // stale best_score-centered window could never reach the mate score;
-    // PLAN.md lesson 13). With the 7.0b guard the whole depth-8 search
-    // costs ~1k nodes. The node cap exists only so a regression fails the
-    // assert instead of hanging the test runner; any future aspiration
-    // rework (Phase 10.2a replaces the widening loop wholesale) must keep
-    // this invariant: termination by construction on mate-magnitude scores.
+    // WAC.005: depth 3 scores cp -78, depth 4 finds mate-in-3 — the shape
+    // that would make a window widening loop fail high forever if the window
+    // could never reach the mate score. The node cap exists only so a
+    // regression fails the assert instead of hanging the test runner; the
+    // aspiration window must terminate by construction on mate-magnitude
+    // scores.
     let board = Board::from_fen("5k2/6pp/p1qN4/1p1p4/3P4/2PKP2Q/PP3r2/3R4 b - - 0 1").unwrap();
     let mut searcher = Searcher::default();
     let mut options = SearchOptions {

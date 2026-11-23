@@ -167,11 +167,12 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   multi-run study, build once, verify the fingerprint, hash and archive that
   executable, and measure the copy; rebuild only when source, features,
   toolchain or build settings change. Keep test builds separate.
-- `bench` dumps counters once per position (40 lines per name for `bench 13`,
-  47 for the oracle suite); sum them. Use `tools/diag/bench_counters.py` and
-  `tools/diag/phase4_differential.py`; never hand-roll a counter parser.
-  Counter ratios are valid only at `RAROG_DIAG_SAMPLE_STRIDE=1`
-  (`analysis/phase4_counter_spec.md`).
+- A `diag` build's `bench` dumps counters once per position (40 lines per
+  name for `bench 13`); sum them with `tools/diag/bench_counters.py`, never a
+  hand-rolled parser. The search's rule counts are the kernel's rate probes
+  (`--features probes`), read by `tools/oracle-hybrids/tree_stats.py`;
+  `tools/diag/phase4_differential.py` reads node counters that only builds
+  before the compact kernel emit.
 - Before differencing two counters, confirm they are in the same unit (per
   node versus per move produced RAR-S25). A passing invariant does not prove
   comparability.
@@ -212,7 +213,7 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   value and require the numbers to move. Proving the engine responds is not
   proving the instrument reports it.
 - A behaviour-neutral engine change reproduces the immediate development
-  fingerprint (currently **3,390,842 / EBF 2.317**) plus targeted checks
+  fingerprint (currently **3,694,298 / EBF 2.324**) plus targeted checks
   for behaviour the suite does not reach: an identical bench does not prove a
   narrow feature neutral (RAR-E10). Investigate a cross-platform mismatch
   (RAR-P14, RAR-P16). Docs-only work verifies the diff has no engine inputs.

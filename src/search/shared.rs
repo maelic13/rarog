@@ -48,10 +48,9 @@ pub(super) struct TbRootDecision {
 /// handle; the table and the pool context behind them are the same objects.
 pub(super) struct SearchShared {
     pub(super) tt: TranspositionTable,
+    /// The table's size in MiB: the size in use, which a refused `Hash` leaves
+    /// unchanged.
     pub(super) hash_mb: usize,
-    /// The `Hash` last asked for. Every option change resends the whole
-    /// option set, so a size the allocator refused is tried again only when
-    /// a later request differs, not announced again on every `setoption`.
     /// The `LargePages` value this searcher's tables were allocated under.
     pub(super) large_pages: bool,
     pub(super) syzygy: SyzygySettings,
@@ -167,14 +166,12 @@ fn pack_root_score(depth: i32, score: i32, bound: RootBound) -> i64 {
 
 fn unpack_root_score(packed: i64) -> (i32, i32, RootBound) {
     // `expect`, not `unwrap_or(0)`. Both conversions are infallible
-    // by construction and provably so — `pack_root_score` masks depth with
-    // `DEPTH_MASK` (24 bits, so 0..=16_777_215) and the score field with
-    // `LOW32`, which after subtracting `SCORE_BIAS` (2^31) spans exactly
-    // −2^31..=2^31−1, i.e. the whole of `i32`. The previous fallback could
-    // therefore never fire, but if the packing were ever changed it would
-    // substitute a silent `0` — a WRONG root score fed straight into root
-    // ordering and aspiration seeding. A loud failure is strictly better than
-    // a plausible wrong number in a search heuristic.
+    // by construction: `pack_root_score` masks depth with `DEPTH_MASK` (24
+    // bits, so 0..=16_777_215) and the score field with `LOW32`, which after
+    // subtracting `SCORE_BIAS` (2^31) spans exactly −2^31..=2^31−1, the whole
+    // of `i32`. If the packing were ever changed, a silent `0` would feed a
+    // wrong root score into root ordering and aspiration seeding; a loud
+    // failure is better.
     let depth = i32::try_from((packed >> DEPTH_SHIFT) & DEPTH_MASK)
         .expect("pack_root_score masks depth to 24 bits");
     let score = i32::try_from((packed & LOW32) - SCORE_BIAS)

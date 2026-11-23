@@ -77,53 +77,6 @@ pub(super) fn generate_quiets_pinned_into(
     crate::diag_add!(board_gen_staged_quiet_moves, moves.len() as u64);
 }
 
-/// Generate only legal captures (for quiescence search).
-///
-/// Captures-only terminal callers (qsearch, ProbCut) keep the
-/// [`has_pseudo_capture`] pre-scan: nothing else runs at this node, so a
-/// negative answer really does save the pin computation and the whole
-/// generation pass. The pre-scan measured firing on **19.1%** of these
-/// calls, and the 80.9% that do find a capture exit the scan early (king/pawn
-/// tests come first), so the pre-scan is cheap when it fails and pays a full
-/// generation when it succeeds.
-pub(super) fn generate_captures_into(board: &mut Board, moves: &mut MoveList) {
-    gen_captures_only::<false>(board, moves);
-}
-
-/// Legal captures plus the legal non-capturing queen promotions: what a
-/// captures-only search (quiescence outside check, ProbCut) plays. Without the
-/// push, a pawn one step from queening on a free square never promotes there,
-/// and the leaf is read at its static value. The rook, bishop and knight pushes
-/// stay quiet; the staged picker keeps the queen push in its quiet stage.
-pub(super) fn generate_noisy_into(board: &mut Board, moves: &mut MoveList) {
-    gen_captures_only::<true>(board, moves);
-}
-
-fn gen_captures_only<const QUEEN_PUSHES: bool>(board: &mut Board, moves: &mut MoveList) {
-    moves.clear();
-    let us = board.side_to_move();
-    let them = !us;
-    let pushes = if QUEEN_PUSHES {
-        promotion_push_targets(board, us)
-    } else {
-        Bitboard::EMPTY
-    };
-
-    if pushes.is_empty() && !has_pseudo_capture(board, us, them) {
-        crate::diag_count!(board_gen_capture_calls);
-        return;
-    }
-
-    let king_sq = board.king_sq(us);
-    let pinned = compute_pinned(board, king_sq, us, them);
-    gen_captures_with_pin(board, us, them, king_sq, pinned, None, moves);
-    if pushes.any() {
-        push_queen_promotions(board, us, king_sq, pinned, pushes, moves);
-    }
-    crate::diag_count!(board_gen_capture_calls);
-    crate::diag_add!(board_gen_capture_moves, moves.len() as u64);
-}
-
 /// The free squares our pawns on their seventh rank could push to.
 fn promotion_push_targets(board: &Board, us: Color) -> Bitboard {
     let pawns = board.pieces(us, Piece::Pawn);
@@ -184,23 +137,14 @@ pub(super) fn generate_noisy_pinned_into(
     pinned
 }
 
-/// [`generate_captures_into`] returning a fresh list.
-pub(super) fn generate_captures(board: &mut Board) -> MoveList {
-    let mut moves = MoveList::new();
-    generate_captures_into(board, &mut moves);
-    moves
-}
-
-/// [`generate_captures`], also handing back the pinned set it computed so a
-/// staged move picker can feed it to [`generate_quiets_pinned`] later at the
-/// same node.
+/// The legal captures into a caller-owned list, handing back the pinned set
+/// it computed so a staged move picker can feed it to
+/// [`generate_quiets_pinned_into`] later at the same node.
 ///
-/// Deliberately does NOT run the [`has_pseudo_capture`] pre-scan, unlike its
-/// captures-only sibling. A staged node usually goes on to generate
-/// quiets, and the pre-scan's saving is then illusory: `compute_pinned` is four
+/// No "is there any capture" pre-scan runs first. A staged node usually goes
+/// on to generate quiets, and such a scan's saving is then illusory: `compute_pinned` is four
 /// slider lookups plus a short sniper walk, while a *failing* pre-scan is a
-/// full attack pass over every one of our pieces — and 78.5% of the nodes where
-/// it fired then paid for the pins anyway in `generate_quiets`. Computing pins
+/// full attack pass over every one of our pieces. Computing pins
 /// unconditionally is therefore less work in the common case and lets every
 /// stage at this node share one pinned set.
 pub(super) fn generate_captures_pinned_into(
@@ -242,66 +186,6 @@ fn gen_captures_with_pin(
     } else {
         gen_moves_pinned::<true, false, _>(board, pinned, king_danger, moves);
     }
-}
-
-/// Conservative "is there anything to capture at all" pre-scan: it may only
-/// return `false` when capture generation would produce an empty list (EP and
-/// promotion-captures are pawn attacks, so both are covered). Skipping
-/// generation on `false` is therefore behavior-preserving.
-fn has_pseudo_capture(board: &Board, us: Color, them: Color) -> bool {
-    let atk = &ATTACKS;
-    let their_occ = board.color_occ(them) & !board.pieces(them, Piece::King);
-
-    if (atk.king(board.king_sq(us)) & their_occ).any() {
-        return true;
-    }
-
-    let pawns = board.pieces(us, Piece::Pawn);
-    let pawn_attacks = if us == Color::White {
-        pawns.north_east() | pawns.north_west()
-    } else {
-        pawns.south_east() | pawns.south_west()
-    };
-    if (pawn_attacks & their_occ).any() {
-        return true;
-    }
-    if let Some(ep_sq) = board.ep_square() {
-        let ep_attackers = atk.pawn(them, ep_sq) & pawns;
-        if ep_attackers.any() {
-            return true;
-        }
-    }
-
-    let mut knights = board.pieces(us, Piece::Knight);
-    while knights.any() {
-        if (atk.knight(knights.pop_lsb()) & their_occ).any() {
-            return true;
-        }
-    }
-
-    let all_occ = board.occupied();
-    let mut bishops = board.pieces(us, Piece::Bishop);
-    while bishops.any() {
-        if (atk.bishop(bishops.pop_lsb(), all_occ) & their_occ).any() {
-            return true;
-        }
-    }
-
-    let mut rooks = board.pieces(us, Piece::Rook);
-    while rooks.any() {
-        if (atk.rook(rooks.pop_lsb(), all_occ) & their_occ).any() {
-            return true;
-        }
-    }
-
-    let mut queens = board.pieces(us, Piece::Queen);
-    while queens.any() {
-        if (atk.queen(queens.pop_lsb(), all_occ) & their_occ).any() {
-            return true;
-        }
-    }
-
-    false
 }
 
 /// Recursive perft — counts leaf nodes at depth `depth`.
@@ -355,11 +239,9 @@ fn gen_moves<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(board: &Boar
 /// [`gen_moves`] for callers that already hold the pinned set for this
 /// position.
 ///
-/// `compute_pinned` is four slider lookups plus a per-sniper `between` scan, and
-/// it was being repeated: `generate_captures` computed it and then handed off
-/// to `gen_moves`, which computed the very same thing again; and a staged node
-/// paid for it once more when quiets were finally generated. Pins are a pure
-/// function of the position, so one computation per node serves every stage.
+/// `compute_pinned` is four slider lookups plus a per-sniper `between` scan.
+/// Pins are a pure function of the position, so one computation per node
+/// serves every stage.
 ///
 /// `king_danger`, when the caller has it, is every square the side not to
 /// move attacks with our king lifted off the board ([`Board::threats`]): a

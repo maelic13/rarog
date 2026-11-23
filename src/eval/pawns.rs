@@ -272,7 +272,7 @@ impl Evaluator {
                     tr_eg!(self, pawn_doubled_isolated_eg, 0, -sign);
                 }
                 // Supported (defended diagonally from behind by an own pawn) —
-                // rank-scaled. (Historical param name is `pawn_connected_*`.)
+                // rank-scaled. (The parameter is named `pawn_connected_*`.)
                 if (atk.pawn(them, sq) & our_pawns).any() {
                     mg += sign * self.params.pawn_connected_mg[rel_rank];
                     eg += sign * self.params.pawn_connected_eg[rel_rank];

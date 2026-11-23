@@ -32,9 +32,8 @@ struct WorkerJob {
 }
 
 enum WorkerMessage {
-    // Boxed — WorkerJob is large while the other variants are unit, so
-    // every queued message paid the largest size. This is a per-search thread
-    // handoff (not a hot path), so the indirection is free here.
+    // Boxed: WorkerJob is large while the other variants are unit, and this is
+    // a per-search hand-off, not a hot path, so the indirection costs nothing.
     Search(Box<WorkerJob>),
     NewGame,
     Shutdown,
@@ -208,10 +207,9 @@ fn select_parallel_result(
 ///
 /// With more than one line every thread searches them all, and the main
 /// thread owns the reported lines and the move, so they stay one thread's
-/// consistent list. Under a depth
-/// limit only the main thread searches to that depth, and a helper's depth says
-/// only how far it got before the main thread finished. Anything else votes,
-/// `go mate` included.
+/// consistent list. Under a depth limit only the main thread searches to that
+/// depth, and a helper's depth says only how far it got before the main thread
+/// finished. Anything else votes, `go mate` included.
 fn pool_answer(
     results: &[SearchResult],
     root_moves: &[Move],

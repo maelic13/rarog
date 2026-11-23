@@ -1,5 +1,5 @@
 //! Move-ordering histories: threat-aware quiet and noisy tables, pawn-structure
-//! and continuation tables, their gravity update and the interim update rules.
+//! and continuation tables, their gravity update and the continuation helpers.
 
 use crate::board::{Bitboard, Board, Color, FixedList, Move, Piece, Square};
 

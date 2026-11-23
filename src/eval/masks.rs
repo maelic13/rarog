@@ -5,8 +5,8 @@
 //! game reads, never gates.
 //!
 //! The masks are process-wide and become fixed at the first evaluation: the
-//! evaluation cache and the transposition table hold values of the function
-//! in force when they were stored, so a mask that changed afterwards would
+//! pawn cache and the transposition table hold values of the function in
+//! force when they were stored, so a mask that changed afterwards would
 //! mix two functions in one search. The pawn cache keeps the unmasked
 //! shelter; the mask applies where the score is used.
 

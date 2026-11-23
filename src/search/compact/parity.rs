@@ -17,10 +17,9 @@
 //! mismatches at zero. A margin or a reduction in 1024ths is checked
 //! through the decision it feeds.
 //!
-//! Every input a rule reads is recorded; the trace of 2026-11-16 lacked
-//! three (`nmp_gate`'s capture refutation, `singular_result`'s searched
-//! move, `q_stand_pat`'s node type), so this test needs the extended twin's
-//! trace of 2026-11-17.
+//! Every input a rule reads is recorded, among them `nmp_gate`'s capture
+//! refutation, `singular_result`'s searched move and `q_stand_pat`'s node
+//! type, so the test needs the extended twin's trace.
 //!
 //! Two outputs are the board's, not a rule's: whether a move passes its SEE
 //! threshold (`see_margin`, `q_see`). Their thresholds are checked.
@@ -55,9 +54,8 @@ use super::rules::{self, SEED_FIELDS, Seeds};
 /// number at least this many, for its zero mismatches to count.
 const MIN_POSITIONS: usize = 200;
 const MIN_RECORDS: usize = 2_000;
-/// The floor for a kind written only when a rare event happens, declared
-/// before the extended trace was captured: a ProbCut cutoff, a null
-/// search, a completed iteration.
+/// The floor for a kind written only when a rare event happens: a ProbCut
+/// cutoff, a null search, a completed iteration.
 const MIN_RARE_RECORDS: usize = 200;
 const RARE: &[&str] = &["null_bound", "probcut_value", "score_held"];
 
