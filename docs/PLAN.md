@@ -405,8 +405,7 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.16.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-23 (maintainer request) from Trinity's bench-against-game speed miss: a fresh-process, fixed-node speed read on positions from gate games, pooled PGO builds; no dependency |
-| D.16.2 | RESEARCH | V | After D.16.1: the bench and game-position reads on two accepted speed changes of different kinds; agreement closes D.16, a disagreement opens D.16.3 |
+| D.16.2 | RESEARCH | V | After D.16.1 (done 2026-11-23, its self pair −0.16% [−0.41%, +0.08%]): the bench and game-position reads on two accepted speed changes of different kinds; agreement closes D.16, a disagreement opens D.16.3 |
 | D.16.3 | READY_FOR_IMPLEMENTATION | R2 | Opened 2026-11-23 by the maintainer on E.0's packet; D.16.3.1's card (done 2026-11-23) leaves one behaviour-neutral item (`I1`), the quiet-scoring history loads prefetched ahead (ceiling 3.5% of samples), built after D.16.2 and priced by the read it chose |
 | E.4.0.1 | RESEARCH | I2 | Added 2026-11-23 (maintainer decision on E.0's packet), E.4.0's first read: Stockfish's classical evaluation inside the kernel through a diagnostic bridge, against the kernel, at equal nodes; under +25 a rebuild is not indicated |
 | E.4.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-23 (maintainer decision on E.0's packet), research only: the donor and the form, decided on E.4.0.1's reads; E.4's units stay after the release |
@@ -4830,7 +4829,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   profile, not a paired delta, and a memory-bound engine's price for a
   change can move with the table size and the position mix. This step
   decides which instrument prices the coming speed work.
-    - **D.16.1 The game-position speed read — `I1`.**
+    - **D.16.1 The game-position speed read — `I1`, DONE 2026-11-23.**
       A frozen position set sampled from recent gate games (Rarog to move,
       spread over the phases, from Colosseum's database), each position
       searched in a fresh process (bench shares its table across
@@ -4839,6 +4838,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the bench read's. Checked by a self pair that reads about 0.00% and
       a manifest of the set's hashes; it goes into PROCESS beside the
       bench read.
+      *Done 2026-11-23* (`415ec4f`): `tools/nps_read.py --positions` on
+      `tools/nps_positions_v1.jsonl`, 200 positions frozen by
+      `tools/nps_positions.py` from RAR-S139's games (moves drawn by
+      thinking time, one a game, no mate or tablebase score; phase mix
+      41/23/25/11% against the games' 38/24/30/8% of time), budget
+      186,000 nodes (the drawn moves' median), Hash 64, a fresh process a
+      position with the clears done before the clock; the manifest holds
+      the source's and the set's hashes and the set is stored byte-exact.
+      Each reading's best moves and counts must match its arm's first,
+      the tree check; it passed two passes of the head and refused 2.7.0.
+      Self pair, two four-build pools of `415ec4f`: **−0.16% [−0.41%,
+      +0.08%]** over two cycles, none disturbed, the trees identical, step
+      1 in 6.6 minutes (2.385M nodes a second on these positions). The
+      read's tests are `tools/diag/test_nps_read.py` (33 pass). It is in
+      PROCESS beside the bench read; the bench read stays the speed read
+      until D.16.2 decides.
     - **D.16.2 The bench read against play — `V`.**
       Both reads on the same pools for at least two accepted speed
       changes of different kinds, rebuilt from their committed trees: a

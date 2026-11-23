@@ -517,6 +517,31 @@ processes can draw them unevenly. A
 plain build embeds its build directory's path, so it reproduces per
 directory only.
 
+**The game-position read (D.16.1, 2026-11-23).** The same read on
+positions from play instead of `bench 13 3`: `--positions
+tools/nps_positions_v1.jsonl`. The set is 200 positions frozen by
+`tools/nps_positions.py` from RAR-S139's games, the latest gate: moves drawn
+in proportion to their thinking time, at most one a game, no mate or
+tablebase score, so its phase mix is the games' (41/23/25/11% by non-pawn
+material against the games' 38/24/30/8% of time). Its manifest records the
+source's hash, the rule, the seed and the budget, the median node count of
+the drawn moves, **186,000**; the set is stored byte-exact (`-text`) and a
+set that does not match its manifest is refused. A reading is one pass, each
+position in a fresh process, one thread, Hash 64 (the gates'): `ucinewgame`
+and `isready` first, so the table and history clears have written their
+pages before the clock starts, a `go depth 1` and a second `ucinewgame` so
+lazy tables are built, then `go nodes 186000` timed from `go` to `bestmove`.
+The rate is the budget's nodes over the summed time; two hundred processes a
+reading take the place of the best of three. Each reading's best moves and
+last reported counts must equal its arm's first reading's, the tree check the
+bench's fingerprint makes, and arms whose trees differ carry the tree
+warning. The pools, host guards, archive, estimator, steps and thresholds are
+the bench read's. A cycle takes under three minutes, step 1 about seven minutes.
+The self pair (two four-build pools of `415ec4f`, engine source as at
+`4ea670f`) read **−0.16%
+[−0.41%, +0.08%]** over 2 cycles. Which read prices which kind of
+change is D.16.2's to decide; until then the bench read stays the speed read.
+
 Speed to Elo at `3+0.03`: roughly 2 Elo per 1% NPS, measured twice on
 behaviour-neutral speed passes, +10.35% NPS for +20.3 ± 7.1 Elo and +18.4%
 (+16.7% inside the games) for +35.5 ± 9.0 (RAR-S98). That is about 145 Elo a
@@ -1070,6 +1095,8 @@ python tools/spsa_config_to_colosseum.py <group> --rule7c --ceiling 6000
 ./tools/nps_build_pool.ps1 -Arch pext -Builds 4 -OutDir analysis/artifacts/<name>/pool -ExpectFingerprint 11171726
 python tools/nps_read.py --base <base pool> --cand <cand pool> --out analysis/artifacts/<name>/read --label "<experiment>"
 python tools/nps_read.py --extend analysis/artifacts/<name>/read
+# The game-position read: the same pools and steps on the frozen set (D.16.1)
+python tools/nps_read.py --base <base pool> --cand <cand pool> --positions tools/nps_positions_v1.jsonl --out analysis/artifacts/<name>/games --label "<experiment>"
 ./tools/audit_spsa_coverage.ps1
 pwsh -NoProfile -File tools/diag/test_colosseum_guards.ps1
 python -m unittest discover -s tools/diag -p "test_colosseum_parity.py"
