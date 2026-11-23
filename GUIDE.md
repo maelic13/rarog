@@ -180,6 +180,7 @@ field, about 3,475 on CCRL's Blitz scale.
 - [ ] **F.5** Incremental and SIMD: same-net parity on every move type, tiers, pooled NPS attribution — **I2**
 - [ ] **F.6** The first nets and the search re-fit: baseline nets judged against one fixed anchor, then the search refitted to the network — **V**
 - [ ] **F.7** Architecture ladder: output buckets, king buckets, relation/threat inputs; one axis at a time — **R3**
+    - [ ] **F.7.1** Two-timescale evaluator: a slow network sets the fast evaluator's later-layer weights; an optional rung beside the ladder — **R3**
 - [ ] **F.8** Data frontier: on-policy refresh, deduplication, hard-position mining — **V**
 - [ ] **F.9** NNUE release, 3.0.0: beat the classical release at STC, LTC and 4T; platform matrix — **M**
 - [ ] **F.10** CCRL top-100 gate — **V**

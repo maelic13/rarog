@@ -5502,6 +5502,50 @@ Stockfish:
   for the search (−27.7). Unmeasured proposals: overlapping material bands,
   shared and private first-layer lanes per expert. Each step as CPU gates,
   proxy trainings each judged by an SPRT, then one full run.
+    - **F.7.1 Two-timescale evaluator: a slow network sets the fast evaluator's later-layer weights; an optional rung beside the ladder — `R3`.** An
+      optional research rung, added 2026-11-23 by maintainer decision: an
+      alternative approach to test, not a replacement for F.7's ladder and
+      not a condition of F.9. State `RESEARCH`; nothing is built until the
+      zero-game screen below passes. *Mechanism.* Output buckets choose one
+      of a few fixed sub-networks from a piece count. Here a deeper network
+      reads the slowly varying part of the position (pawn structure,
+      material, king placement) and outputs the weights or scales of the
+      fast evaluator's later layers, so the depth an evaluator cannot afford
+      at every node is paid once and shared across the tree. Two forms:
+      keyed by a pawn-structure and material key and cached, which keeps the
+      evaluation a function of the position; or computed once at the search
+      root, which allows a far larger slow network but makes the evaluation
+      depend on the root. A third leg, the last layer trained by gradient
+      during the search, generalises `search/correction.rs` and waits on the
+      first two. *Evidence and priors.* A prior-art search on 2026-11-23
+      found close relatives only and no engine or paper doing either form
+      (notes in `analysis/artifacts/two-timescale-eval-2026-11-23/`; Discord,
+      Fishtest's test names and the shogi and xiangqi repositories were not
+      searched, so this is "not found", not "untried"). Relatives: output
+      buckets, Stockfish's dual net (retired in Stockfish 19), Ethereal's
+      pawn-king network, and F.7's own Triumviratus rungs, the material-keyed
+      experts and the cached pawn-king subnetwork. Against: the root's expert
+      fixed for the search read −27.7 there, which is the root form in its
+      crudest shape; a Stockfish developer reports that pawn-king add-ons
+      have always failed in Stockfish; correction history's gain at the top
+      is small. The leaf already sees the whole board, so the slow network
+      adds capacity, not information. *Interactions.* It competes with
+      output buckets and material experts for the same signal and is judged
+      against a net that already has them; the root form changes stored
+      evaluations between moves and so touches every consumer of a table
+      score; a cache miss costs NPS, which F.5's pooled attribution prices.
+      *Invariants.* Integer-exact conformance with the trainer (F.2); the
+      cached form reproduces the uncached value on every position; own data
+      only. *Falsifier, zero games.* Once F.3 and F.4 give a trainer and a
+      corpus, train the F.7 net of the day and the same net with the cached
+      conditioning on identical data and compare held-out loss. Stop rule:
+      if the gain is not clearly larger than the output-bucket rung's own
+      gain on the same split, close `NO_CHANGE` with no engine code written.
+      A pass earns one registered SPRT against the same net without it, by
+      F.7's rule; the root form is considered only after the cached form
+      passes. Loss is not Elo: the screen can refuse, only the gate accepts.
+      The prediction and the screen's threshold are frozen at that
+      registration.
 - **F.8 Data frontier: on-policy refresh, deduplication, hard-position mining — `V`.** On-policy refresh with the strongest net,
   deduplication, hard-position mining; repeat while a cycle accepts.
   Triumviratus inputs (2026-11-03; TD-5, TD-6, TD-14). A refresh adds new
