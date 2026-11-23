@@ -1,7 +1,7 @@
 //! The compact kernel's quiescence search, typed by node like the main
 //! search: a PV node's children are PV nodes.
 
-use crate::board::{Board, CheckInfo, Move};
+use crate::board::{Board, CheckInfo, Color, Move, MoveList, Piece};
 use crate::eval::{INF_SCORE, MATE_SCORE, VALUE_NONE};
 use crate::infra;
 use crate::tt::{Bound, TtProbe, TtStore};
@@ -207,6 +207,9 @@ impl Searcher {
         if in_check && move_count == 0 {
             return -MATE_SCORE + infra::to_i32(ply);
         }
+        if move_count == 0 && self.compact_q_stalemated(board, ply) {
+            best_score = rules::draw_score(self.td.nodes);
+        }
         let noisy_best = !best_move.is_null() && !is_quiet_move(best_move);
         if let Some(bonus) = rules::q_cutoff_reward(self.seeds(), best_score, beta, noisy_best) {
             let piece = board.moving_piece(best_move);
@@ -233,6 +236,38 @@ impl Searcher {
             is_pv: tt_pv,
         });
         best_score
+    }
+}
+
+impl Searcher {
+    /// Whether the side to move, out of check with no noisy move, is
+    /// stalemated where the stand pat would read material: it has only king
+    /// and pawns, the move into the node took a knight or more, and it has no
+    /// legal move. Stockfish's narrow test; the pawn pushes go first, since
+    /// they settle most cases, and the move list only after every filter.
+    fn compact_q_stalemated(&self, board: &Board, ply: usize) -> bool {
+        let us = board.side_to_move();
+        let pawns = board.pieces(us, Piece::Pawn);
+        let pushed = match us {
+            Color::White => pawns.north(),
+            Color::Black => pawns.south(),
+        };
+        if (pushed & !board.occupied()).any() {
+            return false;
+        }
+        let pieces = board.pieces(us, Piece::Knight)
+            | board.pieces(us, Piece::Bishop)
+            | board.pieces(us, Piece::Rook)
+            | board.pieces(us, Piece::Queen);
+        if pieces.any() {
+            return false;
+        }
+        if !matches!(self.td.stack.back(ply, 1).captured, Some(piece) if piece != Piece::Pawn) {
+            return false;
+        }
+        let mut moves = MoveList::new();
+        board.generate_legal_movelist_into(&mut moves);
+        moves.is_empty()
     }
 }
 
@@ -321,6 +356,38 @@ mod tests {
             score <= stand_pat,
             "{score} with the push guarded, from {stand_pat}"
         );
+    }
+
+    /// Quiescence after `uci` is played from `fen`: the move is put on the
+    /// stack as the search puts it, so the child sees what it captured.
+    fn after(fen: &str, uci: &str) -> (Searcher, Board, i32) {
+        let mut searcher = Searcher::default();
+        let mut board = Board::from_fen(fen).expect("a legal FEN");
+        let mv = board.parse_move(uci).expect("a legal move");
+        let piece = board.moving_piece(mv);
+        searcher.compact_push_move(&board, 0, mv, piece, 1);
+        board.make_move(mv);
+        let score =
+            searcher.compact_quiescence::<Pv, _>(&mut board, -INF_SCORE, INF_SCORE, 1, &mut || {
+                SearchEvent::None
+            });
+        (searcher, board, score)
+    }
+
+    /// A side left with king and blocked pawns once its last rook is taken
+    /// is stalemated, and quiescence reads the draw, not the material; with
+    /// a pawn free to push it is not, and quiescence keeps its stand pat.
+    #[test]
+    fn a_stalemate_after_losing_the_last_piece_reads_as_a_draw() {
+        // Rxh2: Black's king on a8 has no square and its a7 pawn is blocked.
+        let (_, board, score) = after("k7/p1K5/P7/8/8/8/7r/7R w - - 0 1", "h1h2");
+        assert!(board.generate_legal_movelist().is_empty() && !board.is_in_check());
+        assert!(score.abs() <= 1, "a stalemate read as {score}");
+
+        // The same with a black pawn free on g7: Black can move, so no draw.
+        let (_, board, score) = after("k7/p1K3p1/P7/8/8/8/7r/7R w - - 0 1", "h1h2");
+        assert!(!board.generate_legal_movelist().is_empty());
+        assert!(score < -100, "the stand pat was {score}");
     }
 
     #[test]
