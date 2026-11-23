@@ -72,6 +72,10 @@ quiescence tree, is rarer and is what the replay reads.
 - **Script:** `analysis/artifacts/d629-2026-11-23/s139_pair.py` (SHA-256
   `5fc84d78…`), frozen with this registration; it reuses RAR-S138's replay
   module at one times the node counts.
+  *Clerical correction, 2026-11-23, before any count was read:* the frozen
+  script failed to start (its worker processes could not import the replay
+  module it loaded by path); the import alone was made a plain one, now
+  SHA-256 `12a0cf37…`. The design is unchanged.
 - **Binaries:** baseline `rarog-s138-arm.exe` (`117673dd…`, `91bc561`, the
   baseline's engine source); candidate `rarog-s139-cand.exe` (`657b3d4a…`,
   `id name Rarog dev-20261123-64993ff7`, `bench 13` 3,694,298 on the copy).
