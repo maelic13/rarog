@@ -152,3 +152,15 @@ The recipe: `games` joined to `tournament_engines` on the tournament id
 `658cb048-46e0-47af-b7c3-cd7b012e6d0a`, both sides of each finished game
 taken as one row (`white_id`, `white_nps`, `white_depth`, `white_move_ms`,
 and the same for Black), averaged by engine id.
+
+## Read again for E.0 (added 2026-11-23)
+
+The table above is each engine's mean of per-game means. Parsed a move at
+a time from the exported PGN (`analysis/artifacts/e0-2026-11-23/m91_phase.py`),
+nodes over the time charged, pooled over every move: the kernel 1.438M,
+Stockfish 16 HCE 2.127M, Stockfish 11 2.179M, Berserk 4.7.0 HCE 2.233M,
+Ethereal 14.40 HCE 2.703M, Rarog 2.7.0 1.439M, Basilisk 1.11.0 1.520M.
+Depth without mate scores: the kernel 15.40, Stockfish 16 HCE 18.08,
+Stockfish 11 15.85, Berserk 18.09. E.0's packet
+(`analysis/e0_remaining_strength_2026-11-23.md`) reads these, not the
+table's figures.

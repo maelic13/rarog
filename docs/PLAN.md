@@ -4941,6 +4941,35 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   and the step that would own it; a lever without a discriminating read is
   listed as unknown, not ranked. The maintainer orders the steps it
   proposes before any is built.
+  **The packet, 2026-11-23** (`analysis/e0_remaining_strength_2026-11-23.md`;
+  zero games, no engine source changed). Read a move at a time, the leads
+  above change: Stockfish 16 HCE searches 1.32 to 1.42 times the kernel's
+  nodes a second (1.32 on game positions alone and with 14 running, so
+  the gap is the node's own cost and not memory traffic), and 2.7 to 2.9
+  plies deeper without mate scores, not ten. A profile of Stockfish 16's
+  classical build beside D.7.8.12's puts two thirds of the 117 ns a node
+  between them in search-side work (the node, move ordering, histories:
+  186 ns against 108), 18 ns in the evaluation and nothing in the board
+  (94 against 89). Stockfish 16's classical evaluation is statically no
+  more accurate than Stockfish 11's on RAR-O10's instrument (−0.0044
+  [−0.0087, +0.0005]); both lead Rarog's by 0.024 to 0.029. Inferred, not
+  measured: the −100 is about −63 of node rate and −99 of evaluation
+  (RAR-O07) against about +62 for the kernel's tree. The levers it ranks,
+  bands frozen before any game: the evaluation in the donor's shape (+25
+  to +70, killed by the donor's evaluation inside the kernel reading
+  under +25), search-side work a node (+6 to +20), endgame knowledge (+3
+  to +10), the fit's data (0 to +12), the evaluation's cost (0 to +8),
+  the interrupted iteration (0 to +5: 4.0% of the kernel's time follows
+  its last report, which reopens D.7.8.5's question), the search leads (0
+  to +8) and the board rebuild (0 to +5, with no strength case left).
+  **RAR-M92 is registered**, the one game read: the kernel on 1.35 times
+  the clock against Stockfish 16 HCE, 1,600 games, the Elo price of the
+  node rate. The equal-node match is not registered: under a node limit
+  the kernel's last report covers 73% of its budget. E.0 stays open until
+  RAR-M92 is read and the maintainer has ordered the steps the packet
+  proposes: RAR-M92; D.16 with D.16.3's profile first; E.4.0 opened by
+  the donor's evaluation inside the kernel; E.4's units; D.12 reduced to
+  D.12.0.
 - **E.1 Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — `V`.** Re-run the B.2.0 architecture review
   on the B.9 and C.11 heads first. Final head against 2.3.2 and against
   the B.9 and C.11 heads at STC, `10+0.1` and 4T; attributed Elo per programme
