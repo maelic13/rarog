@@ -395,7 +395,7 @@ D.15 and E.4.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.6.29 | RESEARCH | R2 | Reviewed 2026-11-23: present on the kernel (its quiescence, like the donor's, has no stalemate test); the form (Stockfish's narrow test, a departure from Reckless) and a case-3 gate wait on the maintainer; a re-read of its exposure needs the kernel's quiescence counters first |
+| D.6.29 | GAME_GATE | R2 | Implemented 2026-11-23 as `64993ff` (Stockfish's narrow form, maintainer decision); RAR-S139 registered, SPRT `[-5,5]` at `3+0.03`, cap 6,000 pairs, prepared and the maintainer's to run |
 | D.6.32 | RESEARCH | R2 | Review after D.7: the depth at which the shortest mate first shows moves with the seeds, KQK's mate in three from depth 8 to 20 at the bake; why, and whether a mate-distance contract is worth a repair |
 | E.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-22 (maintainer decision): after the D.6 review, before D.8.1; zero games first, its ranking may reorder the steps after it |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
@@ -1523,6 +1523,19 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       decision** on the form (Stockfish's narrow test, a departure from
       Reckless) and on whether to re-read the exposure first; the gate stays
       case 3, as above.
+      Implemented 2026-11-23 (maintainer decision: Stockfish's form, gated)
+      as `64993ff`: after quiescence's move loop, out of check with no
+      move searched, a side with no free pawn push, no piece but pawns, a
+      knight or more just taken and no legal move reads the draw. `bench 13`
+      3,694,298 / EBF 2.324; fresh, only bench positions 15, 38, 39 and 40
+      move. `a_stalemate_after_losing_the_last_piece_reads_as_a_draw` pins
+      it both ways and fails with the rule off. Stockfish's own record: the
+      test gains no Elo and passed as a no-regression change, against a
+      tactical blind spot; Reckless, like most engines, has none.
+      **Gate registered as RAR-S139**, before any game: its replay moved
+      the score in 31.1% of searches, so SPRT `[-5,5]` at `3+0.03`, cap
+      6,000 pairs, against `626d06b`; the binaries are built and the dry
+      run passed; the maintainer's command.
     - **D.6.30 A later iteration can overwrite a proven mate — `R2`, NO_CHANGE 2026-11-23 on the new kernel (reopened 2026-11-19; done 2026-11-13 on the classic kernel).**
       (found 2026-11-13, the Basilisk check, `analysis/basilisk_check_2026-11-13.md` §1):
       each completed iteration replaces the root's score and move

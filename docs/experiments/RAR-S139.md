@@ -8,7 +8,7 @@ Indexed under *3. Search and selectivity* in [`docs/EXPERIMENTS.md`](../EXPERIME
 - **Kind:** PLAN D.6.29's repair, AGENTS' repair case 3 as the card froze
   it on 2026-11-13: it moves shared quiescence scores and could matter
   either way (maintainer decision 2026-11-23: Stockfish's form, gated).
-- Disposition: open — registered 2026-11-23, neither part read yet.
+- Disposition: open — part A read 2026-11-23: scores differ in 31.1% of replayed searches, so the gate runs; the gate is prepared and the maintainer's to run.
 
 ## The change
 
@@ -111,4 +111,32 @@ quiescence tree, is rarer and is what the replay reads.
 
 ## Result
 
-Not read yet.
+### Part A (read 2026-11-23, once, after registration)
+
+The 60 games, 4,107 searches per build, the replay exit 0.
+
+- **No illegal move** in either build.
+- **The score differs in 1,276 searches (31.1%) and the move in 599
+  (14.6%), in 57 of the 60 games.** By the frozen rule part B runs.
+- **Calibration.** Predicted 1% to 5% and 0.2% to 1.5%; the read is far
+  above both, a miss in mechanism: each game's searches share one table, so
+  the first search the rule changes changes the table every later search of
+  that game reads. The count measures where play can diverge, not where the
+  rule fires.
+- **Artifacts:** `s139_partA.json` (`98e4ea14…`), `s139_partA.log`
+  (`08a0851b…`), in `analysis/artifacts/d629-2026-11-23/`.
+
+### Part B: binaries, before any game
+
+Built 2026-11-23 by `run_s139.ps1 -Step build`, each from a clean worktree at
+its commit, rustc 1.100.0, `tools/build_test.ps1` (pext, PGO):
+
+| Arm | Commit | `id name` | Bench | SHA-256 |
+| --- | --- | --- | --- | --- |
+| `d629base` | `626d06b` | `dev-20261123-626d06bc` | 3,374,901 | `89df7d5112e35d65042fb22212288f8a1523d5cd9faf67dfd0a0dc3a8149eba6` |
+| `d629cand` | `64993ff` | `dev-20261123-64993ff7` | 3,694,298 | `f7035277175ca2a787098fb6ceb265d0c5a096729e371f9535f874868b5c3468` |
+
+The dry run of `-Step sprt` passed every preflight (host idle 0%, the pinned
+runner, both fingerprints, equal build flavour and compiler, the policy):
+`tools/results/colosseum_sprt_rar-s139-sprt_20261123_080405.dry-run.json`.
+The gate is the maintainer's to run.
