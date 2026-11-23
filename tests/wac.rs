@@ -32,11 +32,11 @@ const TEST_NODES: u64 = 50_000;
 /// A band around the calibrated count, not the count itself, so ordinary
 /// search changes do not flap it: about 8% each way. Below it a tactical
 /// regression has likely landed; above it the band is stale, and both bounds
-/// move to the new count, in the commit that moved it. Calibrated at 201/300
-/// on the compact kernel.
-const CALIBRATED: usize = 201;
-const FLOOR: usize = 185;
-const CEILING: usize = 217;
+/// move to the new count, in the commit that moved it. Calibrated at 218/300
+/// on the compact kernel with quiescence's stalemate rule.
+const CALIBRATED: usize = 218;
+const FLOOR: usize = 201;
+const CEILING: usize = 235;
 
 #[test]
 fn aspiration_terminates_on_sudden_mate_scores() {
