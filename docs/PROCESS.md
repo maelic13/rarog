@@ -180,12 +180,14 @@ presented as mature.
 
 ### The independence boundary
 
-Donors: **Reckless**, always at its latest commit, is the primary reference
-and donor, chiefly for function, implementation and logic: search, threading,
-time management and NNUE. For how the engine behaves Stockfish may be the
-better reference, and where the two differ the difference goes to the
-maintainer before anything is built (maintainer decision 2026-11-06, widening
-2026-09-09's; PLAN rule 1 points here). **Stockfish** is read by area.
+Donors are chosen by licence (maintainer decision 2026-11-23, replacing
+2026-11-06's, which made Reckless the primary donor; PLAN rule 1 points
+here). Rarog stays GPL-3.0-or-later, and nothing enters it whose licence
+would make Rarog distribute another project's code under other terms.
+
+**Stockfish** (GPL-3.0-or-later, Rarog's own licence) is the primary
+reference and donor: search, threading, time management, the network
+runtime and trainer pipeline, and how the engine behaves. It is read by area.
 **Stockfish 19** (tag `sf_19`) is the reference for everything that is not the
 classical evaluation, and the latest development tree, named by its date,
 where a question needs it. **Stockfish 11** is the
@@ -195,7 +197,7 @@ threat fixtures, and the forms fitted from them, follow `9587eeeb` of
 classical evaluation once one is shown to be the best there is.
 
 **Triumviratus** (Francesco Torsello, GPL-3.0; `github.com/Tors3/Triumviratus`
-at `0c18907`, its networks repository at `5f3dc60`) is a third donor, for
+at `0c18907`, its networks repository at `5f3dc60`) is a second donor, for
 mechanisms only (maintainer decision 2026-11-03). Its mechanisms, failure
 modes and measurement methods may cross; its code and its tuned values do not;
 Phase F's own-data rule excludes its data recipe. Its verdicts were measured
@@ -203,6 +205,29 @@ on a Stockfish-19-shaped search with a material-expert network, on one host
 and often by early-stopped SPRTs, so they order Rarog's tests and never accept
 anything. The snapshot, the checks run against Rarog and the placements are
 `analysis/triumviratus_review_2026-11-03.md`.
+
+**Reckless** (AGPL-3.0 since 2026-01-26; MIT until 2025-02-22, unlicensed
+between) is a reference for ideas only, from 2026-11-23. An AGPL engine's
+copyleft reaches further than Rarog's licence (`analysis/coda_read_2026-11-23.md`,
+*What AGPL is*), so its ideas may be read and its expression never crosses:
+
+- No code, transcription, formula, table, data layout, index construction
+  or constant from it, not even as a seed that a fit would move. A Reckless
+  idea that Rarog uses gets constants derived from Rarog's own quantities or
+  fitted from a start that is not the donor's value, with the derivation
+  beside it, and a comment that credits the idea, never a port.
+- No patch of its source and no quotation of its code in this repository;
+  a diagnostic that needs a modified Reckless keeps its patch outside the
+  tree.
+- Its released binaries may be played, timed and profiled as references:
+  running a binary carries no licence duty.
+- What Rarog already holds from it (the compact kernel's shape, the clock,
+  constants at its values, two transcribed places, the oracle patches) is
+  D.11's to inventory and resolve, and is not extended in the meantime.
+- The same holds for any other AGPL engine and for an engine published
+  without a licence, which reserves every right.
+
+From a GPL-compatible donor:
 
 - May cross: architecture, mechanisms, population choices, contracts, failure
   modes and constants. A constant is a seed on the donor's scale: converted
@@ -213,8 +238,8 @@ anything. The snapshot, the checks run against Rarog and the placements are
 - Read the donor, close the file, then design from Rarog's own code and its
   measured evidence. If a change cannot be justified without pointing at the
   donor, it is not understood well enough to ship.
-- `README.md`'s posture stays accurate: an independent engine, with thanks for
-  the inspiration.
+- `README.md`'s posture stays accurate: an independent engine that names what
+  each donor gave (D.11.4).
 - Do not merge the `hybrid` oracle, copy its FFI boundary into Rarog, replace
   native Rust with C++/FFI, or read the oracle as permission for an unmeasured
   rewrite.

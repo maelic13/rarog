@@ -48,7 +48,10 @@ that produced a rule are in the ledger rows it cites or in `docs/HISTORY.md`.
   it belongs to. B.7.1's allocation test checks the first clause.
 - Donor engines teach mechanisms, contracts, dependencies, failure modes and
   methods. What may cross is `docs/PROCESS.md`, *The independence boundary*. Neither
-  similarity nor a copied value is acceptance evidence.
+  similarity nor a copied value is acceptance evidence. Stockfish is the
+  primary donor; Reckless, an AGPL engine, and any other AGPL or unlicensed
+  engine teach ideas only: no code, constant, table or patch of their source
+  enters the tree (maintainer decision 2026-11-23).
 - For nontrivial playing work, check shared signals and feedback: search
   changes move evaluation populations, evaluation changes move pruning,
   ordering evidence may also prune, TT semantics can mask a candidate, and

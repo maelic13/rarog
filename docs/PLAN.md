@@ -106,8 +106,9 @@ gating. The rules below decide order and acceptance in this roadmap.
    what may cross and how the code is written: `docs/PROCESS.md`, *The
    independence boundary*. Similarity to a donor is never an acceptance
    criterion; games are.
-2. **Constants are seeds.** A ported constant sits on the donor's score scale
-   and node population. It is converted through the measured scale ratio (B.0),
+2. **Constants are seeds.** Only a GPL-compatible donor's constants are
+   ported; an AGPL engine's never are (PROCESS, 2026-11-23). A ported constant
+   sits on the donor's score scale and node population. It is converted through the measured scale ratio (B.0),
    seeded, fitted by SPSA over the cluster's live coordinates, and only then
    gated. Search and evaluation coordinates never share a tune.
 3. **Clusters, not features.** The unit of implementation and of strength
@@ -418,7 +419,7 @@ D.15 and E.4.
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
-| D.11.2 | RESEARCH | R2 | After D.11.1: the card and the maintainer's licence decision, AGPL-3.0-or-later or GPL-3.0 by rewriting the Reckless-derived parts, either with Reckless's authors asked |
+| D.11.2 | RESEARCH | R2 | After D.11.1: GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
 | D.11.3 | RESEARCH | I1 | After D.11.2: the decision carried out; registered experiments under the GPL route |
 | D.11.4 | RESEARCH | M | After D.11.3: the disclosure on Coda's model; its notices ship in D.15.1's archives |
 | D.12.0 | RESEARCH | R3 | Added 2026-11-14 (maintainer: Basilisk's findings are hints, not Rarog's best answer); not started: Rarog's own board interactions mapped and its options ranked before any of D.12's leaves runs |
@@ -4130,6 +4131,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     indexing and SIMD kernels modelled on Reckless's.
   - No release carries the compact kernel yet; its source is on public
     `master` since PR #20.
+  Licence route decided 2026-11-23 (D.11.2): GPL-3.0 kept, Stockfish the
+  primary donor, Reckless ideas only.
   The step's four items are carried by D.11.1 to D.11.4 below, item 4
   with D.15.1; the falsifier and stop rule above stand. Refitting donor
   constants stays outside this step under route 1 of D.11.2; under
@@ -4186,6 +4189,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       settles compliance for the kernel, the clock and the patches in one
       change and keeps D.7's design and PROCESS's donor. Route 2 only if
       Rarog's code must stay reusable under plain GPL-3.0.
+      *Decided 2026-11-23 (maintainer):* route 2. Rarog stays GPL-3.0, and
+      the attributions and the process are arranged so that Rarog never
+      distributes Reckless's code with its own. From that day Stockfish is
+      the primary donor and Reckless, like any AGPL or unlicensed engine,
+      teaches ideas only: no constant port and no further AGPL material
+      (PROCESS, *The independence boundary*). What is already in the tree
+      is resolved here later, researched by the maintainer. The
+      recommendation above is not taken. Still open in this card: the
+      README line on how Rarog is developed, the study material in the
+      public repository, and the git history, which keeps the patches in
+      published commits.
     - **D.11.3 The decision carried out — `I1`, or registered experiments under route 2.**
       After D.11.2. Route 1: the licence files, `Cargo.toml`, Reckless's
       copyright notice where its material is, the patches labelled,
@@ -4196,6 +4210,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       donor's are functional optima, not a failure), the patches out of
       the tree or labelled, and the boundary rewritten. Engine and
       documentation changes in separate commits.
+      *Route 2 since 2026-11-23:* the boundary is already rewritten
+      (PROCESS); the patches leave the tree, untracked with
+      `git rm --cached` so the local bytes stay. Under the rule of that
+      day a retune seeded from a Reckless value is still a port, so a
+      refit starts from Rarog's own derivation; whether Coda's convergence
+      argument changes that is this step's question.
     - **D.11.4 The disclosure, on Coda's model — `M`.**
       After D.11.3; item 3 in Coda's form (the read, *How Coda discloses
       its sources*):
@@ -4397,7 +4417,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     - **D.12.2 Board review against Stockfish, Basilisk, Reckless and Triumviratus — `R2`.**
       A packet that reads each component against Stockfish 19's
       (`Position` and `StateInfo`), classical Stockfish's, Basilisk's,
-      Reckless's and Triumviratus's measured ideas; measures Rarog's (its
+      Reckless's (ideas only since 2026-11-23, PROCESS) and
+      Triumviratus's measured ideas; measures Rarog's (its
       share in the profile at `bench 13`, D.12.1's microbenchmark, the
       cost a node at Rarog's own call mix); and decides keep, replace or
       adapt, each with its reason and expected cost. A departures table
@@ -4696,6 +4717,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   *Decided 2026-11-20 (maintainer):* after D.7, as recommended, if
   one thread plays the same; a moved one-thread fingerprint returns
   the step to `RESEARCH` before any game.
+  *Since 2026-11-23* Reckless is a reference for ideas only (PROCESS):
+  sharing the tables is the idea under test, and the design is written
+  from Rarog's own tables, with Stockfish's form, where it has one, the
+  reference.
 - **D.14 The donor's thread vote on the new clock — `R2` screen, then `I1`/`V`.**
   (maintainer request 2026-11-20) D.7.9.1 took Reckless's time manager
   whole except its soft-stop vote, which stayed Rarog's. Rarog's is a
@@ -4735,6 +4760,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     as Coda requires of every reader-publish pattern (x86 hides the bug,
     ARM shows it; `analysis/coda_read_2026-11-23.md`, lead 7), and checked
     on the ARM compatibility host.
+  - *Since 2026-11-23* Reckless is a reference for ideas only (PROCESS):
+    withdrawal is the idea under test, and a built vote keeps Rarog's
+    threshold or derives one from Rarog's own reads, never the donor's 65%.
 
 - **D.15 Release packaging from Basilisk 1.11.0 — `I1`.**
   Added 2026-11-21 (maintainer request) from Basilisk's release work
@@ -4801,7 +4829,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       its kind of change and opens D.16.3.
     - **D.16.3 One more speed pass on the compact kernel — `R2` card, `I1` items, `V` reads.**
       Opened by D.16.2's discrepancy or by the maintainer. A profile on
-      game positions with Reckless as the reference, items in
+      game positions with Stockfish as the reference (Reckless's binary
+      may be profiled beside it; its code is ideas only since 2026-11-23,
+      PROCESS), items in
       D.7.8.12's form: the fingerprint exact at every commit, AGENTS'
       per-node rule, no new `unsafe` site (the floor is 17), each item
       priced by the read D.16.2 chose.
@@ -5313,9 +5343,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
 ## Phase F — NNUE (own data only)
 
 **Rules.** Own data only, generated by Rarog's classical head and later by its
-NNUE heads. Reckless and Stockfish are the primary sources for the runtime,
-the trainer pipeline and the network's design, as for the search
-(maintainer decision 2026-11-23); Triumviratus, Gyatso and Trinity are
+NNUE heads. Stockfish is the primary source for the runtime, the trainer
+pipeline and the network's design, as for the search; Reckless, AGPL-3.0,
+is read for ideas only (maintainer decisions 2026-11-23, the second
+replacing the first's Reckless-and-Stockfish; PROCESS); Triumviratus, Gyatso and Trinity are
 secondary inputs read as research. The architecture ladder is ours. The classical evaluation stays in the tree as the
 datagen baseline and the fallback until F.9 replaces it in releases.
 
@@ -5372,8 +5403,7 @@ request; `analysis/trinity_read_2026-11-23.md`). Trinity holds CCRL 40/15
 3522 at 1.0.0 with a plain search and a 768×8-king-bucket → 1024 → 8-output-bucket
 SCReLU net trained with bullet on Leela-derived labels, so its data results
 do not carry over as they stand. Its measurements are research inputs to
-the leaves named, each to be confirmed here, and weigh below Reckless and
-Stockfish:
+the leaves named, each to be confirmed here, and weigh below Stockfish:
 
 1. run-to-run spread: three runs of one recipe that differed only in the
    seed read 0, −9.7 ± 4.9 and −0.2 ± 5.0 (a sample SD of about 5.5), and
@@ -5405,8 +5435,8 @@ Stockfish:
    GPU-hours on an RTX 3080 (F.3, F.4).
 
 **Licence notes from Coda** (added 2026-11-23;
-`analysis/coda_read_2026-11-23.md`). Reckless is AGPL-3.0, so what may
-cross from it as a primary source follows D.11.2's decision. Coda's one
+`analysis/coda_read_2026-11-23.md`). Reckless is AGPL-3.0 and, since
+2026-11-23, a reference for ideas only (PROCESS). Coda's one
 finding of copied expression was in this phase's area: a threat-feature
 index construction and SIMD kernels modelled on Reckless's. It
 reimplemented both and kept the feature mapping, which its trained net
@@ -5617,8 +5647,9 @@ carries the architecture (F.6).
   - `LazyMargin` has no successor on a network; with the HCE it is
     refitted by PROCESS's margin block (E.4, F.4.1).
 - **F.7 Architecture ladder: output buckets, king buckets, relation/threat inputs; one axis at a time — `R3` with `I2`/`V` sub-steps.** Output buckets,
-  king buckets with mirroring, then relation and threat inputs as in
-  Reckless, one axis at a time; each net gated against the previous.
+  king buckets with mirroring, then relation and threat inputs, one axis
+  at a time (Stockfish's threat inputs the reference; Reckless's are ideas
+  only, never its index construction or layouts, PROCESS 2026-11-23); each net gated against the previous.
   Triumviratus inputs (2026-11-03; TN-1–TN-6, TE-2, TD-6, TD-13, TD-16). The
   rungs it climbed and what each bought: threat inputs over plain
   king-relative inputs (+50 for the engine), a pawn-pair block grafted at zero
@@ -5861,7 +5892,9 @@ labels H1–H45.
   soft-limit constants (`TmNodesBase` to `TmChangesScale`), the budget's
   seven (`time.rs`, `TIME_OVERHEAD_MS` to `CYCLIC_HARD_SCALE`) and the
   fail-high stop's multiple. D.7.11 held them out of the `3+0.03` search
-  fit. The fit opens here, or earlier if D.7.13's `10+0.1` companion
+  fit. *Since 2026-11-23* they are AGPL constants that D.11.3
+  resolves, and a fit seeded from them is still a port (PROCESS), so
+  this fit follows D.11.3's treatment. The fit opens here, or earlier if D.7.13's `10+0.1` companion
   reads below its `3+0.03` reading by more than their combined
   intervals, or a rated control's games show a factor at one end on more
   than 90% of iterations. What its card starts from:
