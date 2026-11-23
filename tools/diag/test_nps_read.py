@@ -354,5 +354,91 @@ class UnequalPoolTests(unittest.TestCase):
         self.assertEqual(est["builds"], [3, 4])
 
 
+FAKE_ENGINE = r"""
+import sys
+log = open(sys.argv[1], "a", encoding="utf-8")
+for line in sys.stdin:
+    line = line.strip()
+    log.write(line + "\n")
+    log.flush()
+    if line == "uci":
+        print("uciok", flush=True)
+    elif line == "isready":
+        print("readyok", flush=True)
+    elif line.startswith("go"):
+        print("info depth 1 nodes 20 time 0", flush=True)
+        if "nodes" in line:
+            print("info depth 7 seldepth 9 score cp 12 nodes 900 nps 1 time 1 pv e2e4", flush=True)
+        print("bestmove e2e4", flush=True)
+    elif line == "quit":
+        break
+"""
+
+
+class GamePositionTests(unittest.TestCase):
+    def frozen_set(self, directory, tamper=False):
+        path = pathlib.Path(directory) / "set.jsonl"
+        data = b'{"fen": "8/8/8/8/8/8/4K3/k7 w - - 0 1"}\n{"fen": "8/8/8/8/8/8/4K3/1k6 w - - 0 1"}\n'
+        path.write_bytes(data)
+        digest = hashlib.sha256(data).hexdigest()
+        (pathlib.Path(directory) / "set.jsonl.manifest.txt").write_text(
+            f"nodes       : 186000\nset_sha256  : {digest}\n", encoding="utf-8")
+        if tamper:
+            path.write_bytes(data + b'{"fen": "8/8/8/8/8/8/4K3/2k5 w - - 0 1"}\n')
+        return path
+
+    def test_a_set_is_read_with_its_manifests_budget_and_refused_when_its_bytes_differ(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workload = nps_read.game_positions(self.frozen_set(tmp))
+            self.assertEqual(workload["nodes"], 186000)
+            self.assertEqual(len(workload["fens"]), 2)
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(SystemExit):
+                nps_read.game_positions(self.frozen_set(tmp, tamper=True))
+
+    def test_the_budget_search_is_timed_after_the_resets_and_a_warm_up_search(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = pathlib.Path(tmp)
+            (tmp / "fake.py").write_text(FAKE_ENGINE, encoding="utf-8")
+            log = tmp / "log.txt"
+            engine = tmp / "fake.cmd"
+            engine.write_text(f'@"{sys.executable}" "{tmp / "fake.py"}" "{log}"\n', encoding="utf-8")
+            row = nps_read.search_position(engine, "8/8/8/8/8/8/4K3/k7 w - - 0 1", 1234, 64, [("Foo", "3")])
+            sent = log.read_text(encoding="utf-8").splitlines()
+        fen = "position fen 8/8/8/8/8/8/4K3/k7 w - - 0 1"
+        self.assertEqual(sent, ["uci", "setoption name Threads value 1", "setoption name Hash value 64",
+                                "setoption name Foo value 3", "ucinewgame", "isready", fen, "go depth 1",
+                                "ucinewgame", "isready", fen, "go nodes 1234", "quit"])
+        # The timed search's own last report, not the warm-up's.
+        self.assertEqual((row["best"], row["last_nodes"], row["depth"]), ("e2e4", 900, 7))
+        self.assertGreater(row["seconds"], 0)
+
+    def test_a_reading_is_the_budget_over_the_summed_time(self):
+        rows = iter([{"seconds": 0.5, "best": "a", "last_nodes": 1, "depth": 9},
+                     {"seconds": 1.5, "best": "b", "last_nodes": 2, "depth": 9}])
+        original = nps_read.search_position
+        nps_read.search_position = lambda *a, **k: next(rows)
+        try:
+            (run,) = nps_read.read_games(pathlib.Path("x.exe"),
+                                         {"fens": ["f1", "f2"], "nodes": 1000, "hash": 64})
+        finally:
+            nps_read.search_position = original
+        self.assertEqual(run["nps"], 1000)  # 2,000 nodes over 2 s
+        self.assertEqual(run["tree"], [["a", 1], ["b", 2]])
+
+    def test_a_reading_on_another_tree_is_refused(self):
+        record = {"arms": {"base": {}, "cand": {}}}
+        nps_read.check_tree(record, "base", [{"tree": [["a", 1], ["b", 2]]}], pathlib.Path("b0"))
+        nps_read.check_tree(record, "base", [{"tree": [["a", 1], ["b", 2]]}], pathlib.Path("b1"))
+        with self.assertRaises(SystemExit):
+            nps_read.check_tree(record, "base", [{"tree": [["a", 1], ["b", 3]]}], pathlib.Path("b2"))
+
+    def test_arms_on_different_game_trees_are_warned_and_equal_ones_are_not(self):
+        record = {"arms": {"base": {"game_tree": [["a", 1]]}, "cand": {"game_tree": [["a", 1]]}}}
+        self.assertIsNone(nps_read.game_tree_warning(record))
+        record["arms"]["cand"]["game_tree"] = [["b", 1]]
+        self.assertIn("different trees on 1 of 1", nps_read.game_tree_warning(record))
+
+
 if __name__ == "__main__":
     unittest.main()

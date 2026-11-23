@@ -44,6 +44,19 @@ changes the search names that arm's fingerprint (`--cand-fingerprint`).
 Arms at different fingerprints search different trees, so their NPS is not a
 speed read (PLAN rule 8: a tree-shape change reads time-to-depth). The read
 still runs, and its report and console carry a warning saying so.
+
+`--positions <set.jsonl>` reads game positions instead of `bench 13 3` (PLAN
+D.16.1): a set frozen from a gate's games by nps_positions.py, refused unless
+its hash matches its manifest. A reading is one pass over the set, each
+position in a fresh process (bench shares its table across positions): one
+thread, `--hash` MB (the gates' 64), `ucinewgame` and `isready` before the
+clock starts, so the table and history clears have written their pages, a
+`go depth 1` and a second `ucinewgame` so lazily built tables are built, then
+`go nodes <budget>` (the manifest's, or `--nodes`) timed from `go` to
+`bestmove`. Its rate is the positions' nodes over their summed time; a pass of
+many processes takes the place of the best of three. Each reading's best moves
+and last reported counts must equal its arm's first reading's, the tree check
+that the bench's fingerprint makes; arms whose trees differ carry the warning.
 """
 from __future__ import annotations
 
@@ -70,6 +83,8 @@ HARNESS = Path(__file__).resolve().parent / "harness_common.ps1"
 MAX_BUSY_PERCENT = 15.0  # colosseum.ps1's default ceiling
 WARMUP_DEPTH = 8
 QUIET_CEILING_PERCENT = 10.0
+GAME_HASH_MB = 64  # the gates' Hash (colosseum.ps1)
+MANIFEST_FIELD = re.compile(r"^(\w+)\s*:\s*(.+?)\s*$", re.M)
 QUIET_SECONDS = 60
 MAX_QUIET_MINUTES = 30
 
@@ -139,6 +154,94 @@ def read(exe: Path, fingerprint: int, options=()) -> list[dict]:
     out = subprocess.run([str(exe)], input=bench_input(options), capture_output=True, text=True,
                          timeout=900).stdout
     return parse_runs(out, str(exe), fingerprint)
+
+
+def game_positions(path: Path) -> dict:
+    """A frozen set and its manifest; refused when the set's bytes are not the
+    manifest's."""
+    manifest = path.with_name(path.name + ".manifest.txt")
+    if not manifest.exists():
+        raise SystemExit(f"{path}: no manifest {manifest.name}")
+    fields = dict(MANIFEST_FIELD.findall(manifest.read_text(encoding="utf-8")))
+    data = path.read_bytes()
+    if hashlib.sha256(data).hexdigest() != fields.get("set_sha256"):
+        raise SystemExit(f"{path}: does not match its manifest's set_sha256")
+    fens = [json.loads(line)["fen"] for line in data.decode("utf-8").splitlines() if line.strip()]
+    if not fens:
+        raise SystemExit(f"{path}: no positions")
+    return {"path": str(path), "sha256": fields["set_sha256"], "nodes": int(fields["nodes"]), "fens": fens}
+
+
+def search_position(exe: Path, fen: str, nodes: int, hash_mb: int, options=()) -> dict:
+    """One position in a fresh process: the time from `go` to `bestmove`, the
+    best move and the last reported count and depth."""
+    proc = subprocess.Popen([str(exe)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=subprocess.DEVNULL, text=True, bufsize=1)
+
+    def send(line: str) -> None:
+        proc.stdin.write(line + "\n")
+        proc.stdin.flush()
+
+    def until(token: str) -> list[str]:
+        lines = []
+        while True:
+            line = proc.stdout.readline()
+            if not line:
+                raise SystemExit(f"{exe}: exited before {token!r}")
+            lines.append(line)
+            if line.startswith(token):
+                return lines
+
+    try:
+        send("uci")
+        until("uciok")
+        for name, value in [("Threads", "1"), ("Hash", str(hash_mb)), *options]:
+            send(f"setoption name {name} value {value}")
+        for go in ("depth 1", f"nodes {nodes}"):
+            send("ucinewgame")
+            send("isready")
+            until("readyok")
+            send(f"position fen {fen}")
+            started = time.perf_counter()
+            send(f"go {go}")
+            lines = until("bestmove")
+            elapsed = time.perf_counter() - started
+        send("quit")
+        proc.wait(timeout=30)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+    last_nodes, last_depth = 0, 0
+    for line in lines:
+        tokens = line.split()
+        if tokens[:1] == ["info"] and "nodes" in tokens:
+            last_nodes = int(tokens[tokens.index("nodes") + 1])
+            if "depth" in tokens:
+                last_depth = int(tokens[tokens.index("depth") + 1])
+    return {"seconds": elapsed, "best": lines[-1].split()[1], "last_nodes": last_nodes, "depth": last_depth}
+
+
+def read_games(exe: Path, workload: dict, options=()) -> list[dict]:
+    """One pass over the set: a reading of one run, its rate the budget's nodes
+    over the summed search time, with the tree it searched."""
+    rows = [search_position(exe, fen, workload["nodes"], workload["hash"], options) for fen in workload["fens"]]
+    seconds = sum(r["seconds"] for r in rows)
+    nodes = workload["nodes"] * len(rows)
+    return [{"nodes": nodes, "ms": round(1000 * seconds, 3), "nps": int(nodes / seconds),
+             "tree": [[r["best"], r["last_nodes"]] for r in rows], "depths": [r["depth"] for r in rows]}]
+
+
+def check_tree(record: dict, arm: str, runs: list[dict], exe: Path) -> None:
+    """A game-position reading must search its arm's tree: the first reading
+    sets it, every later one, any build of the arm, must equal it."""
+    tree = runs[0]["tree"]
+    known = record["arms"][arm].get("game_tree")
+    if known is None:
+        record["arms"][arm]["game_tree"] = tree
+    elif tree != known:
+        moved = sum(1 for a, b in zip(tree, known) if a != b)
+        raise SystemExit(f"{exe}: searched another tree on {moved} of {len(tree)} positions: "
+                         "not the binary you think it is, or the search is not deterministic")
 
 
 def warm_up(exe: Path, options=()) -> dict:
@@ -324,6 +427,16 @@ def decide(est: dict, no_regression: bool) -> str:
     return "accepted" if delta >= 0.5 and low > 0 else "closed NO_CHANGE"
 
 
+def game_tree_warning(record: dict) -> str | None:
+    """The warning a game-position read carries when its arms' trees differ."""
+    base, cand = (record["arms"][arm].get("game_tree") for arm in ("base", "cand"))
+    if base is None or cand is None or base == cand:
+        return None
+    moved = sum(1 for a, b in zip(base, cand) if a != b)
+    return (f"WARNING: the arms search different trees on {moved} of {len(base)} game positions; "
+            "their NPS is not a speed read: read time-to-depth (PLAN rule 8)")
+
+
 def tree_warning(fingerprints: dict) -> str | None:
     """The warning a read carries when its arms search different trees."""
     base, cand = fingerprints.get("base"), fingerprints.get("cand")
@@ -350,9 +463,15 @@ def report(record: dict, no_regression: bool) -> str:
         f"disturbed cycles: {est['disturbed'] or 'none'}",
         f"verdict: {verdict}",
     ]
-    warning = tree_warning({arm: record["arms"][arm].get("fingerprint") for arm in ("base", "cand")})
-    if warning:
-        lines.append(warning)
+    workload = record.get("workload")
+    if workload:
+        lines.insert(1, f"workload: {len(workload['fens'])} game positions ({workload['path']}, "
+                        f"{workload['sha256'][:12]}), go nodes {workload['nodes']}, Hash {workload['hash']}, "
+                        "a fresh process a position")
+    for warning in (tree_warning({arm: record["arms"][arm].get("fingerprint") for arm in ("base", "cand")}),
+                    game_tree_warning(record)):
+        if warning:
+            lines.append(warning)
     return "\n".join(lines)
 
 
@@ -368,8 +487,14 @@ def run_cycles(record: dict, out: Path, builds: dict[str, list[Path]], cycles: i
         cpu = cpu_load()
         order = order_forward if number % 2 == 0 else order_forward[::-1]
         readings = {arm: {} for arm in arms}
+        workload = record.get("workload")
         for arm, i in order:
-            readings[arm][str(i)] = read(builds[arm][i], fingerprints[arm], options.get(arm, ()))
+            if workload:
+                runs = read_games(builds[arm][i], workload, options.get(arm, ()))
+                check_tree(record, arm, runs, builds[arm][i])
+            else:
+                runs = read(builds[arm][i], fingerprints[arm], options.get(arm, ()))
+            readings[arm][str(i)] = runs
         record["cycles"].append({"cycle": number, "cpu_before": cpu, "readings": readings,
                                  "finished": time.strftime("%Y-%m-%dT%H:%M:%S")})
         (out / "raw.json").write_text(json.dumps(record, indent=1), encoding="utf-8")
@@ -396,6 +521,10 @@ def main() -> int:
                         help="setoption sent to every candidate run (tune builds)")
     parser.add_argument("--base-fingerprint", type=int, help="the base arm's bench 13 nodes, if not the pool's")
     parser.add_argument("--cand-fingerprint", type=int, help="the candidate arm's bench 13 nodes, if not the pool's")
+    parser.add_argument("--positions", type=Path,
+                        help="read this frozen game-position set instead of bench 13 3 (nps_positions.py)")
+    parser.add_argument("--nodes", type=int, help="the game-position budget, if not the set manifest's")
+    parser.add_argument("--hash", type=int, default=GAME_HASH_MB, help="Hash for game positions (default 64)")
     args = parser.parse_args()
 
     if args.report:
@@ -415,6 +544,10 @@ def main() -> int:
         for arm in builds:
             if [str(e) for e in builds[arm]] != record["arms"][arm]["builds"]:
                 raise SystemExit(f"{out}: the {arm} pool changed since step 1")
+        if record.get("workload"):
+            current = game_positions(Path(record["workload"]["path"]))
+            if current["sha256"] != record["workload"]["sha256"]:
+                raise SystemExit(f"{out}: the position set changed since step 1")
         check_host(record, args.allow_busy_host)
         cycles = 4
     else:
@@ -433,6 +566,8 @@ def main() -> int:
         warning = tree_warning(fingerprints)
         if warning:
             print(warning, flush=True)
+        if args.nodes is not None and not args.positions:
+            parser.error("--nodes is for a game-position read (--positions)")
         record = {
             "label": args.label, "started": time.strftime("%Y-%m-%dT%H:%M:%S"), "no_regression": args.no_regression,
             "arms": {arm: {"pool": str(path), "builds": [str(e) for e in builds[arm]],
@@ -440,6 +575,11 @@ def main() -> int:
                      for arm, path in (("base", args.base), ("cand", args.cand))},
             "cycles": [],
         }
+        if args.positions:
+            workload = game_positions(args.positions)
+            workload["nodes"] = args.nodes or workload["nodes"]
+            workload["hash"] = args.hash
+            record["workload"] = workload
         check_host(record, args.allow_busy_host)
         record["warmup"] = [warm_up(exe, options[arm]) for arm in builds for exe in builds[arm]]
         cycles = args.cycles

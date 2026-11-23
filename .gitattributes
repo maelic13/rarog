@@ -17,3 +17,5 @@ analysis/triumviratus_snapshot/*.sha256 -text
 # Committed Syzygy tables are binary test fixtures; never convert them.
 tests/fixtures/syzygy/*.rtbw -text -diff
 tests/fixtures/syzygy/*.rtbz -text -diff
+# The game-position NPS sets: their manifests hash these exact bytes.
+tools/nps_positions_v*.jsonl -text
