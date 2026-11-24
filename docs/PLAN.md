@@ -405,7 +405,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.8.5 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.8 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.9 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.10 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
@@ -3851,8 +3850,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      among them) pass. Pooled NPS, four PGO builds an arm, six cycles:
      +0.08% [−0.20%, +0.36%], no regression
      (`analysis/artifacts/d8-2026-11-24/nps-d84`).
-    - **D.8.5 P4: split `board/board.rs` — `I1`.** Split `board/board.rs` (one 2,066-line `impl`) into `fen`, `see`,
+    - **D.8.5 P4: split `board/board.rs` — `I1`, DONE 2026-11-24.** Split `board/board.rs` (one 2,066-line `impl`) into `fen`, `see`,
      `draw`, `checks`, `make`, before F.1 touches make/unmake. NPS-guarded.
+     *Done* (`94c344a`): `board.rs` 2,518 → 846 lines; 60 methods moved
+     to `board/board/{fen,see,draw,checks,make}.rs` (445, 196, 242, 371
+     and 408 lines), each byte for byte as before apart from the
+     visibility word that keeps its reach, which a checker against `HEAD`
+     confirmed with every other line of `board.rs` kept in order. The
+     types, constants and free functions stay in `board.rs`. Fingerprint
+     3,694,298 on both slider backends; fmt, clippy in every feature set,
+     debug 553 and release 555 tests pass. Pooled NPS, four PGO builds an
+     arm: −0.04% [−0.27%, +0.20%], no regression at step 1
+     (`analysis/artifacts/d8-2026-11-24/nps-d85`).
     - **D.8.6 P5: delete `trace_decision!` — `I1`, NO_CHANGE 2026-11-24.** Delete `trace_decision!` (about 190 lines; no tool, document or
      analysis consumes it); retire condition: no open leaf registers a
      decision-trace read. Neutral.

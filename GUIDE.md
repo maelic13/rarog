@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.8.5** (`I1`): P4: split `board/board.rs`.
+**Now: D.8.8** (`I1`): P7: visibility follows use, second pass.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -113,7 +113,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.8.2** P1: in-file tests into child files — DONE 2026-11-24
     - [x] **D.8.3** P2: one `score` module — DONE 2026-11-24
     - [x] **D.8.4** P3: geometry into one board module — DONE 2026-11-24
-    - [ ] **D.8.5** P4: split `board/board.rs` — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.8.5** P4: split `board/board.rs` — DONE 2026-11-24
     - [x] **D.8.6** P5: delete `trace_decision!` — NO_CHANGE 2026-11-24
     - [x] **D.8.7** P6: the `diag` blocks into probe functions — NO_CHANGE 2026-11-24
     - [ ] **D.8.8** P7: visibility follows use, second pass — **READY_FOR_IMPLEMENTATION / I1**
