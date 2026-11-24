@@ -1,0 +1,33 @@
+# Rarog's search on a donor's classical evaluation (E.4.0.1): a diagnostic
+# instrument, never shipped (../README.md). One donor a build, its DLL
+# beside the executable:
+#   cargo build --release --manifest-path tools/donor-eval/bridge/Cargo.toml --features sf11
+[package]
+name = "rarog-donor-eval"
+authors = ["Miloslav Macurek"]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.100"
+publish = false
+
+[[bin]]
+name = "rarog-donor"
+path = "src/main.rs"
+
+[features]
+sf11 = []
+sf16 = []
+# The kernel's rate probes, for diagnosis only (never in a read's binary).
+probes = ["rarog/probes"]
+
+[dependencies]
+rarog = { path = "../../..", features = ["donor-eval"] }
+
+# The engine's own release profile, so the search compiles as it does there.
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+
+[workspace]

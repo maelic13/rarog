@@ -1,15 +1,20 @@
 """Price the HCE bridge inside an oracle: time per node of the same fixed-depth
 bench at two bridge repeat counts (RAROG_HCE_BRIDGE_REPEAT 1 and 3). Usage:
-  python -I bridge_price.py <engine.exe> <out.json> <cycles> -- <bench command words...>
-The command is sent on stdin, then quit. Every run must report the same node
+  python -I bridge_price.py <engine.exe> <out.json> <cycles> [--argv] -- <bench command words...>
+The command is sent on stdin, then quit; with --argv it is the engine's
+arguments instead, for an engine whose `quit` aborts a bench read from stdin
+(Rarog's driver, so tools/donor-eval's bridge). Every run must report the same node
 count, or the tree changed and the read is void. Understands Stockfish's
 `Total time (ms)` / `Nodes searched` summary and Reckless's pretty total line
 (`<nodes> <seconds>s <nps> N/s`)."""
 import json, os, re, subprocess, sys, time
 
 exe, out, cycles = sys.argv[1], sys.argv[2], int(sys.argv[3])
-assert sys.argv[4] == "--"
-command = " ".join(sys.argv[5:])
+argv_mode = sys.argv[4] == "--argv"
+rest = sys.argv[5:] if argv_mode else sys.argv[4:]
+assert rest[0] == "--"
+words = rest[1:]
+command = " ".join(words)
 
 
 def parse(text):
@@ -29,7 +34,8 @@ for cycle in range(cycles):
     for repeat in (1, 3):
         env = dict(os.environ, RAROG_HCE_BRIDGE_REPEAT=str(repeat))
         start = time.perf_counter()
-        proc = subprocess.run([exe], input=f"{command}\nquit\n", capture_output=True, text=True,
+        args, stdin = ([exe, *words], "") if argv_mode else ([exe], f"{command}\nquit\n")
+        proc = subprocess.run(args, input=stdin, capture_output=True, text=True,
                               env=env, timeout=3600, cwd=os.path.dirname(os.path.abspath(exe)))
         wall = time.perf_counter() - start
         nodes, ms = parse(proc.stdout + proc.stderr)
@@ -43,7 +49,7 @@ med = {k: v[len(v) // 2] for k, v in by.items()}
 nodes = rows[0]["nodes"]
 per_node = {k: med[k] * 1e6 / nodes for k in med}
 bridge_ns = (per_node[3] - per_node[1]) / 2
-summary = {"engine": exe, "command": command, "nodes": nodes, "median_ms": med, "ns_per_node": per_node,
+summary = {"engine": exe, "command": command, "argv": argv_mode, "nodes": nodes, "median_ms": med, "ns_per_node": per_node,
            "bridge_ns_per_node": bridge_ns, "bridge_share_at_1": bridge_ns / per_node[1],
            "time_odds": per_node[1] / (per_node[1] - bridge_ns), "rows": rows}
 json.dump(summary, open(out, "w"), indent=1)

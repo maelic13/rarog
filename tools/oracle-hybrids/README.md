@@ -37,6 +37,10 @@ it back:
 
     python -I tools/oracle-hybrids/bridge_price.py <engine.exe> <out.json> 3 -- <bench command>
 
+With `--argv` before `--` the bench is the engine's arguments rather than
+stdin, for Rarog's driver, whose `quit` aborts a bench read from stdin
+(`tools/donor-eval`'s bridge).
+
 ## Building
 
 Reckless: clone `0756957`, copy its `networks/` file, `git apply` the patch,

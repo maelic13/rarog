@@ -11,6 +11,11 @@ analysis/arm_patches/*.patch -text -whitespace
 # Oracle hybrid recipes apply to donor trees with their own endings.
 tools/oracle-hybrids/*.patch -text -whitespace
 
+# The donor-eval bridge's patches apply to the Stockfish tags' own LF bytes,
+# and its build script runs in Bash, which a CR breaks.
+tools/donor-eval/*.patch -text -whitespace
+tools/donor-eval/*.sh text eol=lf
+
 # Donor snapshot manifests: `sha256sum -c` reads them only with LF endings.
 analysis/triumviratus_snapshot/*.sha256 -text
 

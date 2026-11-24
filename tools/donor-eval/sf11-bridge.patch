@@ -1,0 +1,179 @@
+diff --git a/src/position.cpp b/src/position.cpp
+index 53d9b64..3a42170 100644
+--- a/src/position.cpp
++++ b/src/position.cpp
+@@ -289,6 +289,60 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
+ }
+ 
+ 
++/// Position::set_placement() is Rarog's bridge (E.4.0.1): set() from a
++/// placement array instead of a FEN string, with the same steps in the
++/// same order, so both give the same position.
++
++Position& Position::set_placement(const uint8_t* placement, Color stm, int castling,
++                                  int ep, int rule50, StateInfo* si, Thread* th) {
++
++  std::memset(this, 0, sizeof(Position));
++  std::memset(si, 0, sizeof(StateInfo));
++  std::fill_n(&pieceList[0][0], sizeof(pieceList) / sizeof(Square), SQ_NONE);
++  st = si;
++
++  for (Square s = SQ_A1; s <= SQ_H8; ++s)
++      if (placement[s])
++          put_piece(Piece(placement[s]), s);
++
++  sideToMove = stm;
++
++  const int flags[4] = { WHITE_OO, WHITE_OOO, BLACK_OO, BLACK_OOO };
++  for (int f : flags)
++  {
++      if (!(castling & f))
++          continue;
++      Color c = (f == WHITE_OO || f == WHITE_OOO) ? WHITE : BLACK;
++      Piece rook = make_piece(c, ROOK);
++      Square rsq;
++      if (f == WHITE_OO || f == BLACK_OO)
++          for (rsq = relative_square(c, SQ_H1); piece_on(rsq) != rook; --rsq) {}
++      else
++          for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook; ++rsq) {}
++      set_castling_right(c, rsq);
++  }
++
++  st->epSquare = SQ_NONE;
++  if (ep >= 0 && ep < 64 && (rank_of(Square(ep)) == RANK_3 || rank_of(Square(ep)) == RANK_6))
++  {
++      st->epSquare = Square(ep);
++      if (   !(attackers_to(st->epSquare) & pieces(sideToMove, PAWN))
++          || !(pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove))))
++          st->epSquare = SQ_NONE;
++  }
++
++  st->rule50 = rule50;
++  gamePly = 0;
++  chess960 = false;
++  thisThread = th;
++  set_state(st);
++
++  assert(pos_is_ok());
++
++  return *this;
++}
++
++
+ /// Position::set_castling_right() is a helper function used to set castling
+ /// rights given the corresponding color and the rook starting square.
+ 
+diff --git a/src/position.h b/src/position.h
+index 6791455..17e3077 100644
+--- a/src/position.h
++++ b/src/position.h
+@@ -80,6 +80,10 @@ public:
+   // FEN string input/output
+   Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
+   Position& set(const std::string& code, Color c, StateInfo* si);
++  // Rarog's bridge (E.4.0.1): the FEN setter's result from a placement,
++  // Stockfish piece codes by square (0 empty), without parsing a string.
++  Position& set_placement(const uint8_t* pieces, Color stm, int castling,
++                          int ep, int rule50, StateInfo* si, Thread* th);
+   const std::string fen() const;
+ 
+   // Position representation
+diff --git a/src/rarog_bridge.cpp b/src/rarog_bridge.cpp
+new file mode 100644
+index 0000000..2acb4a4
+--- /dev/null
++++ b/src/rarog_bridge.cpp
+@@ -0,0 +1,93 @@
++// Rarog's diagnostic bridge (E.4.0.1): this tag's classical evaluation,
++// called from Rarog's search through a C ABI. Never shipped; see Rarog's
++// tools/donor-eval/README.md. Stockfish is GPL-3.0.
++
++#include <cstdint>
++#include <string>
++
++#include "bitboard.h"
++#include "endgame.h"
++#include "evaluate.h"
++#include "position.h"
++#include "thread.h"
++#include "uci.h"
++
++namespace PSQT { void init(); }
++
++namespace {
++
++// Rarog's layout of a position; tools/donor-eval/bridge/src/main.rs mirrors it.
++struct RarogPosition {
++  uint8_t pieces[64]; // Stockfish piece codes by square, 0 empty
++  uint8_t side;       // 0 white, 1 black
++  uint8_t castling;   // WHITE_OO 1, WHITE_OOO 2, BLACK_OO 4, BLACK_OOO 8
++  uint8_t ep;         // the en-passant square, 64 for none
++  uint8_t rule50;
++  int32_t root;       // the root's last score in this evaluation's units
++};
++
++// One Stockfish thread object for each calling thread, made on its first
++// call and never freed: it holds the pawn and material tables the
++// evaluation probes, and its contempt, zero as in the tag's eval command. Its own idle thread waits, unused.
++Thread* tables() {
++  static thread_local Thread* th = nullptr;
++  if (!th)
++  {
++      th = new Thread(0);
++      th->contempt = SCORE_ZERO;
++  }
++  return th;
++}
++
++Value evaluate(const Position& pos) {
++  return Eval::evaluate(pos);
++}
++
++volatile uint64_t sink;
++
++} // namespace
++
++
++extern "C" {
++
++__declspec(dllexport) int32_t rarog_donor_init() {
++  UCI::init(Options);
++  PSQT::init();
++  Bitboards::init();
++  Position::init();
++  Bitbases::init();
++  Endgames::init();
++  return 11;
++}
++
++// The evaluation from the side to move's point of view, in this tag's units.
++__declspec(dllexport) int32_t rarog_donor_eval(const RarogPosition* p) {
++  StateInfo st;
++  Position pos;
++  Thread* th = tables();
++  (void)p->root;
++  pos.set_placement(p->pieces, Color(p->side), p->castling, p->ep < 64 ? int(p->ep) : -1,
++                    p->rule50, &st, th);
++  return evaluate(pos);
++}
++
++// The bridge's work without the evaluation, for its price.
++__declspec(dllexport) void rarog_donor_rebuild(const RarogPosition* p) {
++  StateInfo st;
++  Position pos;
++  pos.set_placement(p->pieces, Color(p->side), p->castling, p->ep < 64 ? int(p->ep) : -1,
++                    p->rule50, &st, tables());
++  sink = st.key;
++}
++
++// The same evaluation through the tag's own FEN setter, for parity.
++__declspec(dllexport) int32_t rarog_donor_eval_fen(const char* fen, int32_t root) {
++  StateInfo st;
++  Position pos;
++  Thread* th = tables();
++  (void)root;
++  pos.set(std::string(fen), false, &st, th);
++  return evaluate(pos);
++}
++
++}
