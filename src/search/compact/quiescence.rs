@@ -2,14 +2,14 @@
 //! search: a PV node's children are PV nodes.
 
 use crate::board::{Board, CheckInfo, Color, Move, MoveList, Piece};
-use crate::eval::{INF_SCORE, MATE_SCORE, VALUE_NONE};
 use crate::infra;
+use crate::score::{INF_SCORE, MATE_SCORE, MAX_PLY, VALUE_NONE};
 use crate::tt::{Bound, TtProbe, TtStore};
 
 use super::super::node::NodeType;
 #[cfg(feature = "pricing")]
 use super::super::pricing::Rule;
-use super::super::{MAX_PLY, SearchEvent, Searcher};
+use super::super::{SearchEvent, Searcher};
 use super::picker::CompactPicker;
 use super::rules;
 use super::{bounded_raw, is_quiet_move, kernel_material};
@@ -112,12 +112,12 @@ impl Searcher {
             self,
             board,
             &threats,
-            !in_check || best_score > -crate::tt::TB_WIN_SCORE,
+            !in_check || best_score > -crate::score::TB_WIN_SCORE,
         ) {
             self.shared.tt.prefetch(board.key_after_hint(mv));
             move_count += 1;
             let piece = board.moving_piece(mv);
-            if best_score > -crate::tt::TB_WIN_SCORE {
+            if best_score > -crate::score::TB_WIN_SCORE {
                 let direct_check = check_info
                     .get_or_insert_with(|| board.check_info())
                     .direct_check_squares(piece)

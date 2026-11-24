@@ -1,7 +1,7 @@
 //! Transposition table: store, probe, replacement, clearing, mate-score conversion and `hashfull`.
 
 use rarog::board::{Board, Move};
-use rarog::eval::MATE_SCORE;
+use rarog::score::MATE_SCORE;
 use rarog::tt::{Bound, TranspositionTable, TtStore, score_from_tt, score_to_tt};
 
 /// A key `hashfull` sees: it samples the first clusters of the table, so the

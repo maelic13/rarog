@@ -287,7 +287,7 @@ pub(crate) fn rank_root_moves(
 /// centipawns growing toward the real win, a draw 0, losses mirrored. A WDL
 /// ranking knows no distance, so its cursed results show 2.
 pub(crate) fn display_score(rank: i32, dtz: bool, use_rule50: bool) -> i32 {
-    use crate::tt::TB_VALUE;
+    use crate::score::TB_VALUE;
     const PAWN: i32 = 100;
     if !dtz {
         return match rank {

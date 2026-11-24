@@ -28,8 +28,9 @@ use std::sync::OnceLock;
 use crate::board::{Move, Piece};
 use crate::tt::{TranspositionTable, TtEntry};
 
+use super::Searcher;
 use super::stack::{PlyArray, StackEntry};
-use super::{MAX_PLY, Searcher};
+use crate::score::MAX_PLY;
 
 /// The scratch table's size: probes are shallow beside the main search.
 const SCRATCH_MB: usize = 16;

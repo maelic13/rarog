@@ -17,8 +17,9 @@
 //! `src/eval/endgame/mod.rs` (`recogniser_tests`) rather than here.
 
 use rarog::board::{Board, Color, Move, Piece};
-use rarog::eval::{Evaluator, MATE_SCORE};
+use rarog::eval::Evaluator;
 use rarog::infra::THREAD_STACK_SIZE;
+use rarog::score::MATE_SCORE;
 use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
 

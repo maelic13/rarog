@@ -1,20 +1,5 @@
-/// The evaluator mirrors `MAX_PLY` to bound its mop-up drive below the mate
-/// band without taking a dependency on the search. This is the assertion
-/// that keeps the mirror honest, and it lives here because this module is
-/// the one that legitimately sees both constants.
-#[test]
-fn mopup_mirror_matches_the_real_ply_horizon() {
-    assert_eq!(
-        crate::eval::MOPUP_ASSUMED_MAX_PLY as usize,
-        super::MAX_PLY,
-        "eval.rs mirrors MAX_PLY to bound the mop-up drive; the two have \
-             drifted, so the compile-time bound in eval.rs is now checking \
-             the wrong number"
-    );
-}
-
 use super::*;
-use crate::eval::VALUE_NONE;
+use crate::score::VALUE_NONE;
 use crate::tt::{Bound, TtStore};
 
 /// A tuning build's compact seeds reach the compact search: a seed set

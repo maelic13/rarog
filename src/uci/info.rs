@@ -1,10 +1,8 @@
 //! The `info` lines a search reports, written from the search's record of
 //! them: the score's UCI form, the bound, and the line built in one place.
 
-use crate::eval::MATE_SCORE;
-use crate::infra;
-use crate::search::{InfoRecord, InfoReport, MAX_PLY, ScoreBound};
-use crate::tt::{TB_VALUE, TB_WIN_SCORE};
+use crate::score::{MATE_BOUND, MATE_SCORE, TB_VALUE, TB_WIN_SCORE};
+use crate::search::{InfoRecord, InfoReport, ScoreBound};
 
 /// What a tablebase win at the root prints, in centipawns; one less per ply
 /// further from the root, so a GUI reads a decided game, not a 300-pawn
@@ -140,9 +138,9 @@ fn nps(nodes: u64, elapsed_ms: u128) -> u128 {
 /// A score's UCI form at a root's material: a mate in moves, a tablebase
 /// result in its display band, an ordinary score through the win-rate model.
 pub(crate) fn format_score(score: i32, material: i32) -> String {
-    if score >= MATE_SCORE - infra::to_i32(MAX_PLY) {
+    if score >= MATE_BOUND {
         format!("mate {}", (MATE_SCORE - score + 1) / 2)
-    } else if score <= -MATE_SCORE + infra::to_i32(MAX_PLY) {
+    } else if score <= -MATE_BOUND {
         format!("mate -{}", (MATE_SCORE + score + 1) / 2)
     } else if score.abs() >= TB_WIN_SCORE {
         let cp = TB_DISPLAY_CP - (TB_VALUE - score.abs());

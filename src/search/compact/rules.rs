@@ -13,8 +13,8 @@
 //! check and the score of an absent table entry; a decisive score is a win
 //! or a loss in the tablebase band or beyond.
 
-use crate::eval::{INF_SCORE, VALUE_NONE};
-use crate::tt::{Bound, TB_WIN_SCORE};
+use crate::score::{INF_SCORE, TB_WIN_SCORE, VALUE_NONE, is_decisive, is_loss, is_win};
+use crate::tt::Bound;
 
 /// Every constant the kernel's rules read, in Rarog's units. A fraction
 /// written `*_t` is in ten-thousandths; a name ending `_16` is in sixteenths
@@ -1171,21 +1171,6 @@ pub(crate) const SEED_FIELDS: &[SeedField] = seed_fields!(
 #[inline(always)]
 const fn is_valid(score: i32) -> bool {
     score != VALUE_NONE
-}
-
-#[inline(always)]
-const fn is_win(score: i32) -> bool {
-    score >= TB_WIN_SCORE
-}
-
-#[inline(always)]
-const fn is_loss(score: i32) -> bool {
-    score <= -TB_WIN_SCORE
-}
-
-#[inline(always)]
-pub(crate) const fn is_decisive(score: i32) -> bool {
-    is_win(score) || is_loss(score)
 }
 
 /// `from` moved the fraction `t` (in ten-thousandths) of the way to `to`.

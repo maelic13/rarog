@@ -6,14 +6,14 @@ use std::sync::{Arc, atomic::Ordering, mpsc};
 use std::thread::{self, JoinHandle};
 
 use crate::board::{Board, Color, Move};
-use crate::eval::INF_SCORE;
 use crate::infra;
+use crate::score::{INF_SCORE, MAX_PLY, TB_WIN_SCORE};
 use crate::search::options::{EngineOptions, SearchLimits};
 use crate::tt::{SharedTt, TranspositionTable};
 
 use super::movepick::ScoredMoveList;
 use super::shared::{RootBound, STOP_QUIT, STOP_SEARCH, SharedContext, TbRootDecision};
-use super::{MAX_PLY, SearchEvent, SearchExit, SearchResult, Searcher, TB_WIN_SCORE};
+use super::{SearchEvent, SearchExit, SearchResult, Searcher};
 
 struct WorkerJob {
     pub root: Board,

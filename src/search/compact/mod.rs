@@ -37,7 +37,7 @@ pub(super) mod window;
 
 use crate::board::{Board, Color, Move, Piece, SeeValues};
 use crate::infra;
-use crate::tt::TB_WIN_SCORE;
+use crate::score::TB_WIN_SCORE;
 
 use super::Searcher;
 use super::history::cont_context;

@@ -1,6 +1,6 @@
 use super::*;
 use crate::board::{Move, Piece};
-use crate::tt::TB_WIN_SCORE;
+use crate::score::TB_WIN_SCORE;
 
 const FEN: &str = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
 

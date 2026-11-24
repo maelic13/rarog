@@ -1,7 +1,8 @@
 //! Evaluator behaviour visible through the public API: perspective, rule-50 damping, passers, drawish endgames, terminal results.
 
 use rarog::board::{Board, Color, GameResult, Piece};
-use rarog::eval::{Evaluator, MATE_SCORE, piece_value};
+use rarog::eval::{Evaluator, piece_value};
+use rarog::score::MATE_SCORE;
 
 #[test]
 fn evaluator_scores_material_from_side_to_move_perspective() {

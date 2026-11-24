@@ -1,8 +1,8 @@
 use super::{
-    LocalCluster, MAX_PLY, SharedCluster, TB_VALUE, TB_WIN_SCORE, TtProbe, cluster_count,
-    cluster_index, key16_of, score_from_tt, score_to_tt, size_of,
+    LocalCluster, SharedCluster, TtProbe, cluster_count, cluster_index, key16_of, score_from_tt,
+    score_to_tt, size_of,
 };
-use crate::eval::MATE_SCORE;
+use crate::score::{MATE_BOUND, MATE_SCORE, MAX_PLY, TB_VALUE, TB_WIN_SCORE};
 
 /// An entry whose every field derives from its key, so a load that pairs
 /// one store's tag with another's payload shows as a mismatch.
@@ -121,13 +121,8 @@ fn four_threads_on_one_shared_cluster_never_return_a_torn_entry() {
 /// The table places the mate band by the search's ply cap, so its copy
 /// must be the search's.
 #[test]
-fn the_tables_ply_cap_is_the_searchs() {
-    assert_eq!(usize::try_from(MAX_PLY).ok(), Some(crate::search::MAX_PLY));
-}
-
-#[test]
 fn decisive_scores_round_trip_through_the_table_at_any_ply() {
-    for ply in [0, 1, MAX_PLY - 1].map(|p| usize::try_from(p).expect("a ply")) {
+    for ply in [0, 1, MAX_PLY - 1] {
         let p = i32::try_from(ply).expect("small ply");
         for score in [
             TB_VALUE - p,
@@ -148,8 +143,8 @@ fn decisive_scores_round_trip_through_the_table_at_any_ply() {
     }
     // Every tablebase value at every ply is decisive and below the mates.
     for ply in 0..MAX_PLY {
-        let win = TB_VALUE - ply;
-        assert!((TB_WIN_SCORE..MATE_SCORE - MAX_PLY).contains(&win), "{win}");
+        let win = TB_VALUE - crate::infra::to_i32(ply);
+        assert!((TB_WIN_SCORE..MATE_BOUND).contains(&win), "{win}");
     }
 }
 
@@ -244,7 +239,7 @@ mod core {
         QUIESCENCE_DEPTH, TranspositionTable, TtEntry, TtProbe, TtStorage, TtStore, entry_quality,
     };
     use crate::board::Move;
-    use crate::eval::VALUE_NONE;
+    use crate::score::VALUE_NONE;
 
     const KEY: u64 = 0xA5A5_1234_5678_9ABC;
 

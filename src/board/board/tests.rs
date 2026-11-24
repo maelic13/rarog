@@ -213,7 +213,7 @@ fn reserve_history_provides_headroom_above_the_game_already_played() {
 fn a_reserved_history_does_not_reallocate_through_a_full_depth_walk() {
     let mut board = Board::starting_position();
     walk(&mut board, 40);
-    let plies = crate::search::MAX_PLY;
+    let plies = crate::score::MAX_PLY;
     board.reserve_history(plies);
     let reserved = board.history.capacity();
 

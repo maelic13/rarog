@@ -44,8 +44,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
-use crate::eval::VALUE_NONE;
-use crate::tt::{Bound, TB_WIN_SCORE};
+use crate::score::{TB_WIN_SCORE, VALUE_NONE};
+use crate::tt::Bound;
 
 use super::super::history::apply_bonus;
 use super::rules::{self, SEED_FIELDS, Seeds};

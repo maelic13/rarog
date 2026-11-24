@@ -5,20 +5,8 @@ use std::sync::{
 };
 
 use crate::board::Move;
-use crate::eval::{MATE_SCORE, VALUE_NONE};
+use crate::score::{MATE_BOUND, MATE_SCORE, TB_WIN_SCORE, VALUE_NONE};
 
-/// The search's ply cap (`search::MAX_PLY`), which places the mate band.
-const MAX_PLY: i32 = 240;
-/// The decisive band's floor: a tablebase win or anything better. Below
-/// the mate band (`MATE_SCORE - MAX_PLY` and up) lies the tablebase band,
-/// `TB_VALUE - ply` for a win found `ply` plies from the root. Window
-/// arithmetic near mate scores also lands in it (a fail-hard quiescence
-/// stores ProbCut's `beta + margin` at a losing beta), so the table keeps
-/// the band's values as stored: moving them by ply changes the search
-/// without tablebases.
-pub(crate) const TB_WIN_SCORE: i32 = MATE_SCORE - 2 * MAX_PLY;
-/// A tablebase win at the root; one below the mate band.
-pub(crate) const TB_VALUE: i32 = MATE_SCORE - MAX_PLY - 1;
 const BOUND_MASK: u8 = 0x03;
 const PV_BIT: u8 = 0x04;
 // The age takes the five high bits: 32 generations. One generation costs an
@@ -611,11 +599,12 @@ fn current_entry(entry: TtEntry, age: u8) -> bool {
 }
 
 /// A mate score is stored as its distance from the node rather than from the
-/// root. Tablebase-band values are stored as they are; see [`TB_WIN_SCORE`].
+/// root. Tablebase-band values are stored as they are; see
+/// [`TB_WIN_SCORE`](crate::score::TB_WIN_SCORE).
 pub fn score_to_tt(score: i32, ply: usize) -> i32 {
-    if score >= MATE_SCORE - MAX_PLY {
+    if score >= MATE_BOUND {
         score + crate::infra::to_i32(ply)
-    } else if score <= -MATE_SCORE + MAX_PLY {
+    } else if score <= -MATE_BOUND {
         score - crate::infra::to_i32(ply)
     } else {
         score
@@ -627,12 +616,12 @@ pub fn score_to_tt(score: i32, ply: usize) -> i32 {
 /// so it reads back as the highest score that is not decisive.
 pub fn score_from_tt(score: i32, ply: usize, halfmove_clock: u8) -> i32 {
     let horizon = 100 - i32::from(halfmove_clock.min(100));
-    if score >= MATE_SCORE - MAX_PLY {
+    if score >= MATE_BOUND {
         if MATE_SCORE - score > horizon {
             return TB_WIN_SCORE - 1;
         }
         score - crate::infra::to_i32(ply)
-    } else if score <= -MATE_SCORE + MAX_PLY {
+    } else if score <= -MATE_BOUND {
         if MATE_SCORE + score > horizon {
             return -TB_WIN_SCORE + 1;
         }

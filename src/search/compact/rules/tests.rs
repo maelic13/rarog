@@ -92,7 +92,7 @@ fn each_spread_term_offsets_a_thread_by_its_own_seed() {
 // and the fitted one, over deterministic random inputs: a later fit that
 // breaks one has changed a rule's shape, not tuned it.
 
-use crate::eval::MATE_SCORE;
+use crate::score::MATE_SCORE;
 
 const TABLES: [(&str, &Seeds); 2] = [("donor", &Seeds::DONOR), ("fitted", &Seeds::FITTED)];
 const CASES: usize = 4_000;

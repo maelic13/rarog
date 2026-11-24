@@ -3,9 +3,11 @@
 //! its two reduction formulas, and the stores and updates at the end.
 
 use crate::board::{Board, CheckInfo, Move, MoveList, Piece};
-use crate::eval::{INF_SCORE, MATE_SCORE, VALUE_NONE};
 use crate::infra;
-use crate::tt::{Bound, TB_WIN_SCORE, TtProbe, TtStore};
+use crate::score::{
+    INF_SCORE, MATE_SCORE, MAX_PLY, TB_WIN_SCORE, VALUE_NONE, is_decisive, is_loss, mate_in,
+};
+use crate::tt::{Bound, TtProbe, TtStore};
 
 use super::super::history::{HistoryTables, SearchedMoves};
 use super::super::movepick::{MovePicker, ScoredMoveList, diversify_root_scores};
@@ -14,15 +16,10 @@ use super::super::node::{NodeType, NonPv, Pv, TbVerdict, tb_verdict};
 use super::super::pricing::{ReSearch, Rule, Verdict};
 #[cfg(test)]
 use super::super::thread::ChildCall;
-use super::super::{MAX_PLY, SearchEvent, Searcher};
+use super::super::{SearchEvent, Searcher};
 use super::picker::{CompactPicker, Stage};
-use super::rules::{self, is_decisive};
+use super::rules;
 use super::{bounded_raw, is_quiet_move, kernel_material};
-
-/// A score at or beyond the tablebase loss band.
-const fn is_loss(score: i32) -> bool {
-    score <= -TB_WIN_SCORE
-}
 
 /// The node's moves: the root's whole scored list, or the staged picker.
 enum Moves {
@@ -142,7 +139,7 @@ impl Searcher {
                 };
             }
             alpha = alpha.max(-MATE_SCORE + infra::to_i32(ply));
-            beta = beta.min(MATE_SCORE - infra::to_i32(ply) - 1);
+            beta = beta.min(mate_in(ply + 1));
             if alpha >= beta {
                 return alpha;
             }

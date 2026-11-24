@@ -2,11 +2,9 @@
 //! factors and the proved-mate stop.
 
 use crate::board::{Color, Move};
-use crate::eval::MATE_SCORE;
-use crate::infra;
+use crate::score::{MATE_BOUND, MATE_SCORE};
 use crate::search::options::{EngineOptions, SearchLimits};
 
-use super::MAX_PLY;
 use super::params::SearchParams;
 
 #[derive(Copy, Clone)]
@@ -265,7 +263,7 @@ impl MateWatch {
         if score <= -MATE_SCORE + 2 {
             return true;
         }
-        if score < MATE_SCORE - infra::to_i32(MAX_PLY) {
+        if score < MATE_BOUND {
             *self = Self::default();
             return false;
         }

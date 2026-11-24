@@ -548,7 +548,7 @@ fn a_mate_ends_the_search_after_three_iterations_with_the_same_move_and_distance
     // A tablebase win is not a proved mate.
     let mut watch = MateWatch::default();
     for _ in 0..5 {
-        assert!(!watch.completed(e2e4, crate::tt::TB_VALUE));
+        assert!(!watch.completed(e2e4, crate::score::TB_VALUE));
     }
 
     // A loss in two plies has nothing left to find; one in three has.

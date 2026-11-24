@@ -3,7 +3,7 @@ use std::sync::atomic::AtomicUsize;
 use std::time::{Duration, Instant};
 
 use super::*;
-use crate::eval::MATE_SCORE;
+use crate::score::MATE_SCORE;
 use crate::search::options::{HashRequest, SearchOptions};
 use crate::search::{InfoReport, InfoSink};
 use crate::uci::info::report_line;

@@ -9,7 +9,7 @@
 #![cfg(not(feature = "texel"))]
 
 use rarog::board::{Board, Color, Move};
-use rarog::eval::MATE_SCORE;
+use rarog::score::MATE_SCORE;
 use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, SearchResult, Searcher};
 use rarog::wac::wac_positions;

@@ -37,13 +37,13 @@ use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
 use crate::board::{Board, Color, GameResult, Move, MoveList, Piece};
-use crate::eval::{INF_SCORE, MATE_SCORE};
 use crate::infra;
+use crate::score::{INF_SCORE, MATE_BOUND, MATE_SCORE, MAX_PLY, TB_VALUE, TB_WIN_SCORE};
 use crate::search::options::{
     BOUND_LINES_FROM_NODES, EngineOptions, HashRequest, MAX_THREADS, SearchLimits, SearchOptions,
 };
 use crate::syzygy::{self, Wdl};
-use crate::tt::{TB_VALUE, TB_WIN_SCORE, TranspositionTable};
+use crate::tt::TranspositionTable;
 
 use params::SearchParams;
 use shared::{RootBound, STOP_NONE, STOP_QUIT, STOP_SEARCH, SearchShared, TbRootDecision};
@@ -54,10 +54,6 @@ use time::{IterationSignals, MateWatch, RuntimeLimits, TbExtension, compute_runt
 
 const MAX_DEPTH: usize = 100;
 
-/// The deepest ply a line reaches, the donor's 240: from iteration 16 the
-/// line bound's eight times the depth passes a 128-ply cap, and long
-/// searches in endings met it.
-pub(crate) const MAX_PLY: usize = 240;
 /// The most a draw's score lies from zero. The kernel scores a draw a unit
 /// either side of it by the node count, so a line that can draw is not
 /// scored level with every other draw.
@@ -1076,7 +1072,7 @@ impl Searcher {
                 // artefact far more often than it refutes it, and playing its
                 // move only delays the mate: keep the proven win's move, score
                 // and line until another iteration proves a win.
-                if best_score >= MATE_SCORE - infra::to_i32(MAX_PLY) {
+                if best_score >= MATE_BOUND {
                     crate::diag_count!(iter_mate_win);
                     let pv_len = self.td.pv_len[0].min(MAX_PLY);
                     proved_win = Some(ProvedWin {
@@ -1240,7 +1236,7 @@ impl Searcher {
 
         #[cfg(feature = "diag")]
         if let Some(proved) = &proved_win
-            && best_score < MATE_SCORE - infra::to_i32(MAX_PLY)
+            && best_score < MATE_BOUND
         {
             crate::diag_count!(search_mate_win_dropped);
             if bestmove != proved.mv {
@@ -1695,7 +1691,7 @@ impl Searcher {
     /// The tables' display score for a root move where it replaces the
     /// search's: at a tablebase root, unless the search proved a mate.
     fn tb_root_score(&self, root_move: Option<&Move>, score: i32) -> Option<i32> {
-        if score.abs() >= MATE_SCORE - infra::to_i32(MAX_PLY) {
+        if score.abs() >= MATE_BOUND {
             return None;
         }
         root_move

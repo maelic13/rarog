@@ -32,7 +32,7 @@ const KS_MAP_THRESHOLD: i32 = 100;
 /// under an eighth of the band the search reads as a decided game.
 const KS_MAP_MG_MAX: i32 = KS_MAP_SCALE_MAX * (KS_INDEX_CAP * KS_INDEX_CAP / 4096) / 100;
 const _: () = assert!(
-    KS_MAP_MG_MAX < 1000 && 2 * KS_MAP_MG_MAX * 8 < crate::tt::TB_WIN_SCORE,
+    KS_MAP_MG_MAX < 1000 && 2 * KS_MAP_MG_MAX * 8 < crate::score::TB_WIN_SCORE,
     "the king-danger map's bound grew; lower KS_INDEX_CAP or KS_MAP_SCALE_MAX"
 );
 

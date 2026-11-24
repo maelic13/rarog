@@ -29,7 +29,6 @@ mod trace;
 use std::cell::RefCell;
 
 use crate::board::{ATTACKS, Bitboard, Board, Color, GameResult, Piece, Square};
-use crate::infra;
 use attacks::AttackMaps;
 use endgame::scale_endgame;
 use material::{IMBALANCE_TABLE_SIZE, ImbalanceEntry, PHASE_W};
@@ -40,19 +39,12 @@ use params::{EvalTables, build_tables};
 use pawns::RELATIVE_RANKS;
 use trace::{tr_eg, tr_mg};
 
-// Read only by the search's test that ties it to `MAX_PLY`.
-#[cfg_attr(not(test), expect(unused_imports))]
-pub(crate) use endgame::MOPUP_ASSUMED_MAX_PLY;
 pub use king::KS_MAP_SCALE_MAX;
 #[cfg(feature = "tune")]
 pub use masks::{FAMILY_MASKS, MaskedFamily};
 pub use params::{EVAL_PARAM_NAMES, EvalParams};
 #[cfg(feature = "texel")]
 pub use trace::{EvalCounts, EvalTrace, linear_delta_scale};
-
-pub const MATE_SCORE: i32 = 32_000;
-pub(crate) const INF_SCORE: i32 = 32_001;
-pub(crate) const VALUE_NONE: i32 = 32_002;
 
 /// A foreign evaluation called in place of this one, from the side to
 /// move's point of view: the board, and the root's last score this search
@@ -80,7 +72,7 @@ const TOTAL_PHASE: i32 = 24;
 /// `texel` fits, which never set the margin, describe a function the engine
 /// does not play.
 const LAZY_MARGIN: i32 = 475;
-const PIECE_VALUES: [i32; 6] = [100, 320, 330, 500, 900, MATE_SCORE];
+const PIECE_VALUES: [i32; 6] = [100, 320, 330, 500, 900, crate::score::MATE_SCORE];
 /// The pieces whose material and squares `evaluate` sums itself. The pawns'
 /// depend on the pawns alone, so the pawn entry holds them with the
 /// structure, except under `texel`, which bypasses that cache and traces
@@ -247,7 +239,7 @@ impl Evaluator {
     }
 
     pub fn evaluate_result(&self, result: GameResult, color: Color, ply: usize) -> i32 {
-        let mate = MATE_SCORE - infra::to_i32(ply);
+        let mate = crate::score::mate_in(ply);
         match (result, color) {
             (GameResult::WhiteCheckmates, Color::White)
             | (GameResult::BlackCheckmates, Color::Black) => mate,

@@ -9,8 +9,6 @@ use super::relative_rank;
 use crate::board::{ATTACKS, Bitboard, Board, Color, Piece, Square};
 use crate::infra;
 
-pub(crate) use mop_up::MOPUP_ASSUMED_MAX_PLY;
-
 /// Endgame scale-factor framework. A scale of `SCALE_NORMAL` leaves the
 /// tapered endgame score untouched; specialised functions return a smaller
 /// scale (down to 0 = dead draw) for known material patterns, on a `/64` basis.
@@ -77,7 +75,7 @@ const KNNKP_HOLD: i32 = 240;
 const KNNKP_REACH: i32 = 0;
 const _: () = assert!(
     6 * KNNKP_CORNER + 6 * KNNKP_KINGS + 5 * KNNKP_ADVANCE + KNNKP_HOLD
-        < crate::tt::TB_WIN_SCORE / 4,
+        < crate::score::TB_WIN_SCORE / 4,
     "the KNN-KP adjustment must stay far below the search's decisive band"
 );
 const _: () = assert!(

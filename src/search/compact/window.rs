@@ -139,7 +139,7 @@ impl CompactWindow {
         self.fails += 1;
         self.window = rules::window_fail_low(self.seeds, self.window, score);
         if self.fails >= max_fails {
-            self.window.alpha = -crate::eval::INF_SCORE;
+            self.window.alpha = -crate::score::INF_SCORE;
         }
     }
 
@@ -148,7 +148,7 @@ impl CompactWindow {
         self.fails += 1;
         self.window = rules::window_fail_high(self.seeds, self.window, score);
         if self.fails >= max_fails {
-            self.window.beta = crate::eval::INF_SCORE;
+            self.window.beta = crate::score::INF_SCORE;
         }
     }
 }
@@ -190,7 +190,7 @@ mod tests {
         guarded.fail_low(0, 1);
         assert_eq!(
             guarded.window.alpha,
-            -crate::eval::INF_SCORE,
+            -crate::score::INF_SCORE,
             "the guard opens it"
         );
     }

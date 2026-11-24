@@ -1,8 +1,6 @@
 use super::*;
-use crate::eval::INF_SCORE;
 use crate::infra;
-use crate::search::MAX_PLY;
-use crate::tt::TB_WIN_SCORE;
+use crate::score::{INF_SCORE, MAX_PLY, TB_WIN_SCORE};
 
 #[test]
 fn laterality_grows_by_the_log_of_the_move_index() {

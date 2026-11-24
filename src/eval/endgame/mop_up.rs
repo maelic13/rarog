@@ -4,9 +4,10 @@
 //! lazy path in place of both.
 
 use super::super::pawns::{KING_DISTANCE, SQUARE_FILE, SQUARE_RANK};
-use super::super::{Evaluator, MATE_SCORE, color_sign};
+use super::super::{Evaluator, color_sign};
 use crate::board::{Bitboard, Board, Color, Piece};
 use crate::infra;
+use crate::score::{MATE_BOUND, TB_WIN_SCORE};
 
 /// Manhattan (taxicab) distance between squares, used only by the mate drive.
 ///
@@ -33,14 +34,6 @@ const MOPUP_KING_MAN: i32 = 10;
 /// supremum rather than a bound with slack.
 const MOPUP_MAX: i32 = MOPUP_DIAGONAL * 7 + MOPUP_KING_CHEB * 7 + MOPUP_KING_MAN * 14;
 
-/// The search's ply horizon, mirrored here on purpose.
-///
-/// `search::MAX_PLY` is module-private, and the evaluator should not depend on
-/// the search to know its own safety bound. `search::tests::
-/// mopup_mirror_matches_the_real_ply_horizon` ties the two together in a module
-/// that legitimately sees both, so the mirror cannot drift silently.
-pub(crate) const MOPUP_ASSUMED_MAX_PLY: i32 = 240;
-
 /// A guidance term must never reach the band the search reads as a forced mate.
 ///
 /// This is a `const` assertion rather than a debug check or a validator inside
@@ -51,14 +44,14 @@ pub(crate) const MOPUP_ASSUMED_MAX_PLY: i32 = 240;
 /// If this fails, the drive can manufacture a mate score out of king geometry
 /// and the search will believe it.
 const _: () = assert!(
-    MOPUP_MAX < MATE_SCORE - MOPUP_ASSUMED_MAX_PLY,
+    MOPUP_MAX < MATE_BOUND,
     "mop-up drive can reach the search's mate band; lower MOPUP_DIAGONAL"
 );
 
 /// The search reads everything from the tablebase-win score up as decisive,
 /// below the mate band, so the drive must stay under that lower line too.
 const _: () = assert!(
-    MOPUP_MAX < crate::tt::TB_WIN_SCORE,
+    MOPUP_MAX < TB_WIN_SCORE,
     "mop-up drive can reach the search's decisive band; lower MOPUP_DIAGONAL"
 );
 
