@@ -11,47 +11,15 @@
 //! This file holds a single test on purpose: the counter is process-wide, so a
 //! second test running in parallel would count into the same window.
 
-use std::alloc::{GlobalAlloc, Layout, System};
-use std::sync::atomic::{AtomicU64, Ordering};
-
-use rarog::bench::BENCH_FENS;
 use rarog::board::Board;
 use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
+use rarog::tools::bench::BENCH_FENS;
 
-static ALLOCATIONS: AtomicU64 = AtomicU64::new(0);
+#[path = "common/counting.rs"]
+mod counting;
 
-struct CountingAllocator;
-
-// SAFETY: every method forwards to `System` with the caller's own arguments,
-// so the `GlobalAlloc` contract is `System`'s; counting touches no memory the
-// allocator hands out.
-unsafe impl GlobalAlloc for CountingAllocator {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
-        // SAFETY: the caller upholds `alloc`'s contract for `layout`.
-        unsafe { System.alloc(layout) }
-    }
-
-    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
-        // SAFETY: the caller upholds `alloc_zeroed`'s contract for `layout`.
-        unsafe { System.alloc_zeroed(layout) }
-    }
-
-    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
-        // SAFETY: `ptr` came from this allocator, which is `System`, with
-        // `layout`; the caller upholds the rest of `realloc`'s contract.
-        unsafe { System.realloc(ptr, layout, new_size) }
-    }
-
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // SAFETY: `ptr` came from this allocator, which is `System`, with
-        // `layout`.
-        unsafe { System.dealloc(ptr, layout) }
-    }
-}
+use counting::{CountingAllocator, allocations};
 
 #[global_allocator]
 static GLOBAL: CountingAllocator = CountingAllocator;
@@ -86,9 +54,9 @@ fn measured_search(searcher: &mut Searcher, options: &SearchOptions, depth: u32)
     options.limits.depth = Some(depth);
     let root = options.board.clone();
     searcher.new_game();
-    let before = ALLOCATIONS.load(Ordering::Relaxed);
+    let before = allocations();
     let result = searcher.search(root, &options, false, || SearchEvent::None);
-    let allocations = ALLOCATIONS.load(Ordering::Relaxed) - before;
+    let allocations = allocations() - before;
     (allocations, result.nodes)
 }
 
@@ -110,9 +78,9 @@ fn allocations_grow_per_iteration_never_per_node() {
             board.halfmove_clock() >= 100 && board.is_in_check(),
             "{fen} must be in check at the boundary to reach the mate test"
         );
-        let before = ALLOCATIONS.load(Ordering::Relaxed);
+        let before = allocations();
         let result = board.is_draw_at(1);
-        let allocations = ALLOCATIONS.load(Ordering::Relaxed) - before;
+        let allocations = allocations() - before;
         assert_eq!(result, drawn, "{fen}");
         assert_eq!(allocations, 0, "the rule-50 draw test allocated at {fen}");
     }

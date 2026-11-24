@@ -4,6 +4,9 @@
 //! against Rarog and kept as regression anchors where Rarog's own tests did
 //! not already cover it.
 
+mod common;
+
+use common::args;
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -12,10 +15,10 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use rarog::bench::BENCH_FENS;
 use rarog::board::{Board, Move};
 use rarog::search::options::{EngineOptions, HashRequest, SearchOptions};
 use rarog::search::{InfoReport, InfoSink, ScoreBound, SearchEvent, SearchResult, Searcher};
+use rarog::tools::bench::BENCH_FENS;
 use rarog::tt::{Bound, TranspositionTable, TtStore};
 use rarog::uci::go;
 use rarog::uci::options::{self, OptionUpdate};
@@ -547,10 +550,6 @@ fn empty_slot_with_key_zero_is_a_miss() {
 // 7. test_uci_protocol.cpp: fen_counter_boundaries, malformed_go,
 //    unknown_setoption, the gaps.
 // ---------------------------------------------------------------------------
-
-fn args(parts: &[&str]) -> Vec<String> {
-    parts.iter().map(|p| (*p).to_string()).collect()
-}
 
 fn fen_args(fen: &str) -> Vec<String> {
     let mut v = vec![String::from("fen")];

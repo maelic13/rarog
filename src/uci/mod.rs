@@ -10,11 +10,11 @@ pub mod position;
 use std::io::{self, BufRead};
 use std::sync::{Arc, mpsc};
 
-use crate::bench::DEFAULT_BENCH_DEPTH;
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl};
 use crate::infra::{capitalize_first_letter, flush_stdout};
 use crate::search::options::{HashRequest, SearchOptions};
-use crate::wac::DEFAULT_WAC_DEPTH;
+use crate::tools::bench::DEFAULT_BENCH_DEPTH;
+use crate::tools::wac::DEFAULT_WAC_DEPTH;
 use go::GoRequest;
 use options::OptionUpdate;
 

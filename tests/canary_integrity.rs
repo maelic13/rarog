@@ -11,9 +11,9 @@
 //! naming the source and the FEN, instead of surfacing as a confusing
 //! incidental panic in whichever test happens to touch it first.
 
-use rarog::bench::BENCH_FENS;
 use rarog::board::Board;
-use rarog::wac::wac_positions;
+use rarog::tools::bench::BENCH_FENS;
+use rarog::tools::wac::wac_positions;
 
 const ENDGAMES_EPD: &str = include_str!("endgames.epd");
 
@@ -39,7 +39,7 @@ fn every_packaged_position_is_legal() {
     };
 
     for fen in BENCH_FENS {
-        check("bench (src/bench.rs)", fen);
+        check("bench (src/tools/bench.rs)", fen);
     }
     for pos in wac_positions() {
         check(&format!("WAC {}", pos.id), &pos.fen);

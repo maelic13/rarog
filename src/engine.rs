@@ -2,13 +2,13 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use crate::bench::BENCH_FENS;
 use crate::board::Board;
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl, SearchControl};
 use crate::infra::flush_stdout;
 use crate::search::options::SearchOptions;
 use crate::search::{InfoReport, InfoSink, SearchEvent, SearchExit, SearchResult, Searcher};
-use crate::wac::{move_matches_any, wac_positions};
+use crate::tools::bench::BENCH_FENS;
+use crate::tools::wac::{move_matches_any, wac_positions};
 
 pub struct Engine {
     commands: EngineCommandQueue,

@@ -82,7 +82,7 @@ fn every_legal_move_is_quiet_or_noisy_by_what_it_does() {
         "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",
     ];
     let (mut castles, mut en_passants, mut promotions, mut under_promotions) = (0, 0, 0, 0);
-    for fen in crate::bench::BENCH_FENS.iter().chain(extra.iter()) {
+    for fen in crate::tools::bench::BENCH_FENS.iter().chain(extra.iter()) {
         let board = Board::from_fen(fen).expect("valid FEN");
         for mv in board.generate_legal_moves() {
             let (from, to) = (mv.from_sq().index(), mv.to_sq().index());

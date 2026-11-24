@@ -12,7 +12,7 @@ use rarog::board::{Board, Color, Move};
 use rarog::score::MATE_SCORE;
 use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, SearchResult, Searcher};
-use rarog::wac::wac_positions;
+use rarog::tools::wac::wac_positions;
 
 fn board(fen: &str) -> Board {
     Board::from_fen(fen).unwrap_or_else(|err| panic!("{fen}: {err}"))

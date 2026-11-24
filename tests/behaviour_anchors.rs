@@ -9,7 +9,6 @@
 
 use std::sync::{Mutex, MutexGuard};
 
-use rarog::bench::BENCH_FENS;
 use rarog::board::{Board, CastlingRights, Color, Move, Piece, Square, UciMove};
 use rarog::eval::Evaluator;
 use rarog::score::MATE_SCORE;
@@ -17,7 +16,8 @@ use rarog::search::DRAW_SPREAD;
 use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, SearchResult, Searcher};
 use rarog::syzygy::{self, Wdl};
-use rarog::wac::wac_positions;
+use rarog::tools::bench::BENCH_FENS;
+use rarog::tools::wac::wac_positions;
 
 const ENDGAMES_EPD: &str = include_str!("endgames.epd");
 

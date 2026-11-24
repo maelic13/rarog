@@ -1,16 +1,15 @@
 //! Search behaviour through the public API: root edge cases, `searchmoves`,
 //! node limits, quit and ponderhit, disabled tablebases.
 
+mod common;
+
+use common::args;
 use rarog::board::{Board, Move};
 use rarog::search::DRAW_SPREAD;
 use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, SearchExit, Searcher};
 use rarog::syzygy;
 use rarog::uci::go;
-
-fn args(parts: &[&str]) -> Vec<String> {
-    parts.iter().map(|part| (*part).to_string()).collect()
-}
 
 #[test]
 fn syzygy_disabled_path_leaves_tablebase_probes_unavailable() {

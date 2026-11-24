@@ -24,7 +24,7 @@
 use rarog::board::Board;
 use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
-use rarog::wac::{move_matches_any, wac_positions};
+use rarog::tools::wac::{move_matches_any, wac_positions};
 
 /// Nodes a position: a budget, not a depth, so the count reads tactics per
 /// unit of work, which a change of per-ply effort does not move by itself.

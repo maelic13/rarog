@@ -1,15 +1,14 @@
 //! The protocol's parsers: `position`, `go` and `setoption`, and the option
 //! list `uci` advertises.
 
+mod common;
+
+use common::args;
 use rarog::board::{Board, Color, Piece, Square};
 use rarog::search::options::{EngineOptions, SearchOptions};
 use rarog::uci::go::{self, GoRequest};
 use rarog::uci::options::{self, OptionUpdate};
 use rarog::uci::position;
-
-fn args(parts: &[&str]) -> Vec<String> {
-    parts.iter().map(|part| (*part).to_string()).collect()
-}
 
 fn piece_at(board: &Board, square: Square) -> Option<(Color, Piece)> {
     board.piece_at(square)

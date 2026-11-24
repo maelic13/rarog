@@ -4,54 +4,20 @@
 //! regresses to heap allocation, this test fails instead of letting a timing
 //! benchmark mistake allocator throughput for board throughput.
 
-use std::alloc::{GlobalAlloc, Layout, System};
 use std::hint::black_box;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use rarog::board::{Board, MoveList};
 
-struct CountingAllocator;
-
-static ACTIVE: AtomicBool = AtomicBool::new(false);
-static ALLOCATIONS: AtomicUsize = AtomicUsize::new(0);
+#[path = "common/counting.rs"]
+mod counting;
 
 #[global_allocator]
-static ALLOCATOR: CountingAllocator = CountingAllocator;
+static ALLOCATOR: counting::CountingAllocator = counting::CountingAllocator;
 
-// SAFETY: this implementation delegates allocation semantics to `System` and
-// only performs lock-free accounting outside the system allocator call.
-unsafe impl GlobalAlloc for CountingAllocator {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        if ACTIVE.load(Ordering::Relaxed) {
-            ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
-        }
-        // SAFETY: `layout` is supplied by Rust's allocator ABI and is passed
-        // unchanged to the system allocator.
-        unsafe { System.alloc(layout) }
-    }
-
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // SAFETY: `ptr` and `layout` were supplied by Rust's allocator ABI and
-        // are passed unchanged to the system allocator.
-        unsafe { System.dealloc(ptr, layout) }
-    }
-
-    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, size: usize) -> *mut u8 {
-        if ACTIVE.load(Ordering::Relaxed) {
-            ALLOCATIONS.fetch_add(1, Ordering::Relaxed);
-        }
-        // SAFETY: `ptr`, `layout`, and `size` are supplied by Rust's allocator
-        // ABI and are passed unchanged to the system allocator.
-        unsafe { System.realloc(ptr, layout, size) }
-    }
-}
-
-fn allocations_during(work: impl FnOnce()) -> usize {
-    ALLOCATIONS.store(0, Ordering::SeqCst);
-    ACTIVE.store(true, Ordering::SeqCst);
+fn allocations_during(work: impl FnOnce()) -> u64 {
+    let before = counting::allocations();
     work();
-    ACTIVE.store(false, Ordering::SeqCst);
-    ALLOCATIONS.load(Ordering::SeqCst)
+    counting::allocations() - before
 }
 
 fn corpus() -> Vec<Board> {

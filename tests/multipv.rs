@@ -282,7 +282,7 @@ fn lines_are_distinct_exact_and_in_rarogs_units() {
 /// bench position 11 (35.5 million nodes at depth 13 with one line).
 #[test]
 fn two_lines_at_depth_13_do_not_run_away() {
-    let fen = rarog::bench::BENCH_FENS[10];
+    let fen = rarog::tools::bench::BENCH_FENS[10];
     let mut searcher = Searcher::default();
     let board = Board::from_fen(fen).expect("valid FEN");
     let mut options = SearchOptions {

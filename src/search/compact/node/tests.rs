@@ -18,7 +18,7 @@ fn a_root_window_fails_on_the_side_of_the_value_and_the_root_stores_its_result()
     const DEPTH: i32 = 7;
     const FAR: i32 = 400;
     let mut checked = 0;
-    for fen in crate::bench::BENCH_FENS.iter().step_by(3) {
+    for fen in crate::tools::bench::BENCH_FENS.iter().step_by(3) {
         let (searcher, board, exact) = root_search(fen, DEPTH, -INF_SCORE, INF_SCORE);
         assert!(exact.abs() < INF_SCORE, "{fen}");
         let entry = searcher
@@ -214,7 +214,7 @@ fn each_recursive_call_types_its_child_by_its_rule() {
     // A bench position whose null move is verified by depth 12, beside
     // every fourth bench position at depth 10.
     let verified = ("1Q4R1/5k2/4rpp1/3K4/8/7p/8/8 b - - 2 9", 12);
-    let searches = crate::bench::BENCH_FENS
+    let searches = crate::tools::bench::BENCH_FENS
         .iter()
         .step_by(4)
         .map(|&fen| (fen, 10))
@@ -245,7 +245,7 @@ fn each_recursive_call_types_its_child_by_its_rule() {
 
 #[test]
 fn the_compact_kernel_searches_the_bench_positions_to_a_legal_move() {
-    for fen in crate::bench::BENCH_FENS.iter().step_by(5) {
+    for fen in crate::tools::bench::BENCH_FENS.iter().step_by(5) {
         let (searcher, result) = compact_search(fen, 6);
         let board = Board::from_fen(fen).expect("a legal FEN");
         assert!(
