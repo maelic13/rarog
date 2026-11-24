@@ -405,10 +405,10 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.8.9 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
+| D.8.9 | READY_FOR_IMPLEMENTATION | I1 | Prepared 2026-11-24 as a patch (`analysis/artifacts/d8-2026-11-24/d89_masks.patch`, five files, 333 lines out, `tune` builds only, every consumer and the `tune` and `texel` lib tests clean): waiting for the maintainer to confirm no open read sets `KingDangerMask` or `KingShelterMask` |
 | D.8.14 | RESEARCH | R2 | `R2` first on how aspiration and MultiPV share the driver |
 | D.8.15 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.16 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
+| D.8.16 | READY_FOR_IMPLEMENTATION | I1 | Waiting for the maintainer (2026-11-24): `NO_CHANGE` proposed, because E.4.4 rebuilds the evaluation whole in `sf_11`'s form and would write it in this shape |
 | D.8.18 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.19 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.20 | READY_FOR_IMPLEMENTATION | I1 | Its census has no dependency |
@@ -3775,6 +3775,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   D.7.7 deleted the classic kernel (2026-11-19), so D.8.1's census is
   taken on the tree that remains and every item is read against that
   census before it starts; the counts above are the 2026-11-01 tree's.
+  *Progress 2026-11-24* (one branch, `d8`, from PR #22's `9195663`, a
+  commit or two an item): done D.8.1 to D.8.5, D.8.8, D.8.12; closed
+  `NO_CHANGE` D.8.6, D.8.7, D.8.10, D.8.11; waiting for the maintainer
+  D.8.9 and D.8.16; open D.8.14, D.8.15, D.8.18 to D.8.21. `src/`'s two
+  largest files went from 3,802 and 3,701 lines to 2,546 and 849.
     - **D.8.1 P0: the census as a tool — `I1`, DONE 2026-11-24.** Commit the census as `tools/diag/arch_census.py` with a test
      (masked-source parser, `use` edge graph, public census, shape table,
      instrumentation attribution, duplicate finder); it reproduces the
