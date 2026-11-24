@@ -126,7 +126,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.8.15** P14: bench and WAC under one suite runner — DONE 2026-11-24
     - [x] **D.8.16** P15: the evaluation's shape — NO_CHANGE 2026-11-24
     - [x] **D.8.18** P17: lints — DONE 2026-11-24
-    - [ ] **D.8.19** P18: the node frame — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.8.19** P18: the node frame — NO_CHANGE 2026-11-24
     - [x] **D.8.20** P19: evaluation terms computed for a constant — NO_CHANGE 2026-11-24
     - [ ] **D.8.21** P20: the kernel's seeds no search reaches — **RESEARCH / V**
 - [ ] **D.9** Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — **RESEARCH / R2**

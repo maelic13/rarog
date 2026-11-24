@@ -406,7 +406,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.8.14 | RESEARCH | R2 | `R2` first on how aspiration and MultiPV share the driver |
-| D.8.19 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.21 | RESEARCH | V | Added 2026-11-20 from D.7.11, open since D.7.14's adoption (2026-11-21); a count on replayed gate games of how often each of eight seeds' terms binds, a seed deleted only if its term never does |
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
@@ -3994,7 +3993,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       Fingerprint 3,694,298 on both slider backends; every consumer,
       clippy in every feature set and the workspace, debug 552, release
       554, `texel` lib 302 and `tune` lib 300 tests pass.
-    - **D.8.19 P18: the node frame — `I1`.** The node frame (RUST-3, NODE-9): every `negamax` and
+    - **D.8.19 P18: the node frame — `I1`, NO_CHANGE 2026-11-24.** The node frame (RUST-3, NODE-9): every `negamax` and
       `quiescence` copy has a 5.0–5.6 KB frame and calls `__chkstk` per node
       (the picker's 4,104-byte list and the ProbCut and quiescence lists); a
       design read first (per-thread ply-indexed list storage borrowed by slice
@@ -4004,6 +4003,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `analysis/triumviratus_review_2026-11-03.md`): moving its list fills
       out of line and its evaluation lists off the stack, so that no hot
       frame passed 4 KB, saved 1.55% of cycles on Windows.
+      *Closed on the design read* (the release build's fat-LTO assembly,
+      `.seh_stackalloc` and `__chkstk` calls a function,
+      `analysis/artifacts/d8-2026-11-24/frames.py`): the frames the item
+      measured were the classic kernel's, deleted at D.7.7. The compact
+      kernel's are under the 4 KB guard page: `compact_negamax` 3,128
+      bytes in both node kinds, `compact_quiescence` 2,520 and 2,552,
+      the picker's `next` 920, and none of them calls `__chkstk`. The 16
+      functions that do run once a search, a thread or a root window
+      (`search_root` 24,840 bytes, `search_root_window` 8,024,
+      `reset_search_state` 131,048), none per node. The kernel passes its
+      node kind as a type (`Pv`, `NonPv`), the argument run the item
+      named.
     - **D.8.20 P19: evaluation terms computed for a constant — `I1`, NO_CHANGE 2026-11-24.** Evaluation terms computed for a constant (added 2026-11-02
       from the Basilisk cross-check, §E): Basilisk stopped computing
       terms whose every weight was 0 for +2.35% NPS (BAS-P25). A census
