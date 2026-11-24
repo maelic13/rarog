@@ -405,7 +405,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.4 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.5 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.6 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
@@ -3821,9 +3820,19 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      its own commit before the move (`65e8368`). fmt, clippy
      (`--all-features --all-targets` and default), debug 555, release
      557, `texel` lib 304 and `tune` lib 305 tests pass.
-    - **D.8.3 P2: one `score` module — `I1`.** One `score` module: the constants, one `MAX_PLY` (defined twice
+    - **D.8.3 P2: one `score` module — `I1`, DONE 2026-11-24.** One `score` module: the constants, one `MAX_PLY` (defined twice
      today), `MATE_BOUND`, `is_decisive`, `mate_in`; the nine inline threshold
      sites; ends the `eval` and `tt` cycle. Neutral.
+     *Done:* `src/score.rs` holds `MATE_SCORE`, `INF_SCORE`, `VALUE_NONE`,
+     the one `MAX_PLY` (the table's and the mop-up's copies are gone),
+     `MATE_BOUND`, `TB_WIN_SCORE`, `TB_VALUE`, `mate_in` and the win,
+     loss and decisive tests (the kernel's two copies are gone); every
+     import names it. Nine inline `MATE_SCORE - MAX_PLY` sites read
+     `MATE_BOUND`. The census has no mutual pair left. The two tests that
+     tied a copy of `MAX_PLY` to the search's went with the copies.
+     Fingerprint 3,694,298 / EBF 2.324 on both slider backends; fmt,
+     clippy in every feature set, debug 553, release 555, `texel` lib 302
+     and `tune` lib 303 tests pass.
     - **D.8.4 P3: geometry into one board module — `I1`.** Geometry into `board::geometry` (the `BETWEEN`/`LINE` tables and
      the six tables in `eval/pawns.rs`); one attacked-square predicate; one
      `ep_capture_is_legal`; one distance builder; a `TbPosition` method per
