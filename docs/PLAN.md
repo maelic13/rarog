@@ -406,7 +406,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.8.14 | RESEARCH | R2 | `R2` first on how aspiration and MultiPV share the driver |
-| D.8.21 | RESEARCH | V | Added 2026-11-20 from D.7.11, open since D.7.14's adoption (2026-11-21); a count on replayed gate games of how often each of eight seeds' terms binds, a seed deleted only if its term never does |
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
@@ -4042,7 +4041,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   themselves (all in use). Kept after review, with their records:
   `cpu_advice`, `crash_report`, `large_pages`, `wac`, the `diag` counters, the
   `tune` options and the `texel` trace in the engine crate.
-    - **D.8.21 P20: the kernel's seeds no search reaches — `V`.** Added
+    - **D.8.21 P20: the kernel's seeds no search reaches — `V`, DONE 2026-11-24.** Added
       2026-11-20 from D.7.11's research (`analysis/d711_fit_2026-11-20.md`,
       *The inactive seeds are not removed now*); opens after D.7.14.
       Eight seeds change no decision on `bench 13` or on `bench 17` at
@@ -4065,6 +4064,25 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       - Not before D.7.14: a removal moves the fit's baseline, and the
         gain is a few lines, not Elo or speed (maintainer decision
         2026-11-19: compactness is secondary).
+      - *Read 2026-11-24* (`e51c839` the probes, `d22b1ad` the deletion;
+        `analysis/artifacts/d8-2026-11-24/d821_screen.json`): every 30th
+        of RAR-S139's 6,046 gate games, 202 games replayed move by move
+        from ply 8 in one process a game, 26,572 searches at 186,000
+        nodes, one thread, Hash 64. A two-game smoke at 20,000 nodes
+        was seen first, for the wire. Binds of asks:
+        `window_stability_cap` 29.9%, `rfp_min_16` 7.27%,
+        `tt_cut_fifty` 4.32%, `nmp_min_16` 0.564%, `pick_check_base`
+        81.1% of in-check noisy tier decisions (the base moves every
+        in-check noisy move's exchange bar, so it changes the good and
+        bad tiers, the one order a uniform offset can change). Those
+        five stay. `fds_singular`, `fds_singular_offset` and
+        `fds_singular_cap` were never asked: the full-depth search reads
+        them only with a singular score, and it runs only where no
+        reduction does, below any singular search, as the parity test
+        had recorded. They are deleted with their term; the fingerprint
+        holds at 3,694,298 on both slider backends and the replay
+        reproduces every remaining count exactly. The tunable seeds go
+        from 254 to 251.
 - **D.9 Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — `R2`.** Root and interior probing depth and limits,
   WDL/DTZ use in conversion, interaction with the C.5 recognisers. Endgame-start
   cohort and conversion instrument decide.

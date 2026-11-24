@@ -128,7 +128,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.8.18** P17: lints — DONE 2026-11-24
     - [x] **D.8.19** P18: the node frame — NO_CHANGE 2026-11-24
     - [x] **D.8.20** P19: evaluation terms computed for a constant — NO_CHANGE 2026-11-24
-    - [ ] **D.8.21** P20: the kernel's seeds no search reaches — **RESEARCH / V**
+    - [x] **D.8.21** P20: the kernel's seeds no search reaches — DONE 2026-11-24
 - [ ] **D.9** Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — **RESEARCH / R2**
 - [ ] **D.10** Large pages on Linux: transparent huge pages for the big tables — **READY_FOR_IMPLEMENTATION / I1**
 - [ ] **D.11** Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — **R2**
