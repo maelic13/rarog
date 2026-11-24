@@ -5,8 +5,6 @@
 use std::ops::RangeInclusive;
 use std::str::FromStr;
 
-#[cfg(feature = "tune")]
-use crate::eval::{FAMILY_MASKS, MaskedFamily};
 use crate::infra::to_i32;
 use crate::physical_memory;
 use crate::search::options::{EngineOptions, MAX_MULTI_PV, MAX_THREADS};
@@ -311,14 +309,6 @@ pub fn apply(engine: &mut EngineOptions, args: &[String]) -> OptionUpdate {
 fn tune_option_lines() -> Vec<String> {
     let mut lines = SearchParams::uci_option_strings();
     lines.extend(EngineOptions::compact_seed_option_lines());
-    lines.extend(
-        [MaskedFamily::KingDanger, MaskedFamily::KingShelter].map(|family| {
-            format!(
-                "option name {} type check default false",
-                family.option_name()
-            )
-        }),
-    );
     lines
 }
 
@@ -332,11 +322,6 @@ fn tune_option_lines() -> Vec<String> {
 #[cfg(feature = "tune")]
 fn apply_tunable(engine: &mut EngineOptions, name: &str, value: &str) -> OptionUpdate {
     let lower = name.to_lowercase();
-    match lower.as_str() {
-        "kingdangermask" => return set_family_mask(MaskedFamily::KingDanger, value),
-        "kingsheltermask" => return set_family_mask(MaskedFamily::KingShelter, value),
-        _ => {}
-    }
     if engine.search_params.set_uci_option(&lower, value) || engine.set_compact_seed(&lower, value)
     {
         return OptionUpdate::Applied;
@@ -351,30 +336,6 @@ fn apply_tunable(_engine: &mut EngineOptions, name: &str, _value: &str) -> Optio
     OptionUpdate::Unknown {
         name: name.to_string(),
     }
-}
-
-/// `KingDangerMask` or `KingShelterMask`: an attribution mask, which the
-/// first evaluation fixes for the life of the process.
-#[cfg(feature = "tune")]
-fn set_family_mask(family: MaskedFamily, value: &str) -> OptionUpdate {
-    let name = family.option_name();
-    let on = match value {
-        "true" => true,
-        "false" => false,
-        _ => {
-            return OptionUpdate::Rejected {
-                notice: format!("Invalid {name} value."),
-            };
-        }
-    };
-    if FAMILY_MASKS.set(family, on).is_err() {
-        return OptionUpdate::Rejected {
-            notice: format!(
-                "{name} is fixed once a position has been evaluated; restart the engine to change it."
-            ),
-        };
-    }
-    OptionUpdate::Applied
 }
 
 #[cfg(test)]

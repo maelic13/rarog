@@ -310,24 +310,10 @@ impl Evaluator {
         let atk = &ATTACKS;
         let them = !color;
 
-        // A `tune` build can mask shelter and storm, their feedback into the
-        // index with them, or the map's output (attribution reads only).
-        #[cfg(feature = "tune")]
-        let (shelter_on, danger_on) = (!self.masks.king_shelter, !self.masks.king_danger);
-        #[cfg(not(feature = "tune"))]
-        let (shelter_on, danger_on) = (true, true);
-        let (shelter_mg, shelter_eg) = if shelter_on {
-            (shelter.mg, shelter.eg)
-        } else {
-            (0, 0)
-        };
-
-        *mg += sign * shelter_mg;
-        *eg += sign * shelter_eg;
+        *mg += sign * shelter.mg;
+        *eg += sign * shelter.eg;
         #[cfg(feature = "texel")]
-        if shelter_on {
-            self.trace_shelter(&shelter.files, sign);
-        }
+        self.trace_shelter(&shelter.files, sign);
 
         if pawnless_flank(board, color) {
             *mg -= sign * self.params.pawnless_flank_mg[0];
@@ -348,14 +334,10 @@ impl Evaluator {
                 no_enemy_queen,
                 knight_defends,
                 mobility_lead,
-                shelter_mg,
+                shelter.mg,
             )
             .min(KS_INDEX_CAP);
-        let (penalty_mg, penalty_eg) = if danger_on {
-            self.king_danger_penalty(index)
-        } else {
-            (0, 0)
-        };
+        let (penalty_mg, penalty_eg) = self.king_danger_penalty(index);
         *mg -= sign * penalty_mg;
         *eg -= sign * penalty_eg;
         // The map is not linear in any weight, so its output is untraced.
@@ -364,7 +346,7 @@ impl Evaluator {
             let mut trace = self.trace.borrow_mut();
             trace.frozen_mg -= sign * penalty_mg;
             trace.frozen_eg -= sign * penalty_eg;
-            trace.king_danger |= danger_on && index > KS_MAP_THRESHOLD;
+            trace.king_danger |= index > KS_MAP_THRESHOLD;
         }
     }
 

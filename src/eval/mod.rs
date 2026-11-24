@@ -15,8 +15,6 @@ mod attacks;
 pub(crate) mod endgame;
 mod initiative;
 mod king;
-#[cfg(feature = "tune")]
-mod masks;
 mod material;
 mod params;
 mod passers;
@@ -40,8 +38,6 @@ use params::{EvalTables, build_tables};
 use trace::{tr_eg, tr_mg};
 
 pub use king::KS_MAP_SCALE_MAX;
-#[cfg(feature = "tune")]
-pub use masks::{FAMILY_MASKS, MaskedFamily};
 pub use params::{EVAL_PARAM_NAMES, EvalParams};
 #[cfg(feature = "texel")]
 pub use trace::{EvalCounts, EvalTrace, linear_delta_scale};
@@ -136,12 +132,6 @@ pub struct Evaluator {
     /// piece activity and borrowed by its consumers. Kept across calls so the
     /// per-square slots are not re-zeroed every evaluation (see `AttackMaps`).
     attacks: AttackMaps,
-    /// Where this evaluator reads the family masks (`FAMILY_MASKS` outside
-    /// tests), and the masks the current evaluation applies.
-    #[cfg(feature = "tune")]
-    mask_source: &'static masks::MaskCell,
-    #[cfg(feature = "tune")]
-    masks: masks::FamilyMasks,
     /// Per-call feature trace, recorded only under `--features texel`. Held in
     /// a `RefCell` so the `&self` eval helpers can append to it; the field does
     /// not exist in production builds.
@@ -172,10 +162,6 @@ impl Default for Evaluator {
             tables,
             lazy_margin: LAZY_MARGIN,
             attacks: AttackMaps::new(),
-            #[cfg(feature = "tune")]
-            mask_source: &masks::FAMILY_MASKS,
-            #[cfg(feature = "tune")]
-            masks: masks::FamilyMasks::default(),
             #[cfg(feature = "texel")]
             trace: RefCell::new(EvalTrace::default()),
             #[cfg(feature = "donor-eval")]
@@ -276,10 +262,6 @@ impl Evaluator {
         // every call.
         #[cfg(feature = "texel")]
         self.trace.borrow_mut().reset();
-        #[cfg(feature = "tune")]
-        {
-            self.masks = self.mask_source.fix();
-        }
 
         let atk = &ATTACKS;
         let mut mg = 0;
