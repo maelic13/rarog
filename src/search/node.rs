@@ -97,7 +97,12 @@ impl Searcher {
         {
             self.td.root_depth = depth;
         }
-        self.compact_root(board, depth, alpha, beta, poll)
+        let score = self.compact_root(board, depth, alpha, beta, poll);
+        // A foreign evaluation's lazy cut reads the root's last score, as
+        // Stockfish's reads its thread's best value after each window.
+        #[cfg(feature = "donor-eval")]
+        self.td.evaluator.set_donor_root(Some(score));
+        score
     }
 
     /// Record the order index of the move about to be searched at `ply` and

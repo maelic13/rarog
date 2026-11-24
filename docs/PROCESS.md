@@ -180,12 +180,14 @@ presented as mature.
 
 ### The independence boundary
 
-Donors: **Reckless**, always at its latest commit, is the primary reference
-and donor, chiefly for function, implementation and logic: search, threading,
-time management and NNUE. For how the engine behaves Stockfish may be the
-better reference, and where the two differ the difference goes to the
-maintainer before anything is built (maintainer decision 2026-11-06, widening
-2026-09-09's; PLAN rule 1 points here). **Stockfish** is read by area.
+Donors are chosen by licence (maintainer decision 2026-11-23, replacing
+2026-11-06's, which made Reckless the primary donor; PLAN rule 1 points
+here). Rarog stays GPL-3.0-or-later, and nothing enters it whose licence
+would make Rarog distribute another project's code under other terms.
+
+**Stockfish** (GPL-3.0-or-later, Rarog's own licence) is the primary
+reference and donor: search, threading, time management, the network
+runtime and trainer pipeline, and how the engine behaves. It is read by area.
 **Stockfish 19** (tag `sf_19`) is the reference for everything that is not the
 classical evaluation, and the latest development tree, named by its date,
 where a question needs it. **Stockfish 11** is the
@@ -195,7 +197,7 @@ threat fixtures, and the forms fitted from them, follow `9587eeeb` of
 classical evaluation once one is shown to be the best there is.
 
 **Triumviratus** (Francesco Torsello, GPL-3.0; `github.com/Tors3/Triumviratus`
-at `0c18907`, its networks repository at `5f3dc60`) is a third donor, for
+at `0c18907`, its networks repository at `5f3dc60`) is a second donor, for
 mechanisms only (maintainer decision 2026-11-03). Its mechanisms, failure
 modes and measurement methods may cross; its code and its tuned values do not;
 Phase F's own-data rule excludes its data recipe. Its verdicts were measured
@@ -203,6 +205,29 @@ on a Stockfish-19-shaped search with a material-expert network, on one host
 and often by early-stopped SPRTs, so they order Rarog's tests and never accept
 anything. The snapshot, the checks run against Rarog and the placements are
 `analysis/triumviratus_review_2026-11-03.md`.
+
+**Reckless** (AGPL-3.0 since 2026-01-26; MIT until 2025-02-22, unlicensed
+between) is a reference for ideas only, from 2026-11-23. An AGPL engine's
+copyleft reaches further than Rarog's licence (`analysis/coda_read_2026-11-23.md`,
+*What AGPL is*), so its ideas may be read and its expression never crosses:
+
+- No code, transcription, formula, table, data layout, index construction
+  or constant from it, not even as a seed that a fit would move. A Reckless
+  idea that Rarog uses gets constants derived from Rarog's own quantities or
+  fitted from a start that is not the donor's value, with the derivation
+  beside it, and a comment that credits the idea, never a port.
+- No patch of its source and no quotation of its code in this repository;
+  a diagnostic that needs a modified Reckless keeps its patch outside the
+  tree.
+- Its released binaries may be played, timed and profiled as references:
+  running a binary carries no licence duty.
+- What Rarog already holds from it (the compact kernel's shape, the clock,
+  constants at its values, two transcribed places, the oracle patches) is
+  D.11's to inventory and resolve, and is not extended in the meantime.
+- The same holds for any other AGPL engine and for an engine published
+  without a licence, which reserves every right.
+
+From a GPL-compatible donor:
 
 - May cross: architecture, mechanisms, population choices, contracts, failure
   modes and constants. A constant is a seed on the donor's scale: converted
@@ -213,8 +238,8 @@ anything. The snapshot, the checks run against Rarog and the placements are
 - Read the donor, close the file, then design from Rarog's own code and its
   measured evidence. If a change cannot be justified without pointing at the
   donor, it is not understood well enough to ship.
-- `README.md`'s posture stays accurate: an independent engine, with thanks for
-  the inspiration.
+- `README.md`'s posture stays accurate: an independent engine that names what
+  each donor gave (D.11.4).
 - Do not merge the `hybrid` oracle, copy its FFI boundary into Rarog, replace
   native Rust with C++/FFI, or read the oracle as permission for an unmeasured
   rewrite.
@@ -491,6 +516,36 @@ tree, 0.40% apart in NPS, cause unknown (D.4.6's card), so a read of few
 processes can draw them unevenly. A
 plain build embeds its build directory's path, so it reproduces per
 directory only.
+
+**The game-position read (D.16.1, 2026-11-23).** The same read on
+positions from play instead of `bench 13 3`: `--positions
+tools/nps_positions_v1.jsonl`. The set is 200 positions frozen by
+`tools/nps_positions.py` from RAR-S139's games, the latest gate: moves drawn
+in proportion to their thinking time, at most one a game, no mate or
+tablebase score, so its phase mix is the games' (41/23/25/11% by non-pawn
+material against the games' 38/24/30/8% of time). Its manifest records the
+source's hash, the rule, the seed and the budget, the median node count of
+the drawn moves, **186,000**; the set is stored byte-exact (`-text`) and a
+set that does not match its manifest is refused. A reading is one pass, each
+position in a fresh process, one thread, Hash 64 (the gates'): `ucinewgame`
+and `isready` first, so the table and history clears have written their
+pages before the clock starts, a `go depth 1` and a second `ucinewgame` so
+lazy tables are built, then `go nodes 186000` timed from `go` to `bestmove`.
+The rate is the budget's nodes over the summed time; two hundred processes a
+reading take the place of the best of three. Each reading's best moves and
+last reported counts must equal its arm's first reading's, the tree check the
+bench's fingerprint makes, and arms whose trees differ carry the tree
+warning. The pools, host guards, archive, estimator, steps and thresholds are
+the bench read's. A cycle takes under three minutes, step 1 about seven minutes.
+The self pair (two four-build pools of `415ec4f`, engine source as at
+`4ea670f`) read **−0.16%
+[−0.41%, +0.08%]** over 2 cycles. D.16.2 (2026-11-24) kept the bench read as
+the speed read: on a memory change and a node-work change the two reads
+agreed within their combined intervals, the memory change by 0.007
+points. On the memory change the bench read's step 1 did not exclude zero
+where this read's did, so a registration of a small memory change may
+name this read beside it, before its reads
+(`analysis/d162_bench_vs_play_2026-11-23.md`).
 
 Speed to Elo at `3+0.03`: roughly 2 Elo per 1% NPS, measured twice on
 behaviour-neutral speed passes, +10.35% NPS for +20.3 ± 7.1 Elo and +18.4%
@@ -1045,6 +1100,8 @@ python tools/spsa_config_to_colosseum.py <group> --rule7c --ceiling 6000
 ./tools/nps_build_pool.ps1 -Arch pext -Builds 4 -OutDir analysis/artifacts/<name>/pool -ExpectFingerprint 11171726
 python tools/nps_read.py --base <base pool> --cand <cand pool> --out analysis/artifacts/<name>/read --label "<experiment>"
 python tools/nps_read.py --extend analysis/artifacts/<name>/read
+# The game-position read: the same pools and steps on the frozen set (D.16.1)
+python tools/nps_read.py --base <base pool> --cand <cand pool> --positions tools/nps_positions_v1.jsonl --out analysis/artifacts/<name>/games --label "<experiment>"
 ./tools/audit_spsa_coverage.ps1
 pwsh -NoProfile -File tools/diag/test_colosseum_guards.ps1
 python -m unittest discover -s tools/diag -p "test_colosseum_parity.py"

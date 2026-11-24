@@ -1,0 +1,9 @@
+source      : tools/results/rar-s139-sprt/games.pgn
+source_sha256: 2fef9116e047d622fc9f92abdb9b8f45765e7cb7912d6888058f14fdf1253815
+rule        : moves weighted by thinking time, at most one a game, |score| < 20000, seeded keys
+seed        : 20261123
+count       : 200 of 853491 candidate moves
+nodes       : 186000
+bands       : {"45+": 82, "25-44": 46, "10-24": 50, "0-9": 22}
+time_share  : {"45+": 0.376, "25-44": 0.243, "10-24": 0.297, "0-9": 0.083}
+set_sha256  : 54aef9880840736cdc9895da391a41c6b3c5c2f0ced3bf95e4ac4c519517f607

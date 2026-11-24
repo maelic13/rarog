@@ -63,7 +63,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **3,694,298 / EBF 2.324** at engine source `64993ff` on `d6-review` since 2026-11-23 (D.6.29: quiescence scores a stalemate in Stockfish's narrow form, kept by RAR-S139 on the maintainer's decision); before it 3,374,901 / EBF 2.316 at engine source `91bc561` since 2026-11-22 (D.6.7: the ply cap at the donor's 240, its score bands with it, kept by RAR-S138); before it 3,390,842 / EBF 2.317 at engine source `16f93cb`, on `master` as `94d7f72` since PR #20 (2026-11-22) (D.7.11.8: RAR-S135's centres at 2,000 baked into the kernel's seeds; before it 3,320,355 / EBF 2.317 at `4271031`, D.7.8.3: the root ordered by the kernel's own scorer, kept by RAR-S132; before it 3,348,508 / EBF 2.329 at `e363908`, D.7.8.2: quiescence and evaluation-only entries at the donor's depth, kept by RAR-S131; before it 3,278,226 / EBF 2.313 at `e63b652`, D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
+| Fingerprint | `bench 13` **3,694,298 / EBF 2.324** at engine source `64993ff`, on `master` as `b862256` since PR #21 (2026-11-23) (D.6.29: quiescence scores a stalemate in Stockfish's narrow form, kept by RAR-S139 on the maintainer's decision); before it 3,374,901 / EBF 2.316 at engine source `91bc561` since 2026-11-22 (D.6.7: the ply cap at the donor's 240, its score bands with it, kept by RAR-S138); before it 3,390,842 / EBF 2.317 at engine source `16f93cb`, on `master` as `94d7f72` since PR #20 (2026-11-22) (D.7.11.8: RAR-S135's centres at 2,000 baked into the kernel's seeds; before it 3,320,355 / EBF 2.317 at `4271031`, D.7.8.3: the root ordered by the kernel's own scorer, kept by RAR-S132; before it 3,348,508 / EBF 2.329 at `e363908`, D.7.8.2: quiescence and evaluation-only entries at the donor's depth, kept by RAR-S131; before it 3,278,226 / EBF 2.313 at `e63b652`, D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -106,8 +106,9 @@ gating. The rules below decide order and acceptance in this roadmap.
    what may cross and how the code is written: `docs/PROCESS.md`, *The
    independence boundary*. Similarity to a donor is never an acceptance
    criterion; games are.
-2. **Constants are seeds.** A ported constant sits on the donor's score scale
-   and node population. It is converted through the measured scale ratio (B.0),
+2. **Constants are seeds.** Only a GPL-compatible donor's constants are
+   ported; an AGPL engine's never are (PROCESS, 2026-11-23). A ported constant
+   sits on the donor's score scale and node population. It is converted through the measured scale ratio (B.0),
    seeded, fitted by SPSA over the cluster's live coordinates, and only then
    gated. Search and evaluation coordinates never share a tune.
 3. **Clusters, not features.** The unit of implementation and of strength
@@ -392,10 +393,18 @@ On 2026-11-22 (maintainer decision) E.0, the research on where the
 remaining strength is, moved ahead of D.8: it runs right after the last
 D.6 review row, keeps its number, and its ranking may reorder D.8 to
 D.15 and E.4.
+On 2026-11-23 (maintainer decision on E.0's packet,
+`analysis/e0_remaining_strength_2026-11-23.md`) the order of work leaves
+the numbering again and every step keeps its number, a Phase E number
+among Phase D's rows included. D.16 runs first, its profile (D.16.3.1) ahead of its
+instrument steps; then E.4.0, opened by the donor's evaluation inside
+the kernel (E.4.0.1). Then D.8 to D.17 in ascending
+order, with D.12 cut to D.12.0 and its other leaves held in the last
+rows; then Phase E as numbered. E.4's units stay after the release
+(maintainer decision 2026-10-22).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| E.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-22 (maintainer decision): after the D.6 review, before D.8.1; zero games first, its ranking may reorder the steps after it |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -417,24 +426,24 @@ D.15 and E.4.
 | D.8.21 | RESEARCH | V | Added 2026-11-20 from D.7.11, open since D.7.14's adoption (2026-11-21); a count on replayed gate games of how often each of eight seeds' terms binds, a seed deleted only if its term never does |
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
-| D.11 | RESEARCH | R2 | The originality disclosure, moved from E.3.0; its hold is lifted for 2.7.0 (maintainer decision 2026-11-13) and stands for the release after it |
+| D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
+| D.11.2 | RESEARCH | R2 | After D.11.1: GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
+| D.11.3 | RESEARCH | I1 | After D.11.2: the decision carried out; registered experiments under the GPL route |
+| D.11.4 | RESEARCH | M | After D.11.3: the disclosure on Coda's model; its notices ship in D.15.1's archives |
 | D.12.0 | RESEARCH | R3 | Added 2026-11-14 (maintainer: Basilisk's findings are hints, not Rarog's best answer); not started: Rarog's own board interactions mapped and its options ranked before any of D.12's leaves runs |
-| D.12.1 | RESEARCH | R2 | Added 2026-11-14 (maintainer: the board revisited in depth); not started: the contract audit and the instruments, Basilisk's cross-engine harness reused; D.7 keeps Rarog's board, so nothing waits for D.7 |
-| D.12.1.1 | RESEARCH | I2 | Added 2026-11-14 from Basilisk's board findings; after D.12.0, which may reshape it: the search replay with its verify mode and stub control, and the engine screen calibrated on C.12's pairs |
-| D.12.1.2 | RESEARCH | V | After D.12.1.1: SEE asks and capture generations repeated at a node, counted on its trace; a card, if any, is a change to the new kernel's picker and waits for D.7.14 |
-| D.12.2 | RESEARCH | R2 | After D.12.1: each component against Stockfish 19, classical Stockfish, Basilisk, Reckless and Triumviratus, Basilisk's B.7.2 leads its first inputs; its frozen handoff is D.12.3's contract |
-| D.12.2.1 | RESEARCH | R2 | After D.12.1.1: SEE's king-legality test from aligned sliders, Rarog's contract kept exactly; fixtures first; stops at the replay under its floor |
-| D.12.2.2 | RESEARCH | I1 | After D.12.1.1: unmake restoring the derived keys from its record instead of recomputing them; stops at the replay under its floor |
-| D.12.3 | RESEARCH | I2 | After D.12.2: the accepted components, one commit each, behind the contract, exact fingerprint while the generation order is unchanged |
-| D.12.4 | RESEARCH | V | After D.12.3: pooled-PGO NPS of the rebuilt board, the microbenchmark per component beside it; a component that does not pay returns to Rarog's form |
 | D.13 | RESEARCH | R2 | Moved from D.7.8.7 2026-11-20: opens after D.7.14; built only if one thread reproduces the fingerprint, then the NPS and four-thread reads |
 | D.14 | RESEARCH | R2 | Added 2026-11-20 (maintainer request): the donor's soft-stop vote on the new clock, after the fit and D.7.14, beside D.13; a four-thread withdrawal screen at zero games first, 2% floor |
 | D.15.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: each download a `.zip` or `.tar.gz` with the binary, the licences, the README and the changelog, where D.11's notices ship; before the next release |
 | D.15.2 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: the release notes as the section's summary and highlights, with a link to the full changelog; before the next release |
-| D.16.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-23 (maintainer request) from Trinity's bench-against-game speed miss: a fresh-process, fixed-node speed read on positions from gate games, pooled PGO builds; no dependency |
-| D.16.2 | RESEARCH | V | After D.16.1: the bench and game-position reads on two accepted speed changes of different kinds; agreement closes D.16, a disagreement opens D.16.3 |
-| D.16.3 | RESEARCH | R2 | Opened only by D.16.2's disagreement or by the maintainer: one more speed pass on the compact kernel, Reckless as the reference, priced by the read D.16.2 chose |
 | D.17 | RESEARCH | R2 | Added 2026-11-23 (maintainer request): not before the end of Phase D; a card on GitHub-hosted runners as a lane for self-play SPRTs and tunes, then a maintainer decision on the rules it changes |
+| D.12.1 | RESEARCH | R2 | Held 2026-11-23 (maintainer decision on E.0's packet): the board's work a node is level with Stockfish 16's; D.16.3.1's profile showed no board function above the donor's (2026-11-23); reopens when D.12.0 shows one |
+| D.12.1.1 | RESEARCH | I2 | Held 2026-11-23 with D.12.1 |
+| D.12.1.2 | RESEARCH | V | Held 2026-11-23 with D.12.1 |
+| D.12.2 | RESEARCH | R2 | Held 2026-11-23 with D.12.1 |
+| D.12.2.1 | RESEARCH | R2 | Held 2026-11-23 with D.12.1 |
+| D.12.2.2 | RESEARCH | I1 | Held 2026-11-23 with D.12.1 |
+| D.12.3 | RESEARCH | I2 | Held 2026-11-23 with D.12.1 |
+| D.12.4 | RESEARCH | V | Held 2026-11-23 with D.12.1 |
 
 ## Phase D — Clock, threads, robustness
 
@@ -4105,6 +4114,131 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   - **The reported score:** Stockfish's win-rate form and its
     `UCI_ShowWDL` option, with Rarog's own constants (D.7.12).
   Step 1's rerun reads the release head with these in it.
+  *Widened 2026-11-23* (maintainer request, from Coda's read,
+  `analysis/coda_read_2026-11-23.md`; the maintainer wants Coda's
+  disclosure as the model). The step is larger than drafted:
+  - Reckless's licence by date: MIT from 2023-04-16, none from
+    2025-02-22, AGPL-3.0 from 2026-01-26. Every Reckless commit Rarog
+    cites for its code is later, so what crossed is AGPL material.
+  - GPL-3.0 and AGPL-3.0 may be combined (section 13 of each), but the
+    AGPL-derived parts keep AGPL terms and Reckless's notice, and AGPL's
+    network clause covers the whole. Rarog's only licence statement is
+    GPL-3.0-or-later and README names Reckless for inspiration only:
+    that labelling gap is a defect whichever licence is chosen.
+  - Tracked AGPL material: the three Reckless patches in
+    `tools/oracle-hybrids/` carry Reckless's source in their context
+    lines, unlabelled.
+  - The dependence has grown since the step was written: D.7 rebuilt the
+    kernel on Reckless's shape and took its clock whole (*Named at
+    D.7.14*), and Phase F names Reckless a primary source for the network
+    runtime and trainer pipeline (maintainer decision 2026-11-23). Coda's
+    one finding of copied expression was in that area: threat-feature
+    indexing and SIMD kernels modelled on Reckless's.
+  - No release carries the compact kernel yet; its source is on public
+    `master` since PR #20.
+  Licence route decided 2026-11-23 (D.11.2): GPL-3.0 kept, Stockfish the
+  primary donor, Reckless ideas only.
+  The step's four items are carried by D.11.1 to D.11.4 below, item 4
+  with D.15.1; the falsifier and stop rule above stand. Refitting donor
+  constants stays outside this step under route 1 of D.11.2; under
+  route 2 each refit is its own registered experiment, named by D.11.3.
+  D.11 closes when D.11.1 to D.11.4 are done and D.15.1 ships the
+  notices.
+    - **D.11.1 The donor inventory by licence, on the release head — `R2`.**
+      Item 1's rerun, widened from `src/` to everything tracked:
+      - each donor's licence at each version Rarog read (Reckless's three
+        periods above; Stockfish and Triumviratus GPL-3.0; Fathom MIT), in
+        a table of Coda's form;
+      - the Reckless-derived parts by kind: the kernel's shape, the clock
+        and its constants, the constants still at the donor's values
+        (*What stays unfitted*), the two transcribed places, and B.2's
+        constants that 2.5.0 to 2.7.0 shipped;
+      - the Stockfish-derived parts: Stockfish 11's evaluation design and
+        the reported score's form;
+      - tracked files holding donor text: the oracle patches, and the
+        fifteen files that cite donor source by path (most with line
+        numbers), read for quotation beyond a few words;
+      - source comments that name a donor, checked against what the code
+        is: Coda's own comments called reimplementations "verbatim" and
+        "ports", which read as copies.
+
+      Output: the inventory in the review (`analysis/`), which D.11.2
+      decides on and D.11.4 publishes. Closes when it covers the source,
+      the tools and the documents at the release head.
+    - **D.11.2 The licence decision — `R2` card, then a maintainer decision.**
+      After D.11.1. The card states, from the inventory, what each route
+      costs (`analysis/coda_read_2026-11-23.md`, *What AGPL is*):
+      1. *Relicense as AGPL-3.0-or-later.* `LICENSE`, `Cargo.toml`, README
+         and the archives change. Rarog's duties are GPL's plus section 13:
+         a modified Rarog that others play or query over a network offers
+         its source, which the public repository and a link meet. Rating
+         lists are unaffected, and Reckless stays readable at its latest
+         commit as PROCESS has it. Releases up to 2.7.0 stay as published.
+      2. *Stay GPL-3.0, Coda's route.* Each Reckless-derived part is
+         reimplemented from ideas with constants derived from Rarog's own
+         quantities, or removed, each a registered experiment; the patches
+         are labelled AGPL or leave the tree; PROCESS's boundary becomes
+         ideas only for an AGPL engine, with no constant crossing, and
+         Phase F's sourcing decision of 2026-11-23 changes with it. The
+         kernel's shape stays the one point where an argument can be made.
+      3. *Ask Reckless's authors* (the maintainer sends): a courtesy with
+         either route, and a written permission settles what it covers.
+
+      The decision also settles whether README says how Rarog is
+      developed, as Coda's opening does (AGENTS bars agents from adding AI
+      attribution, so the line is the maintainer's); whether donor study
+      material (the patches, any quoted donor code in `analysis/`) stays
+      in the public repository; and whether the git history stays as it
+      is and is said to. Not legal advice.
+      *Recommendation of the 2026-11-23 read:* route 1 with route 3. It
+      settles compliance for the kernel, the clock and the patches in one
+      change and keeps D.7's design and PROCESS's donor. Route 2 only if
+      Rarog's code must stay reusable under plain GPL-3.0.
+      *Decided 2026-11-23 (maintainer):* route 2. Rarog stays GPL-3.0, and
+      the attributions and the process are arranged so that Rarog never
+      distributes Reckless's code with its own. From that day Stockfish is
+      the primary donor and Reckless, like any AGPL or unlicensed engine,
+      teaches ideas only: no constant port and no further AGPL material
+      (PROCESS, *The independence boundary*). What is already in the tree
+      is resolved here later, researched by the maintainer. The
+      recommendation above is not taken. Still open in this card: the
+      README line on how Rarog is developed, the study material in the
+      public repository, and the git history, which keeps the patches in
+      published commits.
+    - **D.11.3 The decision carried out — `I1`, or registered experiments under route 2.**
+      After D.11.2. Route 1: the licence files, `Cargo.toml`, Reckless's
+      copyright notice where its material is, the patches labelled,
+      PROCESS and AGENTS where they name the licence, and a `CHANGELOG.md`
+      entry. Route 2: each part D.11.1 lists reimplemented or refitted as
+      its own registered experiment (the clock's constants as a registered
+      tune, read as Coda read its retune: values that return near the
+      donor's are functional optima, not a failure), the patches out of
+      the tree or labelled, and the boundary rewritten. Engine and
+      documentation changes in separate commits.
+      *Route 2 since 2026-11-23:* the boundary is already rewritten
+      (PROCESS); the patches leave the tree, untracked with
+      `git rm --cached` so the local bytes stay. Under the rule of that
+      day a retune seeded from a Reckless value is still a port, so a
+      refit starts from Rarog's own derivation; whether Coda's convergence
+      argument changes that is this step's question.
+    - **D.11.4 The disclosure, on Coda's model — `M`.**
+      After D.11.3; item 3 in Coda's form (the read, *How Coda discloses
+      its sources*):
+      - the review in `analysis/`, dated and kept as a living record: why
+        it exists, the principle applied (ideas and functional constants
+        against expression), the licence table at the version read, one
+        section per donor (what was taken, what was not, what was done,
+        with the commits), its scope and what is still open, "not legal
+        advice", and an invitation to open an issue;
+      - a notices file at the root for derived and studied material
+        (Reckless's notice where its material is, Fathom's MIT notice),
+        separate from `LICENSE`, shipped in D.15.1's archives;
+      - README's *Acknowledgements* and *License*, short and for users:
+        the donors by licence with what each gave (Stockfish 11's
+        evaluation design, Reckless's search shape, clock and some
+        constants, Fathom's probing) and the licence's history in a
+        sentence or two;
+      - PROCESS's boundary saying what crossed and that it is disclosed.
 - **D.12 Board review and rebuild: the contract audited, each component read against the donors' boards, rebuilt where another form measures better — `R2`, then `I2`/`V`.**
   Added 2026-11-14 (maintainer: the board implementation is revisited in
   depth), on the model of Basilisk's B.7 (audit and instruments, review,
@@ -4127,6 +4261,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   run in this order after D.12.0: D.12.1.1, D.12.1.2, D.12.2.1,
   D.12.2.2. Their figures are Basilisk's priors; nothing is adopted
   without Rarog's own registered read.
+  **Held 2026-11-23 (maintainer decision on E.0's packet):** the board's
+  work a node is level with Stockfish 16's (94 ns against 89 on game
+  positions, `analysis/e0_remaining_strength_2026-11-23.md`), so the
+  rebuild has no strength case against the engines above Rarog. D.12.0's
+  research stays, for F.1's board events; D.12.1 to D.12.4 are held until
+  D.16.3.1's profile or D.12.0 shows a board function that costs more
+  than the donor's. D.16.3.1's profile did not (2026-11-23): once
+  boundaries are matched, make with check information is 31.4 against
+  32.9 ns a node, the exchange with its attacker query 26.3 against
+  27.1, generation and legality 30.6 against 27.9 (0.6% of samples,
+  within the cross-build uncertainty); D.12.0 alone can lift the hold.
     - **D.12.0 Rarog's own board interactions, and whether Basilisk's leads are Rarog's best options — `R3`.**
       Added 2026-11-14 (maintainer: what worked in Basilisk is a hint,
       not the best solution for Rarog). Research only, before any of
@@ -4288,7 +4433,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     - **D.12.2 Board review against Stockfish, Basilisk, Reckless and Triumviratus — `R2`.**
       A packet that reads each component against Stockfish 19's
       (`Position` and `StateInfo`), classical Stockfish's, Basilisk's,
-      Reckless's and Triumviratus's measured ideas; measures Rarog's (its
+      Reckless's (ideas only since 2026-11-23, PROCESS) and
+      Triumviratus's measured ideas; measures Rarog's (its
       share in the profile at `bench 13`, D.12.1's microbenchmark, the
       cost a node at Rarog's own call mix); and decides keep, replace or
       adapt, each with its reason and expected cost. A departures table
@@ -4587,6 +4733,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   *Decided 2026-11-20 (maintainer):* after D.7, as recommended, if
   one thread plays the same; a moved one-thread fingerprint returns
   the step to `RESEARCH` before any game.
+  *Since 2026-11-23* Reckless is a reference for ideas only (PROCESS):
+  sharing the tables is the idea under test, and the design is written
+  from Rarog's own tables, with Stockfish's form, where it has one, the
+  reference.
 - **D.14 The donor's thread vote on the new clock — `R2` screen, then `I1`/`V`.**
   (maintainer request 2026-11-20) D.7.9.1 took Reckless's time manager
   whole except its soft-stop vote, which stayed Rarog's. Rarog's is a
@@ -4621,6 +4771,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     2,000 games) takes about 1 hour 45 minutes. A gain needs an SPRT,
     priced in the card as D.13's was (`[0,5]` about 13 to 18 hours).
     One thread must reproduce the fingerprint and play the same.
+  - *ARM ordering, if built:* a withdrawn vote is one thread's state read
+    by the others, so it is published with release and read with acquire,
+    as Coda requires of every reader-publish pattern (x86 hides the bug,
+    ARM shows it; `analysis/coda_read_2026-11-23.md`, lead 7), and checked
+    on the ARM compatibility host.
+  - *Since 2026-11-23* Reckless is a reference for ideas only (PROCESS):
+    withdrawal is the idea under test, and a built vote keeps Rarog's
+    threshold or derives one from Rarog's own reads, never the donor's 65%.
 
 - **D.15 Release packaging from Basilisk 1.11.0 — `I1`.**
   Added 2026-11-21 (maintainer request) from Basilisk's release work
@@ -4638,7 +4796,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       Each release asset becomes a `.zip` (Windows) or a `.tar.gz` (Linux,
       macOS; the executable bit kept) holding one folder
       `rarog-<ver>-<os>-<arch>/` with the binary, `LICENSE`, Fathom's
-      licence (`vendor/fathom/LICENSE`), `README.md` and `CHANGELOG.md`,
+      licence (`vendor/fathom/LICENSE`), D.11.4's notices file,
+      `README.md` and `CHANGELOG.md`,
       as Basilisk's (`87de6fa`) and Stockfish's releases do. It is where
       D.11's notices ship with the binaries. The workflow's publish step,
       the README's download table and an upgrade note for the renamed
@@ -4654,7 +4813,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       section, 4,300 words). `cargo xtask release-check --notes` writes
       them; its tests and a run on a dated section are the check. PROCESS
       *Release* and the changelog's convention change with it.
-- **D.16 Speed read on game positions: the bench read checked against play, and one more speed pass on the compact kernel if they disagree — `I1`, then `V`; `R2` card for the pass.**
+- **D.16 Speed read on game positions: the bench read checked against play, and one more speed pass on the compact kernel if they disagree — `I1`, then `V`; `R2` card for the pass, DONE 2026-11-24.**
   Added 2026-11-23 (maintainer request: more speed work on the compact
   kernel is coming) from Trinity's record
   (`analysis/trinity_read_2026-11-23.md`, *Measurement lessons*): a picker
@@ -4666,7 +4825,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   profile, not a paired delta, and a memory-bound engine's price for a
   change can move with the table size and the position mix. This step
   decides which instrument prices the coming speed work.
-    - **D.16.1 The game-position speed read — `I1`.**
+    - **D.16.1 The game-position speed read — `I1`, DONE 2026-11-23.**
       A frozen position set sampled from recent gate games (Rarog to move,
       spread over the phases, from Colosseum's database), each position
       searched in a fresh process (bench shares its table across
@@ -4675,7 +4834,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the bench read's. Checked by a self pair that reads about 0.00% and
       a manifest of the set's hashes; it goes into PROCESS beside the
       bench read.
-    - **D.16.2 The bench read against play — `V`.**
+      *Done 2026-11-23* (`415ec4f`): `tools/nps_read.py --positions` on
+      `tools/nps_positions_v1.jsonl`, 200 positions frozen by
+      `tools/nps_positions.py` from RAR-S139's games (moves drawn by
+      thinking time, one a game, no mate or tablebase score; phase mix
+      41/23/25/11% against the games' 38/24/30/8% of time), budget
+      186,000 nodes (the drawn moves' median), Hash 64, a fresh process a
+      position with the clears done before the clock; the manifest holds
+      the source's and the set's hashes and the set is stored byte-exact.
+      Each reading's best moves and counts must match its arm's first,
+      the tree check; it passed two passes of the head and refused 2.7.0.
+      Self pair, two four-build pools of `415ec4f`: **−0.16% [−0.41%,
+      +0.08%]** over two cycles, none disturbed, the trees identical, step
+      1 in 6.6 minutes (2.385M nodes a second on these positions). The
+      read's tests are `tools/diag/test_nps_read.py` (33 pass). It is in
+      PROCESS beside the bench read; the bench read stays the speed read
+      until D.16.2 decides.
+    - **D.16.2 The bench read against play — `V`, DONE 2026-11-24.**
       Both reads on the same pools for at least two accepted speed
       changes of different kinds, rebuilt from their committed trees: a
       memory change (D.7.8.12's table prefetch) and a move-loop or
@@ -4684,12 +4859,90 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       read, D.16.3 is not opened and D.16 closes; a change whose deltas
       differ beyond that makes the game-position read the speed read for
       its kind of change and opens D.16.3.
-    - **D.16.3 One more speed pass on the compact kernel — `R2` card, `I1` items, `V` reads.**
+      *Done 2026-11-24* (`analysis/d162_bench_vs_play_2026-11-23.md`,
+      registered `d7815f5` before any reading): three pools rebuilt from
+      `42e3073`, `b88700a` and `1ff6522`, four pext PGO builds each at
+      3,320,355, each read by step 1 of both reads, none disturbed, the
+      games trees identical between arms. A, the table prefetch
+      (`1ff6522` against `b88700a`): bench +0.27% (−0.08 to +0.62), games
+      +0.70% (+0.44 to +0.95), gap 0.425 against the frozen band 0.432.
+      B, the node work (`b88700a` against `42e3073`): bench +1.23% (+0.95
+      to +1.51), games +1.29% (+0.99 to +1.58), gap 0.057 against 0.405.
+      **Both agree, so the bench read stays the speed read**; D.16.3, open
+      by the maintainer's decision, is read by it, and D.16 closes with
+      D.16.3. Recorded for D.16.3's registration: on the memory change,
+      the bench read did not exclude zero at step 1 where the games read
+      did, and A's bench delta did not reproduce its acceptance read
+      (+1.09%, 0.82 points away).
+    - **D.16.3 One more speed pass on the compact kernel — `R2` card, `I1` items, `V` reads, NO_CHANGE 2026-11-24.**
       Opened by D.16.2's discrepancy or by the maintainer. A profile on
-      game positions with Reckless as the reference, items in
+      game positions with Stockfish as the reference (Reckless's binary
+      may be profiled beside it; its code is ideas only since 2026-11-23,
+      PROCESS), items in
       D.7.8.12's form: the fingerprint exact at every commit, AGENTS'
       per-node rule, no new `unsafe` site (the floor is 17), each item
       priced by the read D.16.2 chose.
+      *Handoff from D.16.3.1 (2026-11-23,* `analysis/d1631_node_profile_2026-11-23.md`*):* one item. In
+      the quiet-scoring loop, prefetch the six history entries of the
+      move a few places ahead before scoring the current one, through
+      `tt.rs`'s `prefetch_ptr` (no new `unsafe` site, no buffer beyond
+      the move list); the fingerprint exact. Ceiling 3.5% of samples,
+      expected small. Stop rule: a read whose interval does not exclude
+      zero reverts it, and D.16.3 then closes `NO_CHANGE`: the rest of
+      the gap is the tree, its mechanisms and the evaluation's form.
+      *NO_CHANGE 2026-11-24* (`analysis/d163_history_prefetch_2026-11-24.md`,
+      registered `21793a2` before the build): the item built as
+      `90c4460`, the fingerprint exact, checks passed, no `memcpy` in the
+      node's functions; the bench read, deciding, **−4.74% (−6.49 to
+      −2.99)**, `NO_CHANGE` by step 1, and the games read beside it
+      −3.67% (−3.89 to −3.45). Reverted (`22b4310`, the source
+      byte-identical to before). Predicted +0.3%: a miss in sign; the
+      prefetch's own work and cache use cost more than the loads it
+      hid, which a profile's stall share did not show. The rest of the
+      gap is the tree, its mechanisms and the evaluation's form.
+        - **D.16.3.1 The kernel's node beside Stockfish's, function by function — `R2`, DONE 2026-11-23.**
+          Added 2026-11-23 (maintainer decision on E.0's packet) and run
+          first of D.16. E.0 profiled Stockfish 16's classical build on 281
+          game positions and set it beside D.7.8.12's profile of the
+          kernel: 186 ns a node of search-side work (the node, move
+          ordering, histories) against 108, the evaluation 95 against 77,
+          the board 94 against 89; the kernel's shares were three days and
+          two changes old. Zero games, no engine change: a fresh profile of
+          the head on those positions, the two engines' functions matched
+          one by one in the search-side block, the evaluation and the
+          board, and D.7.8.5's counters read again on the head at `3+0.03`
+          (4.0% of the kernel's time follows its last report). Output: a
+          card of items in D.7.8.12's form, each behaviour-neutral, with
+          its ceiling. Stop rules, frozen: with no neutral item of 1% of
+          the samples or more D.16.3 closes `NO_CHANGE`, and what is left
+          of the gap is the tree's own cost; D.7.8.5 reopens only at 2% of
+          searches discarding a new best or failed-high move. E.0's band
+          for the pass is 4% to 12% of node rate.
+          *Done 2026-11-23* (`analysis/d1631_node_profile_2026-11-23.md`; zero games, no engine source
+          changed). The head (`4ea670f`, pext PGO with its PDB archived,
+          `bench 13` 3,694,298 / EBF 2.324) profiled on E.0's 281 positions
+          at 150,000 nodes, 42,055 samples, beside E.0's Stockfish 16
+          samples under one attribution rule. Today's gap is 412.7 against
+          311.2 ns a node, +101.5: search side +76.7 (186.8 against 110.1),
+          evaluation +31.5 (107.1 against 75.6), table −7.3, board +0.2.
+          Quiescence nodes are 32.7% of the kernel's tree and 46.9% of
+          Stockfish's; a full-width node's body costs 93.7 against 89.1 ns.
+          The search side splits into the tree's shape (about 22 ns: more
+          full-width nodes, 5.00 quiets scored a node against 3.27) and the
+          kernel's own mechanisms Stockfish 16 lacks (about 54: correction
+          14.3, threat maps every node 7.7, a quiet costing 9.73 against
+          3.31 ns). One behaviour-neutral item reaches 1% of the samples:
+          the quiet-scoring history loads prefetched a few moves ahead
+          (3.5% of samples wait on them; D.7.8.12's analogous prefetch read
+          +0.14%), so by the frozen rule D.16.3 does not close and keeps
+          that one item. The band for the pass becomes 0% to 3.6% of node
+          rate (0 to +6 Elo at RAR-M92's price, inferred), replacing E.0's
+          4% to 12%. No board function costs clearly more than the donor's
+          once boundaries are matched, so D.12.1 to D.12.4 stay held.
+          D.7.8.5's counters on the head's diag build at `3000+30`: 0 of 300
+          searches stopped inside an iteration, 0% against the frozen 2%,
+          so D.7.8.5 stays closed; what E.0's 4.0% of time after the last
+          report is stays unknown.
 - **D.17 GitHub-hosted runners as a test lane for self-play SPRTs and tunes — `R2` card, then a maintainer decision.**
   Added 2026-11-23 (maintainer request), to open at the end of Phase D at
   the earliest, from Trinity's testing lane
@@ -4725,7 +4978,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
 
 ## Phase E — Classical checkpoint and release
 
-- **E.0 Where the remaining strength is: speed, search, evaluation and how they fit each other, against the strongest hand-crafted engines — `R3`.** Added
+- **E.0 Where the remaining strength is: speed, search, evaluation and how they fit each other, against the strongest hand-crafted engines — `R3`, DONE 2026-11-23.** Added
   2026-11-22 (maintainer request, after RAR-M91). Research only: zero
   games first, no code changed, nothing implemented. It ranks the levers;
   each one it proposes becomes a step of its own, numbered where it runs,
@@ -4782,11 +5035,64 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   interrupted iteration, RAR-O09) separates work a node from speed, and
   the same pair with Rarog's clock raised by the measured NPS ratio
   prices speed parity.
+  **Leads from Coda** (added 2026-11-23;
+  `analysis/coda_read_2026-11-23.md`, *Search and tooling leads*; its
+  numbers are its own NNUE engine's short-control SPRTs and order tests
+  only): a transition correction keyed by the hash of the last move in
+  its position, which Rarog lacks (explanation 4); LMR adjusted by the
+  child's static evaluation against alpha, +1.2 ± 1.0 there (2); two
+  removals that gained, +1.9 ± 1.8 each, beside switches that record
+  each feature's measured cost (2); each thread ordering its root by its
+  own latest best move, +1.2 ± 1.4 at four threads (threads).
   **Output:** a short packet in `analysis/`, each lever with its evidence,
   its prior band frozen before any game, the cheapest test that kills it
   and the step that would own it; a lever without a discriminating read is
   listed as unknown, not ranked. The maintainer orders the steps it
   proposes before any is built.
+  **The packet, 2026-11-23** (`analysis/e0_remaining_strength_2026-11-23.md`;
+  zero games, no engine source changed). Read a move at a time, the leads
+  above change: Stockfish 16 HCE searches 1.32 to 1.42 times the kernel's
+  nodes a second (1.32 on game positions alone and with 14 running, so
+  the gap is the node's own cost and not memory traffic), and 2.7 to 2.9
+  plies deeper without mate scores, not ten. A profile of Stockfish 16's
+  classical build beside D.7.8.12's puts two thirds of the 117 ns a node
+  between them in search-side work (the node, move ordering, histories:
+  186 ns against 108), 18 ns in the evaluation and nothing in the board
+  (94 against 89). Stockfish 16's classical evaluation is statically no
+  more accurate than Stockfish 11's on RAR-O10's instrument (−0.0044
+  [−0.0087, +0.0005]); both lead Rarog's by 0.024 to 0.029. Inferred, not
+  measured: the −100 is about −63 of node rate and −99 of evaluation
+  (RAR-O07) against about +62 for the kernel's tree. The levers it ranks,
+  bands frozen before any game: the evaluation in the donor's shape (+25
+  to +70, killed by the donor's evaluation inside the kernel reading
+  under +25), search-side work a node (+6 to +20), endgame knowledge (+3
+  to +10), the fit's data (0 to +12), the evaluation's cost (0 to +8),
+  the interrupted iteration (0 to +5: 4.0% of the kernel's time follows
+  its last report, which reopens D.7.8.5's question), the search leads (0
+  to +8) and the board rebuild (0 to +5, with no strength case left).
+  **RAR-M92 is registered**, the one game read: the kernel on 1.35 times
+  the clock against Stockfish 16 HCE, 1,600 games, the Elo price of the
+  node rate. The equal-node match is not registered: under a node limit
+  the kernel's last report covers 73% of its budget. E.0 stays open until
+  RAR-M92 is read and the maintainer has ordered the steps the packet
+  proposes: RAR-M92; D.16 with D.16.3's profile first; E.4.0 opened by
+  the donor's evaluation inside the kernel; E.4's units; D.12 reduced to
+  D.12.0.
+  **Closed 2026-11-23.** RAR-M92 read the same day: the kernel on
+  `4.050+0.041` −43.7 ± 11.8 Elo against Stockfish 16 HCE over 1,600
+  games, no fault or time loss, a gain of +58.3 ± 17.3 over the
+  baseline's −102.0 ± 12.7 (predicted +55), so 1% of node rate is worth
+  about 1.67 Elo against the meter and the speed bands stand. The
+  maintainer approved the packet's order the same day, every step keeping
+  its number (the register's note of that date): D.16 with D.16.3.1
+  first, E.4.0 with E.4.0.1 first, D.8 to D.11, D.12.0 alone with D.12.1
+  to D.12.4 held, D.13 to D.17, then Phase E as numbered.
+  **Superseded in part 2026-11-23 by D.16.3.1** (the head's fresh
+  profile): the gap is 101.5 ns a node, three quarters search side, a
+  third evaluation (107.1 against 75.6, not 18 ns), the table −7.3;
+  lever 2's band, search-side work a node, is 0 to +6 (0% to 3.6% of
+  rate), not +6 to +20: most of the search side is the tree's shape
+  and the kernel's own mechanisms.
 - **E.1 Attribution checkpoint: B.2.0 review re-run on the B.9/C.11 heads; STC, `10+0.1`, 4T against 2.3.2 and the B.9/C.11 heads; maturity checklist — `V`.** Re-run the B.2.0 architecture review
   on the B.9 and C.11 heads first. Final head against 2.3.2 and against
   the B.9 and C.11 heads at STC, `10+0.1` and 4T; attributed Elo per programme
@@ -5041,7 +5347,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   refitted. It was last fitted with the classic search (RAR-S104, 423 to
   475, no gradient past noise), and D.7.11 held it at 475 with the
   kernel's margins fitted against it.
-    - **E.4.0 The donor and the form — `R3`.** Research only, no engine
+    - **E.4.0 The donor and the form — `R3`, DONE 2026-11-24.** Research only, no engine
       change; added 2026-11-22 (maintainer decision). Its questions:
       1. *The donor.* Stockfish 11's classical evaluation, the design
          Rarog's follows today, or Stockfish 16's (`sf_16`), the last
@@ -5087,7 +5393,65 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       candidates and accepts none (RAR-E03 improved it and lost); a method
       that changes the fit's result reaches E.4's gate, one that does not
       closes `NO_CHANGE`. E.0's ranking may reorder this work.
-    - **E.4.1 The tuner before any fit — `I1`.** The five checks below,
+      *Packet 2026-11-24* (`analysis/e40_donor_and_form_2026-11-24.md`;
+      RAR-O13, RAR-E74), waiting for the maintainer's decision. The two
+      donors are level in play and `sf_11`'s evaluation is cheaper in the
+      kernel and predicts results better on every corpus. The donor's
+      extra wins are decided with heavy material, not in endings. On
+      `hce-v4-tb`, game results rank Rarog's evaluation above both donors
+      exactly there, so that corpus's results may not fit a rebuild.
+      Recommended: a rebuild in `sf_11`'s form, parity by fixture, then
+      rule 2's game fit (rule 4's sweep, SPSA), then one gate; E.4.2 and
+      E.4.3 fold into it. The method question goes on from an
+      admissibility test: an objective fits only if it orders known
+      evaluations as play does.
+      *Decided 2026-11-24 (maintainer, on the packet):* the rebuild in
+      `sf_11`'s form is accepted, fitted by games: parity by fixture, rule
+      4's sweep, rule 2's SPSA over the live coordinates, one gate (E.4.4).
+      Results on `hce-v4-tb` fit nothing in it (RAR-E74). E.4.2 and E.4.3
+      fold into it; the method question above is E.4.5. E.4's units keep
+      their place after the release (maintainer decision 2026-10-22,
+      reaffirmed for E.4.4 on 2026-11-24).
+        - **E.4.0.1 The donor's evaluation inside the kernel — `I2`, then `V`, DONE 2026-11-24.**
+          Added 2026-11-23 (maintainer decision on E.0's packet), E.4.0's
+          first read and RAR-O07's mirror: Stockfish's classical
+          evaluation, `sf_11`'s and `sf_16`'s, called from the kernel
+          through a diagnostic bridge that is never shipped, against the
+          kernel on Rarog's evaluation. Both arms run Rarog's driver, so an
+          equal-node read needs no correction. The bridge's price is
+          measured as RAR-O08 measured its bridges', and each evaluation's
+          scale is mapped by a rule frozen before any game. The reads,
+          registered before any game: 2,000 games at equal nodes for each
+          donor evaluation, then the better one on the clock with the
+          bridge returned as time odds. Frozen in E.0's packet: under +25
+          at equal nodes a rebuild is not indicated and E.4 is repairs;
+          the programme's band is +25 to +70. It answers question 1 in
+          play as well.
+          *Built 2026-11-24* (`cf1c377` the `donor-eval` hook, `dbf265b`
+          the bridge, `tools/donor-eval`; RAR-O13 registered before any
+          game): both DLLs equal their tags' FEN setter on 10,039
+          positions and the release binaries' `eval` to its printed
+          precision; the hook idle keeps 3,694,298. The scale is K on
+          results (684 and 717 in 1/1024): RAR-O08's mean rule, 0.28,
+          was dominated by Stockfish's known-win scores. The kernel's
+          trees on the donors' evaluations are 1.22 and 1.30 times its
+          own at depth 14 on its game positions, with a tail in decided
+          endings (seldepth past 90 where Stockfish's search reaches 20),
+          a confound the read bundles.
+          *Equal nodes read 2026-11-24* (RAR-O13): `sf_16`'s evaluation
+          **+80.3 ± 10.8** Elo over the kernel on Rarog's, `sf_11`'s
+          **+74.4 ± 10.6**, the two not separated; both above the +25
+          rule, so a rebuild in the donor's form is not ruled out, at
+          the top of the programme's band. Depth without mate scores was
+          equal in the games. *On the clock 2026-11-24*: the bridge
+          costs 8.8% of a node, returned as 3.291+0.033 against
+          3+0.03, both arms non-PGO: `sf_16` **+68.8 ± 10.4**, with 9%
+          fewer nodes a move. Stockfish 16's classical evaluation at its
+          own speed is worth about +69 over Rarog's inside the kernel;
+          E.4.0's decision is next.
+    - **E.4.1 The tuner before any fit — `I1`.** Since E.4.0's decision
+      (2026-11-24) the rebuild fits by games, so these checks bind the
+      first static fit, E.4.5's, not E.4.4. The five checks below,
       added 2026-11-22 to the refit and moved here when E.4 became the
       programme, land before the programme's first fit.
       **The tuner before the refit (added 2026-11-22, from Basilisk's C.2.1.2,
@@ -5133,7 +5497,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       Stockfish 11 scales and Rarog does not
       (`analysis/artifacts/d610-review-2026-11-22/`). Then repairs grouped by
       the families they touch, each gated as a repair (AGENTS, *Gating*).
-      If E.4.0 decides a rebuild, these become its endgame cluster.
+      E.4.0 decided a rebuild (2026-11-24): these are its endgame
+      cluster. Most of the items are Rarog's departures from
+      `sf_11`'s endgame code, which E.4.4.1 replaces, so the Syzygy
+      screen runs on the port. An item still open there is read in
+      E.4.4.3's sweep.
       Also for the refit: the endgame scale's target (D.6.9, moved here
       2026-11-22): fit both forms, the whole score scaled as now and the
       endgame half only as Stockfish 11 scales it, with the scale constants
@@ -5185,13 +5553,71 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       phase with it (H32): with piece-count phase weights the middlegame share
       in simplified endings is far above the donor's (double rook 33% against
       10%, R+B against R+N 25% against 3%, Q against Q 33% against 13%).
-      If E.4.0 decides a rebuild, this unit folds into it.
+      E.4.0 decided a rebuild (2026-11-24): this unit folds into E.4.4.
+      The port carries the donor's x-ray and pin maps (EVAL-3) and its
+      danger index as they are, so the structure this unit set out to
+      rebuild arrives with E.4.4.1.
+    - **E.4.4 The evaluation rebuilt in `sf_11`'s form — `I2`, then `V`; `R2` for the sweep.**
+      Added 2026-11-24 (maintainer decision on E.4.0's packet,
+      `analysis/e40_donor_and_form_2026-11-24.md`). One unit: Rarog's
+      evaluation replaced by `sf_11`'s classical evaluation, written in
+      Rarog's own structure, at parity with the donor before any value
+      moves, then fitted by games and gated once. Evidence: RAR-O13
+      (`sf_11` +74.4 ± 10.6 at equal nodes inside the kernel; `sf_16` +68.8
+      ± 10.4 on the clock through the same bridge) and RAR-E74 (the gain is
+      won with heavy material; results on Rarog's own games cannot see it).
+      The packet's prior, frozen only at the gate's registration: +55
+      [+30, +80] at `3+0.03` against the head. The kernel's wrapper stays as
+      RAR-O13 measured it, the scale is the frozen K-matched 684/1024, and
+      the kernel's search changes only in the evaluation-coupled
+      coordinates the sweep selects. The release that carries it names
+      `sf_11`'s evaluation as the source of Rarog's in D.11's disclosure
+      and the README. Non-goals: no `sf_16` term, no Rarog family kept
+      beside the donor's without its own read, no static fit on
+      `hce-v4-tb`.
+        - **E.4.4.1 The parity port — `I2`.** `sf_11`'s `Eval::evaluate`
+          at its `eval` command's root, contempt zero, the specialised
+          endgames, scale factors and KPK bitbase included, the pawn and
+          material tables per thread. Parity: every value equal to the
+          bridge's `donor-parity` table on B.0's 10,039 positions, through
+          `tools/donor-eval`. The per-node rules of AGENTS hold, the colour
+          flip is symmetric, and the new bench fingerprint is recorded.
+          A port that cannot reach parity stops the unit.
+        - **E.4.4.2 Its cost and its tree — `V`.** The port's node rate by
+          D.16's bench and game-position reads against the head and the
+          bridge arm, and `tree_stats.py` at depth 14 on the 200 game
+          positions against the bridge arm's 1.217. A port slower than the
+          bridge arm falsifies the packet's cost premise; record it and
+          decide again.
+        - **E.4.4.3 The sweep and the tune — `R2`, then the maintainer's
+          SPSA.** Rule 4's zero-game sweep over the live coordinates: the
+          scale, the family scales, `LazyMargin` and the kernel's
+          static-evaluation margins. Activation, interaction and curvature
+          first; a flat or monotone surface is evidence against the tune.
+          Then one registered SPSA by rule 7c. A sweep flat on every family
+          scale leaves the unit to its gate seeded and scaled, which needs
+          rule 2 waived for this unit by the maintainer.
+        - **E.4.4.4 The gate — `V`.** Registered before any game, with a
+          bracket widened for the large prior and its reason stated.
+    - **E.4.5 The fitting method: an admissible objective — `R3`.** Moved
+      out of E.4.0 2026-11-24, with E.4.0's method question (labels,
+      corpus, optimiser, K by phase, fitting with the margins). RAR-E74
+      showed results on Rarog's own games favour the evaluation that
+      played them by more than the donor's +75: on `hce-v4-tb` they rank
+      Rarog's evaluation above `sf_11`'s with heavy material. The first
+      question is an admissibility test: an objective may fit only if it
+      orders known evaluations as play does (`sf_11` above Rarog's head,
+      the head above Phase C's start). Candidates: a corpus of games
+      between different engines; labels no engine in the comparison
+      produced. RAR-E03 is the prior against distillation alone. It does
+      not block E.4.4, which fits by games.
 ## Phase F — NNUE (own data only)
 
 **Rules.** Own data only, generated by Rarog's classical head and later by its
-NNUE heads. Reckless and Stockfish are the primary sources for the runtime,
-the trainer pipeline and the network's design, as for the search
-(maintainer decision 2026-11-23); Triumviratus, Gyatso and Trinity are
+NNUE heads. Stockfish is the primary source for the runtime, the trainer
+pipeline and the network's design, as for the search; Reckless, AGPL-3.0,
+is read for ideas only (maintainer decisions 2026-11-23, the second
+replacing the first's Reckless-and-Stockfish; PROCESS); Triumviratus, Gyatso and Trinity are
 secondary inputs read as research. The architecture ladder is ours. The classical evaluation stays in the tree as the
 datagen baseline and the fallback until F.9 replaces it in releases.
 
@@ -5248,8 +5674,7 @@ request; `analysis/trinity_read_2026-11-23.md`). Trinity holds CCRL 40/15
 3522 at 1.0.0 with a plain search and a 768×8-king-bucket → 1024 → 8-output-bucket
 SCReLU net trained with bullet on Leela-derived labels, so its data results
 do not carry over as they stand. Its measurements are research inputs to
-the leaves named, each to be confirmed here, and weigh below Reckless and
-Stockfish:
+the leaves named, each to be confirmed here, and weigh below Stockfish:
 
 1. run-to-run spread: three runs of one recipe that differed only in the
    seed read 0, −9.7 ± 4.9 and −0.2 ± 5.0 (a sample SD of about 5.5), and
@@ -5279,6 +5704,18 @@ Stockfish:
    for capacity and up to 10× for more epochs (F.6);
 8. a budget point: 600 superbatches of 16,384 × 6,104 positions took 5.0
    GPU-hours on an RTX 3080 (F.3, F.4).
+
+**Licence notes from Coda** (added 2026-11-23;
+`analysis/coda_read_2026-11-23.md`). Reckless is AGPL-3.0 and, since
+2026-11-23, a reference for ideas only (PROCESS). Coda's one
+finding of copied expression was in this phase's area: a threat-feature
+index construction and SIMD kernels modelled on Reckless's. It
+reimplemented both and kept the feature mapping, which its trained net
+depends on, so a mapping a net is trained on is an interface chosen once
+(F.5, F.7). The own-data rule keeps the data licence simple, where
+Coda's LC0-trained nets owe ODbL attribution. Coda names its network
+files by content hash with no architecture prefix, since the header
+carries the architecture (F.6).
 
 - **F.0 Investigation: board events, accumulator ownership, trainer choice, data format, first architecture — `R3`.**
   Board event interface and accumulator ownership (dirty pieces, per-thread
@@ -5481,8 +5918,9 @@ Stockfish:
   - `LazyMargin` has no successor on a network; with the HCE it is
     refitted by PROCESS's margin block (E.4, F.4.1).
 - **F.7 Architecture ladder: output buckets, king buckets, relation/threat inputs; one axis at a time — `R3` with `I2`/`V` sub-steps.** Output buckets,
-  king buckets with mirroring, then relation and threat inputs as in
-  Reckless, one axis at a time; each net gated against the previous.
+  king buckets with mirroring, then relation and threat inputs, one axis
+  at a time (Stockfish's threat inputs the reference; Reckless's are ideas
+  only, never its index construction or layouts, PROCESS 2026-11-23); each net gated against the previous.
   Triumviratus inputs (2026-11-03; TN-1–TN-6, TE-2, TD-6, TD-13, TD-16). The
   rungs it climbed and what each bought: threat inputs over plain
   king-relative inputs (+50 for the engine), a pawn-pair block grafted at zero
@@ -5502,6 +5940,50 @@ Stockfish:
   for the search (−27.7). Unmeasured proposals: overlapping material bands,
   shared and private first-layer lanes per expert. Each step as CPU gates,
   proxy trainings each judged by an SPRT, then one full run.
+    - **F.7.1 Two-timescale evaluator: a slow network sets the fast evaluator's later-layer weights; an optional rung beside the ladder — `R3`.** An
+      optional research rung, added 2026-11-23 by maintainer decision: an
+      alternative approach to test, not a replacement for F.7's ladder and
+      not a condition of F.9. State `RESEARCH`; nothing is built until the
+      zero-game screen below passes. *Mechanism.* Output buckets choose one
+      of a few fixed sub-networks from a piece count. Here a deeper network
+      reads the slowly varying part of the position (pawn structure,
+      material, king placement) and outputs the weights or scales of the
+      fast evaluator's later layers, so the depth an evaluator cannot afford
+      at every node is paid once and shared across the tree. Two forms:
+      keyed by a pawn-structure and material key and cached, which keeps the
+      evaluation a function of the position; or computed once at the search
+      root, which allows a far larger slow network but makes the evaluation
+      depend on the root. A third leg, the last layer trained by gradient
+      during the search, generalises `search/correction.rs` and waits on the
+      first two. *Evidence and priors.* A prior-art search on 2026-11-23
+      found close relatives only and no engine or paper doing either form
+      (notes in `analysis/artifacts/two-timescale-eval-2026-11-23/`; Discord,
+      Fishtest's test names and the shogi and xiangqi repositories were not
+      searched, so this is "not found", not "untried"). Relatives: output
+      buckets, Stockfish's dual net (retired in Stockfish 19), Ethereal's
+      pawn-king network, and F.7's own Triumviratus rungs, the material-keyed
+      experts and the cached pawn-king subnetwork. Against: the root's expert
+      fixed for the search read −27.7 there, which is the root form in its
+      crudest shape; a Stockfish developer reports that pawn-king add-ons
+      have always failed in Stockfish; correction history's gain at the top
+      is small. The leaf already sees the whole board, so the slow network
+      adds capacity, not information. *Interactions.* It competes with
+      output buckets and material experts for the same signal and is judged
+      against a net that already has them; the root form changes stored
+      evaluations between moves and so touches every consumer of a table
+      score; a cache miss costs NPS, which F.5's pooled attribution prices.
+      *Invariants.* Integer-exact conformance with the trainer (F.2); the
+      cached form reproduces the uncached value on every position; own data
+      only. *Falsifier, zero games.* Once F.3 and F.4 give a trainer and a
+      corpus, train the F.7 net of the day and the same net with the cached
+      conditioning on identical data and compare held-out loss. Stop rule:
+      if the gain is not clearly larger than the output-bucket rung's own
+      gain on the same split, close `NO_CHANGE` with no engine code written.
+      A pass earns one registered SPRT against the same net without it, by
+      F.7's rule; the root form is considered only after the cached form
+      passes. Loss is not Elo: the screen can refuse, only the gate accepts.
+      The prediction and the screen's threshold are frozen at that
+      registration.
 - **F.8 Data frontier: on-policy refresh, deduplication, hard-position mining — `V`.** On-policy refresh with the strongest net,
   deduplication, hard-position mining; repeat while a cycle accepts.
   Triumviratus inputs (2026-11-03; TD-5, TD-6, TD-14). A refresh adds new
@@ -5681,7 +6163,9 @@ labels H1–H45.
   soft-limit constants (`TmNodesBase` to `TmChangesScale`), the budget's
   seven (`time.rs`, `TIME_OVERHEAD_MS` to `CYCLIC_HARD_SCALE`) and the
   fail-high stop's multiple. D.7.11 held them out of the `3+0.03` search
-  fit. The fit opens here, or earlier if D.7.13's `10+0.1` companion
+  fit. *Since 2026-11-23* they are AGPL constants that D.11.3
+  resolves, and a fit seeded from them is still a port (PROCESS), so
+  this fit follows D.11.3's treatment. The fit opens here, or earlier if D.7.13's `10+0.1` companion
   reads below its `3+0.03` reading by more than their combined
   intervals, or a rated control's games show a factor at one end on more
   than 90% of iterations. What its card starts from:

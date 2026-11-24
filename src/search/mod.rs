@@ -907,6 +907,8 @@ impl Searcher {
         emit_info: bool,
         poll: &mut P,
     ) -> SearchResult {
+        #[cfg(feature = "donor-eval")]
+        self.td.evaluator.set_donor_root(None);
         // The SERIAL path owns the diag lifecycle here. In a parallel
         // search `search_parallel` resets before spawning and dumps after
         // joining — helpers reach this function too, so a reset/dump left
@@ -1383,6 +1385,8 @@ impl Searcher {
         emit_info: bool,
         poll: &mut P,
     ) -> SearchResult {
+        #[cfg(feature = "donor-eval")]
+        self.td.evaluator.set_donor_root(None);
         if self.shared.threads == 1 {
             crate::diag::reset();
         }

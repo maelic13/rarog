@@ -56,6 +56,11 @@ pricing = []
 # per-position feature trace, so it must NOT be used for playing strength.
 texel = []
 
+# A foreign evaluation called in place of Rarog's, installed by the
+# diagnostic bridge in tools/donor-eval (E.4.0.1). Instrument-only, never
+# in a shipped build; without an installed evaluation nothing changes.
+donor-eval = []
+
 # ─── Lint wall ───────────────────────────────────────────────────────────────
 # Clean, idiomatic Rust only — no new violations. This section makes that a
 # BUILD property rather than a habit; CI runs clippy with `-D warnings` so a

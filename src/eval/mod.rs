@@ -54,6 +54,23 @@ pub const MATE_SCORE: i32 = 32_000;
 pub(crate) const INF_SCORE: i32 = 32_001;
 pub(crate) const VALUE_NONE: i32 = 32_002;
 
+/// A foreign evaluation called in place of this one, from the side to
+/// move's point of view: the board, and the root's last score this search
+/// in this evaluation's units once a root window has returned. The
+/// diagnostic bridge's hook (E.4.0.1).
+#[cfg(feature = "donor-eval")]
+pub type DonorEval = fn(&Board, Option<i32>) -> i32;
+
+#[cfg(feature = "donor-eval")]
+static DONOR: std::sync::OnceLock<DonorEval> = std::sync::OnceLock::new();
+
+/// Install the foreign evaluation every evaluator made afterwards calls.
+/// False when one is installed already.
+#[cfg(feature = "donor-eval")]
+pub fn install_donor(donor: DonorEval) -> bool {
+    DONOR.set(donor).is_ok()
+}
+
 const PAWN_TABLE_SIZE: usize = 16_384;
 const TOTAL_PHASE: i32 = 24;
 /// Lazy-eval threshold: if the tapered material + PST + pawn score already
@@ -138,6 +155,12 @@ pub struct Evaluator {
     /// not exist in production builds.
     #[cfg(feature = "texel")]
     trace: RefCell<EvalTrace>,
+    /// The installed foreign evaluation, read once when the evaluator is
+    /// made, so a node reads a field and no shared state.
+    #[cfg(feature = "donor-eval")]
+    donor: Option<DonorEval>,
+    #[cfg(feature = "donor-eval")]
+    donor_root: Option<i32>,
 }
 
 impl Default for Evaluator {
@@ -163,6 +186,10 @@ impl Default for Evaluator {
             masks: masks::FamilyMasks::default(),
             #[cfg(feature = "texel")]
             trace: RefCell::new(EvalTrace::default()),
+            #[cfg(feature = "donor-eval")]
+            donor: DONOR.get().copied(),
+            #[cfg(feature = "donor-eval")]
+            donor_root: None,
         }
     }
 }
@@ -202,6 +229,13 @@ impl Evaluator {
         changed
     }
 
+    /// The root's last score this search, for a foreign evaluation whose
+    /// lazy cut reads it; `None` until the search's first window returns.
+    #[cfg(feature = "donor-eval")]
+    pub(crate) fn set_donor_root(&mut self, score: Option<i32>) {
+        self.donor_root = score;
+    }
+
     pub(crate) fn clear_pawn_table(&mut self) {
         self.pawn_table.fill(PawnEntry::default());
     }
@@ -224,6 +258,10 @@ impl Evaluator {
     }
 
     pub fn evaluate(&mut self, board: &Board) -> i32 {
+        #[cfg(feature = "donor-eval")]
+        if let Some(donor) = self.donor {
+            return donor(board, self.donor_root);
+        }
         // Endgame-family occurrence in the search tree, counted on every call
         // and before the pawn cache is read. Compiled out entirely without
         // `--features diag`.
