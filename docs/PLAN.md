@@ -407,7 +407,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 |---|---|---|---|
 | D.8.14 | RESEARCH | R2 | `R2` first on how aspiration and MultiPV share the driver |
 | D.8.19 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.20 | READY_FOR_IMPLEMENTATION | I1 | Its census has no dependency |
 | D.8.21 | RESEARCH | V | Added 2026-11-20 from D.7.11, open since D.7.14's adoption (2026-11-21); a count on replayed gate games of how often each of eight seeds' terms binds, a seed deleted only if its term never does |
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
@@ -3985,7 +3984,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `checked_conversions`, `manual_assert` (clippy's name for the
       review's `manual_assert_eq`), `no_effect_underscore_binding`,
       `allow_attributes` and `allow_attributes_without_reason` warn in
-      `Cargo.toml`, and CI's `-D warnings` holds them at zero. 74 fixes:
+      `Cargo.toml`, and CI's `-D warnings` holds them at zero. 73 fixes:
       clippy's own where it applies, by hand inside the trace macro. No
       `#[allow]` is left in `src/`, `tests/` or `benches/`: every
       suppression is an `#[expect]` with its reason, and the three that
@@ -4005,7 +4004,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `analysis/triumviratus_review_2026-11-03.md`): moving its list fills
       out of line and its evaluation lists off the stack, so that no hot
       frame passed 4 KB, saved 1.55% of cycles on Windows.
-    - **D.8.20 P19: evaluation terms computed for a constant — `I1`.** Evaluation terms computed for a constant (added 2026-11-02
+    - **D.8.20 P19: evaluation terms computed for a constant — `I1`, NO_CHANGE 2026-11-24.** Evaluation terms computed for a constant (added 2026-11-02
       from the Basilisk cross-check, §E): Basilisk stopped computing
       terms whose every weight was 0 for +2.35% NPS (BAS-P25). A census
       of Rarog's production terms whose fitted weight is 0 or folds to a
@@ -4013,6 +4012,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       trapped bishops at 0.04% of rows) first, by reading; then the
       removals with the exact fingerprint, the `texel` reconstruction
       test and one pooled-NPS read. Terms E.4 or F.4.1 would refit stay.
+      *Closed on the census:* 15 weights are 0 in `EvalParams::DEFAULT`,
+      and only two terms are constant in both halves: the isolated pawn
+      (`pawn_isolated_mg` and `_eg` both 0, inside the pawn cache, its
+      test shared with the doubled-isolated term) and `hanging_minor`
+      (two popcounts times 0). Every other zero sits beside a non-zero
+      half, so its count is needed. In the production build the weights
+      are `CompiledParams`, an immutable static the compiler folds, so a
+      product with 0 and work feeding only it are already gone; removing
+      the two would change only the tuner's parameter layout, in an
+      evaluation E.4.4 replaces. (`hanging_rook` and `hanging_queen`,
+      which EVAL-11 named, are 1 now, not 0.)
   Held, with the reason: a stage split of `negamax` (R2 only if P5 and P6
   leave it unreadable); a unified legal move generator (about 300 lines, the
   highest NPS risk, no defect behind it); the table's local backend (D.2,
