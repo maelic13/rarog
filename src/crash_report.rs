@@ -177,10 +177,10 @@ mod tests {
         let lines = probe_reports("deliberate probe");
         assert_eq!(lines.len(), 1, "exactly one report per panic: {lines:?}");
         assert!(lines[0].contains("deliberate probe 7"), "{}", lines[0]);
-        // Not `src/crash_report.rs` — `Location::file()` uses the platform's
-        // separator, so the path is backslashed on Windows and the anchored
-        // form passes only on the CI matrix's other half.
-        assert!(lines[0].contains("crash_report.rs:"), "{}", lines[0]);
+        // The panic's own file as `Location::file()` writes it, the platform's
+        // separator included, so the check holds wherever the test lives.
+        let here = format!("{}:", file!());
+        assert!(lines[0].contains(&here), "{}", lines[0]);
     }
 
     /// A helper thread's panic reaches the same report: the hook is the
