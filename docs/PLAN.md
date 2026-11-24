@@ -406,7 +406,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.8.14 | RESEARCH | R2 | `R2` first on how aspiration and MultiPV share the driver |
-| D.8.15 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.18 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.19 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.20 | READY_FOR_IMPLEMENTATION | I1 | Its census has no dependency |
@@ -3946,14 +3945,29 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       line; `MultiPV 1` node-identical, `MultiPV > 1` judged by
       `tests/multipv.rs` and `multipv_syzygy.rs`; falsifier: a branch on the
       single-line path that costs NPS in the pooled read.
-    - **D.8.15 P14: bench and WAC under one suite runner — `I1`.** Bench and WAC into `src/tools/` (planned) with one `run_suite`; delete
-      `tests/board_performance.rs` (the third copy of the board workloads,
-      gates nothing); `tests/common` (planned) for the two counting allocators and the
+    - **D.8.15 P14: bench and WAC under one suite runner — `I1`, DONE 2026-11-24.** Bench and WAC into `src/tools/` with one `run_suite`; delete
+      the board-performance integration test (the third copy of the board workloads,
+      gates nothing); `tests/common` for the two counting allocators and the
       repeated helpers; stale tool names (`AblationMask` in
       `fixed_budget_probe.py`, the legacy label in `feature_matrix.py`, the
       path in `conversion_audit.py`). Neutral. One `run_suite` already serves `bench`
       and `wac` in `engine.rs` (`27cd37e`, with D.3.9); the move to
       `src/tools/` (planned) and the rest remain.
+      *Done* (`71afc73`, `026b00e`): `bench` and `wac` are `src/tools/`'s
+      (the one `run_suite` stays on `Engine`, whose state it reads;
+      `src/wac.epd` stays, the frozen suites cite it). `tests/common/`
+      holds the counting allocator both allocation tests carried as
+      copies, now counting `alloc_zeroed` in both, read by difference,
+      and `args`, which three tests repeated; the other helpers sharing
+      a name differ in signature and stay. The board-performance test
+      is gone (`benches/board.rs` times the workloads). The example option
+      in `fixed_budget_probe.py` and its test is a live one, the empty
+      feature set is labelled the default build (the crate's default set
+      is empty), `conversion_audit.py` names its baseline's real path,
+      and `endgame_occurrence.py` reads `bench.rs` where it moved.
+      Fingerprint 3,694,298; the WAC band test passes; fmt, clippy in
+      every feature set, debug 552 and release 554 tests (one fewer, the
+      removed file's), and the 401 `tools/diag` tests pass.
     - **D.8.16 P15: the evaluation's shape — `I1`, NO_CHANGE 2026-11-24.** The evaluation's shape (EVAL-8): a `Score` accumulator and one
       `term!` macro emitting both halves and both trace sites, a per-colour
       context for the ten-argument term functions, `forward_one` and
