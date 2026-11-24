@@ -61,10 +61,10 @@ class CombinationTests(unittest.TestCase):
             2 ** len(feature_matrix.SHIPPED_FEATURES))
 
     def test_the_empty_configuration_is_labelled(self):
-        # Every check runs --no-default-features, so the empty subset is the
-        # legacy search rather than the shipped default build.
+        # Every check runs --no-default-features, and the crate's default
+        # feature set is empty, so the empty subset is the shipped build.
         self.assertEqual(
-            feature_matrix.describe(()), "no features (the legacy search)"
+            feature_matrix.describe(()), "no features (the default build)"
         )
         self.assertEqual(feature_matrix.describe(("tune", "diag")), "tune,diag")
 

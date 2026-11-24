@@ -27,7 +27,7 @@ Usage:
       --engine "Rarog 2.4.0-dev" \\
       --opponents "Houdini 1.5a" "Critter 1.6a" "Rybka 4" "Fritz 16" \\
                   "Shredder 12" "HIARCS 14" \\
-      --json analysis/conversion_baseline_v1.json
+      --json tools/diag/conversion_baseline_v1.json
 """
 
 from __future__ import annotations

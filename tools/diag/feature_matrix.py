@@ -57,7 +57,7 @@ def combinations(features: list[str]) -> list[tuple[str, ...]]:
 
 
 def describe(combo: tuple[str, ...]) -> str:
-    return "no features (the legacy search)" if not combo else ",".join(combo)
+    return "no features (the default build)" if not combo else ",".join(combo)
 
 
 def check(combo: tuple[str, ...], release: bool, verbose: bool) -> tuple[bool, float]:
