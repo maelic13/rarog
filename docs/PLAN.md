@@ -405,7 +405,7 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| E.4.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-23 (maintainer decision on E.0's packet), research only: the donor and the form, decided on E.4.0.1's reads (done 2026-11-24, RAR-O13: Stockfish 16's classical evaluation inside the kernel +80.3 ± 10.8 at equal nodes and +68.8 ± 10.4 at `3+0.03`, `sf_11`'s +74.4 ± 10.6 at equal nodes, so a rebuild is not ruled out); E.4's units stay after the release |
+| E.4.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-23 (maintainer decision on E.0's packet), research only: the donor and the form, decided on E.4.0.1's reads (done 2026-11-24, RAR-O13: Stockfish 16's classical evaluation inside the kernel +80.3 ± 10.8 at equal nodes and +68.8 ± 10.4 at `3+0.03`, `sf_11`'s +74.4 ± 10.6 at equal nodes, so a rebuild is not ruled out); packet written 2026-11-24 (`analysis/e40_donor_and_form_2026-11-24.md`, RAR-E74): it recommends a rebuild in `sf_11`'s form, fitted by games, and waits for the maintainer's decision on the donor, the form, the fit and the disclosure; E.4's units stay after the release |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -5394,6 +5394,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       candidates and accepts none (RAR-E03 improved it and lost); a method
       that changes the fit's result reaches E.4's gate, one that does not
       closes `NO_CHANGE`. E.0's ranking may reorder this work.
+      *Packet 2026-11-24* (`analysis/e40_donor_and_form_2026-11-24.md`;
+      RAR-O13, RAR-E74), waiting for the maintainer's decision. The two
+      donors are level in play and `sf_11`'s evaluation is cheaper in the
+      kernel and predicts results better on every corpus. The donor's
+      extra wins are decided with heavy material, not in endings. On
+      `hce-v4-tb`, game results rank Rarog's evaluation above both donors
+      exactly there, so that corpus's results may not fit a rebuild.
+      Recommended: a rebuild in `sf_11`'s form, parity by fixture, then
+      rule 2's game fit (rule 4's sweep, SPSA), then one gate; E.4.2 and
+      E.4.3 fold into it. The method question goes on from an
+      admissibility test: an objective fits only if it orders known
+      evaluations as play does.
         - **E.4.0.1 The donor's evaluation inside the kernel — `I2`, then `V`, DONE 2026-11-24.**
           Added 2026-11-23 (maintainer decision on E.0's packet), E.4.0's
           first read and RAR-O07's mirror: Stockfish's classical

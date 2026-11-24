@@ -4,7 +4,7 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
 
 - **Date / owner:** registered 2026-11-24 (PLAN E.4.0), before any number below was computed; agent-run, zero games, minutes of CPU on an idle host.
 - **Kind:** research for E.4.0's packet (`analysis/e40_donor_and_form_2026-11-24.md`). It decides nothing by itself; its frozen uses feed the maintainer's decision on the donor and the form.
-- Disposition: open — registered 2026-11-24, before any number.
+- Disposition: observation — the donor's games are won with heavy material (endgame share −0.05 to −0.01); results on `hce-v4-tb` rank Rarog's evaluation above both donors there and are not admissible to fit a rebuild.
 - **Research question:** RAR-O13 put Stockfish's classical evaluation +74 to +80 Elo above Rarog's inside the kernel at equal nodes and +68.8 on the clock. (A) Is that gain won in one part of the game, which family repairs could reach, or throughout? (B) Does the static objective Rarog's fitting pipeline uses, cross-entropy against game results on `hce-v4-tb`, rank the donor evaluations above Rarog's as play does? RAR-E70 found Rarog's evaluation alone ahead of `9587eeeb`'s above six men on that corpus (−0.441 ± 0.137% for the donor), while on Stockfish 19's labels both donors lead Rarog by +0.024 to +0.029 skill (E.0's packet).
 - **Competing hypotheses for (B):** *H1, the labels.* Game results from Rarog's own games favour the evaluation that produced them and are too noisy to see the gap; the donors do not lead on results. *H2, the gap is static.* The donors lead on results as well, so results can choose a fit. *H3, the corpus.* `hce-v4-tb`'s games were played by the B.9 head at 8,000 nodes, two searches ago (RAR-M67): the donors trail there and lead on the kernel's own games.
 - **Inputs (all existing):**
@@ -30,3 +30,42 @@ Indexed under *5. Evaluation and data experiments* in [`docs/EXPERIMENTS.md`](..
   - Most likely failure: (A)'s lagging sign. A game the base lost in the middlegame may cross 150 only in an ending, which would push the share up without the endgame being where it was lost.
 - **Falsification criteria:** the read is void on a wire failure. Prediction 1 misses if a share falls outside its band; prediction 2 if a donor lies outside ±0.3%.
 - **Registered design and stop rule:** one run of each script, after this registration's commit; no cohort, label or model added after the numbers are seen. A script defect found during the run is fixed and the whole run repeated, with the defect recorded. Outputs are in `analysis/artifacts/e40-2026-11-24/` (ignored).
+- **Result (run 2026-11-24 14:50–15:10, after the registration commit `1d0f7f9`, every script exit 0 on the final run; outputs `decided.log`, `static.log`, `decided.json`, `static.json`):**
+  - *A script defect, recorded as the stop rule asks.* The first run's replay wire failed on one RAR-S139 game, a decisive result with no mate. The game carries `Termination "time forfeit"` and is recorded correctly; the wire was written too narrowly. `rows_from_pgn.py` now counts a recorded time forfeit instead of failing, and the whole run was repeated (S139 1 forfeit, 0 failures; RAR-O13's PGNs 0 and 0). (A) was unaffected and reproduced exactly.
+  - *Wires, all holding:* every game of the three RAR-O13 PGNs parsed with a score on every move, and the decisive counts equal the manifests'. The squared-error K on `hce-v4-tb` reproduces the bridges' values (1.64307, 1.09777, 1.15066). Every row of the four dumps is scored, and Rarog's column is identical between the two bridges.
+  - *(A), the donor arm's wins minus its losses by the band where its own score passed 150 for good:*
+
+    | Match | 45+ | 25–44 | 10–24 | 0–9 | never | Endgame share | Base's side |
+    |---|---|---|---|---|---|---|---|
+    | `sf_11`, equal nodes | +337 | +108 | +32 | −55 | 0 | −0.055 | 0.104 |
+    | `sf_16`, equal nodes | +357 | +118 | +25 | −43 | −3 | −0.040 | 0.108 |
+    | `sf_16`, `3+0.03` | +294 | +100 | +47 | −50 | 0 | −0.008 | 0.215 |
+
+    Equal nodes pooled −0.047, the clock −0.008: **broad** by the rule. The gain is won with most of the material on the board: about three quarters of the net is decided at 45 pawns of non-pawn material or more, and the donor arms lose more games than they win among those decided under 10.
+  - *(B), cross-entropy against results relative to Rarog's, %, negative where the donor predicts better, game-clustered 95% intervals (each evaluation's own K):*
+
+    | Corpus | Cohort | `sf_11` | `sf_16` |
+    |---|---|---|---|
+    | B1 `hce-v4-tb` (194,444 rows, 29,769 games) | all | −0.058 [−0.279, +0.153] | +0.283 [+0.051, +0.501] |
+    | | 45+ | +0.584 [+0.183, +0.956] | +0.997 [+0.588, +1.394] |
+    | | 25–44 | +0.653 [+0.300, +1.029] | +1.025 [+0.652, +1.417] |
+    | | 10–24 | −1.373 [−1.756, −0.993] | −0.660 [−1.057, −0.256] |
+    | | 0–9 | −0.992 [−1.571, −0.432] | −1.252 [−1.800, −0.733] |
+    | B2 the kernel's games, RAR-S139 (586,012 rows, 6,043 games) | all | −1.819 [−2.367, −0.955] | −1.356 [−1.918, −0.496] |
+    | | 45+ | −0.180 [−0.813, +0.505] | +0.101 [−0.559, +0.801] |
+    | | 25–44 | +1.612 [+1.058, +2.229] | +2.079 [+1.522, +2.668] |
+    | | 10–24 | −3.124 [−3.553, −2.650] | −2.464 [−2.917, −1.974] |
+    | | 0–9 | −3.875 [−6.277, +0.350] | −3.756 [−6.123, +0.423] |
+    | B3 RAR-O13 `sf_11`'s games (reported) | all | −5.004 [−7.266, −0.866] | −4.931 [−7.155, −0.840] |
+    | | 45+ | −8.628 [−10.812, −6.186] | −7.917 [−9.997, −5.504] |
+    | B3 RAR-O13 `sf_16`'s games (reported) | all | −5.149 [−7.331, −1.258] | −4.921 [−7.163, −1.014] |
+    | | 45+ | −9.295 [−11.279, −7.038] | −8.948 [−11.126, −6.516] |
+
+    `sf_16` minus `sf_11`: +0.341 ± 0.045 on B1, +0.462 ± 0.078 on B2; `sf_11`'s evaluation predicts better on every corpus and in every band but the last. **Not admissible** by the rule: on the fitting corpus `sf_11` is level with Rarog and `sf_16` behind.
+- **The frozen uses, applied as written:** (A) **broad** leans the packet to a whole evaluation unit, not endgame repairs first. (B) **not admissible**: results on `hce-v4-tb` may not choose the rebuild's fit. Reported, deciding nothing: with heavy material, exactly where the donor's games are won, game results rank Rarog's evaluation *above* both donors on the fitting corpus (+0.6 to +1.0%), and at 25–44 on the kernel's own games (+1.6 to +2.1%). On games the donor arm shaped, the donor leads by 5 to 9%. Results from one engine's games favour that engine's evaluation by more than the whole gap being measured.
+- **PREDICTION CALIBRATION (appended after exposure):**
+  1. (A) **missed in mechanism:** 0.40 predicted, −0.05 to −0.01 measured (0.10 to 0.22 from the base's side), outside the band. The assumption that failed: that the evaluation's gain has the shape of the whole-engine gap to Stockfish 16 HCE, whose node rate and depth reach the endings. Alone, the evaluation's gain is a middlegame gain. The lagging-sign failure mode named at registration would have pushed the share up; it came in low.
+  2. (B1) **hit** overall: both within ±0.3% (−0.058, +0.283); not admissible as most likely (0.7). The band pattern predicted, donors ahead in 10–24 and behind at 45+, held, and 25–44 went with 45+.
+  3. (B2) **hit:** the donors lead by more than on B1, both by more than two clustered SE (stated 0.35, so this outcome was the less likely one).
+  4. (B3) **hit:** more than on B2, by 3 to 4 points.
+  5. The wires held, after the script defect above.
