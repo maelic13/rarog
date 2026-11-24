@@ -130,15 +130,11 @@ impl HistoryTables {
 
     #[inline(always)]
     pub(super) fn quiet(&self, threats: Bitboard, stm: Color, mv: Move) -> i32 {
-        i32::from(*self.quiet_entry(threats, stm, mv))
-    }
-
-    /// The quiet entry a move's score reads; also its prefetch address.
-    #[inline(always)]
-    pub(super) fn quiet_entry(&self, threats: Bitboard, stm: Color, mv: Move) -> &i16 {
         let (from, to) = (mv.from_sq(), mv.to_sq());
-        &self.quiet[stm as usize][usize::from(threats.contains(from))]
-            [usize::from(threats.contains(to))][from.index()][to.index()]
+        i32::from(
+            self.quiet[stm as usize][usize::from(threats.contains(from))]
+                [usize::from(threats.contains(to))][from.index()][to.index()],
+        )
     }
 
     #[inline(always)]
@@ -209,19 +205,7 @@ impl HistoryTables {
 
     #[inline(always)]
     pub(super) fn pawn(&self, pawn_row: usize, color: Color, piece: Piece, to: Square) -> i32 {
-        i32::from(*self.pawn_entry(pawn_row, color, piece, to))
-    }
-
-    /// The pawn entry a move's score reads; also its prefetch address.
-    #[inline(always)]
-    pub(super) fn pawn_entry(
-        &self,
-        pawn_row: usize,
-        color: Color,
-        piece: Piece,
-        to: Square,
-    ) -> &i16 {
-        &self.pawn[pawn_row + piece_to(color, piece, to)]
+        i32::from(self.pawn[pawn_row + piece_to(color, piece, to)])
     }
 
     #[inline(always)]
@@ -254,19 +238,7 @@ impl HistoryTables {
 
     #[inline(always)]
     pub(super) fn cont(&self, context: usize, color: Color, piece: Piece, to: Square) -> i32 {
-        i32::from(*self.cont_entry(context, color, piece, to))
-    }
-
-    /// The continuation entry a move's score reads; also its prefetch address.
-    #[inline(always)]
-    pub(super) fn cont_entry(
-        &self,
-        context: usize,
-        color: Color,
-        piece: Piece,
-        to: Square,
-    ) -> &i16 {
-        &self.cont[context + piece_to(color, piece, to)]
+        i32::from(self.cont[context + piece_to(color, piece, to)])
     }
 
     #[inline(always)]

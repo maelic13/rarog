@@ -12,7 +12,6 @@ use super::is_quiet_move;
 use super::rules::{
     NoisyOrderInput, QuietOrderInput, Seeds, good_noisy_threshold, noisy_order, quiet_order,
 };
-use crate::tt::prefetch_ptr;
 
 /// The root's tiers below the table move and the pool's searched moves
 /// (`apply_shared_root_scores`, from 25,000,000): the good noisy moves,
@@ -328,15 +327,7 @@ impl Searcher {
         }
         let ctx = self.quiet_context(board, threats, ply, &mut None);
         let hist = &self.td.hist;
-        // The pawn and continuation tables are larger than L2, and a score
-        // waits on their loads: ask for a move's lines a few moves early.
-        for &mv in quiets.iter().take(QUIET_PREFETCH_AHEAD) {
-            prefetch_quiet_entries(board, threats, &ctx, hist, mv);
-        }
-        for (index, &mv) in quiets.iter().enumerate() {
-            if let Some(&ahead) = quiets.get(index + QUIET_PREFETCH_AHEAD) {
-                prefetch_quiet_entries(board, threats, &ctx, hist, ahead);
-            }
+        for &mv in quiets {
             if mv == tt_move || (mv.is_promo() && mv.promo_piece() == Piece::Queen) {
                 continue;
             }
@@ -346,28 +337,6 @@ impl Searcher {
                 compact_quiet_score(self.seeds(), board, threats, &ctx, hist, mv),
             );
         }
-    }
-}
-
-/// How many moves ahead of the one being scored its history lines are asked for.
-const QUIET_PREFETCH_AHEAD: usize = 4;
-
-/// Ask for the cache lines `compact_quiet_score` reads for `mv`. A hint
-/// only: nothing is read and no value changes.
-#[inline(always)]
-fn prefetch_quiet_entries(
-    board: &Board,
-    threats: &Threats,
-    ctx: &QuietContext,
-    hist: &HistoryTables,
-    mv: Move,
-) {
-    let piece = board.moving_piece(mv);
-    let to = mv.to_sq();
-    prefetch_ptr(hist.quiet_entry(threats.all, ctx.stm, mv));
-    prefetch_ptr(hist.pawn_entry(ctx.pawn_row, ctx.stm, piece, to));
-    for context in ctx.cont.into_iter().flatten() {
-        prefetch_ptr(hist.cont_entry(context, ctx.stm, piece, to));
     }
 }
 
