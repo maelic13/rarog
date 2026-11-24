@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 
 /// Total physical memory in bytes, read once; `None` where the platform does
 /// not report it.
-pub fn total_bytes() -> Option<u64> {
+pub(crate) fn total_bytes() -> Option<u64> {
     static TOTAL: OnceLock<Option<u64>> = OnceLock::new();
     *TOTAL.get_or_init(query)
 }

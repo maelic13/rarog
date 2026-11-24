@@ -71,7 +71,7 @@ impl<T: Copy, const N: usize> FixedList<T, N> {
     }
 
     #[inline(always)]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
+    pub(crate) fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: only the initialized prefix below `len` is exposed.
         unsafe { slice::from_raw_parts_mut(self.items.as_mut_ptr().cast::<T>(), self.len) }
     }
@@ -159,7 +159,7 @@ impl Move {
     }
 
     #[inline(always)]
-    pub fn flags(self) -> u16 {
+    pub(crate) fn flags(self) -> u16 {
         self.0 >> 12
     }
 
@@ -212,7 +212,7 @@ impl Move {
     }
 
     #[inline(always)]
-    pub fn promotion(self) -> Option<Piece> {
+    pub(crate) fn promotion(self) -> Option<Piece> {
         if self.is_promo() {
             Some(self.promo_piece())
         } else {

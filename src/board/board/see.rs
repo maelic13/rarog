@@ -9,7 +9,7 @@ impl Board {
     /// that moved there has had its source removed from `occ`. Keep target
     /// occupied as a ray blocker, but exclude its original (captured) occupant
     /// from enemy attacks when checking the recapturer's king.
-    pub(super) fn see_recapturer(
+    fn see_recapturer(
         &self,
         target: Square,
         occ: Bitboard,
@@ -36,7 +36,7 @@ impl Board {
     /// promoted piece is recaptured, the extra gain and loss cancel; otherwise
     /// its larger gain wins. Every recapture removes it, so the choice cannot
     /// change the legality of that recapture. This is not a tactical claim.
-    pub(super) fn see_recapture_piece(piece: Piece, target: Square) -> Piece {
+    fn see_recapture_piece(piece: Piece, target: Square) -> Piece {
         if piece == Piece::Pawn && matches!(target.rank(), Rank::R1 | Rank::R8) {
             Piece::Queen
         } else {
@@ -44,7 +44,7 @@ impl Board {
         }
     }
 
-    pub(super) fn see_occupancy(&self, mv: Move) -> Bitboard {
+    fn see_occupancy(&self, mv: Move) -> Bitboard {
         let target = mv.to_sq();
         let mut occ = self.all_occ ^ Bitboard::from(mv.from_sq());
         if mv.is_en_passant() {
@@ -128,13 +128,7 @@ impl Board {
         self.see_ge_impl(mv, threshold, QuietSee::Exchange, values)
     }
 
-    pub(super) fn see_ge_impl(
-        &self,
-        mv: Move,
-        threshold: i32,
-        quiet: QuietSee,
-        values: SeeValues,
-    ) -> bool {
+    fn see_ge_impl(&self, mv: Move, threshold: i32, quiet: QuietSee, values: SeeValues) -> bool {
         let answered_by_gain = !mv.is_capture()
             && match quiet {
                 QuietSee::Gain => true,
@@ -190,11 +184,7 @@ impl Board {
     }
 
     #[inline(always)]
-    pub(super) fn least_valuable_attacker(
-        &self,
-        attackers: Bitboard,
-        color: Color,
-    ) -> (Square, Piece) {
+    fn least_valuable_attacker(&self, attackers: Bitboard, color: Color) -> (Square, Piece) {
         for piece in [
             Piece::Pawn,
             Piece::Knight,

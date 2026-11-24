@@ -10,7 +10,7 @@ const WIN: u8 = 4;
 
 /// Positions: `stm(2) × wk(64) × bk(64) × pawn(64)`, an index's four base-64
 /// digits. Pawn squares on ranks 1 and 8 are invalid.
-pub const SIZE: usize = 2 * 64 * 64 * 64;
+pub(crate) const SIZE: usize = 2 * 64 * 64 * 64;
 
 fn index(stm: usize, wk: usize, bk: usize, p: usize) -> usize {
     ((stm * 64 + wk) * 64 + bk) * 64 + p

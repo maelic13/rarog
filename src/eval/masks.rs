@@ -18,7 +18,7 @@ const FIXED: u8 = 0x80;
 
 /// Which king-safety families an evaluation leaves out.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct FamilyMasks {
+pub(crate) struct FamilyMasks {
     pub king_danger: bool,
     pub king_shelter: bool,
 }
@@ -48,7 +48,7 @@ impl MaskedFamily {
     }
 
     /// The UCI option that sets this mask.
-    pub const fn option_name(self) -> &'static str {
+    pub(crate) const fn option_name(self) -> &'static str {
         match self {
             Self::KingDanger => "KingDangerMask",
             Self::KingShelter => "KingShelterMask",
@@ -102,7 +102,7 @@ impl MaskCell {
     }
 
     /// The masks in force, fixed from this call on.
-    pub fn fix(&self) -> FamilyMasks {
+    pub(crate) fn fix(&self) -> FamilyMasks {
         let bits = self.bits.load(Ordering::Relaxed);
         if bits & FIXED != 0 {
             return FamilyMasks::from_bits(bits);

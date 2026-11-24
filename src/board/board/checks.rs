@@ -34,7 +34,7 @@ impl Board {
     /// same line. A threat set answers "would a piece of ours stand attacked
     /// there", and for the king stepping back along the checking line the
     /// answer is yes.
-    pub fn threats(&self) -> Threats {
+    pub(crate) fn threats(&self) -> Threats {
         let us = self.side_to_move;
         let them = !us;
         let atk = &ATTACKS;

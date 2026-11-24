@@ -30,7 +30,7 @@ impl Board {
         self.make_move_inner(mv, Some(gives_check));
     }
 
-    pub(super) fn make_move_inner(&mut self, mv: Move, check_hint: Option<bool>) {
+    fn make_move_inner(&mut self, mv: Move, check_hint: Option<bool>) {
         let from = mv.from_sq();
         let to = mv.to_sq();
         let flags = mv.flags();
@@ -356,7 +356,7 @@ impl Board {
     /// type `piece` belongs to. A mask per type, not a branch: the moving
     /// piece's type is as unpredictable as the move.
     #[inline(always)]
-    pub(super) fn toggle_derived_keys(&mut self, color: Color, piece: Piece, key: u64) {
+    fn toggle_derived_keys(&mut self, color: Color, piece: Piece, key: u64) {
         let [pawn, minor, non_pawn] = DERIVED_KEY_MASKS[piece as usize];
         self.pawn_hash ^= key & pawn;
         self.minor_hash ^= key & minor;
@@ -380,7 +380,7 @@ impl Board {
     /// `QUIET` moves. The combined from/to mask and paired key are exactly the
     /// XOR of [`Board::remove_piece`] and [`Board::add_piece`].
     #[inline(always)]
-    pub(super) fn move_piece(&mut self, color: Color, piece: Piece, from: Square, to: Square) {
+    fn move_piece(&mut self, color: Color, piece: Piece, from: Square, to: Square) {
         debug_assert!(self.mailbox[to.index()] == NO_PIECE);
         debug_assert!(from != to);
         let mask = Bitboard::from(from) | Bitboard::from(to);
@@ -394,7 +394,7 @@ impl Board {
     }
 
     #[inline(always)]
-    pub(super) fn remove_piece(&mut self, color: Color, piece: Piece, sq: Square) {
+    fn remove_piece(&mut self, color: Color, piece: Piece, sq: Square) {
         let bb = Bitboard::from(sq);
         self.mailbox[sq.index()] = NO_PIECE;
         self.pieces[color as usize * 6 + piece as usize] ^= bb;

@@ -481,7 +481,7 @@ impl TranspositionTable {
     /// [`Self::store`], overwriting a deeper result for the same position:
     /// a PV node's final result in the compact kernel.
     #[inline(always)]
-    pub fn store_forced(&mut self, e: TtStore) {
+    pub(crate) fn store_forced(&mut self, e: TtStore) {
         self.store_with_bits(e, e.bound as u8, true);
     }
 
@@ -489,7 +489,7 @@ impl TranspositionTable {
     /// visit skips the evaluation. The entry has no bound, score or move and
     /// sits at [`EVAL_ONLY_DEPTH`], so any searched result replaces it.
     #[inline(always)]
-    pub fn store_eval(&mut self, key: u64, raw_eval: i32, is_pv: bool) {
+    pub(crate) fn store_eval(&mut self, key: u64, raw_eval: i32, is_pv: bool) {
         self.store_with_bits(
             TtStore {
                 key,

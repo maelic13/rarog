@@ -367,7 +367,7 @@ impl Board {
         Ok(())
     }
 
-    pub(super) fn validate_position(&self) -> Result<(), String> {
+    fn validate_position(&self) -> Result<(), String> {
         let white_king = self.pieces(Color::White, Piece::King);
         let black_king = self.pieces(Color::Black, Piece::King);
         if white_king.count() != 1 || black_king.count() != 1 {
@@ -420,7 +420,7 @@ impl Board {
         Ok(())
     }
 
-    pub(super) fn set_legal_ep_square(&mut self, ep_sq: Square) -> Result<(), String> {
+    fn set_legal_ep_square(&mut self, ep_sq: Square) -> Result<(), String> {
         let capturer = self.side_to_move;
         let captured = !capturer;
         let expected_rank = if capturer == Color::White { 5 } else { 2 };

@@ -10,7 +10,7 @@ use super::Searcher;
 pub(super) const PIECE_TO_SIZE: usize = 12 * 64;
 /// Continuation contexts: whether the earlier node was in check, whether its
 /// move was noisy, and that move's coloured piece and destination.
-pub(super) const CONT_CONTEXTS: usize = 2 * 2 * PIECE_TO_SIZE;
+const CONT_CONTEXTS: usize = 2 * 2 * PIECE_TO_SIZE;
 pub(super) const CONT_SIZE: usize = CONT_CONTEXTS * PIECE_TO_SIZE;
 /// How many plies back each continuation term looks.
 pub(super) const CONT_PLY_BACK: [usize; 4] = [1, 2, 4, 6];

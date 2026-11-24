@@ -908,7 +908,7 @@ macro_rules! seed_fields {
 
 /// A seed scalar's name and its place in the table.
 #[cfg(any(test, feature = "pricing", feature = "tune"))]
-pub(crate) type SeedField = (&'static str, fn(&mut Seeds) -> &mut i32);
+type SeedField = (&'static str, fn(&mut Seeds) -> &mut i32);
 
 #[cfg(any(test, feature = "pricing", feature = "tune"))]
 pub(crate) const SEED_FIELDS: &[SeedField] = seed_fields!(
@@ -1181,7 +1181,7 @@ const fn is_valid(score: i32) -> bool {
     clippy::cast_possible_truncation,
     reason = "a score moved toward another score stays between the two"
 )]
-pub(crate) fn lerp(from: i32, to: i32, t: i32) -> i32 {
+fn lerp(from: i32, to: i32, t: i32) -> i32 {
     let t = t as f32 / 10_000.0;
     t.mul_add((to - from) as f32, from as f32) as i32
 }

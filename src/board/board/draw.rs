@@ -10,7 +10,7 @@ impl Board {
     /// boundary is a draw either way, so only the mated case needs the
     /// (rare) legal-move probe.
     #[inline(always)]
-    pub(super) fn is_rule50_draw(&self) -> bool {
+    fn is_rule50_draw(&self) -> bool {
         self.halfmove_clock >= 100 && (!self.is_in_check() || self.has_legal_move())
     }
 
@@ -19,7 +19,7 @@ impl Board {
     /// frame.
     #[cold]
     #[inline(never)]
-    pub(super) fn has_legal_move(&self) -> bool {
+    fn has_legal_move(&self) -> bool {
         let mut moves = MoveList::new();
         self.generate_legal_movelist_into(&mut moves);
         !moves.is_empty()
@@ -44,7 +44,7 @@ impl Board {
     /// No pawn, rook or queen, and: three men or fewer; a minor each, unless
     /// a king stands in a corner, where a mate can still be forced; or two
     /// bishops on one side that stand on squares of one colour.
-    pub fn is_dead_material(&self) -> bool {
+    pub(crate) fn is_dead_material(&self) -> bool {
         let both = |piece| self.pieces(Color::White, piece) | self.pieces(Color::Black, piece);
         if (both(Piece::Pawn) | both(Piece::Rook) | both(Piece::Queen)).any() {
             return false;
@@ -81,7 +81,7 @@ impl Board {
 
     /// Whether the position `plies` back occurred again earlier inside
     /// `window`.
-    pub(super) fn repeats_back(&self, plies: usize, window: usize) -> bool {
+    fn repeats_back(&self, plies: usize, window: usize) -> bool {
         let key = self.key_back(plies);
         (plies + 4..=window)
             .step_by(2)
@@ -90,7 +90,7 @@ impl Board {
 
     /// A repetition draws when the nearest earlier occurrence lies inside the
     /// search, fewer than `ply` plies back, or had itself occurred before.
-    pub(super) fn repetition_draw_at(&self, ply: usize) -> bool {
+    fn repetition_draw_at(&self, ply: usize) -> bool {
         let window = self.repetition_window();
         (4..=window)
             .step_by(2)
@@ -104,7 +104,7 @@ impl Board {
     /// since then cancel out, nothing stands between the move's squares, and
     /// the earlier position lies inside the search or had itself occurred
     /// before.
-    pub fn upcoming_repetition(&self, ply: usize) -> bool {
+    pub(crate) fn upcoming_repetition(&self, ply: usize) -> bool {
         let window = self.repetition_window();
         if window < 3 {
             return false;
@@ -131,7 +131,7 @@ impl Board {
     /// claimable threefold, or with `rule50` a rule-50 draw. The search's
     /// aggressive twofold does not count here, because a root move ranked as
     /// a draw is one the game would score as a draw.
-    pub fn is_arbiter_draw(&self, rule50: bool) -> bool {
+    pub(crate) fn is_arbiter_draw(&self, rule50: bool) -> bool {
         (rule50 && self.is_rule50_draw()) || self.is_threefold_repetition()
     }
 
@@ -139,7 +139,7 @@ impl Board {
     /// back from the oldest, repeats an earlier one in that window. A winning
     /// side that has already repeated must make progress by distance to
     /// zeroing, not merely keep the win.
-    pub fn has_repetition_since_zeroing(&self) -> bool {
+    pub(crate) fn has_repetition_since_zeroing(&self) -> bool {
         let window = usize::from(self.halfmove_clock).min(self.history.len());
         let hash_at = |plies_back: usize| {
             if plies_back == 0 {
@@ -157,7 +157,7 @@ impl Board {
 
     /// Whether distance to zeroing is distance to mate here: no pawns, and
     /// three men, or four with neither queen nor rook.
-    pub fn dtz_is_dtm(&self) -> bool {
+    pub(crate) fn dtz_is_dtm(&self) -> bool {
         let pawns = self.pieces(Color::White, Piece::Pawn) | self.pieces(Color::Black, Piece::Pawn);
         let heavy = self.pieces(Color::White, Piece::Queen)
             | self.pieces(Color::Black, Piece::Queen)
@@ -186,7 +186,7 @@ impl Board {
         }
     }
 
-    pub(super) fn has_insufficient_material(&self) -> bool {
+    fn has_insufficient_material(&self) -> bool {
         let pawns = self.pieces(Color::White, Piece::Pawn) | self.pieces(Color::Black, Piece::Pawn);
         if pawns.any() {
             return false;
@@ -225,11 +225,11 @@ impl Board {
         true
     }
 
-    pub(super) fn is_threefold_repetition(&self) -> bool {
+    fn is_threefold_repetition(&self) -> bool {
         self.is_repetition(3)
     }
 
-    pub(super) fn is_repetition(&self, needed_count: usize) -> bool {
+    fn is_repetition(&self, needed_count: usize) -> bool {
         let mut count = 1usize;
         let max_plies = self.halfmove_clock as usize;
         let mut plies_back = 2usize;

@@ -6,7 +6,7 @@ use super::{Bitboard, Color, Square};
 
 /// Bitboard of squares strictly between `a` and `b` on a rank, file, or diagonal.
 /// Returns `EMPTY` if they are not aligned.
-pub fn between(a: Square, b: Square) -> Bitboard {
+pub(crate) fn between(a: Square, b: Square) -> Bitboard {
     // Use precomputed table
     BETWEEN[a.index()][b.index()]
 }

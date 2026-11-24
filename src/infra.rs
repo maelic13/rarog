@@ -68,7 +68,7 @@ pub fn write_stdout_line(line: std::fmt::Arguments<'_>) {
 }
 
 /// Whether a write to standard output has failed.
-pub fn stdout_closed() -> bool {
+pub(crate) fn stdout_closed() -> bool {
     STDOUT_CLOSED.load(std::sync::atomic::Ordering::Acquire)
 }
 

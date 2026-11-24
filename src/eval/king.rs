@@ -369,7 +369,7 @@ impl Evaluator {
     }
 
     /// One king square's shelter and storm score from its three files.
-    pub(super) fn shelter_score(&self, files: &[ShelterFile; 3]) -> (i32, i32) {
+    fn shelter_score(&self, files: &[ShelterFile; 3]) -> (i32, i32) {
         let p = &self.params;
         let mut mg = p.shelter_constant_mg[0];
         let mut eg = p.shelter_constant_eg[0];

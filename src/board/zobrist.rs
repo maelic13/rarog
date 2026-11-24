@@ -5,7 +5,7 @@
 use super::piece::{CastlingRights, Color, Piece};
 use super::square::{File, Square};
 
-pub struct ZobristKeys {
+pub(crate) struct ZobristKeys {
     /// `piece_keys[color][piece][square]`
     piece_keys: [[[u64; 64]; 6]; 2],
     /// XOR in when it is black's turn to move.
@@ -62,12 +62,12 @@ impl ZobristKeys {
     }
 
     #[inline(always)]
-    pub fn piece(&self, color: Color, piece: Piece, sq: Square) -> u64 {
+    pub(crate) fn piece(&self, color: Color, piece: Piece, sq: Square) -> u64 {
         self.piece_keys[color as usize][piece as usize][sq.index()]
     }
 
     #[inline(always)]
-    pub fn side(&self) -> u64 {
+    pub(crate) fn side(&self) -> u64 {
         self.side_key
     }
 
@@ -77,7 +77,7 @@ impl ZobristKeys {
     }
 
     #[inline(always)]
-    pub fn ep(&self, file: File) -> u64 {
+    pub(crate) fn ep(&self, file: File) -> u64 {
         self.ep_keys[file as usize]
     }
 

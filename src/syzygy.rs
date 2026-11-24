@@ -129,7 +129,7 @@ pub enum Wdl {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct RootMove {
+pub(crate) struct RootMove {
     pub from: u8,
     pub to: u8,
     promotes: Option<Piece>,
@@ -326,7 +326,7 @@ pub fn probe_wdl(board: &Board, use_rule50: bool) -> Option<Wdl> {
 /// Rank scale of the root ranking: a clean win ranks `MAX_DTZ`, less its
 /// distance to zeroing when moves are ordered by it; a win the rule-50
 /// counter may spoil ranks below `MAX_DTZ / 2`; losses mirror wins.
-pub(crate) const MAX_DTZ: i32 = 1 << 18;
+const MAX_DTZ: i32 = 1 << 18;
 
 /// One root move and its rank, higher better.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

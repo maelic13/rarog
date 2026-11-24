@@ -105,7 +105,7 @@ pub struct InfoRecord<'a> {
 
 /// The material a reported score's scale is read at: pawn 1, knight and
 /// bishop 3, rook 5, queen 9, both sides; 78 at the start.
-pub fn score_material(board: &Board) -> i32 {
+pub(crate) fn score_material(board: &Board) -> i32 {
     [
         (Piece::Pawn, 1),
         (Piece::Knight, 3),
@@ -451,7 +451,7 @@ impl Searcher {
         }
     }
 
-    pub fn clear_hash(&mut self) {
+    pub(crate) fn clear_hash(&mut self) {
         self.shared.tt.clear();
     }
 
@@ -474,7 +474,7 @@ impl Searcher {
         self.td.compact_previous_score = 0;
     }
 
-    pub(crate) fn clear_history(&mut self) {
+    fn clear_history(&mut self) {
         self.td.hist.clear();
         self.td.corr.clear();
     }

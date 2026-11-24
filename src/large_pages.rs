@@ -75,7 +75,7 @@ static ENABLED: AtomicBool = AtomicBool::new(true);
 /// Turn large pages on or off for the page allocations that follow; the
 /// tables already allocated keep their backing until they are allocated
 /// again.
-pub fn set_enabled(enabled: bool) {
+pub(crate) fn set_enabled(enabled: bool) {
     if ENABLED.swap(enabled, Ordering::Relaxed) != enabled {
         // What `large_pages` reports describes the tables allocated after
         // the change, not a mix with the ones the change replaces.

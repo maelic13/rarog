@@ -7,15 +7,15 @@
 #![allow(clippy::module_inception)]
 
 pub mod attacks;
-pub mod bitboard;
+pub(crate) mod bitboard;
 pub mod board;
 mod cuckoo;
-pub mod geometry;
-pub mod movegen;
+pub(crate) mod geometry;
+pub(crate) mod movegen;
 pub mod moves;
 pub mod piece;
 pub mod square;
-pub mod zobrist;
+pub(crate) mod zobrist;
 
 // Convenient re-exports of the most commonly used types.
 pub use attacks::ATTACKS;

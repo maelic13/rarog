@@ -324,7 +324,7 @@ impl Board {
     /// capture that changes no castling right and sets no en-passant square,
     /// and only a guess otherwise. A hint for prefetching, nothing else.
     #[inline(always)]
-    pub fn key_after_hint(&self, mv: Move) -> u64 {
+    pub(crate) fn key_after_hint(&self, mv: Move) -> u64 {
         let zob = &ZOBRIST;
         let us = self.side_to_move;
         let (from, to) = (mv.from_sq(), mv.to_sq());
@@ -506,7 +506,7 @@ impl Board {
         self.pseudo_legal_move(mv.into().0).is_some()
     }
 
-    pub fn legal_move(&self, mv: Move) -> Option<Move> {
+    pub(crate) fn legal_move(&self, mv: Move) -> Option<Move> {
         let canonical = self.pseudo_legal_move(mv)?;
         self.king_safe_after(canonical).then_some(canonical)
     }
@@ -618,7 +618,7 @@ impl Board {
         }
     }
 
-    pub fn has_non_pawn_material(&self, color: Color) -> bool {
+    pub(crate) fn has_non_pawn_material(&self, color: Color) -> bool {
         (self.pieces(color, Piece::Knight)
             | self.pieces(color, Piece::Bishop)
             | self.pieces(color, Piece::Rook)
