@@ -3786,10 +3786,20 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   D.7.7 deleted the classic kernel (2026-11-19), so D.8.1's census is
   taken on the tree that remains and every item is read against that
   census before it starts; the counts above are the 2026-11-01 tree's.
-    - **D.8.1 P0: the census as a tool — `I1`.** Commit the census as `tools/diag/arch_census.py` (planned) with a test
+    - **D.8.1 P0: the census as a tool — `I1`, DONE 2026-11-24.** Commit the census as `tools/diag/arch_census.py` with a test
      (masked-source parser, `use` edge graph, public census, shape table,
      instrumentation attribution, duplicate finder); it reproduces the
      review's headline numbers at `a3dd950`, and E.1 re-measures with it.
+     *Done:* `--review` reproduces every headline number of the review's
+     tables at `a3dd950` (`test_arch_census.py` checks it where the commit
+     is in the clone). D.8's baseline, the tree at its start
+     (`2a0690b`): `src/` 72 files, 38,375 lines, 10,561 of them in-file
+     tests and 21,633 code; 886 public items, 89 with no outside-file
+     reference, 72 used only by tests or tools, 36 `pub(crate)` or
+     `pub(super)` that could be private; feature lines `tune` 69, `diag`
+     25, `texel` 67; 11 functions over 150 lines, the largest
+     `compact_negamax` at 1,233; the one mutual pair `eval` and `tt`;
+     37 duplicated runs of eight lines or more (361 lines).
     - **D.8.2 P1: in-file tests into child files — `I1`.** In-file tests into `<stem>/tests.rs` for the 13 files holding
      5,391 test lines (`node.rs` 3,609 → 2,462, `search/mod.rs` 2,977 → 1,979,
      `time.rs` 966 → 392, `king.rs` 924 → 521); test bodies untouched, counts

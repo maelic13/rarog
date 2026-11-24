@@ -1,7 +1,7 @@
 # Rarog development guide
 
 <!-- board: generated from docs/PLAN.md by `python tools/diag/guide_board.py`; edit PLAN, never this block -->
-**Now: D.8.1** (`I1`): P0: the census as a tool.
+**Now: D.8.2** (`I1`): P1: in-file tests into child files.
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
 
@@ -109,7 +109,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.7.14** Adoption and checkpoint — DONE 2026-11-21
     - [x] **D.7.15** If the kernel does not gain — CLOSED 2026-11-21
 - [ ] **D.8** Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — **I1**
-    - [ ] **D.8.1** P0: the census as a tool — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.8.1** P0: the census as a tool — DONE 2026-11-24
     - [ ] **D.8.2** P1: in-file tests into child files — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.8.3** P2: one `score` module — **READY_FOR_IMPLEMENTATION / I1**
     - [ ] **D.8.4** P3: geometry into one board module — **READY_FOR_IMPLEMENTATION / I1**
