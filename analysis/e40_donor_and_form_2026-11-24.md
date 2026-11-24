@@ -220,6 +220,9 @@ slower than the bridge's C++.
 
 ## Decision
 
+**Decided 2026-11-24 by the maintainer: the rebuild accepted** (PLAN E.4.4; the
+fitting method is E.4.5). The recommendation as written:
+
 **Recommendation: `READY_FOR_IMPLEMENTATION` for a rebuild in `sf_11`'s
 form, as one unit, once the maintainer decides questions 3 and 4.**
 

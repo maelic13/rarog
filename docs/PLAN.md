@@ -405,7 +405,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| E.4.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-23 (maintainer decision on E.0's packet), research only: the donor and the form, decided on E.4.0.1's reads (done 2026-11-24, RAR-O13: Stockfish 16's classical evaluation inside the kernel +80.3 ± 10.8 at equal nodes and +68.8 ± 10.4 at `3+0.03`, `sf_11`'s +74.4 ± 10.6 at equal nodes, so a rebuild is not ruled out); packet written 2026-11-24 (`analysis/e40_donor_and_form_2026-11-24.md`, RAR-E74): it recommends a rebuild in `sf_11`'s form, fitted by games, and waits for the maintainer's decision on the donor, the form, the fit and the disclosure; E.4's units stay after the release |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -5348,7 +5347,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   refitted. It was last fitted with the classic search (RAR-S104, 423 to
   475, no gradient past noise), and D.7.11 held it at 475 with the
   kernel's margins fitted against it.
-    - **E.4.0 The donor and the form — `R3`.** Research only, no engine
+    - **E.4.0 The donor and the form — `R3`, DONE 2026-11-24.** Research only, no engine
       change; added 2026-11-22 (maintainer decision). Its questions:
       1. *The donor.* Stockfish 11's classical evaluation, the design
          Rarog's follows today, or Stockfish 16's (`sf_16`), the last
@@ -5406,6 +5405,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       E.4.3 fold into it. The method question goes on from an
       admissibility test: an objective fits only if it orders known
       evaluations as play does.
+      *Decided 2026-11-24 (maintainer, on the packet):* the rebuild in
+      `sf_11`'s form is accepted, fitted by games: parity by fixture, rule
+      4's sweep, rule 2's SPSA over the live coordinates, one gate (E.4.4).
+      Results on `hce-v4-tb` fit nothing in it (RAR-E74). E.4.2 and E.4.3
+      fold into it; the method question above is E.4.5. E.4's units keep
+      their place after the release (maintainer decision 2026-10-22).
         - **E.4.0.1 The donor's evaluation inside the kernel — `I2`, then `V`, DONE 2026-11-24.**
           Added 2026-11-23 (maintainer decision on E.0's packet), E.4.0's
           first read and RAR-O07's mirror: Stockfish's classical
@@ -5443,7 +5448,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           fewer nodes a move. Stockfish 16's classical evaluation at its
           own speed is worth about +69 over Rarog's inside the kernel;
           E.4.0's decision is next.
-    - **E.4.1 The tuner before any fit — `I1`.** The five checks below,
+    - **E.4.1 The tuner before any fit — `I1`.** Since E.4.0's decision
+      (2026-11-24) the rebuild fits by games, so these checks bind the
+      first static fit, E.4.5's, not E.4.4. The five checks below,
       added 2026-11-22 to the refit and moved here when E.4 became the
       programme, land before the programme's first fit.
       **The tuner before the refit (added 2026-11-22, from Basilisk's C.2.1.2,
@@ -5489,7 +5496,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       Stockfish 11 scales and Rarog does not
       (`analysis/artifacts/d610-review-2026-11-22/`). Then repairs grouped by
       the families they touch, each gated as a repair (AGENTS, *Gating*).
-      If E.4.0 decides a rebuild, these become its endgame cluster.
+      E.4.0 decided a rebuild (2026-11-24): these are its endgame
+      cluster. Most of the items are Rarog's departures from
+      `sf_11`'s endgame code, which E.4.4.1 replaces, so the Syzygy
+      screen runs on the port. An item still open there is read in
+      E.4.4.3's sweep.
       Also for the refit: the endgame scale's target (D.6.9, moved here
       2026-11-22): fit both forms, the whole score scaled as now and the
       endgame half only as Stockfish 11 scales it, with the scale constants
@@ -5541,7 +5552,64 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       phase with it (H32): with piece-count phase weights the middlegame share
       in simplified endings is far above the donor's (double rook 33% against
       10%, R+B against R+N 25% against 3%, Q against Q 33% against 13%).
-      If E.4.0 decides a rebuild, this unit folds into it.
+      E.4.0 decided a rebuild (2026-11-24): this unit folds into E.4.4.
+      The port carries the donor's x-ray and pin maps (EVAL-3) and its
+      danger index as they are, so the structure this unit set out to
+      rebuild arrives with E.4.4.1.
+    - **E.4.4 The evaluation rebuilt in `sf_11`'s form — `I2`, then `V`; `R2` for the sweep.**
+      Added 2026-11-24 (maintainer decision on E.4.0's packet,
+      `analysis/e40_donor_and_form_2026-11-24.md`). One unit: Rarog's
+      evaluation replaced by `sf_11`'s classical evaluation, written in
+      Rarog's own structure, at parity with the donor before any value
+      moves, then fitted by games and gated once. Evidence: RAR-O13
+      (`sf_11` +74.4 ± 10.6 at equal nodes inside the kernel; `sf_16` +68.8
+      ± 10.4 on the clock through the same bridge) and RAR-E74 (the gain is
+      won with heavy material; results on Rarog's own games cannot see it).
+      The packet's prior, frozen only at the gate's registration: +55
+      [+30, +80] at `3+0.03` against the head. The kernel's wrapper stays as
+      RAR-O13 measured it, the scale is the frozen K-matched 684/1024, and
+      the kernel's search changes only in the evaluation-coupled
+      coordinates the sweep selects. The release that carries it names
+      `sf_11`'s evaluation as the source of Rarog's in D.11's disclosure
+      and the README. Non-goals: no `sf_16` term, no Rarog family kept
+      beside the donor's without its own read, no static fit on
+      `hce-v4-tb`.
+        - **E.4.4.1 The parity port — `I2`.** `sf_11`'s `Eval::evaluate`
+          at its `eval` command's root, contempt zero, the specialised
+          endgames, scale factors and KPK bitbase included, the pawn and
+          material tables per thread. Parity: every value equal to the
+          bridge's `donor-parity` table on B.0's 10,039 positions, through
+          `tools/donor-eval`. The per-node rules of AGENTS hold, the colour
+          flip is symmetric, and the new bench fingerprint is recorded.
+          A port that cannot reach parity stops the unit.
+        - **E.4.4.2 Its cost and its tree — `V`.** The port's node rate by
+          D.16's bench and game-position reads against the head and the
+          bridge arm, and `tree_stats.py` at depth 14 on the 200 game
+          positions against the bridge arm's 1.217. A port slower than the
+          bridge arm falsifies the packet's cost premise; record it and
+          decide again.
+        - **E.4.4.3 The sweep and the tune — `R2`, then the maintainer's
+          SPSA.** Rule 4's zero-game sweep over the live coordinates: the
+          scale, the family scales, `LazyMargin` and the kernel's
+          static-evaluation margins. Activation, interaction and curvature
+          first; a flat or monotone surface is evidence against the tune.
+          Then one registered SPSA by rule 7c. A sweep flat on every family
+          scale leaves the unit to its gate seeded and scaled, which needs
+          rule 2 waived for this unit by the maintainer.
+        - **E.4.4.4 The gate — `V`.** Registered before any game, with a
+          bracket widened for the large prior and its reason stated.
+    - **E.4.5 The fitting method: an admissible objective — `R3`.** Moved
+      out of E.4.0 2026-11-24, with E.4.0's method question (labels,
+      corpus, optimiser, K by phase, fitting with the margins). RAR-E74
+      showed results on Rarog's own games favour the evaluation that
+      played them by more than the donor's +75: on `hce-v4-tb` they rank
+      Rarog's evaluation above `sf_11`'s with heavy material. The first
+      question is an admissibility test: an objective may fit only if it
+      orders known evaluations as play does (`sf_11` above Rarog's head,
+      the head above Phase C's start). Candidates: a corpus of games
+      between different engines; labels no engine in the comparison
+      produced. RAR-E03 is the prior against distillation alone. It does
+      not block E.4.4, which fits by games.
 ## Phase F — NNUE (own data only)
 
 **Rules.** Own data only, generated by Rarog's classical head and later by its
