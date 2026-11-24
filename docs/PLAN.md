@@ -405,7 +405,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.8.8 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.9 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.10 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.11 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
@@ -3876,10 +3875,21 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      functions behind `probes` (`compact/probes.rs`); what `diag` keeps
      is about ten cold sites in the root driver, none per node, so
      folding them would gain neither readability in the kernel nor speed.
-    - **D.8.8 P7: visibility follows use, second pass — `I1`.** Visibility follows use, second pass: the 32
+    - **D.8.8 P7: visibility follows use, second pass — `I1`, DONE 2026-11-24.** Visibility follows use, second pass: the 32
      `pub(super)`/`pub(crate)` items that can be private and the 52 `pub`
      items referenced only inside `src/`; `pub(crate) mod diag`; `win32`
      narrowed. Neutral, compiler-checked.
+     *Done:* from the census's candidates (the square constants kept as
+     one complete set), 30 items are private and 64 `pub(crate)`, among
+     them `win32`'s twenty and `diag`. Every consumer was compiled and
+     every item it needed, or that became unused or leaked through a
+     wider signature, put back: the crate in five feature sets and all
+     targets, `xtask`, the texel tuner and the donor bridge in both its
+     builds, to zero errors and zero warnings. 29 put back, among them
+     the six that `pub use` re-exports and the types the kernel's
+     signatures carry (`ScoredMove`, `UpdateAmounts`, `Reward`,
+     `InfoRecord`). Fingerprint 3,694,298; fmt, clippy in every feature
+     set, debug 553 and release 555 tests pass.
     - **D.8.9 P8: delete the family masks — `I1`.** Delete the family masks (`eval/masks.rs`, the `Evaluator` fields,
      the `king.rs` hook and its tests, the two options; about 200 lines) once
      the maintainer confirms no open read sets `KingDangerMask` or
