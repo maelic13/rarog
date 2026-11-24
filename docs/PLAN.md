@@ -405,8 +405,7 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| E.4.0.1 | LOCAL_QUALIFIED | I2 | Added 2026-11-23 (maintainer decision on E.0's packet), E.4.0's first read; the bridge built and qualified 2026-11-24 (`tools/donor-eval`); the two equal-node reads done 2026-11-24 (RAR-O13): `sf_16` +80.3 ± 10.8, `sf_11` +74.4 ± 10.6, above the +25 rule, so a rebuild is not ruled out; the clock read with `sf_16` registered (bridge 8.8%, odds 3.291+0.033), the maintainer's |
-| E.4.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-23 (maintainer decision on E.0's packet), research only: the donor and the form, decided on E.4.0.1's reads; E.4's units stay after the release |
+| E.4.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-23 (maintainer decision on E.0's packet), research only: the donor and the form, decided on E.4.0.1's reads (done 2026-11-24, RAR-O13: Stockfish 16's classical evaluation inside the kernel +80.3 ± 10.8 at equal nodes and +68.8 ± 10.4 at `3+0.03`, `sf_11`'s +74.4 ± 10.6 at equal nodes, so a rebuild is not ruled out); E.4's units stay after the release |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -5395,7 +5394,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       candidates and accepts none (RAR-E03 improved it and lost); a method
       that changes the fit's result reaches E.4's gate, one that does not
       closes `NO_CHANGE`. E.0's ranking may reorder this work.
-        - **E.4.0.1 The donor's evaluation inside the kernel — `I2`, then `V`.**
+        - **E.4.0.1 The donor's evaluation inside the kernel — `I2`, then `V`, DONE 2026-11-24.**
           Added 2026-11-23 (maintainer decision on E.0's packet), E.4.0's
           first read and RAR-O07's mirror: Stockfish's classical
           evaluation, `sf_11`'s and `sf_16`'s, called from the kernel
@@ -5426,10 +5425,12 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           **+74.4 ± 10.6**, the two not separated; both above the +25
           rule, so a rebuild in the donor's form is not ruled out, at
           the top of the programme's band. Depth without mate scores was
-          equal in the games. The clock read is registered: the bridge
+          equal in the games. *On the clock 2026-11-24*: the bridge
           costs 8.8% of a node, returned as 3.291+0.033 against
-          3+0.03, both arms non-PGO. Waiting: the maintainer's match;
-          then E.4.0's decision.
+          3+0.03, both arms non-PGO: `sf_16` **+68.8 ± 10.4**, with 9%
+          fewer nodes a move. Stockfish 16's classical evaluation at its
+          own speed is worth about +69 over Rarog's inside the kernel;
+          E.4.0's decision is next.
     - **E.4.1 The tuner before any fit — `I1`.** The five checks below,
       added 2026-11-22 to the refit and moved here when E.4 became the
       programme, land before the programme's first fit.
