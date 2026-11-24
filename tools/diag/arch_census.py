@@ -20,6 +20,7 @@ What it counts, all on `src/` unless stated:
 Usage:
   python tools/diag/arch_census.py [--root DIR] [--json OUT] [--detail]
   python tools/diag/arch_census.py --review     # the review's tree, a3dd950
+  python tools/diag/arch_census.py --at <commit> # any commit's tree
 
 `--review` extracts `a3dd950` with `git archive` and exits 1 unless every
 headline number of the review's tables reproduces.
@@ -260,6 +261,17 @@ class Source:
         self.regs = cfg_test_regions(self.masked) if group == "src" else []
 
 
+TEST_CHILD = re.compile(r"#\[cfg\((?:test|all\(test,[^\]\n]*\))\)\]\s*(?:#\[[^\]\n]*\]\s*)*mod (\w+)\s*;")
+
+
+def test_children(f: Source, root: Path) -> list[str]:
+    """The files a test-gated `mod name;` in `f` names: `<dir>/name.rs` for a
+    `mod.rs` or `lib.rs`, `<stem>/name.rs` otherwise."""
+    p = Path(f.path)
+    base = p.parent if p.name in ("mod.rs", "lib.rs", "main.rs") else p.with_suffix("")
+    return [(base / f"{m.group(1)}.rs").as_posix() for m in TEST_CHILD.finditer(f.masked)]
+
+
 def load(root: Path) -> list[Source]:
     out = []
     for group, sub in GROUPS.items():
@@ -272,6 +284,15 @@ def load(root: Path) -> list[Source]:
             for f in sorted(fs):
                 if f.endswith(".rs"):
                     out.append(Source(root, Path(d) / f, group))
+    by_path = {f.path: f for f in out}
+    todo = [f for f in out if f.group in ("src", "bin")]
+    while todo:  # a test child's own children are test code too
+        f = todo.pop()
+        for child in test_children(f, root):
+            c = by_path.get(child)
+            if c is not None and c.regs != [(0, len(c.src))]:
+                c.regs = [(0, len(c.src))]
+                todo.append(c)
     return sorted(out, key=lambda s: s.path)
 
 
@@ -670,10 +691,11 @@ def main(argv=None) -> int:
     ap.add_argument("--json", type=Path, help="write the full census here")
     ap.add_argument("--detail", action="store_true", help="print the largest functions, the graph and the duplicates")
     ap.add_argument("--review", action="store_true", help=f"reproduce the review's numbers at {REVIEW_COMMIT}")
+    ap.add_argument("--at", metavar="COMMIT", help="measure this commit's tree instead of --root")
     args = ap.parse_args(argv)
-    if args.review:
+    if args.review or args.at:
         with tempfile.TemporaryDirectory() as tmp:
-            extract(REVIEW_COMMIT, Path(tmp))
+            extract(REVIEW_COMMIT if args.review else args.at, Path(tmp))
             c = census(Path(tmp))
     else:
         c = census(args.root)

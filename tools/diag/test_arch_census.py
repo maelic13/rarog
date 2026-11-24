@@ -113,6 +113,17 @@ class TreeTests(unittest.TestCase):
         self.assertEqual(s["test"], 7)
         self.assertEqual(s["lines"], sum(f["lines"] for f in s["per_file"].values()))
 
+    def test_a_test_gated_child_file_is_test_code(self):
+        write_tree(self.root, {
+            "src/b.rs": TREE["src/b.rs"] + "#[cfg(test)]\nmod more;\n",
+            "src/b/more.rs": "use super::*;\n#[test]\nfn t() { let _ = calls(); }\n",
+        })
+        c = MODULE.census(self.root)
+        self.assertEqual(c["shape"]["per_file"]["src/b/more.rs"].get("code", 0), 0)
+        self.assertEqual(c["shape"]["per_file"]["src/b/more.rs"]["test"], 4)
+        calls = [it for it in c["public"]["detail"] if it["name"] == "calls"][0]
+        self.assertEqual(calls["class"], "test_only", "a call from a test child is a test reference")
+
     def test_duplicates_find_a_copied_run(self):
         body = "".join(f"    let v{i} = {i} * 3 + {i};\n" for i in range(10))
         write_tree(self.root, {"src/c.rs": f"fn one() {{\n{body}}}\n", "src/d.rs": f"fn two() {{\n{body}}}\n"})
