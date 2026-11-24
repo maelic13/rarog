@@ -405,10 +405,7 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.8.4 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.5 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.6 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.7 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.8 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.9 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.10 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
@@ -3833,21 +3830,43 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      Fingerprint 3,694,298 / EBF 2.324 on both slider backends; fmt,
      clippy in every feature set, debug 553, release 555, `texel` lib 302
      and `tune` lib 303 tests pass.
-    - **D.8.4 P3: geometry into one board module — `I1`.** Geometry into `board::geometry` (the `BETWEEN`/`LINE` tables and
+    - **D.8.4 P3: geometry into one board module — `I1`, DONE 2026-11-24.** Geometry into `board::geometry` (the `BETWEEN`/`LINE` tables and
      the six tables in `eval/pawns.rs`); one attacked-square predicate; one
      `ep_capture_is_legal`; one distance builder; a `TbPosition` method per
      Fathom entry point instead of eleven positional scalars;
      `legal_ep_capture_exists` returns `bool` (its always-`Ok` `Result` is an
      out-of-line call in `make_move`). NPS-guarded.
+     *Done* (`e1e64cf`): `board::geometry` holds the between and line
+     tables with their accessors, the file, rank, relative-rank and
+     passed-pawn tables and both distance tables, built by one
+     `init_distance` (`Square::chebyshev_distance` gave way to it).
+     `Board::attacked_by(sq, attacker, occ, present)` is the one
+     attacked-square test, replacing four bodies (`present` drops pieces
+     the occupancy removed or a capture took), with `is_attacked` its
+     board-as-it-stands case. One `ep_capture_is_legal`;
+     `legal_ep_capture_exists` returns `bool`; the three Fathom calls are
+     `TbPosition` methods, the `unsafe` count unchanged. 112 lines fewer.
+     Fingerprint 3,694,298 on both slider backends; fmt, clippy in every
+     feature set, debug 553 and release 555 tests (the allocation guard
+     among them) pass. Pooled NPS, four PGO builds an arm, six cycles:
+     +0.08% [−0.20%, +0.36%], no regression
+     (`analysis/artifacts/d8-2026-11-24/nps-d84`).
     - **D.8.5 P4: split `board/board.rs` — `I1`.** Split `board/board.rs` (one 2,066-line `impl`) into `fen`, `see`,
      `draw`, `checks`, `make`, before F.1 touches make/unmake. NPS-guarded.
-    - **D.8.6 P5: delete `trace_decision!` — `I1`.** Delete `trace_decision!` (about 190 lines; no tool, document or
+    - **D.8.6 P5: delete `trace_decision!` — `I1`, NO_CHANGE 2026-11-24.** Delete `trace_decision!` (about 190 lines; no tool, document or
      analysis consumes it); retire condition: no open leaf registers a
      decision-trace read. Neutral.
-    - **D.8.7 P6: the `diag` blocks into probe functions — `I1`.** Fold the 32 multi-line `diag` blocks into probe functions in
+     *Closed:* nothing is left to delete. The macro lived in the classic
+     kernel, which D.7.7 deleted; no line of `src/` names it.
+    - **D.8.7 P6: the `diag` blocks into probe functions — `I1`, NO_CHANGE 2026-11-24.** Fold the 32 multi-line `diag` blocks into probe functions in
      `diag.rs` with empty `#[inline(always)]` twins (a trait object or a
      strategy type parameter was weighed and rejected); `negamax` 1,662 →
      about 1,270 with P5; the counter set equal at stride 1. NPS-guarded.
+     *Closed:* the blocks were in the classic `negamax`, which D.7.7
+     deleted. The compact kernel's instrumentation is already a set of
+     functions behind `probes` (`compact/probes.rs`); what `diag` keeps
+     is about ten cold sites in the root driver, none per node, so
+     folding them would gain neither readability in the kernel nor speed.
     - **D.8.8 P7: visibility follows use, second pass — `I1`.** Visibility follows use, second pass: the 32
      `pub(super)`/`pub(crate)` items that can be private and the 52 `pub`
      items referenced only inside `src/`; `pub(crate) mod diag`; `win32`
