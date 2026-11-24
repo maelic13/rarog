@@ -151,9 +151,9 @@ impl Rates {
     }
 }
 
-/// The eight seeds no `bench` decision reaches (D.7.11), counted in play:
-/// how often each one's term is asked and how often it binds, that is,
-/// changes its rule's result.
+/// The kernel's seeds that no `bench` decision reaches (D.7.11) but play
+/// does: how often each one's term is asked and how often it binds, that
+/// is, changes its rule's result.
 #[derive(Copy, Clone, Debug)]
 pub(in crate::search) enum Seed {
     /// The table cutoff refused this close to the fifty-move limit.
@@ -162,12 +162,6 @@ pub(in crate::search) enum Seed {
     RfpMin,
     /// The null-move gate's margin at its floor.
     NmpMin,
-    /// The reduction's singular term non-zero.
-    FdsSingular,
-    /// The singular term at its cap.
-    FdsSingularCap,
-    /// The singular term other than it would be with no offset.
-    FdsSingularOffset,
     /// The window's held count at its cap.
     WindowStabilityCap,
     /// An in-check noisy move's good or bad tier other than it would be
@@ -181,9 +175,6 @@ const SEED_NAMES: [&str; SEEDS] = [
     "tt_cut_fifty",
     "rfp_min_16",
     "nmp_min_16",
-    "fds_singular",
-    "fds_singular_cap",
-    "fds_singular_offset",
     "window_stability_cap",
     "pick_check_base",
 ];

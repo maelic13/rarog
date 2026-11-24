@@ -3,8 +3,8 @@ use super::*;
 #[test]
 fn every_seed_but_the_five_is_an_option_inside_its_range() {
     let lines = uci_option_strings();
-    assert_eq!(SEED_FIELDS.len(), 254);
-    assert_eq!(lines.len(), 249);
+    assert_eq!(SEED_FIELDS.len(), 251);
+    assert_eq!(lines.len(), 246);
     for (name, field, min, max) in tunables() {
         let mut seeds = Seeds::FITTED;
         let value = *field(&mut seeds);
@@ -17,7 +17,7 @@ fn every_seed_but_the_five_is_an_option_inside_its_range() {
     let mut names: Vec<String> = tunables().map(|(name, ..)| name.to_lowercase()).collect();
     names.sort();
     names.dedup();
-    assert_eq!(names.len(), 249, "option names are unique");
+    assert_eq!(names.len(), 246, "option names are unique");
     for seed in EXCLUDED {
         assert!(
             SEED_FIELDS.iter().any(|(name, _)| *name == seed),

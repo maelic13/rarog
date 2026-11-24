@@ -1421,22 +1421,6 @@ const UNDETECTABLE: &[(&str, &str)] = &[
          it of a depth bar",
     ),
     (
-        "fds_singular",
-        "the full-depth search reads it only with the TT move's score and a singular score, \
-         but a singular search needs depth 5 and from depth 2 every move after the first is \
-         reduced, so the full-depth search runs only for the first move, before its score exists",
-    ),
-    (
-        "fds_singular_offset",
-        "read only inside the full-depth search's singular term, which never runs \
-         (fds_singular)",
-    ),
-    (
-        "fds_singular_cap",
-        "read only inside the full-depth search's singular term, which never runs \
-         (fds_singular)",
-    ),
-    (
         "fds_spread_thread",
         "a per-thread offset, times thread 0 in a one-thread trace",
     ),

@@ -216,9 +216,6 @@ pub(crate) struct Seeds {
     pub(crate) fds_cut_no_tt_move: i32,
     pub(crate) fds_cutoffs: i32,
     pub(crate) fds_cutoffs_all: i32,
-    pub(crate) fds_singular: i32,
-    pub(crate) fds_singular_offset: i32,
-    pub(crate) fds_singular_cap: i32,
     pub(crate) fds_tt_move: i32,
     pub(crate) fds_parent_gap: i32,
     pub(crate) fds_parent: i32,
@@ -512,9 +509,6 @@ impl Seeds {
         fds_cut_no_tt_move: 2_168,
         fds_cutoffs: 1_394,
         fds_cutoffs_all: 258,
-        fds_singular: 869,
-        fds_singular_offset: 76,
-        fds_singular_cap: 2_167,
         fds_tt_move: 3_002,
         fds_parent_gap: 590,
         fds_parent: 130,
@@ -783,9 +777,6 @@ impl Seeds {
         fds_cut_no_tt_move: 2_263,
         fds_cutoffs: 1_456,
         fds_cutoffs_all: 251,
-        fds_singular: 869,
-        fds_singular_offset: 76,
-        fds_singular_cap: 2_167,
         fds_tt_move: 2_821,
         fds_parent_gap: 542,
         fds_parent: 111,
@@ -1057,9 +1048,6 @@ pub(crate) const SEED_FIELDS: &[SeedField] = seed_fields!(
     fds_cut_no_tt_move,
     fds_cutoffs,
     fds_cutoffs_all,
-    fds_singular,
-    fds_singular_offset,
-    fds_singular_cap,
     fds_tt_move,
     fds_parent_gap,
     fds_parent,
@@ -2092,22 +2080,6 @@ pub(crate) fn unreduced_reduction(s: &Seeds, i: &ReductionInput) -> i32 {
     if i.child_cutoffs > 2 {
         r += s.fds_cutoffs;
         r += s.fds_cutoffs_all * i32::from(!i.pv && !i.cut_node);
-    }
-    if is_valid(i.tt_move_score) && is_valid(i.singular_score) {
-        let margin = i.tt_move_score - i.singular_score;
-        let raw = s.fds_singular * (margin - s.fds_singular_offset) / 128;
-        let term = raw.clamp(0, s.fds_singular_cap);
-        #[cfg(feature = "probes")]
-        {
-            super::probes::seed(super::probes::Seed::FdsSingular, term != 0);
-            super::probes::seed(
-                super::probes::Seed::FdsSingularCap,
-                raw > s.fds_singular_cap,
-            );
-            let unshifted = (s.fds_singular * margin / 128).clamp(0, s.fds_singular_cap);
-            super::probes::seed(super::probes::Seed::FdsSingularOffset, unshifted != term);
-        }
-        r += term;
     }
     if i.is_tt_move {
         r -= s.fds_tt_move;
