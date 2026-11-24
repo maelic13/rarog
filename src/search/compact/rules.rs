@@ -1375,6 +1375,8 @@ pub(crate) fn tt_cut_rewards(s: &Seeds, i: &TtCutRewardInput) -> Option<(i32, i3
 /// fifty-move limit, where the stored score may no longer hold.
 #[inline(always)]
 pub(crate) fn tt_cut_returns(s: &Seeds, fifty: i32) -> bool {
+    #[cfg(feature = "probes")]
+    super::probes::seed(super::probes::Seed::TtCutFifty, fifty >= s.tt_cut_fifty);
     fifty < s.tt_cut_fifty
 }
 
@@ -1447,12 +1449,15 @@ pub(crate) struct RfpInput {
 /// the floor.
 #[inline(always)]
 pub(crate) fn rfp_margin(s: &Seeds, i: &RfpInput) -> i32 {
-    (s.rfp_square_16 * i.depth * i.depth / 128 - 16 * s.rfp_improvement * i.improvement / 1024
+    let margin = s.rfp_square_16 * i.depth * i.depth / 128
+        - 16 * s.rfp_improvement * i.improvement / 1024
         + s.rfp_linear_16 * i.depth
         + 16 * s.rfp_correction * i.correction.abs() / 1024
         - s.rfp_unthreatened_16 * i32::from(i.unthreatened)
-        - s.rfp_constant_16)
-        .max(s.rfp_min_16)
+        - s.rfp_constant_16;
+    #[cfg(feature = "probes")]
+    super::probes::seed(super::probes::Seed::RfpMin, s.rfp_min_16 > margin);
+    margin.max(s.rfp_min_16)
 }
 
 /// What reverse futility returns: the estimate moved part of the way to beta.
@@ -1503,11 +1508,13 @@ pub(crate) struct NullGateInput {
 /// child cutoffs, more on a PV line.
 #[inline(always)]
 pub(crate) fn nmp_margin(s: &Seeds, i: &NullGateInput) -> i32 {
-    (-s.nmp_depth_16 * i.depth + s.nmp_tt_pv_16 * i32::from(i.tt_pv)
+    let margin = -s.nmp_depth_16 * i.depth + s.nmp_tt_pv_16 * i32::from(i.tt_pv)
         - 16 * s.nmp_improvement * i.improvement / 1024
         - s.nmp_cutoffs_16 * i32::from(i.child_cutoffs < 2)
-        + s.nmp_base_16)
-        .max(s.nmp_min_16)
+        + s.nmp_base_16;
+    #[cfg(feature = "probes")]
+    super::probes::seed(super::probes::Seed::NmpMin, s.nmp_min_16 > margin);
+    margin.max(s.nmp_min_16)
 }
 
 /// Whether the node passes: at an expected cut node out of check, outside a
@@ -2088,7 +2095,19 @@ pub(crate) fn unreduced_reduction(s: &Seeds, i: &ReductionInput) -> i32 {
     }
     if is_valid(i.tt_move_score) && is_valid(i.singular_score) {
         let margin = i.tt_move_score - i.singular_score;
-        r += (s.fds_singular * (margin - s.fds_singular_offset) / 128).clamp(0, s.fds_singular_cap);
+        let raw = s.fds_singular * (margin - s.fds_singular_offset) / 128;
+        let term = raw.clamp(0, s.fds_singular_cap);
+        #[cfg(feature = "probes")]
+        {
+            super::probes::seed(super::probes::Seed::FdsSingular, term != 0);
+            super::probes::seed(
+                super::probes::Seed::FdsSingularCap,
+                raw > s.fds_singular_cap,
+            );
+            let unshifted = (s.fds_singular * margin / 128).clamp(0, s.fds_singular_cap);
+            super::probes::seed(super::probes::Seed::FdsSingularOffset, unshifted != term);
+        }
+        r += term;
     }
     if i.is_tt_move {
         r -= s.fds_tt_move;
@@ -2380,6 +2399,11 @@ pub(crate) fn q_see_threshold(
 /// longer the score and the best move have held, wider for a large score.
 #[inline(always)]
 pub(crate) fn window_delta(s: &Seeds, eval_stability: i32, pv_stability: i32, average: i32) -> i32 {
+    #[cfg(feature = "probes")]
+    super::probes::seed(
+        super::probes::Seed::WindowStabilityCap,
+        s.window_stability_cap < eval_stability.min(pv_stability),
+    );
     let held = eval_stability.min(pv_stability).min(s.window_stability_cap);
     let average = i64::from(average);
     let delta = i64::from(s.window_base_1024 - s.window_stability_1024 * held)

@@ -615,6 +615,7 @@ impl Searcher {
         #[cfg(feature = "probes")]
         {
             self.td.rates.clear();
+            compact::probes::seed_clear();
             self.td.hist.updates = 0;
         }
         if lazy_margin_changed && age_tt {

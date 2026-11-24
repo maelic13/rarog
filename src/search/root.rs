@@ -370,6 +370,7 @@ impl Searcher {
                 .rates
                 .add_fired(compact::probes::Kind::Gravity, self.td.hist.updates);
             self.notice(format_args!("{}", self.td.rates.line()));
+            self.notice(format_args!("{}", compact::probes::seed_line()));
         }
         let best_score = best_score;
         let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);

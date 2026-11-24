@@ -142,6 +142,23 @@ impl CompactPicker {
                                 self.good_emitted,
                             )
                         });
+                        #[cfg(feature = "probes")]
+                        if self.threshold.is_none() && board.is_in_check() {
+                            let unshifted = picked.score - searcher.seeds().pick_check_base;
+                            let without = good_noisy_threshold(
+                                searcher.seeds(),
+                                unshifted,
+                                tt_quiet,
+                                self.good_emitted,
+                            );
+                            let values = searcher.exchange_values();
+                            super::probes::seed(
+                                super::probes::Seed::PickCheckBase,
+                                board.see_ge_exchange_with_values(picked.mv, bar, values)
+                                    != board
+                                        .see_ge_exchange_with_values(picked.mv, without, values),
+                            );
+                        }
                         if board.see_ge_exchange_with_values(
                             picked.mv,
                             bar,
@@ -238,6 +255,17 @@ impl Searcher {
             let picked = pick_next(noisy, index);
             debug_assert!(picked.score.abs() < ROOT_ORDER_SPAN, "{}", picked.score);
             let bar = good_noisy_threshold(self.seeds(), picked.score, tt_quiet, good);
+            #[cfg(feature = "probes")]
+            if board.is_in_check() {
+                let unshifted = picked.score - self.seeds().pick_check_base;
+                let without = good_noisy_threshold(self.seeds(), unshifted, tt_quiet, good);
+                let values = self.exchange_values();
+                super::probes::seed(
+                    super::probes::Seed::PickCheckBase,
+                    board.see_ge_exchange_with_values(picked.mv, bar, values)
+                        != board.see_ge_exchange_with_values(picked.mv, without, values),
+                );
+            }
             let tier = if board.see_ge_exchange_with_values(picked.mv, bar, self.exchange_values())
             {
                 good += 1;
