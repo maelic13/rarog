@@ -629,7 +629,7 @@ fn gen_unpinned_pawn_quiets<S: MoveSink>(
     while targets.any() {
         let to = targets.pop_lsb();
         moves.push_move(Move::new(
-            Square(infra::to_u8(to.0 as i16 - push_offset)),
+            Square(infra::to_u8(i16::from(to.0) - push_offset)),
             to,
             QUIET,
         ));
@@ -644,7 +644,7 @@ fn gen_unpinned_pawn_quiets<S: MoveSink>(
     while targets.any() {
         let to = targets.pop_lsb();
         moves.push_move(Move::new(
-            Square(infra::to_u8(to.0 as i16 - double_offset)),
+            Square(infra::to_u8(i16::from(to.0) - double_offset)),
             to,
             DOUBLE_PUSH,
         ));
@@ -659,7 +659,7 @@ fn gen_unpinned_pawn_quiets<S: MoveSink>(
     while targets.any() {
         let to = targets.pop_lsb();
         push_pawn_move_flags(
-            Square(infra::to_u8(to.0 as i16 - push_offset)),
+            Square(infra::to_u8(i16::from(to.0) - push_offset)),
             to,
             false,
             moves,
@@ -683,7 +683,7 @@ fn gen_unpinned_pawn_captures<S: MoveSink>(
     while targets.any() {
         let to = targets.pop_lsb();
         push_pawn_move_flags(
-            Square(infra::to_u8(to.0 as i16 - east_offset)),
+            Square(infra::to_u8(i16::from(to.0) - east_offset)),
             to,
             true,
             moves,
@@ -694,7 +694,7 @@ fn gen_unpinned_pawn_captures<S: MoveSink>(
     while targets.any() {
         let to = targets.pop_lsb();
         push_pawn_move_flags(
-            Square(infra::to_u8(to.0 as i16 - west_offset)),
+            Square(infra::to_u8(i16::from(to.0) - west_offset)),
             to,
             true,
             moves,

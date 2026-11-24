@@ -82,7 +82,7 @@ impl Evaluator {
             };
             while pp.any() {
                 let sq = pp.pop_lsb();
-                let rel_rank = relative_rank(color, sq) as i32;
+                let rel_rank = i32::from(relative_rank(color, sq));
                 if let Some(stop) = forward_square(color, sq)
                     && (occupied & Bitboard::from(stop)).is_empty()
                 {
@@ -157,9 +157,9 @@ impl Evaluator {
             if (path & occupied).any() {
                 continue;
             }
-            let rel = relative_rank(color, ps) as i32;
+            let rel = i32::from(relative_rank(color, ps));
             let pawn_steps = (7 - rel) - if rel == 1 { 1 } else { 0 };
-            let king_steps = KING_DISTANCE[enemy_king.index()][promo] as i32;
+            let king_steps = i32::from(KING_DISTANCE[enemy_king.index()][promo]);
             // The rule of the square, counting the king's capture of the new
             // queen: moving first, the king catches the pawn from one square
             // further than the pawn's steps; moving second, from its steps.

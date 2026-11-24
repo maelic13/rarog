@@ -116,7 +116,10 @@ fn check(name: &'static str, default: bool, apply: fn(&mut EngineOptions, bool))
 
 /// Every option, in the order `uci` lists them.
 fn table() -> Vec<UciOption> {
-    #[allow(unused_mut, reason = "LargePages is pushed only on Windows")]
+    #[cfg_attr(
+        not(windows),
+        expect(unused_mut, reason = "LargePages is pushed only on Windows")
+    )]
     let mut options = vec![
         spin(
             "Hash",

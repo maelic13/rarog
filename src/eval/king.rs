@@ -295,7 +295,10 @@ impl Evaluator {
         )
     }
 
-    #[expect(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the king term's inputs are separate per-colour values, not one structure"
+    )]
     pub(super) fn eval_king_safety(
         &self,
         board: &Board,

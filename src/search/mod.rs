@@ -528,8 +528,8 @@ impl Searcher {
         // root.clone() inherits this and no thread reallocates while searching.
         root.reserve_history(MAX_PLY);
 
-        let game_ply = 2 * root.fullmove().saturating_sub(1) as u32
-            + (root.side_to_move() == Color::Black) as u32;
+        let game_ply = 2 * u32::from(root.fullmove().saturating_sub(1))
+            + u32::from(root.side_to_move() == Color::Black);
         self.reset_search_state(limits, engine_options, root.side_to_move(), game_ply, true);
         self.cfg.score_material = score_material(&root);
 

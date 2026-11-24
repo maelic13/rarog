@@ -176,8 +176,8 @@ impl TbPosition {
             pawns: (board.pieces(Color::White, Piece::Pawn)
                 | board.pieces(Color::Black, Piece::Pawn))
             .0,
-            rule50: board.halfmove_clock() as u32,
-            ep: board.ep_square().map_or(0, |sq| sq.0 as u32),
+            rule50: u32::from(board.halfmove_clock()),
+            ep: board.ep_square().map_or(0, |sq| u32::from(sq.0)),
             turn: board.side_to_move() == Color::White,
         }
     }

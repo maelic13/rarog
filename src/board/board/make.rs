@@ -275,7 +275,6 @@ impl Board {
         // Restore side to move (it was flipped by make_move)
         self.side_to_move = !self.side_to_move;
         let us = self.side_to_move;
-        let _them = !us;
 
         // Restore state fields
         self.castling = info.castling;

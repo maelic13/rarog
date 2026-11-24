@@ -12,7 +12,7 @@
 #[cfg(feature = "diag")]
 // Counter statics are deliberately lower_snake_case: the name is emitted
 // verbatim as the `info string diag <name>` label.
-#[expect(non_upper_case_globals)]
+#[expect(non_upper_case_globals, reason = "each counter's name is its label")]
 pub mod counters {
     use std::sync::atomic::{AtomicU64, Ordering};
 

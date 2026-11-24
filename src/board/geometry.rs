@@ -45,7 +45,11 @@ const fn aligned(ar: i8, af: i8, br: i8, bf: i8) -> bool {
 
 // Const-evaluated init — helpers are non-const; any out-of-range would fail
 // the compile-time evaluation itself, so plain casts are sound here.
-#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a const-evaluated table: every value is in range, and one out of range fails the build"
+)]
 const fn init_between() -> [[Bitboard; 64]; 64] {
     let mut table = [[Bitboard::EMPTY; 64]; 64];
     let mut a = 0usize;
@@ -81,7 +85,11 @@ const fn init_between() -> [[Bitboard; 64]; 64] {
 
 // Const-evaluated init — helpers are non-const; any out-of-range would fail
 // the compile-time evaluation itself, so plain casts are sound here.
-#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a const-evaluated table: every value is in range, and one out of range fails the build"
+)]
 const fn init_line() -> [[Bitboard; 64]; 64] {
     let mut table = [[Bitboard::EMPTY; 64]; 64];
     let mut a = 0usize;
@@ -166,7 +174,10 @@ const fn init_square_rank() -> [usize; 64] {
 // Const-evaluated init: the `infra` helpers are not `const fn` (trait-based),
 // and any out-of-range here would surface at COMPILE time, so plain casts are
 // sound and the lint is scoped off with this justification.
-#[expect(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "a const-evaluated table: every value is in range, and one out of range fails the build"
+)]
 const fn init_relative_ranks() -> [[u8; 64]; 2] {
     let mut table = [[0u8; 64]; 2];
     let mut sq = 0usize;
@@ -221,7 +232,11 @@ const fn init_forward_ranks() -> [[Bitboard; 8]; 2] {
 }
 
 // Const-evaluated init — see `init_relative_ranks` for the lint scoping.
-#[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    reason = "a const-evaluated table: every value is in range, and one out of range fails the build"
+)]
 const fn init_passed_pawn_masks() -> [[Bitboard; 64]; 2] {
     let mut table = [[Bitboard::EMPTY; 64]; 2];
     let mut color = 0usize;
@@ -271,7 +286,8 @@ pub(crate) const MANHATTAN_DISTANCE: [[u8; 64]; 64] = init_distance(true);
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "a const-evaluated table: every value is in range, and one out of range fails the build"
 )]
 const fn init_distance(manhattan: bool) -> [[u8; 64]; 64] {
     let mut table = [[0u8; 64]; 64];

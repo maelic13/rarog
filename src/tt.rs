@@ -120,7 +120,11 @@ struct LocalTable {
 /// stored through u16; depth is i8 stored through u8, so −1 travels as 255) —
 /// a range-checking helper would be WRONG, not just noisy.
 #[inline(always)]
-#[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    reason = "the entry's bit-exact unpacking, where the slicing is the design"
+)]
 fn unpack_entry(key16: u16, data: u64) -> Option<TtEntry> {
     let flag_age = (data >> 56) as u8;
     let entry = TtEntry {
@@ -136,19 +140,22 @@ fn unpack_entry(key16: u16, data: u64) -> Option<TtEntry> {
 
 /// Bit-exact serialization — the mirror of [`unpack_entry`]; same reasoning.
 #[inline(always)]
-#[expect(clippy::cast_sign_loss)]
+#[expect(clippy::cast_sign_loss, reason = "the entry's bit-exact packing")]
 fn pack_entry(entry: TtEntry) -> u64 {
-    entry.score as u16 as u64
-        | ((entry.static_eval as u16 as u64) << 16)
-        | ((entry.mv as u64) << 32)
-        | ((entry.depth as u8 as u64) << 48)
-        | ((entry.flag_age as u64) << 56)
+    u64::from(entry.score as u16)
+        | (u64::from(entry.static_eval as u16) << 16)
+        | (u64::from(entry.mv) << 32)
+        | (u64::from(entry.depth as u8) << 48)
+        | (u64::from(entry.flag_age) << 56)
 }
 
 /// XOR-fold of the payload down to 16 bits, used as the tag's checksum half.
 /// The truncation IS the fold, hence the scoped allow.
 #[inline(always)]
-#[expect(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "the truncation is the fold"
+)]
 fn fold16(data: u64) -> u16 {
     let folded = data ^ (data >> 32);
     let folded = folded ^ (folded >> 16);
@@ -579,7 +586,10 @@ fn prefetch_ptr<T>(ptr: *const T) {
 /// comes from the high bits ([`cluster_index`]), so the two stay independent.
 /// The truncation IS the design (a 16-bit tag), hence the scoped allow.
 #[inline(always)]
-#[expect(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "the 16-bit tag is the design"
+)]
 fn key16_of(key: u64) -> u16 {
     key as u16
 }
@@ -588,7 +598,10 @@ fn key16_of(key: u64) -> u16 {
 /// product, which maps the keys evenly onto any count, so `Hash` need not be a
 /// power of two. The product's high half is below `clusters`, so it fits.
 #[inline(always)]
-#[expect(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "the product's high half is below `clusters`"
+)]
 fn cluster_index(key: u64, clusters: usize) -> usize {
     ((u128::from(key) * clusters as u128) >> 64) as usize
 }
@@ -907,7 +920,7 @@ fn entry_quality(entry: TtEntry, age: u8) -> i32 {
         return i32::MIN;
     }
     let age_delta = age.wrapping_sub(entry.flag_age & AGE_MASK) & AGE_MASK;
-    entry.depth as i32 - age_delta as i32 / AGE_QUALITY_DIVISOR
+    i32::from(entry.depth) - i32::from(age_delta) / AGE_QUALITY_DIVISOR
 }
 
 #[cfg(test)]

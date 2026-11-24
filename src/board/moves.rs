@@ -145,7 +145,7 @@ impl Move {
 
     #[inline(always)]
     pub fn new(from: Square, to: Square, flags: u16) -> Self {
-        Self(from.0 as u16 | ((to.0 as u16) << 6) | (flags << 12))
+        Self(u16::from(from.0) | (u16::from(to.0) << 6) | (flags << 12))
     }
 
     #[inline(always)]

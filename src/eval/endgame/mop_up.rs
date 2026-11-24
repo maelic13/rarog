@@ -75,7 +75,7 @@ impl Evaluator {
             let sign = color_sign(winning);
             let lksq = board.king_sq(losing);
             let wksq = board.king_sq(winning);
-            let king_distance = KING_DISTANCE[wksq.index()][lksq.index()] as i32;
+            let king_distance = i32::from(KING_DISTANCE[wksq.index()][lksq.index()]);
             // The corner drive applies ONLY to MINOR-PIECE mates: a losing bare
             // king against a winner with no pawn, rook or queen, read from the
             // position evaluated (a pawn-root family can reach this material

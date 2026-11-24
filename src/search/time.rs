@@ -282,8 +282,8 @@ impl MateWatch {
 /// make.
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
-    not(feature = "diag"),
-    allow(
+    all(not(feature = "diag"), not(test)),
+    expect(
         dead_code,
         reason = "the factors are read by the diag log and the tests; the search reads the target"
     )

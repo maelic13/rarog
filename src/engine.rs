@@ -221,7 +221,7 @@ impl Engine {
                 if detailed {
                     // Floored at 1 ms like the `info` lines, so a position
                     // solved inside the first millisecond still gets a rate.
-                    let nps = result.nodes as u128 * 1000 / result.elapsed_ms.max(1);
+                    let nps = u128::from(result.nodes) * 1000 / result.elapsed_ms.max(1);
                     crate::uci_println!(
                         "bench {}/{}  depth {}  score {}  nodes {}  ebf {:.2}  time {}ms  nps {}",
                         index + 1,
@@ -240,7 +240,7 @@ impl Engine {
                 return exit;
             }
 
-            let run_nps = total_nodes as u128 * 1000 / total_ms.max(1);
+            let run_nps = u128::from(total_nodes) * 1000 / total_ms.max(1);
             nps_samples.push(run_nps);
 
             if repeat == 0 {

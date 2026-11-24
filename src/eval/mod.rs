@@ -86,7 +86,13 @@ const PSQ_PIECES: [Piece; 6] = Piece::ALL;
 
 // Under `texel` the caches are written but never read (hits are bypassed so
 // every position re-emits its trace), so the fields look dead to that build.
-#[cfg_attr(feature = "texel", allow(dead_code))]
+#[cfg_attr(
+    feature = "texel",
+    expect(
+        dead_code,
+        reason = "the texel build writes no cache entry, so the cache looks dead there"
+    )
+)]
 #[derive(Copy, Clone, Default)]
 struct PawnEntry {
     key: u64,
@@ -101,7 +107,6 @@ struct PawnEntry {
     shelter: [Option<CachedShelter>; 2],
 }
 
-#[cfg_attr(feature = "texel", allow(dead_code))]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 struct CachedShelter {
     king: Square,
@@ -115,7 +120,13 @@ struct CachedShelter {
 pub struct Evaluator {
     pawn_table: Vec<PawnEntry>,
     /// Imbalances by piece counts; see `eval_imbalance`.
-    #[cfg_attr(feature = "texel", allow(dead_code))]
+    #[cfg_attr(
+        feature = "texel",
+        expect(
+            dead_code,
+            reason = "the texel build writes no cache entry, so the cache looks dead there"
+        )
+    )]
     imbalance_table: Vec<Option<ImbalanceEntry>>,
     #[cfg(any(feature = "tune", feature = "texel", test))]
     params: EvalParams,
@@ -281,7 +292,10 @@ impl Evaluator {
                     // Material and PST are separate tunable params; the cooked
                     // table folds them, so trace each separately. The PST index
                     // mirrors build_tables: sq for white, sq^56 for black.
-                    #[cfg_attr(not(feature = "texel"), allow(unused_variables))]
+                    #[cfg_attr(
+                        not(feature = "texel"),
+                        expect(unused_variables, reason = "the square feeds only the texel trace")
+                    )]
                     let pst_sq = if color == Color::White {
                         sq.index()
                     } else {

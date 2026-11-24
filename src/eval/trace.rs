@@ -100,12 +100,12 @@ macro_rules! define_eval_trace {
                 let mut mg: i64 = 0;
                 let mut eg: i64 = 0;
                 $( for i in 0..$len {
-                    mg += self.mg.$field[i] as i64 * p.$field[i] as i64;
-                    eg += self.eg.$field[i] as i64 * p.$field[i] as i64;
+                    mg += i64::from(self.mg.$field[i]) * i64::from(p.$field[i]);
+                    eg += i64::from(self.eg.$field[i]) * i64::from(p.$field[i]);
                 } )*
                 crate::infra::saturating_i32(
-                    (mg * self.phase as i64 + eg * (TOTAL_PHASE as i64 - self.phase as i64))
-                        / TOTAL_PHASE as i64,
+                    (mg * i64::from(self.phase) + eg * (i64::from(TOTAL_PHASE) - i64::from(self.phase)))
+                        / i64::from(TOTAL_PHASE),
                 )
             }
 
@@ -113,13 +113,13 @@ macro_rules! define_eval_trace {
             /// count_eg·(24−phase))/24` — the linear sensitivity of the raw
             /// eval to each weight, in `EVAL_PARAM_NAMES` flat order.
             pub fn flat_coeffs(&self) -> Vec<f64> {
-                let ph = self.phase as f64;
+                let ph = f64::from(self.phase);
                 let mut out = Vec::with_capacity(EvalParams::FLAT_SIZE);
                 $( for i in 0..$len {
                     out.push(
-                        (self.mg.$field[i] as f64 * ph
-                            + self.eg.$field[i] as f64 * (TOTAL_PHASE as f64 - ph))
-                            / TOTAL_PHASE as f64,
+                        (f64::from(self.mg.$field[i]) * ph
+                            + f64::from(self.eg.$field[i]) * (f64::from(TOTAL_PHASE) - ph))
+                            / f64::from(TOTAL_PHASE),
                     );
                 } )*
                 out
@@ -135,7 +135,7 @@ macro_rules! define_eval_trace {
             /// `EVAL_PARAM_NAMES` order (the tuner's working representation).
             pub fn to_flat(&self) -> Vec<f64> {
                 let mut out = Vec::with_capacity(Self::FLAT_SIZE);
-                $( for i in 0..$len { out.push(self.$field[i] as f64); } )*
+                $( for i in 0..$len { out.push(f64::from(self.$field[i])); } )*
                 out
             }
 
@@ -146,7 +146,10 @@ macro_rules! define_eval_trace {
             /// 0 (guaranteed by the language since Rust 1.45), and `.round()`
             /// is exactly the rounding the tuner wants. There is no checked
             /// helper to reach for here.
-            #[expect(clippy::cast_possible_truncation)]
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "rounding a fitted weight to the nearest integer is the intent"
+            )]
             pub fn set_from_flat(&mut self, w: &[f64]) {
                 let mut k = 0usize;
                 $( for i in 0..$len { self.$field[i] = w[k].round() as i32; k += 1; } )*
@@ -168,7 +171,7 @@ pub fn linear_delta_scale(board: &Board) -> f64 {
     // Specialised endgame scale factors apply first, as in `scale_endgame`.
     // A dead-draw pattern zeroes the delta scale.
     if let Some(sf) = specialized_endgame_scale(board) {
-        return sf as f64 / SCALE_NORMAL as f64;
+        return f64::from(sf) / f64::from(SCALE_NORMAL);
     }
 
     if (has_only_king(board, Color::White) && has_only_knights(board, Color::Black, 2))
@@ -177,7 +180,7 @@ pub fn linear_delta_scale(board: &Board) -> f64 {
         return 0.0;
     }
 
-    opposite_bishop_scale(board).map_or(1.0, |ocb| ocb as f64 / OCB_SCALE_NORMAL as f64)
+    opposite_bishop_scale(board).map_or(1.0, |ocb| f64::from(ocb) / f64::from(OCB_SCALE_NORMAL))
 }
 
 // The reconstruction acceptance gate: for a large, diverse set of

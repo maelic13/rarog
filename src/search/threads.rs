@@ -227,7 +227,7 @@ fn is_root_result(result: &SearchResult, root_moves: &[Move]) -> bool {
 }
 
 fn parallel_vote_value(result: &SearchResult, min_score: i32) -> i64 {
-    let score_weight = (result.score as i64 - min_score as i64 + 14).max(1);
+    let score_weight = (i64::from(result.score) - i64::from(min_score) + 14).max(1);
     score_weight * i64::try_from(result.depth.max(1)).unwrap_or(i64::MAX)
 }
 
@@ -305,8 +305,8 @@ impl Searcher {
         tb_root: TbRootDecision,
         poll: &mut P,
     ) -> SearchResult {
-        let game_ply = 2 * root.fullmove().saturating_sub(1) as u32
-            + (root.side_to_move() == Color::Black) as u32;
+        let game_ply = 2 * u32::from(root.fullmove().saturating_sub(1))
+            + u32::from(root.side_to_move() == Color::Black);
         // Helpers must NOT inherit the main thread's fixed depth.
         //
         // Under a clock this is invisible — every thread runs until the main

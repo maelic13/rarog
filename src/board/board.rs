@@ -395,7 +395,7 @@ impl Board {
         let to_bb = Bitboard::from(to);
         let canonical = match piece {
             Piece::Pawn => {
-                let delta = to.0 as i16 - from.0 as i16;
+                let delta = i16::from(to.0) - i16::from(from.0);
                 let forward = if us == Color::White { 8 } else { -8 };
                 let start_rank = if us == Color::White {
                     Rank::R2
@@ -433,7 +433,7 @@ impl Board {
                     && from.rank() == start_rank
                     && self.color_on(to).is_none()
                 {
-                    let mid = Square(infra::to_u8(from.0 as i16 + forward));
+                    let mid = Square(infra::to_u8(i16::from(from.0) + forward));
                     (self.color_on(mid).is_none()).then_some(Move::new(from, to, DOUBLE_PUSH))
                 } else {
                     None

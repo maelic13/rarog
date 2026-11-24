@@ -8,13 +8,13 @@ static TEST_SYZYGY_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 fn encoded_root_result(from: Square, to: Square, promotes: u32) -> u32 {
     (TB_WIN << TB_RESULT_WDL_SHIFT)
-        | ((to.0 as u32) << TB_RESULT_TO_SHIFT)
-        | ((from.0 as u32) << TB_RESULT_FROM_SHIFT)
+        | (u32::from(to.0) << TB_RESULT_TO_SHIFT)
+        | (u32::from(from.0) << TB_RESULT_FROM_SHIFT)
         | (promotes << TB_RESULT_PROMOTES_SHIFT)
 }
 
 fn encoded_tb_move(from: Square, to: Square, promotes: u16) -> u16 {
-    ((from.0 as u16) << 6) | to.0 as u16 | (promotes << 12)
+    (u16::from(from.0) << 6) | u16::from(to.0) | (promotes << 12)
 }
 
 /// The value of `#define <name> <value>` in Fathom's header, where the
@@ -188,7 +188,7 @@ fn tb_position_exports_bitboards_side_ep_and_rule50_state() {
         (board.pieces(Color::White, Piece::Pawn) | board.pieces(Color::Black, Piece::Pawn)).0
     );
     assert_eq!(pos.rule50, 7);
-    assert_eq!(pos.ep, Square::E3.0 as u32);
+    assert_eq!(pos.ep, u32::from(Square::E3.0));
     assert!(!pos.turn);
 }
 

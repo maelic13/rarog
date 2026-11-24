@@ -286,7 +286,7 @@ fn kbp_wrong_corner_draw(board: &Board) -> bool {
             continue;
         }
         let weak_king = board.king_sq(weak);
-        if KING_DISTANCE[weak_king.index()][queening_sq.index()] as i32 <= 1 {
+        if i32::from(KING_DISTANCE[weak_king.index()][queening_sq.index()]) <= 1 {
             return true;
         }
     }
