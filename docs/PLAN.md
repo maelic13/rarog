@@ -405,10 +405,8 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.8.9 | READY_FOR_IMPLEMENTATION | I1 | Prepared 2026-11-24 as a patch (`analysis/artifacts/d8-2026-11-24/d89_masks.patch`, five files, 333 lines out, `tune` builds only, every consumer and the `tune` and `texel` lib tests clean): waiting for the maintainer to confirm no open read sets `KingDangerMask` or `KingShelterMask` |
 | D.8.14 | RESEARCH | R2 | `R2` first on how aspiration and MultiPV share the driver |
 | D.8.15 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.16 | READY_FOR_IMPLEMENTATION | I1 | Waiting for the maintainer (2026-11-24): `NO_CHANGE` proposed, because E.4.4 rebuilds the evaluation whole in `sf_11`'s form and would write it in this shape |
 | D.8.18 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.19 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.20 | READY_FOR_IMPLEMENTATION | I1 | Its census has no dependency |
@@ -3764,11 +3762,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   instrumentation about 2,300 non-test lines and 437 of `negamax`'s 1,662; two
   dependency cycles; 657 public items, 77 unreferenced outside their file; the
   kernel within 1.3× the donor's after instrumentation, the root driver 630
-  lines against 244). Every item is its own branch and squash, `I1` with the
+  lines against 244). Every item was to be its own branch and squash; on
+  2026-11-24 (maintainer decision) all of D.8 is one branch, `d8`, with a
+  commit or two an item, delivered as one pull request, the simplification
+  programme. Each item is `I1` with the
   exact fingerprint on both slider backends, the suites, fmt and clippy;
   NPS-guarded means the allocation guard and one pooled-NPS read taken alone.
-  D.2 and D.3 are closed, so nothing here waits: the items run in order, each
-  on its own branch. P16, the comment pass, merged into D.5.16 on
+  D.2 and D.3 are closed, so nothing here waits: the items run in order.
+  P16, the comment pass, merged into D.5.16 on
   2026-11-05.
   D.8.6, D.8.7 and D.8.19 are read again after D.7 (2026-11-13): a kernel
   rebuilt there is written in their target shape.
@@ -3777,8 +3778,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   census before it starts; the counts above are the 2026-11-01 tree's.
   *Progress 2026-11-24* (one branch, `d8`, from PR #22's `9195663`, a
   commit or two an item): done D.8.1 to D.8.5, D.8.8, D.8.12; closed
-  `NO_CHANGE` D.8.6, D.8.7, D.8.10, D.8.11; waiting for the maintainer
-  D.8.9 and D.8.16; open D.8.14, D.8.15, D.8.18 to D.8.21. `src/`'s two
+  `NO_CHANGE` D.8.6, D.8.7, D.8.10, D.8.11; the maintainer's decisions
+  the same day: D.8.9 done, D.8.16 `NO_CHANGE`, one branch and one PR;
+  open D.8.14, D.8.15, D.8.18 to D.8.21. `src/`'s two
   largest files went from 3,802 and 3,701 lines to 2,546 and 849.
     - **D.8.1 P0: the census as a tool — `I1`, DONE 2026-11-24.** Commit the census as `tools/diag/arch_census.py` with a test
      (masked-source parser, `use` edge graph, public census, shape table,
@@ -3892,10 +3894,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      signatures carry (`ScoredMove`, `UpdateAmounts`, `Reward`,
      `InfoRecord`). Fingerprint 3,694,298; fmt, clippy in every feature
      set, debug 553 and release 555 tests pass.
-    - **D.8.9 P8: delete the family masks — `I1`.** Delete the family masks (`eval/masks.rs`, the `Evaluator` fields,
+    - **D.8.9 P8: delete the family masks — `I1`, DONE 2026-11-24.** Delete the family masks (`eval/masks.rs`, the `Evaluator` fields,
      the `king.rs` hook and its tests, the two options; about 200 lines) once
      the maintainer confirms no open read sets `KingDangerMask` or
      `KingShelterMask`. `tune` builds only.
+     *Done* (`4fe0758`; the maintainer confirmed 2026-11-24): 333 lines
+     out of five files, the three mask tests with them. Every consumer
+     compiles clean; fmt, clippy, debug 553, release 555, `texel` lib 302
+     and `tune` lib 300 tests pass; fingerprint 3,694,298.
     - **D.8.10 P9: one `ArrayList<T, N>` — `I1`, NO_CHANGE 2026-11-24.** One `ArrayList<T, N>` under `MoveList` and `ScoredMoveList`; one
       `unsafe` fewer; keep the `MaybeUninit` init and its measured reason.
       NPS-guarded with the assembly `memcpy` check.
@@ -3919,8 +3925,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       is the evaluation's two handles (`CompiledParams`,
       `CompiledTables`, about 30 lines), and E.4.4 replaces that
       evaluation and its parameter set whole, so a shared handle is
-      written there, in the rebuilt evaluation's shape (pending the
-      maintainer's word, with D.8.16).
+      written there, in the rebuilt evaluation's shape (maintainer
+      decision 2026-11-24, with D.8.16).
     - **D.8.12 P11: split `search/mod.rs` — `I1`, DONE 2026-11-24.** Split `search/mod.rs` into `root`, `report`, `tb`.
       Neutral.
       *Done* (`4431b88`): `search/mod.rs` 2,112 → 849 lines; 34 methods
@@ -3948,11 +3954,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       path in `conversion_audit.py`). Neutral. One `run_suite` already serves `bench`
       and `wac` in `engine.rs` (`27cd37e`, with D.3.9); the move to
       `src/tools/` (planned) and the rest remain.
-    - **D.8.16 P15: the evaluation's shape — `I1`.** The evaluation's shape (EVAL-8): a `Score` accumulator and one
+    - **D.8.16 P15: the evaluation's shape — `I1`, NO_CHANGE 2026-11-24.** The evaluation's shape (EVAL-8): a `Score` accumulator and one
       `term!` macro emitting both halves and both trace sites, a per-colour
       context for the ten-argument term functions, `forward_one` and
       `pawn_attacks_of` used everywhere; fingerprint exact plus the `texel`
       reconstruction test.
+      *Closed* (maintainer decision 2026-11-24): E.4.4 rebuilds the
+      evaluation whole in `sf_11`'s form, and writes the rebuilt one in
+      this shape; reshaping today's would be work the rebuild deletes.
     - **D.8.18 P17: lints — `I1`.** Lints (RUST-9, RUST-10): enable `cast_lossless`,
       `borrow_as_ptr`, `checked_conversions`, `manual_assert_eq` and
       `no_effect_underscore_binding` (65 mechanical edits, same code), the
