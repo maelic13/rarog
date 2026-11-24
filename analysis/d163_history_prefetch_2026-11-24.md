@@ -83,3 +83,65 @@ python tools/nps_read.py --base analysis/artifacts/d161-2026-11-23/pool-a --cand
 **Band, inferred and not measured:** at RAR-M92's 1.67 Elo for 1% of node
 rate, the predicted +0.3% is about +0.5 Elo. The ceiling, 3.6% of rate, is
 about +6 Elo.
+
+## Result (2026-11-24): `NO_CHANGE`, reverted
+
+**Build.** `90c4460`: `prefetch_ptr` is now visible to the crate (the same
+`unsafe` site, so no new one). The history tables hand out the address of
+the quiet, pawn and continuation entries. `append_compact_quiets` asks for
+the first four moves' lines before its loop, and for the line of the move
+four ahead at each step.
+
+**Checks.**
+
+- `bench 13` was 3,694,298 / EBF 2.324, exact.
+- fmt passed, and clippy over all features gave zero warnings.
+- Debug tests: 555 passed. Release tests: 557 passed.
+- The release library's assembly (`asm_scan.py`) has no `memcpy` or
+  `memset` in the node, quiescence, `CompactPicker::next`, make or
+  `Evaluator::evaluate`. The two hits it found are `Evaluator`'s `Default`
+  constructor, which is not per node.
+- `CompactPicker::next` gained six `prefetcht0` instructions, so the item
+  was active.
+
+**Reads.**
+
+- Candidate pool: four pext PGO builds of `90c4460`, clean, all at
+  3,694,298.
+- Base pool: `analysis/artifacts/d161-2026-11-23/pool-a`.
+- The host was idle (0.0 to 0.6% CPU), and no cycle was disturbed.
+- In the games read the two arms searched the same 200 trees.
+
+| Read | Delta | 95% interval | Verdict |
+|---|---|---|---|
+| Bench, step 1 (deciding) | **−4.74%** | −6.49% to −2.99% | `NO_CHANGE` by step 1 |
+| Games, step 1 (beside) | **−3.67%** | −3.89% to −3.45% | — |
+
+**By the frozen rule the item is reverted** (`22b4310`; the source is
+byte-identical to `90c4460^`, and `bench 13` is 3,694,298 again), **and
+D.16.3 closes `NO_CHANGE`.** The rest of the gap is the tree, its
+mechanisms and the evaluation's form, as D.16.3.1's card put it.
+
+**The second memory change, for D.16.2's observation.** The gap between
+the two reads is +1.07 against D.16.2's band of 1.76, so they agree. The
+games read's interval is again the narrower (±0.22 against ±1.75). Here
+the width is the base pool's own spread on the bench. Its four builds read
+2,577,458 to 2,644,517 nodes a second, 2.6% apart. On game positions the
+same builds read 2,353,241 to 2,362,278, 0.4% apart. D.16.1 had read this
+pool only on game positions. Two memory changes now show the bench read
+the wider of the two. That is an observation, not a decision.
+
+**Calibration.** The prediction was +0.3% on the bench (80% band −0.2 to
++1.0) and +0.4% on games (−0.2 to +1.2). The reads were −4.74% and −3.67%:
+a miss in sign and magnitude. The assumption that failed was that a
+prefetch costs only cache. The item made each quiet move pay for its own
+address work again, a second `moving_piece` lookup and six hints, and
+filled L1 with lines four moves early. The scores waiting on the loads did
+not get faster. Nothing here measures which of these cost the 3.7%. The
+read is a refutation of the item, not an explanation of the loss. As with
+D.7.8.12's second prefetch, a profile's share of stalled instructions did
+not show that the loads were on the critical path. The cause is not
+investigated further: the rule closes the step and no use is named for the
+explanation.
+
+**Band, inferred:** none to price. The pass leaves the node rate as it was.

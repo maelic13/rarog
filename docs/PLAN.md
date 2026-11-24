@@ -405,7 +405,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.16.3 | READY_FOR_IMPLEMENTATION | R2 | Opened 2026-11-23 by the maintainer on E.0's packet; D.16.3.1's card (done 2026-11-23) leaves one behaviour-neutral item (`I1`), the quiet-scoring history loads prefetched ahead (ceiling 3.5% of samples), priced by the bench read, which D.16.2 kept (done 2026-11-24; on the memory change the bench read did not exclude zero at step 1 where the games read did, a choice for this item's registration) |
 | E.4.0.1 | RESEARCH | I2 | Added 2026-11-23 (maintainer decision on E.0's packet), E.4.0's first read: Stockfish's classical evaluation inside the kernel through a diagnostic bridge, against the kernel, at equal nodes; under +25 a rebuild is not indicated |
 | E.4.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-23 (maintainer decision on E.0's packet), research only: the donor and the form, decided on E.4.0.1's reads; E.4's units stay after the release |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
@@ -4816,7 +4815,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       section, 4,300 words). `cargo xtask release-check --notes` writes
       them; its tests and a run on a dated section are the check. PROCESS
       *Release* and the changelog's convention change with it.
-- **D.16 Speed read on game positions: the bench read checked against play, and one more speed pass on the compact kernel if they disagree — `I1`, then `V`; `R2` card for the pass.**
+- **D.16 Speed read on game positions: the bench read checked against play, and one more speed pass on the compact kernel if they disagree — `I1`, then `V`; `R2` card for the pass, DONE 2026-11-24.**
   Added 2026-11-23 (maintainer request: more speed work on the compact
   kernel is coming) from Trinity's record
   (`analysis/trinity_read_2026-11-23.md`, *Measurement lessons*): a picker
@@ -4877,7 +4876,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the bench read did not exclude zero at step 1 where the games read
       did, and A's bench delta did not reproduce its acceptance read
       (+1.09%, 0.82 points away).
-    - **D.16.3 One more speed pass on the compact kernel — `R2` card, `I1` items, `V` reads.**
+    - **D.16.3 One more speed pass on the compact kernel — `R2` card, `I1` items, `V` reads, NO_CHANGE 2026-11-24.**
       Opened by D.16.2's discrepancy or by the maintainer. A profile on
       game positions with Stockfish as the reference (Reckless's binary
       may be profiled beside it; its code is ideas only since 2026-11-23,
@@ -4893,6 +4892,16 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       expected small. Stop rule: a read whose interval does not exclude
       zero reverts it, and D.16.3 then closes `NO_CHANGE`: the rest of
       the gap is the tree, its mechanisms and the evaluation's form.
+      *NO_CHANGE 2026-11-24* (`analysis/d163_history_prefetch_2026-11-24.md`,
+      registered `21793a2` before the build): the item built as
+      `90c4460`, the fingerprint exact, checks passed, no `memcpy` in the
+      node's functions; the bench read, deciding, **−4.74% (−6.49 to
+      −2.99)**, `NO_CHANGE` by step 1, and the games read beside it
+      −3.67% (−3.89 to −3.45). Reverted (`22b4310`, the source
+      byte-identical to before). Predicted +0.3%: a miss in sign; the
+      prefetch's own work and cache use cost more than the loads it
+      hid, which a profile's stall share did not show. The rest of the
+      gap is the tree, its mechanisms and the evaluation's form.
         - **D.16.3.1 The kernel's node beside Stockfish's, function by function — `R2`, DONE 2026-11-23.**
           Added 2026-11-23 (maintainer decision on E.0's packet) and run
           first of D.16. E.0 profiled Stockfish 16's classical build on 281
