@@ -406,9 +406,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.8.9 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.10 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.11 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.12 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.14 | RESEARCH | R2 | `R2` first on how aspiration and MultiPV share the driver |
 | D.8.15 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.16 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
@@ -3894,10 +3891,14 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      the `king.rs` hook and its tests, the two options; about 200 lines) once
      the maintainer confirms no open read sets `KingDangerMask` or
      `KingShelterMask`. `tune` builds only.
-    - **D.8.10 P9: one `ArrayList<T, N>` — `I1`.** One `ArrayList<T, N>` under `MoveList` and `ScoredMoveList`; one
+    - **D.8.10 P9: one `ArrayList<T, N>` — `I1`, NO_CHANGE 2026-11-24.** One `ArrayList<T, N>` under `MoveList` and `ScoredMoveList`; one
       `unsafe` fewer; keep the `MaybeUninit` init and its measured reason.
       NPS-guarded with the assembly `memcpy` check.
-    - **D.8.11 P10: one `Compiled<T>` — `I1`.** One `Compiled<T>` in `infra`, a `runtime_params` cfg emitted by
+      *Closed, already done:* D.7's kernel (`94d7f72`) wrote it as
+      `board::FixedList<T, N>`, which carries `MoveList`, the scored lists
+      and a node's searched moves, its `unsafe` in `as_slice` and
+      `as_mut_slice` with the measured reason kept.
+    - **D.8.11 P10: one `Compiled<T>` — `I1`, NO_CHANGE 2026-11-24.** One `Compiled<T>` in `infra`, a `runtime_params` cfg emitted by
       `build.rs` for `tune`, `texel` and test profiles, an `Evaluator` variant
       field; `texel` builds then read search parameters at run time (never
       measured for strength). NPS-guarded, read alone: C.12's folds were
@@ -3907,8 +3908,25 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       paths outside `tune` (`qs_see_margin`, `qs_see_clamp_hi`,
       `qs_see_bad_floor`, `nmp_min_non_pawn_pieces`, `probcut_see_gap_scale`,
       `lazy_margin`).
-    - **D.8.12 P11: split `search/mod.rs` — `I1`.** Split `search/mod.rs` into `root`, `report`, `tb`.
+      *Closed:* the search's handle and five of the six values went with
+      the classic kernel (D.7.7); `lazy_margin` is one evaluator field
+      read once an evaluation, which E.4.4's sweep refits. What is left
+      is the evaluation's two handles (`CompiledParams`,
+      `CompiledTables`, about 30 lines), and E.4.4 replaces that
+      evaluation and its parameter set whole, so a shared handle is
+      written there, in the rebuilt evaluation's shape (pending the
+      maintainer's word, with D.8.16).
+    - **D.8.12 P11: split `search/mod.rs` — `I1`, DONE 2026-11-24.** Split `search/mod.rs` into `root`, `report`, `tb`.
       Neutral.
+      *Done* (`4431b88`): `search/mod.rs` 2,112 → 849 lines; 34 methods
+      moved to `search/root.rs` (773 lines: both root drivers and the
+      iteration signals), `search/report.rs` (234: the info lines and
+      what they show) and `search/tb.rs` (292: the tablebase root and
+      probes), each unchanged but for the visibility that keeps its reach,
+      checked against `HEAD` as D.8.5's; the 14 used only inside their
+      new file went back to private, every consumer compiled clean.
+      Fingerprint 3,694,298; fmt, clippy in every feature set, debug 553
+      and release 555 tests pass.
     - **D.8.13 P12: the adapter boundary, inside D.3 — `I1`, DONE 2026-11-04.**
       Done inside D.3.9 (`cef6e97`, `d0759b9`). Record: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
     - **D.8.14 P13: one iterative-deepening driver — `R2`.** One iterative-deepening driver for single and MultiPV (53% of

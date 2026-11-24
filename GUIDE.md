@@ -118,9 +118,9 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.8.7** P6: the `diag` blocks into probe functions — NO_CHANGE 2026-11-24
     - [x] **D.8.8** P7: visibility follows use, second pass — DONE 2026-11-24
     - [ ] **D.8.9** P8: delete the family masks — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.8.10** P9: one `ArrayList<T, N>` — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.8.11** P10: one `Compiled<T>` — **READY_FOR_IMPLEMENTATION / I1**
-    - [ ] **D.8.12** P11: split `search/mod.rs` — **READY_FOR_IMPLEMENTATION / I1**
+    - [x] **D.8.10** P9: one `ArrayList<T, N>` — NO_CHANGE 2026-11-24
+    - [x] **D.8.11** P10: one `Compiled<T>` — NO_CHANGE 2026-11-24
+    - [x] **D.8.12** P11: split `search/mod.rs` — DONE 2026-11-24
     - [x] **D.8.13** P12: the adapter boundary, inside D.3 — DONE 2026-11-04
     - [ ] **D.8.14** P13: one iterative-deepening driver — **RESEARCH / R2**
     - [ ] **D.8.15** P14: bench and WAC under one suite runner — **READY_FOR_IMPLEMENTATION / I1**
