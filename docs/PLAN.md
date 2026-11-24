@@ -405,7 +405,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.8.14 | RESEARCH | R2 | `R2` first on how aspiration and MultiPV share the driver |
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
@@ -3751,7 +3750,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       SEE by its gain without the exchange, where the donor and the
       compact kernel play the exchange: a repair card for it, with its
       measured exposure, if the classic kernel is restored.
-- **D.8 Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — `I1`, `R2` for the root driver.**
+- **D.8 Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — `I1`, `R2` for the root driver, DONE 2026-11-24.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` §3.7 and §3.8
   (the B.2.0 recipe repeated: `src/` 29,190 lines, in-file tests 23%,
   instrumentation about 2,300 non-test lines and 437 of `negamax`'s 1,662; two
@@ -3771,12 +3770,22 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   D.7.7 deleted the classic kernel (2026-11-19), so D.8.1's census is
   taken on the tree that remains and every item is read against that
   census before it starts; the counts above are the 2026-11-01 tree's.
-  *Progress 2026-11-24* (one branch, `d8`, from PR #22's `9195663`, a
-  commit or two an item): done D.8.1 to D.8.5, D.8.8, D.8.12; closed
-  `NO_CHANGE` D.8.6, D.8.7, D.8.10, D.8.11; the maintainer's decisions
-  the same day: D.8.9 done, D.8.16 `NO_CHANGE`, one branch and one PR;
-  open D.8.14, D.8.15, D.8.18 to D.8.21. `src/`'s two
-  largest files went from 3,802 and 3,701 lines to 2,546 and 849.
+  *Done 2026-11-24* (one branch, `d8`, from PR #22's `9195663`, a commit
+  or two an item, one pull request by the maintainer's decision): done
+  D.8.1 to D.8.5, D.8.8, D.8.9, D.8.12, D.8.15, D.8.18, D.8.21; closed
+  `NO_CHANGE` D.8.6, D.8.7, D.8.10, D.8.11, D.8.14, D.8.16, D.8.19, D.8.20,
+  most because the classic kernel they targeted is gone or E.4.4
+  rebuilds the evaluation. The fingerprint stayed 3,694,298 / EBF 2.324
+  throughout; the two NPS-guarded items read no regression. The census
+  (`tools/diag/arch_census.py --at 2a0690b` against the head): `src/`
+  38,375 → 38,101 lines, code 19,951 → 19,907; the three largest files
+  3,802, 3,701 and 3,264 → 2,527, 850 and 841 lines (`rules.rs` is now
+  the largest, cut by a third rather than halved; the review's 860 lines
+  fewer assumed deletions the classic kernel's removal had already
+  made); no mutual import pair (the `eval`/`tt` cycle ended); public
+  items no other file names 89 → 59, `pub(crate)` or `pub(super)` that
+  could be private 36 → 10; duplicated runs of eight lines or more
+  37 → 34 (361 → 317 lines).
     - **D.8.1 P0: the census as a tool — `I1`, DONE 2026-11-24.** Commit the census as `tools/diag/arch_census.py` with a test
      (masked-source parser, `use` edge graph, public census, shape table,
      instrumentation attribution, duplicate finder); it reproduces the
@@ -3935,12 +3944,28 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       and release 555 tests pass.
     - **D.8.13 P12: the adapter boundary, inside D.3 — `I1`, DONE 2026-11-04.**
       Done inside D.3.9 (`cef6e97`, `d0759b9`). Record: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
-    - **D.8.14 P13: one iterative-deepening driver — `R2`.** One iterative-deepening driver for single and MultiPV (53% of
+    - **D.8.14 P13: one iterative-deepening driver — `R2`, NO_CHANGE 2026-11-24.** One iterative-deepening driver for single and MultiPV (53% of
       the MultiPV driver repeats the other): `R2` first on how aspiration
       state, `MateWatch`, the votes and the tablebase extension carry per
       line; `MultiPV 1` node-identical, `MultiPV > 1` judged by
       `tests/multipv.rs` and `multipv_syzygy.rs`; falsifier: a branch on the
       single-line path that costs NPS in the pooled read.
+      *Closed on the research* (the census's duplicate finder on
+      `search/root.rs`): the 53% was the old driver's. The compact
+      kernel's two drivers (388 and 284 lines) share 40 lines in runs of
+      eight or more, 14% of the MultiPV driver, and what else looks alike
+      differs in behaviour. The single-line driver lets helper threads
+      keep searching until the pool agrees on a stop, and the MultiPV
+      driver does not; only the single line logs its soft stop under
+      `diag`, and only MultiPV keeps per-line windows and averages. One
+      driver would have to carry both behaviours behind branches in
+      cold, once-an-iteration code, putting `MultiPV 1`'s node identity
+      and `MultiPV > 1`'s behaviour at risk for about 40 lines, against
+      the maintainer's 2026-11-19 ruling that compactness is secondary.
+      The one identical part, the closing `SearchResult`, is now one
+      `root_result` (`73c81eb`; fingerprint 3,694,298, debug 553 and
+      release 555 tests and the MultiPV suite pass). Retry trigger: a
+      root-level change that would have to be written into both drivers.
     - **D.8.15 P14: bench and WAC under one suite runner — `I1`, DONE 2026-11-24.** Bench and WAC into `src/tools/` with one `run_suite`; delete
       the board-performance integration test (the third copy of the board workloads,
       gates nothing); `tests/common` for the two counting allocators and the
