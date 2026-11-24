@@ -18,6 +18,11 @@
     normal mode.  Do NOT distribute this binary, since it is not guaranteed to
     run on other CPUs.
 
+    No PGO (-NoPgo switch): runs `cargo xtask build --tier pext --nopgo` —
+    the normal build without the profile.  Use only when the other arm of a
+    clock read cannot be PGO-built (a foreign bridge), so that both arms
+    are the same build kind.
+
     Tune (-Tune switch): runs `cargo xtask build --tier pext --nopgo --features tune`
     — produces a non-PGO pext binary with search-parameter UCI options exposed.  Use ONLY
     for weather-factory SPSA runs.  PGO is skipped because SPSA accuracy does
@@ -37,12 +42,16 @@
     Short label for the output file.
     Normal:  rarog-<Suffix>-pext-pgo.exe
     Native:  rarog-<Suffix>-pext-native-pgo.exe
+    NoPgo:   rarog-<Suffix>-pext-nopgo.exe
     Tune:    rarog-<Suffix>-tune.exe
 
 .PARAMETER Native
     Build with `--native` instead of `--tier pext`: the host's best tier (pext
     on a 5950X, so the same PEXT code path) with `target-cpu=native` in place
     of the portable baseline.  Local-only.
+
+.PARAMETER NoPgo
+    Build the normal pext binary without PGO.  Not with -Tune or -Native.
 
 .PARAMETER Tune
     Build with --features tune instead of PGO.  Use for SPSA binaries only.
@@ -82,6 +91,7 @@ param(
     [Parameter(Mandatory)][string]$Suffix,
     [switch]$Tune,
     [switch]$Native,
+    [switch]$NoPgo,
     [switch]$BuildOnly,
     [string]$Features = "",
     [int]$BenchDepth = 13,
@@ -91,6 +101,9 @@ param(
 
 if ($Tune -and $Native) {
     throw "-Tune and -Native are mutually exclusive."
+}
+if ($NoPgo -and ($Tune -or $Native)) {
+    throw "-NoPgo builds the normal pext binary; it does not combine with -Tune or -Native."
 }
 if ($Features -match '(^|,)\s*(tune|texel)\s*(,|$)') {
     throw "-Features may not name 'tune' (implied by -Tune) or 'texel' (it bypasses the evaluation caches)."
@@ -245,12 +258,13 @@ try {
     } else {
         # Gate binaries stay portable, so what we SPRT matches the shipped pext
         # build. -Native builds the host's best tier with `target-cpu=native`.
-        $label = if ($Native) { "native" } else { "pext" }
+        $label = if ($Native) { "native+PGO" } elseif ($NoPgo) { "pext, no PGO," } else { "pext+PGO" }
         Write-Host ""
-        Write-Host "Building $label+PGO binary (suffix: $Suffix) ..."
+        Write-Host "Building $label binary (suffix: $Suffix) ..."
         Write-Host ""
 
         [string[]]$xtaskArgs = if ($Native) { @("--native") } else { @("--tier", "pext") }
+        if ($NoPgo) { $xtaskArgs += @("--nopgo") }
         if ($Features) { $xtaskArgs += @("--features", $Features) }
         $dist = Invoke-XtaskBuild -Arguments $xtaskArgs
 
@@ -258,7 +272,7 @@ try {
             New-Item -ItemType Directory -Path $TestEnginesDir | Out-Null
         }
 
-        $fileFlavor = if ($Native) { "pext-native-pgo" } else { "pext-pgo" }
+        $fileFlavor = if ($Native) { "pext-native-pgo" } elseif ($NoPgo) { "pext-nopgo" } else { "pext-pgo" }
         $dest = Join-Path $TestEnginesDir "rarog-$Suffix-$fileFlavor.exe"
         Copy-Item $dist.FullName $dest -Force
         $buildCommand = "cargo xtask build $($xtaskArgs -join ' ')"
