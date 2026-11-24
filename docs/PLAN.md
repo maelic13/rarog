@@ -405,7 +405,7 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| E.4.0.1 | RESEARCH | I2 | Added 2026-11-23 (maintainer decision on E.0's packet), E.4.0's first read: Stockfish's classical evaluation inside the kernel through a diagnostic bridge, against the kernel, at equal nodes; under +25 a rebuild is not indicated |
+| E.4.0.1 | LOCAL_QUALIFIED | I2 | Added 2026-11-23 (maintainer decision on E.0's packet), E.4.0's first read; the bridge built and qualified 2026-11-24 (`tools/donor-eval`) and its two equal-node reads registered (RAR-O13), the maintainer's; the clock read's bridge price waits for an idle host; under +25 a rebuild is not indicated |
 | E.4.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-23 (maintainer decision on E.0's packet), research only: the donor and the form, decided on E.4.0.1's reads; E.4's units stay after the release |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
@@ -5410,6 +5410,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           at equal nodes a rebuild is not indicated and E.4 is repairs;
           the programme's band is +25 to +70. It answers question 1 in
           play as well.
+          *Built 2026-11-24* (`cf1c377` the `donor-eval` hook, `dbf265b`
+          the bridge, `tools/donor-eval`; RAR-O13 registered before any
+          game): both DLLs equal their tags' FEN setter on 10,039
+          positions and the release binaries' `eval` to its printed
+          precision; the hook idle keeps 3,694,298. The scale is K on
+          results (684 and 717 in 1/1024): RAR-O08's mean rule, 0.28,
+          was dominated by Stockfish's known-win scores. The kernel's
+          trees on the donors' evaluations are 1.22 and 1.30 times its
+          own at depth 14 on its game positions, with a tail in decided
+          endings (seldepth past 90 where Stockfish's search reaches 20),
+          a confound the read bundles. Waiting: the maintainer's two
+          matches; then the clock read, its bridge price on an idle host.
     - **E.4.1 The tuner before any fit — `I1`.** The five checks below,
       added 2026-11-22 to the refit and moved here when E.4 became the
       programme, land before the programme's first fit.
