@@ -405,7 +405,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
 | D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.4 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
