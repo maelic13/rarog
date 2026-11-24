@@ -2,8 +2,8 @@
 //! sum, so it must stay the last term piece activity adds.
 
 use super::Evaluator;
-use super::pawns::{FILE_BBS, SQUARE_FILE};
 use super::trace::tr_eg;
+use crate::board::geometry::{FILE_BBS, SQUARE_FILE};
 use crate::board::{Board, Color, Piece};
 use crate::infra;
 
@@ -23,7 +23,7 @@ impl Evaluator {
         let kingside = FILE_BBS[4] | FILE_BBS[5] | FILE_BBS[6] | FILE_BBS[7];
         let both_flanks = (pawns & queenside).any() && (pawns & kingside).any();
         let complexity = pawn_count + king_file_distance + i32::from(both_flanks);
-        let outcome_sign = (*eg > 0) as i32 - (*eg < 0) as i32;
+        let outcome_sign = i32::from(*eg > 0) - i32::from(*eg < 0);
         let n = outcome_sign * complexity;
         *eg += n * self.params.initiative_weight[0];
         tr_eg!(self, initiative_weight, 0, n);

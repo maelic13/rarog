@@ -8,7 +8,8 @@ use crate::eval::Evaluator;
 use super::correction::CorrectionTables;
 use super::history::HistoryTables;
 use super::stack::{PlyArray, StackEntry};
-use super::{InfoSink, MAX_PLY, RootMove, SilentSink};
+use super::{InfoSink, RootMove, SilentSink};
+use crate::score::MAX_PLY;
 
 /// Everything one search thread owns and mutates while it searches: the
 /// per-ply stack and PV, the move-ordering histories and correction tables,

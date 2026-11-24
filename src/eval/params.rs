@@ -18,7 +18,7 @@ macro_rules! define_eval_params {
         impl EvalParams {
             /// The compiled-in weights, as a constant so a production build
             /// can fold every weight into the code that reads it.
-            pub const DEFAULT: Self = Self {
+            pub(crate) const DEFAULT: Self = Self {
                 $( $field: $default, )*
             };
         }

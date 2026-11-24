@@ -19,7 +19,7 @@
 //! list, so sweeping budgets samples many different interruption points.
 
 use rarog::board::Board;
-use rarog::eval::MATE_SCORE;
+use rarog::score::MATE_SCORE;
 use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};
 

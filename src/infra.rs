@@ -7,10 +7,11 @@
 //! crate goes through one of these functions instead: the conversion is named,
 //! `debug_assert!`ed (the debug suite exercises it), and the only `as` casts
 //! live in this one annotated block.
-#![allow(
+#![expect(
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "the crate's one block of named, checked numeric casts"
 )]
 
 /// `u64 → usize` for hash/key indexing. Lossless: the crate compiles only on
@@ -68,7 +69,7 @@ pub fn write_stdout_line(line: std::fmt::Arguments<'_>) {
 }
 
 /// Whether a write to standard output has failed.
-pub fn stdout_closed() -> bool {
+pub(crate) fn stdout_closed() -> bool {
     STDOUT_CLOSED.load(std::sync::atomic::Ordering::Acquire)
 }
 
@@ -90,7 +91,10 @@ pub trait SmallInt: Copy {
 impl SmallInt for usize {
     #[inline(always)]
     fn to_i32(self) -> i32 {
-        debug_assert!(self <= i32::MAX as usize, "usize too large for i32: {self}");
+        debug_assert!(
+            i32::try_from(self).is_ok(),
+            "usize too large for i32: {self}"
+        );
         self as i32
     }
 }
@@ -98,7 +102,7 @@ impl SmallInt for usize {
 impl SmallInt for u64 {
     #[inline(always)]
     fn to_i32(self) -> i32 {
-        debug_assert!(self <= i32::MAX as u64, "u64 too large for i32: {self}");
+        debug_assert!(i32::try_from(self).is_ok(), "u64 too large for i32: {self}");
         self as i32
     }
 }
@@ -106,7 +110,7 @@ impl SmallInt for u64 {
 impl SmallInt for u32 {
     #[inline(always)]
     fn to_i32(self) -> i32 {
-        debug_assert!(self <= i32::MAX as u32, "u32 too large for i32: {self}");
+        debug_assert!(i32::try_from(self).is_ok(), "u32 too large for i32: {self}");
         self as i32
     }
 }
@@ -202,16 +206,16 @@ mod tests {
             0,
             1,
             -1,
-            i16::MAX as i32,
-            i16::MIN as i32,
-            i16::MAX as i32 + 1,
-            i16::MIN as i32 - 1,
+            i32::from(i16::MAX),
+            i32::from(i16::MIN),
+            i32::from(i16::MAX) + 1,
+            i32::from(i16::MIN) - 1,
             i32::MAX,
             i32::MIN,
             100_000,
             -100_000,
         ] {
-            let expected = v.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+            let expected = v.clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
             assert_eq!(saturating_i16(v), expected, "value {v}");
         }
     }
@@ -226,6 +230,6 @@ mod tests {
             "below the floor saturates to it"
         );
         assert_eq!(saturating_i8(i32::MAX, -1), i8::MAX);
-        assert_eq!(saturating_i8(i8::MAX as i32, -1), i8::MAX);
+        assert_eq!(saturating_i8(i32::from(i8::MAX), -1), i8::MAX);
     }
 }

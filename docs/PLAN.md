@@ -63,7 +63,7 @@ top 100, established by CCRL's own testing after a public release.
 | Evaluation deficit with the same search | Stockfish's classical HCE beats Rarog's frozen evaluation inside Stockfish's search by **+99.2 ± 16.6 Elo at equal nodes** (RAR-O07, 2026-10-21), from +181.7 ± 19.0 at Phase C's start (RAR-O05) | RAR-O05, RAR-O07 |
 | Speed | **3.19 MNPS pooled median** at bench 13, PGO pext 1T, ±0.2% instrument resolution (best-of 3.21, which is the 3.22 previously recorded); Basilisk 3.71; board work 24% of time, evaluation 29%, search loop 23% | RAR-M48; RAR-M36, RAR-M44 |
 | Conversion | **88 draws and 19 losses** after holding a piece-up advantage for 12+ plies, in 3,600 games against the six HCE-era engines on the **2.4.0 release** games — 24.4 and 5.3 per 1,000, unchanged from the 2026-09-04 pool's 57/12 in 2,400 (23.8 and 5.0). Basilisk 1.9.3 in the same tournament: 94 and 12. **RAR-M47's surplus-over-Basilisk reading is not reproduced and is retired**; the stable finding is Rarog's own rate, 80 of the 88 draws by fifty-move or repetition with material in hand; a third independent sample reads 24.2 and 3.3 per 1,000 (RAR-M54, 1,200 games against the same six) | RAR-M49 (release re-read, tournament `5e539523`); RAR-M54 (Super Rating Tournament, 42 engines); instrument RAR-M47 |
-| Fingerprint | `bench 13` **3,694,298 / EBF 2.324** at engine source `64993ff`, on `master` as `b862256` since PR #21 (2026-11-23) (D.6.29: quiescence scores a stalemate in Stockfish's narrow form, kept by RAR-S139 on the maintainer's decision); before it 3,374,901 / EBF 2.316 at engine source `91bc561` since 2026-11-22 (D.6.7: the ply cap at the donor's 240, its score bands with it, kept by RAR-S138); before it 3,390,842 / EBF 2.317 at engine source `16f93cb`, on `master` as `94d7f72` since PR #20 (2026-11-22) (D.7.11.8: RAR-S135's centres at 2,000 baked into the kernel's seeds; before it 3,320,355 / EBF 2.317 at `4271031`, D.7.8.3: the root ordered by the kernel's own scorer, kept by RAR-S132; before it 3,348,508 / EBF 2.329 at `e363908`, D.7.8.2: quiescence and evaluation-only entries at the donor's depth, kept by RAR-S131; before it 3,278,226 / EBF 2.313 at `e63b652`, D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
+| Fingerprint | `bench 13` **3,694,298 / EBF 2.324** at engine source `64993ff`, on `master` as `b862256` since PR #21 (2026-11-23) and as `9195663` since PR #22 (2026-11-24, no behaviour change) (D.6.29: quiescence scores a stalemate in Stockfish's narrow form, kept by RAR-S139 on the maintainer's decision); before it 3,374,901 / EBF 2.316 at engine source `91bc561` since 2026-11-22 (D.6.7: the ply cap at the donor's 240, its score bands with it, kept by RAR-S138); before it 3,390,842 / EBF 2.317 at engine source `16f93cb`, on `master` as `94d7f72` since PR #20 (2026-11-22) (D.7.11.8: RAR-S135's centres at 2,000 baked into the kernel's seeds; before it 3,320,355 / EBF 2.317 at `4271031`, D.7.8.3: the root ordered by the kernel's own scorer, kept by RAR-S132; before it 3,348,508 / EBF 2.329 at `e363908`, D.7.8.2: quiescence and evaluation-only entries at the donor's depth, kept by RAR-S131; before it 3,278,226 / EBF 2.313 at `e63b652`, D.7.8.1: ProbCut's exchange bar at the donor's scale, RAR-S130; before it 3,488,485 / EBF 2.336 at `d23b9cf`, D.7.7: the classic kernel deleted, the compact kernel's fingerprint since D.7.6.2, `73966eb`, unchanged; before it the classic kernel's 9,067,595 / EBF 2.479 at `9d7b42f`, D.6.31: a count is a move made, the null move not counted, as Stockfish and Reckless count, RAR-S125; before it 8,935,848 / EBF 2.480 at `0814689`, D.6.30: a proven win kept against a later iteration, repair case 1, `analysis/d630_mate_screen_2026-11-13.md`; before it 9,077,016 / EBF 2.481 at `ba1d2cd`, D.6.8: each position counted once, RAR-S124; before it 11,477,040 / EBF 2.537 at `aee0b3b`, on `master` as `89b4a92`, PR #17, D.6.7: every line bounded at twice the iteration's depth, RAR-S122; before it 13,038,236 / EBF 2.540 at `ee0b3e4`, D.6.2: quiescence and ProbCut generate the quiet queen promotion, RAR-S108; before that 11,946,003 / EBF 2.547 at `72c4e60`, D.6.1: castling classed quiet, RAR-S107; before that 15,625,852 / EBF 2.563 at `1450340`, D.5.5: `Hash` at any size moved every slot, RAR-S106; before that 14,749,043 / EBF 2.564 at `3a16fbb`, D.6.15: a draw verdict takes no correction; before that 13,987,223 / EBF 2.565 at `9fb525e`, C.10's search tune on the frozen evaluation; `rustc 1.100.0` since 2026-11-13, RAR-P58) | RAR-S105, RAR-P58 |
 
 Both halves of the engine have room of the same order. The search half is
 attacked first because it is the larger measured single item, because a
@@ -405,25 +405,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
-| D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
-| D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
-| D.8.4 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.5 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.6 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.7 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.8 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.9 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.10 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.11 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.12 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.14 | RESEARCH | R2 | `R2` first on how aspiration and MultiPV share the driver |
-| D.8.15 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.16 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.18 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.19 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
-| D.8.20 | READY_FOR_IMPLEMENTATION | I1 | Its census has no dependency |
-| D.8.21 | RESEARCH | V | Added 2026-11-20 from D.7.11, open since D.7.14's adoption (2026-11-21); a count on replayed gate games of how often each of eight seeds' terms binds, a seed deleted only if its term never does |
 | D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
@@ -3769,61 +3750,170 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       SEE by its gain without the exchange, where the donor and the
       compact kernel play the exchange: a repair card for it, with its
       measured exposure, if the classic kernel is restored.
-- **D.8 Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — `I1`, `R2` for the root driver.**
+- **D.8 Simplification programme from the engine review: tests into child files, the instrumentation behind probes, one score module, the board split, visibility, one list and one handle; about 860 source lines fewer and the largest file halved — `I1`, `R2` for the root driver, DONE 2026-11-24.**
   Added 2026-11-01 from `analysis/engine_review_2026-11-01.md` §3.7 and §3.8
   (the B.2.0 recipe repeated: `src/` 29,190 lines, in-file tests 23%,
   instrumentation about 2,300 non-test lines and 437 of `negamax`'s 1,662; two
   dependency cycles; 657 public items, 77 unreferenced outside their file; the
   kernel within 1.3× the donor's after instrumentation, the root driver 630
-  lines against 244). Every item is its own branch and squash, `I1` with the
+  lines against 244). Every item was to be its own branch and squash; on
+  2026-11-24 (maintainer decision) all of D.8 is one branch, `d8`, with a
+  commit or two an item, delivered as one pull request, the simplification
+  programme. Each item is `I1` with the
   exact fingerprint on both slider backends, the suites, fmt and clippy;
   NPS-guarded means the allocation guard and one pooled-NPS read taken alone.
-  D.2 and D.3 are closed, so nothing here waits: the items run in order, each
-  on its own branch. P16, the comment pass, merged into D.5.16 on
+  D.2 and D.3 are closed, so nothing here waits: the items run in order.
+  P16, the comment pass, merged into D.5.16 on
   2026-11-05.
   D.8.6, D.8.7 and D.8.19 are read again after D.7 (2026-11-13): a kernel
   rebuilt there is written in their target shape.
   D.7.7 deleted the classic kernel (2026-11-19), so D.8.1's census is
   taken on the tree that remains and every item is read against that
   census before it starts; the counts above are the 2026-11-01 tree's.
-    - **D.8.1 P0: the census as a tool — `I1`.** Commit the census as `tools/diag/arch_census.py` (planned) with a test
+  *Done 2026-11-24* (one branch, `d8`, from PR #22's `9195663`, a commit
+  or two an item, one pull request by the maintainer's decision): done
+  D.8.1 to D.8.5, D.8.8, D.8.9, D.8.12, D.8.15, D.8.18, D.8.21; closed
+  `NO_CHANGE` D.8.6, D.8.7, D.8.10, D.8.11, D.8.14, D.8.16, D.8.19, D.8.20,
+  most because the classic kernel they targeted is gone or E.4.4
+  rebuilds the evaluation. The fingerprint stayed 3,694,298 / EBF 2.324
+  throughout; the two NPS-guarded items read no regression. The census
+  (`tools/diag/arch_census.py --at 2a0690b` against the head): `src/`
+  38,375 → 38,101 lines, code 19,951 → 19,907; the three largest files
+  3,802, 3,701 and 3,264 → 2,527, 850 and 841 lines (`rules.rs` is now
+  the largest, cut by a third rather than halved; the review's 860 lines
+  fewer assumed deletions the classic kernel's removal had already
+  made); no mutual import pair (the `eval`/`tt` cycle ended); public
+  items no other file names 89 → 59, `pub(crate)` or `pub(super)` that
+  could be private 36 → 10; duplicated runs of eight lines or more
+  37 → 34 (361 → 317 lines).
+    - **D.8.1 P0: the census as a tool — `I1`, DONE 2026-11-24.** Commit the census as `tools/diag/arch_census.py` with a test
      (masked-source parser, `use` edge graph, public census, shape table,
      instrumentation attribution, duplicate finder); it reproduces the
      review's headline numbers at `a3dd950`, and E.1 re-measures with it.
-    - **D.8.2 P1: in-file tests into child files — `I1`.** In-file tests into `<stem>/tests.rs` for the 13 files holding
+     *Done:* `--review` reproduces every headline number of the review's
+     tables at `a3dd950` (`test_arch_census.py` checks it where the commit
+     is in the clone). D.8's baseline, the tree at its start
+     (`2a0690b`, `--at 2a0690b`): `src/` 72 files, 38,375 lines, 12,473
+     of them test code and 19,951 code; 886 public items, 89 with no
+     outside-file reference, 77 used only by tests or tools, 36
+     `pub(crate)` or `pub(super)` that could be private; feature lines
+     `tune` 69, `diag` 25, `texel` 67, `probes` 22; 9 functions over
+     150 lines, the largest `compact_negamax` at 1,233; the one mutual
+     pair `eval` and `tt`; 37 duplicated runs of eight lines or more
+     (361 lines). Corrected 2026-11-24 at D.8.2: a file declared by a
+     test-gated `mod name;` (`compact/parity.rs`, 1,688 lines) is test
+     code, which the first count read as production.
+    - **D.8.2 P1: in-file tests into child files — `I1`, DONE 2026-11-24.** In-file tests into `<stem>/tests.rs` for the 13 files holding
      5,391 test lines (`node.rs` 3,609 → 2,462, `search/mod.rs` 2,977 → 1,979,
      `time.rs` 966 → 392, `king.rs` 924 → 521); test bodies untouched, counts
      equal before and after, release bytes identical. Neutral by construction.
-    - **D.8.3 P2: one `score` module — `I1`.** One `score` module: the constants, one `MAX_PLY` (defined twice
+     *Done:* every test-gated module of 100 lines or more with no
+     production code after it, 26 modules and 9,046 lines, now lives in
+     `<stem>/<name>.rs` (`<dir>/<name>.rs` beside a `mod.rs`).
+     `rules.rs` 3,802 → 2,546, `search/mod.rs` 3,701 → 2,116, `board.rs`
+     3,264 → 2,576, `tt.rs` 1,344 → 925. Code lines 19,951 before and
+     after. A checker against `HEAD` found every moved body equal token
+     for token and every literal equal, `king.rs`'s two fixture paths one
+     `../` longer. The test lists of the six feature sets (default,
+     `tune`, `diag`, `texel`, `probes`, `donor-eval`; 563 to 575 tests)
+     are identical. The release binaries, built with one fixed dev id,
+     differ only in the linker's stamps: 24 bytes, the timestamps and
+     the PDB GUID. One test named its old file in a literal
+     (`crash_report.rs:`); it now names the panic's file by `file!()`,
+     its own commit before the move (`6417239`). fmt, clippy
+     (`--all-features --all-targets` and default), debug 555, release
+     557, `texel` lib 304 and `tune` lib 305 tests pass.
+    - **D.8.3 P2: one `score` module — `I1`, DONE 2026-11-24.** One `score` module: the constants, one `MAX_PLY` (defined twice
      today), `MATE_BOUND`, `is_decisive`, `mate_in`; the nine inline threshold
      sites; ends the `eval` and `tt` cycle. Neutral.
-    - **D.8.4 P3: geometry into one board module — `I1`.** Geometry into `board::geometry` (the `BETWEEN`/`LINE` tables and
+     *Done:* `src/score.rs` holds `MATE_SCORE`, `INF_SCORE`, `VALUE_NONE`,
+     the one `MAX_PLY` (the table's and the mop-up's copies are gone),
+     `MATE_BOUND`, `TB_WIN_SCORE`, `TB_VALUE`, `mate_in` and the win,
+     loss and decisive tests (the kernel's two copies are gone); every
+     import names it. Nine inline `MATE_SCORE - MAX_PLY` sites read
+     `MATE_BOUND`. The census has no mutual pair left. The two tests that
+     tied a copy of `MAX_PLY` to the search's went with the copies.
+     Fingerprint 3,694,298 / EBF 2.324 on both slider backends; fmt,
+     clippy in every feature set, debug 553, release 555, `texel` lib 302
+     and `tune` lib 303 tests pass.
+    - **D.8.4 P3: geometry into one board module — `I1`, DONE 2026-11-24.** Geometry into `board::geometry` (the `BETWEEN`/`LINE` tables and
      the six tables in `eval/pawns.rs`); one attacked-square predicate; one
      `ep_capture_is_legal`; one distance builder; a `TbPosition` method per
      Fathom entry point instead of eleven positional scalars;
      `legal_ep_capture_exists` returns `bool` (its always-`Ok` `Result` is an
      out-of-line call in `make_move`). NPS-guarded.
-    - **D.8.5 P4: split `board/board.rs` — `I1`.** Split `board/board.rs` (one 2,066-line `impl`) into `fen`, `see`,
+     *Done* (`273677e`): `board::geometry` holds the between and line
+     tables with their accessors, the file, rank, relative-rank and
+     passed-pawn tables and both distance tables, built by one
+     `init_distance` (`Square::chebyshev_distance` gave way to it).
+     `Board::attacked_by(sq, attacker, occ, present)` is the one
+     attacked-square test, replacing four bodies (`present` drops pieces
+     the occupancy removed or a capture took), with `is_attacked` its
+     board-as-it-stands case. One `ep_capture_is_legal`;
+     `legal_ep_capture_exists` returns `bool`; the three Fathom calls are
+     `TbPosition` methods, the `unsafe` count unchanged. 112 lines fewer.
+     Fingerprint 3,694,298 on both slider backends; fmt, clippy in every
+     feature set, debug 553 and release 555 tests (the allocation guard
+     among them) pass. Pooled NPS, four PGO builds an arm, six cycles:
+     +0.08% [−0.20%, +0.36%], no regression
+     (`analysis/artifacts/d8-2026-11-24/nps-d84`).
+    - **D.8.5 P4: split `board/board.rs` — `I1`, DONE 2026-11-24.** Split `board/board.rs` (one 2,066-line `impl`) into `fen`, `see`,
      `draw`, `checks`, `make`, before F.1 touches make/unmake. NPS-guarded.
-    - **D.8.6 P5: delete `trace_decision!` — `I1`.** Delete `trace_decision!` (about 190 lines; no tool, document or
+     *Done* (`ed43e70`): `board.rs` 2,518 → 841 lines; 60 methods moved
+     to `board/board/{fen,see,draw,checks,make}.rs` (445, 196, 242, 371
+     and 408 lines), each byte for byte as before apart from the
+     visibility word that keeps its reach, which a checker against `HEAD`
+     confirmed with every other line of `board.rs` kept in order. The
+     types, constants and free functions stay in `board.rs`. Fingerprint
+     3,694,298 on both slider backends; fmt, clippy in every feature set,
+     debug 553 and release 555 tests pass. Pooled NPS, four PGO builds an
+     arm: −0.04% [−0.27%, +0.20%], no regression at step 1
+     (`analysis/artifacts/d8-2026-11-24/nps-d85`).
+    - **D.8.6 P5: delete `trace_decision!` — `I1`, NO_CHANGE 2026-11-24.** Delete `trace_decision!` (about 190 lines; no tool, document or
      analysis consumes it); retire condition: no open leaf registers a
      decision-trace read. Neutral.
-    - **D.8.7 P6: the `diag` blocks into probe functions — `I1`.** Fold the 32 multi-line `diag` blocks into probe functions in
+     *Closed:* nothing is left to delete. The macro lived in the classic
+     kernel, which D.7.7 deleted; no line of `src/` names it.
+    - **D.8.7 P6: the `diag` blocks into probe functions — `I1`, NO_CHANGE 2026-11-24.** Fold the 32 multi-line `diag` blocks into probe functions in
      `diag.rs` with empty `#[inline(always)]` twins (a trait object or a
      strategy type parameter was weighed and rejected); `negamax` 1,662 →
      about 1,270 with P5; the counter set equal at stride 1. NPS-guarded.
-    - **D.8.8 P7: visibility follows use, second pass — `I1`.** Visibility follows use, second pass: the 32
+     *Closed:* the blocks were in the classic `negamax`, which D.7.7
+     deleted. The compact kernel's instrumentation is already a set of
+     functions behind `probes` (`compact/probes.rs`); what `diag` keeps
+     is about ten cold sites in the root driver, none per node, so
+     folding them would gain neither readability in the kernel nor speed.
+    - **D.8.8 P7: visibility follows use, second pass — `I1`, DONE 2026-11-24.** Visibility follows use, second pass: the 32
      `pub(super)`/`pub(crate)` items that can be private and the 52 `pub`
      items referenced only inside `src/`; `pub(crate) mod diag`; `win32`
      narrowed. Neutral, compiler-checked.
-    - **D.8.9 P8: delete the family masks — `I1`.** Delete the family masks (`eval/masks.rs`, the `Evaluator` fields,
+     *Done:* from the census's candidates (the square constants kept as
+     one complete set), 30 items are private and 64 `pub(crate)`, among
+     them `win32`'s twenty and `diag`. Every consumer was compiled and
+     every item it needed, or that became unused or leaked through a
+     wider signature, put back: the crate in five feature sets and all
+     targets, `xtask`, the texel tuner and the donor bridge in both its
+     builds, to zero errors and zero warnings. 29 put back, among them
+     the six that `pub use` re-exports and the types the kernel's
+     signatures carry (`ScoredMove`, `UpdateAmounts`, `Reward`,
+     `InfoRecord`). Fingerprint 3,694,298; fmt, clippy in every feature
+     set, debug 553 and release 555 tests pass.
+    - **D.8.9 P8: delete the family masks — `I1`, DONE 2026-11-24.** Delete the family masks (`eval/masks.rs`, the `Evaluator` fields,
      the `king.rs` hook and its tests, the two options; about 200 lines) once
      the maintainer confirms no open read sets `KingDangerMask` or
      `KingShelterMask`. `tune` builds only.
-    - **D.8.10 P9: one `ArrayList<T, N>` — `I1`.** One `ArrayList<T, N>` under `MoveList` and `ScoredMoveList`; one
+     *Done* (`4fe0758`; the maintainer confirmed 2026-11-24): 333 lines
+     out of five files, the three mask tests with them. Every consumer
+     compiles clean; fmt, clippy, debug 553, release 555, `texel` lib 302
+     and `tune` lib 300 tests pass; fingerprint 3,694,298.
+    - **D.8.10 P9: one `ArrayList<T, N>` — `I1`, NO_CHANGE 2026-11-24.** One `ArrayList<T, N>` under `MoveList` and `ScoredMoveList`; one
       `unsafe` fewer; keep the `MaybeUninit` init and its measured reason.
       NPS-guarded with the assembly `memcpy` check.
-    - **D.8.11 P10: one `Compiled<T>` — `I1`.** One `Compiled<T>` in `infra`, a `runtime_params` cfg emitted by
+      *Closed, already done:* D.7's kernel (`94d7f72`) wrote it as
+      `board::FixedList<T, N>`, which carries `MoveList`, the scored lists
+      and a node's searched moves, its `unsafe` in `as_slice` and
+      `as_mut_slice` with the measured reason kept.
+    - **D.8.11 P10: one `Compiled<T>` — `I1`, NO_CHANGE 2026-11-24.** One `Compiled<T>` in `infra`, a `runtime_params` cfg emitted by
       `build.rs` for `tune`, `texel` and test profiles, an `Evaluator` variant
       field; `texel` builds then read search parameters at run time (never
       measured for strength). NPS-guarded, read alone: C.12's folds were
@@ -3833,36 +3923,101 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       paths outside `tune` (`qs_see_margin`, `qs_see_clamp_hi`,
       `qs_see_bad_floor`, `nmp_min_non_pawn_pieces`, `probcut_see_gap_scale`,
       `lazy_margin`).
-    - **D.8.12 P11: split `search/mod.rs` — `I1`.** Split `search/mod.rs` into `root`, `report`, `tb`.
+      *Closed:* the search's handle and five of the six values went with
+      the classic kernel (D.7.7); `lazy_margin` is one evaluator field
+      read once an evaluation, which E.4.4's sweep refits. What is left
+      is the evaluation's two handles (`CompiledParams`,
+      `CompiledTables`, about 30 lines), and E.4.4 replaces that
+      evaluation and its parameter set whole, so a shared handle is
+      written there, in the rebuilt evaluation's shape (maintainer
+      decision 2026-11-24, with D.8.16).
+    - **D.8.12 P11: split `search/mod.rs` — `I1`, DONE 2026-11-24.** Split `search/mod.rs` into `root`, `report`, `tb`.
       Neutral.
+      *Done* (`4431b88`): `search/mod.rs` 2,112 → 849 lines; 34 methods
+      moved to `search/root.rs` (773 lines: both root drivers and the
+      iteration signals), `search/report.rs` (234: the info lines and
+      what they show) and `search/tb.rs` (292: the tablebase root and
+      probes), each unchanged but for the visibility that keeps its reach,
+      checked against `HEAD` as D.8.5's; the 14 used only inside their
+      new file went back to private, every consumer compiled clean.
+      Fingerprint 3,694,298; fmt, clippy in every feature set, debug 553
+      and release 555 tests pass.
     - **D.8.13 P12: the adapter boundary, inside D.3 — `I1`, DONE 2026-11-04.**
       Done inside D.3.9 (`cef6e97`, `d0759b9`). Record: `docs/archive/PLAN-phaseD-done-2026-11-04.md`.
-    - **D.8.14 P13: one iterative-deepening driver — `R2`.** One iterative-deepening driver for single and MultiPV (53% of
+    - **D.8.14 P13: one iterative-deepening driver — `R2`, NO_CHANGE 2026-11-24.** One iterative-deepening driver for single and MultiPV (53% of
       the MultiPV driver repeats the other): `R2` first on how aspiration
       state, `MateWatch`, the votes and the tablebase extension carry per
       line; `MultiPV 1` node-identical, `MultiPV > 1` judged by
       `tests/multipv.rs` and `multipv_syzygy.rs`; falsifier: a branch on the
       single-line path that costs NPS in the pooled read.
-    - **D.8.15 P14: bench and WAC under one suite runner — `I1`.** Bench and WAC into `src/tools/` (planned) with one `run_suite`; delete
-      `tests/board_performance.rs` (the third copy of the board workloads,
-      gates nothing); `tests/common` (planned) for the two counting allocators and the
+      *Closed on the research* (the census's duplicate finder on
+      `search/root.rs`): the 53% was the old driver's. The compact
+      kernel's two drivers (388 and 284 lines) share 40 lines in runs of
+      eight or more, 14% of the MultiPV driver, and what else looks alike
+      differs in behaviour. The single-line driver lets helper threads
+      keep searching until the pool agrees on a stop, and the MultiPV
+      driver does not; only the single line logs its soft stop under
+      `diag`, and only MultiPV keeps per-line windows and averages. One
+      driver would have to carry both behaviours behind branches in
+      cold, once-an-iteration code, putting `MultiPV 1`'s node identity
+      and `MultiPV > 1`'s behaviour at risk for about 40 lines, against
+      the maintainer's 2026-11-19 ruling that compactness is secondary.
+      The one identical part, the closing `SearchResult`, is now one
+      `root_result` (`73c81eb`; fingerprint 3,694,298, debug 553 and
+      release 555 tests and the MultiPV suite pass). Retry trigger: a
+      root-level change that would have to be written into both drivers.
+    - **D.8.15 P14: bench and WAC under one suite runner — `I1`, DONE 2026-11-24.** Bench and WAC into `src/tools/` with one `run_suite`; delete
+      the board-performance integration test (the third copy of the board workloads,
+      gates nothing); `tests/common` for the two counting allocators and the
       repeated helpers; stale tool names (`AblationMask` in
       `fixed_budget_probe.py`, the legacy label in `feature_matrix.py`, the
       path in `conversion_audit.py`). Neutral. One `run_suite` already serves `bench`
       and `wac` in `engine.rs` (`27cd37e`, with D.3.9); the move to
       `src/tools/` (planned) and the rest remain.
-    - **D.8.16 P15: the evaluation's shape — `I1`.** The evaluation's shape (EVAL-8): a `Score` accumulator and one
+      *Done* (`71afc73`, `026b00e`): `bench` and `wac` are `src/tools/`'s
+      (the one `run_suite` stays on `Engine`, whose state it reads;
+      `src/wac.epd` stays, the frozen suites cite it). `tests/common/`
+      holds the counting allocator both allocation tests carried as
+      copies, now counting `alloc_zeroed` in both, read by difference,
+      and `args`, which three tests repeated; the other helpers sharing
+      a name differ in signature and stay. The board-performance test
+      is gone (`benches/board.rs` times the workloads). The example option
+      in `fixed_budget_probe.py` and its test is a live one, the empty
+      feature set is labelled the default build (the crate's default set
+      is empty), `conversion_audit.py` names its baseline's real path,
+      and `endgame_occurrence.py` reads `bench.rs` where it moved.
+      Fingerprint 3,694,298; the WAC band test passes; fmt, clippy in
+      every feature set, debug 552 and release 554 tests (one fewer, the
+      removed file's), and the 401 `tools/diag` tests pass.
+    - **D.8.16 P15: the evaluation's shape — `I1`, NO_CHANGE 2026-11-24.** The evaluation's shape (EVAL-8): a `Score` accumulator and one
       `term!` macro emitting both halves and both trace sites, a per-colour
       context for the ten-argument term functions, `forward_one` and
       `pawn_attacks_of` used everywhere; fingerprint exact plus the `texel`
       reconstruction test.
-    - **D.8.18 P17: lints — `I1`.** Lints (RUST-9, RUST-10): enable `cast_lossless`,
+      *Closed* (maintainer decision 2026-11-24): E.4.4 rebuilds the
+      evaluation whole in `sf_11`'s form, and writes the rebuilt one in
+      this shape; reshaping today's would be work the rebuild deletes.
+    - **D.8.18 P17: lints — `I1`, DONE 2026-11-24.** Lints (RUST-9, RUST-10): enable `cast_lossless`,
       `borrow_as_ptr`, `checked_conversions`, `manual_assert_eq` and
       `no_effect_underscore_binding` (65 mechanical edits, same code), the
       three plain `allow`s to `expect`, reasons on the twelve bare `expect`s,
       `clippy::allow_attributes` on; `suboptimal_flops` rejected because
       `mul_add` changes the clock's f64 results.
-    - **D.8.19 P18: the node frame — `I1`.** The node frame (RUST-3, NODE-9): every `negamax` and
+      *Done* (`95d755e`): `cast_lossless`, `borrow_as_ptr`,
+      `checked_conversions`, `manual_assert` (clippy's name for the
+      review's `manual_assert_eq`), `no_effect_underscore_binding`,
+      `allow_attributes` and `allow_attributes_without_reason` warn in
+      `Cargo.toml`, and CI's `-D warnings` holds them at zero. 73 fixes:
+      clippy's own where it applies, by hand inside the trace macro. No
+      `#[allow]` is left in `src/`, `tests/` or `benches/`: every
+      suppression is an `#[expect]` with its reason, and the three that
+      hold in one configuration only are scoped to it
+      (`cfg_attr(not(windows), …)` for `LargePages`'s `mut`, the clock's
+      factors outside `diag` and tests). `suboptimal_flops` stays off.
+      Fingerprint 3,694,298 on both slider backends; every consumer,
+      clippy in every feature set and the workspace, debug 552, release
+      554, `texel` lib 302 and `tune` lib 300 tests pass.
+    - **D.8.19 P18: the node frame — `I1`, NO_CHANGE 2026-11-24.** The node frame (RUST-3, NODE-9): every `negamax` and
       `quiescence` copy has a 5.0–5.6 KB frame and calls `__chkstk` per node
       (the picker's 4,104-byte list and the ProbCut and quiescence lists); a
       design read first (per-thread ply-indexed list storage borrowed by slice
@@ -3872,7 +4027,19 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `analysis/triumviratus_review_2026-11-03.md`): moving its list fills
       out of line and its evaluation lists off the stack, so that no hot
       frame passed 4 KB, saved 1.55% of cycles on Windows.
-    - **D.8.20 P19: evaluation terms computed for a constant — `I1`.** Evaluation terms computed for a constant (added 2026-11-02
+      *Closed on the design read* (the release build's fat-LTO assembly,
+      `.seh_stackalloc` and `__chkstk` calls a function,
+      `analysis/artifacts/d8-2026-11-24/frames.py`): the frames the item
+      measured were the classic kernel's, deleted at D.7.7. The compact
+      kernel's are under the 4 KB guard page: `compact_negamax` 3,128
+      bytes in both node kinds, `compact_quiescence` 2,520 and 2,552,
+      the picker's `next` 920, and none of them calls `__chkstk`. The 16
+      functions that do run once a search, a thread or a root window
+      (`search_root` 24,840 bytes, `search_root_window` 8,024,
+      `reset_search_state` 131,048), none per node. The kernel passes its
+      node kind as a type (`Pv`, `NonPv`), the argument run the item
+      named.
+    - **D.8.20 P19: evaluation terms computed for a constant — `I1`, NO_CHANGE 2026-11-24.** Evaluation terms computed for a constant (added 2026-11-02
       from the Basilisk cross-check, §E): Basilisk stopped computing
       terms whose every weight was 0 for +2.35% NPS (BAS-P25). A census
       of Rarog's production terms whose fitted weight is 0 or folds to a
@@ -3880,6 +4047,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       trapped bishops at 0.04% of rows) first, by reading; then the
       removals with the exact fingerprint, the `texel` reconstruction
       test and one pooled-NPS read. Terms E.4 or F.4.1 would refit stay.
+      *Closed on the census:* 15 weights are 0 in `EvalParams::DEFAULT`,
+      and only two terms are constant in both halves: the isolated pawn
+      (`pawn_isolated_mg` and `_eg` both 0, inside the pawn cache, its
+      test shared with the doubled-isolated term) and `hanging_minor`
+      (two popcounts times 0). Every other zero sits beside a non-zero
+      half, so its count is needed. In the production build the weights
+      are `CompiledParams`, an immutable static the compiler folds, so a
+      product with 0 and work feeding only it are already gone; removing
+      the two would change only the tuner's parameter layout, in an
+      evaluation E.4.4 replaces. (`hanging_rook` and `hanging_queen`,
+      which EVAL-11 named, are 1 now, not 0.)
   Held, with the reason: a stage split of `negamax` (R2 only if P5 and P6
   leave it unreadable); a unified legal move generator (about 300 lines, the
   highest NPS risk, no defect behind it); the table's local backend (D.2,
@@ -3888,7 +4066,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   themselves (all in use). Kept after review, with their records:
   `cpu_advice`, `crash_report`, `large_pages`, `wac`, the `diag` counters, the
   `tune` options and the `texel` trace in the engine crate.
-    - **D.8.21 P20: the kernel's seeds no search reaches — `V`.** Added
+    - **D.8.21 P20: the kernel's seeds no search reaches — `V`, DONE 2026-11-24.** Added
       2026-11-20 from D.7.11's research (`analysis/d711_fit_2026-11-20.md`,
       *The inactive seeds are not removed now*); opens after D.7.14.
       Eight seeds change no decision on `bench 13` or on `bench 17` at
@@ -3911,6 +4089,25 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       - Not before D.7.14: a removal moves the fit's baseline, and the
         gain is a few lines, not Elo or speed (maintainer decision
         2026-11-19: compactness is secondary).
+      - *Read 2026-11-24* (`e51c839` the probes, `d22b1ad` the deletion;
+        `analysis/artifacts/d8-2026-11-24/d821_screen.json`): every 30th
+        of RAR-S139's 6,046 gate games, 202 games replayed move by move
+        from ply 8 in one process a game, 26,572 searches at 186,000
+        nodes, one thread, Hash 64. A two-game smoke at 20,000 nodes
+        was seen first, for the wire. Binds of asks:
+        `window_stability_cap` 29.9%, `rfp_min_16` 7.27%,
+        `tt_cut_fifty` 4.32%, `nmp_min_16` 0.564%, `pick_check_base`
+        81.1% of in-check noisy tier decisions (the base moves every
+        in-check noisy move's exchange bar, so it changes the good and
+        bad tiers, the one order a uniform offset can change). Those
+        five stay. `fds_singular`, `fds_singular_offset` and
+        `fds_singular_cap` were never asked: the full-depth search reads
+        them only with a singular score, and it runs only where no
+        reduction does, below any singular search, as the parity test
+        had recorded. They are deleted with their term; the fingerprint
+        holds at 3,694,298 on both slider backends and the replay
+        reproduces every remaining count exactly. The tunable seeds go
+        from 254 to 251.
 - **D.9 Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — `R2`.** Root and interior probing depth and limits,
   WDL/DTZ use in conversion, interaction with the C.5 recognisers. Endgame-start
   cohort and conversion instrument decide.

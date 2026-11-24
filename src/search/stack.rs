@@ -3,9 +3,9 @@
 use std::ops::{Index, IndexMut};
 
 use crate::board::{Move, Piece};
-use crate::eval::VALUE_NONE;
+use crate::score::{MAX_PLY, VALUE_NONE};
 
-use super::{MAX_PLY, Searcher};
+use super::Searcher;
 
 /// Sentinel plies below the root. Look-backs of up to this many plies read a
 /// sentinel entry instead of needing a `ply >= n` guard.

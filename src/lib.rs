@@ -42,22 +42,22 @@ pub const VERSION: &str = env!("RAROG_VERSION");
 /// (`pext`, `pext, nopgo`, `native`); empty for an arm64 PGO build.
 pub const BUILD_LABEL: &str = env!("RAROG_BUILD_LABEL");
 
-pub mod bench;
 pub mod board;
 pub mod cpu_advice;
 pub mod cpu_tier;
 pub mod crash_report;
-pub mod diag;
+pub(crate) mod diag;
 pub mod engine;
 pub mod engine_command;
 pub mod eval;
 pub mod infra;
 pub mod large_pages;
-pub mod physical_memory;
+pub(crate) mod physical_memory;
+pub mod score;
 pub mod search;
 pub mod syzygy;
+pub mod tools;
 pub mod tt;
 pub mod uci;
-pub mod wac;
 #[cfg(windows)]
 pub mod win32;

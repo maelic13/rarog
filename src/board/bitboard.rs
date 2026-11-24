@@ -12,7 +12,7 @@ pub struct Bitboard(pub u64);
 
 impl Bitboard {
     pub const EMPTY: Self = Self(0);
-    pub const FULL: Self = Self(u64::MAX);
+    pub(crate) const FULL: Self = Self(u64::MAX);
 
     // Rank masks
     pub(crate) const RANK_2: Self = Self(0x0000_0000_0000_FF00);

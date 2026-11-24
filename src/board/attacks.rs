@@ -123,17 +123,17 @@ impl AttackTables {
     // -----------------------------------------------------------------------
 
     #[inline(always)]
-    pub fn pawn(&self, color: Color, sq: Square) -> Bitboard {
+    pub(crate) fn pawn(&self, color: Color, sq: Square) -> Bitboard {
         self.pawn_attacks[color as usize][sq.index()]
     }
 
     #[inline(always)]
-    pub fn knight(&self, sq: Square) -> Bitboard {
+    pub(crate) fn knight(&self, sq: Square) -> Bitboard {
         self.knight_attacks[sq.index()]
     }
 
     #[inline(always)]
-    pub fn king(&self, sq: Square) -> Bitboard {
+    pub(crate) fn king(&self, sq: Square) -> Bitboard {
         self.king_attacks[sq.index()]
     }
 
@@ -151,7 +151,7 @@ impl AttackTables {
     }
 
     #[inline(always)]
-    pub fn queen(&self, sq: Square, occ: Bitboard) -> Bitboard {
+    pub(crate) fn queen(&self, sq: Square, occ: Bitboard) -> Bitboard {
         self.bishop(sq, occ) | self.rook(sq, occ)
     }
 

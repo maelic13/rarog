@@ -16,7 +16,7 @@ Modes:
 
 Each engine gets Hash 64, Threads 1, and `ucinewgame` before every position.
 An engine spec may carry further UCI options after `|`, as in
-`core=rarog.exe|AblationMask=128`; an option the engine reports it does not
+`core=rarog.exe|MultiPV=2`; an option the engine reports it does not
 have stops the run, so a misspelt or compiled-out option cannot pass for a
 measurement of the default.
 Engines are driven with streaming stdin (write, read to `bestmove`, then

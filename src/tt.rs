@@ -5,20 +5,8 @@ use std::sync::{
 };
 
 use crate::board::Move;
-use crate::eval::{MATE_SCORE, VALUE_NONE};
+use crate::score::{MATE_BOUND, MATE_SCORE, TB_WIN_SCORE, VALUE_NONE};
 
-/// The search's ply cap (`search::MAX_PLY`), which places the mate band.
-const MAX_PLY: i32 = 240;
-/// The decisive band's floor: a tablebase win or anything better. Below
-/// the mate band (`MATE_SCORE - MAX_PLY` and up) lies the tablebase band,
-/// `TB_VALUE - ply` for a win found `ply` plies from the root. Window
-/// arithmetic near mate scores also lands in it (a fail-hard quiescence
-/// stores ProbCut's `beta + margin` at a losing beta), so the table keeps
-/// the band's values as stored: moving them by ply changes the search
-/// without tablebases.
-pub(crate) const TB_WIN_SCORE: i32 = MATE_SCORE - 2 * MAX_PLY;
-/// A tablebase win at the root; one below the mate band.
-pub(crate) const TB_VALUE: i32 = MATE_SCORE - MAX_PLY - 1;
 const BOUND_MASK: u8 = 0x03;
 const PV_BIT: u8 = 0x04;
 // The age takes the five high bits: 32 generations. One generation costs an
@@ -132,7 +120,11 @@ struct LocalTable {
 /// stored through u16; depth is i8 stored through u8, so −1 travels as 255) —
 /// a range-checking helper would be WRONG, not just noisy.
 #[inline(always)]
-#[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    reason = "the entry's bit-exact unpacking, where the slicing is the design"
+)]
 fn unpack_entry(key16: u16, data: u64) -> Option<TtEntry> {
     let flag_age = (data >> 56) as u8;
     let entry = TtEntry {
@@ -148,19 +140,22 @@ fn unpack_entry(key16: u16, data: u64) -> Option<TtEntry> {
 
 /// Bit-exact serialization — the mirror of [`unpack_entry`]; same reasoning.
 #[inline(always)]
-#[expect(clippy::cast_sign_loss)]
+#[expect(clippy::cast_sign_loss, reason = "the entry's bit-exact packing")]
 fn pack_entry(entry: TtEntry) -> u64 {
-    entry.score as u16 as u64
-        | ((entry.static_eval as u16 as u64) << 16)
-        | ((entry.mv as u64) << 32)
-        | ((entry.depth as u8 as u64) << 48)
-        | ((entry.flag_age as u64) << 56)
+    u64::from(entry.score as u16)
+        | (u64::from(entry.static_eval as u16) << 16)
+        | (u64::from(entry.mv) << 32)
+        | (u64::from(entry.depth as u8) << 48)
+        | (u64::from(entry.flag_age) << 56)
 }
 
 /// XOR-fold of the payload down to 16 bits, used as the tag's checksum half.
 /// The truncation IS the fold, hence the scoped allow.
 #[inline(always)]
-#[expect(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "the truncation is the fold"
+)]
 fn fold16(data: u64) -> u16 {
     let folded = data ^ (data >> 32);
     let folded = folded ^ (folded >> 16);
@@ -493,7 +488,7 @@ impl TranspositionTable {
     /// [`Self::store`], overwriting a deeper result for the same position:
     /// a PV node's final result in the compact kernel.
     #[inline(always)]
-    pub fn store_forced(&mut self, e: TtStore) {
+    pub(crate) fn store_forced(&mut self, e: TtStore) {
         self.store_with_bits(e, e.bound as u8, true);
     }
 
@@ -501,7 +496,7 @@ impl TranspositionTable {
     /// visit skips the evaluation. The entry has no bound, score or move and
     /// sits at [`EVAL_ONLY_DEPTH`], so any searched result replaces it.
     #[inline(always)]
-    pub fn store_eval(&mut self, key: u64, raw_eval: i32, is_pv: bool) {
+    pub(crate) fn store_eval(&mut self, key: u64, raw_eval: i32, is_pv: bool) {
         self.store_with_bits(
             TtStore {
                 key,
@@ -591,7 +586,10 @@ fn prefetch_ptr<T>(ptr: *const T) {
 /// comes from the high bits ([`cluster_index`]), so the two stay independent.
 /// The truncation IS the design (a 16-bit tag), hence the scoped allow.
 #[inline(always)]
-#[expect(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "the 16-bit tag is the design"
+)]
 fn key16_of(key: u64) -> u16 {
     key as u16
 }
@@ -600,7 +598,10 @@ fn key16_of(key: u64) -> u16 {
 /// product, which maps the keys evenly onto any count, so `Hash` need not be a
 /// power of two. The product's high half is below `clusters`, so it fits.
 #[inline(always)]
-#[expect(clippy::cast_possible_truncation)]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "the product's high half is below `clusters`"
+)]
 fn cluster_index(key: u64, clusters: usize) -> usize {
     ((u128::from(key) * clusters as u128) >> 64) as usize
 }
@@ -611,11 +612,12 @@ fn current_entry(entry: TtEntry, age: u8) -> bool {
 }
 
 /// A mate score is stored as its distance from the node rather than from the
-/// root. Tablebase-band values are stored as they are; see [`TB_WIN_SCORE`].
+/// root. Tablebase-band values are stored as they are; see
+/// [`TB_WIN_SCORE`](crate::score::TB_WIN_SCORE).
 pub fn score_to_tt(score: i32, ply: usize) -> i32 {
-    if score >= MATE_SCORE - MAX_PLY {
+    if score >= MATE_BOUND {
         score + crate::infra::to_i32(ply)
-    } else if score <= -MATE_SCORE + MAX_PLY {
+    } else if score <= -MATE_BOUND {
         score - crate::infra::to_i32(ply)
     } else {
         score
@@ -627,12 +629,12 @@ pub fn score_to_tt(score: i32, ply: usize) -> i32 {
 /// so it reads back as the highest score that is not decisive.
 pub fn score_from_tt(score: i32, ply: usize, halfmove_clock: u8) -> i32 {
     let horizon = 100 - i32::from(halfmove_clock.min(100));
-    if score >= MATE_SCORE - MAX_PLY {
+    if score >= MATE_BOUND {
         if MATE_SCORE - score > horizon {
             return TB_WIN_SCORE - 1;
         }
         score - crate::infra::to_i32(ply)
-    } else if score <= -MATE_SCORE + MAX_PLY {
+    } else if score <= -MATE_BOUND {
         if MATE_SCORE + score > horizon {
             return -TB_WIN_SCORE + 1;
         }
@@ -918,427 +920,8 @@ fn entry_quality(entry: TtEntry, age: u8) -> i32 {
         return i32::MIN;
     }
     let age_delta = age.wrapping_sub(entry.flag_age & AGE_MASK) & AGE_MASK;
-    entry.depth as i32 - age_delta as i32 / AGE_QUALITY_DIVISOR
+    i32::from(entry.depth) - i32::from(age_delta) / AGE_QUALITY_DIVISOR
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{
-        LocalCluster, MAX_PLY, SharedCluster, TB_VALUE, TB_WIN_SCORE, TtProbe, cluster_count,
-        cluster_index, key16_of, score_from_tt, score_to_tt, size_of,
-    };
-    use crate::eval::MATE_SCORE;
-
-    /// An entry whose every field derives from its key, so a load that pairs
-    /// one store's tag with another's payload shows as a mismatch.
-    fn keyed_entry(key16: u16) -> super::TtEntry {
-        super::TtEntry {
-            key16,
-            score: i16::from_ne_bytes(key16.to_ne_bytes()),
-            static_eval: i16::from_ne_bytes((key16 ^ 0xA5A5).to_ne_bytes()),
-            mv: key16,
-            depth: i8::try_from(key16 % 120).expect("below 120"),
-            flag_age: 1,
-        }
-    }
-
-    fn same_payload(a: super::TtEntry, b: super::TtEntry) -> bool {
-        (a.score, a.static_eval, a.mv, a.depth, a.flag_age)
-            == (b.score, b.static_eval, b.mv, b.depth, b.flag_age)
-    }
-
-    /// A slot holding one store's tag and another's payload, as a read racing
-    /// two writers can see it, reconstructs a key no probe holds when the
-    /// payloads' folds differ, and is rejected. Equal folds are the tag's
-    /// blind spot, the 2^-16 the tag's strength allows: that pair loads.
-    #[test]
-    fn a_torn_shared_slot_is_rejected_unless_the_folds_agree() {
-        use std::sync::atomic::Ordering::Relaxed;
-        let torn = |a: super::TtEntry, b: super::TtEntry| {
-            let cluster = SharedCluster::default();
-            cluster.store(0, a.key16, a);
-            cluster.store(1, b.key16, b);
-            cluster.data[0].store(cluster.data[1].load(Relaxed), Relaxed);
-            cluster
-        };
-        let a = keyed_entry(0x1234);
-        let b = keyed_entry(0x4321);
-        assert_ne!(
-            super::fold16(super::pack_entry(a)),
-            super::fold16(super::pack_entry(b))
-        );
-        let cluster = torn(a, b);
-        assert!(cluster.load(0, a.key16).is_none(), "torn pair accepted");
-        assert!(
-            cluster.load(0, b.key16).is_none(),
-            "torn pair accepted as the other"
-        );
-        assert!(cluster.load(1, b.key16).is_some(), "the untorn slot loads");
-
-        // Flipping the same bits in two 16-bit lanes keeps the fold.
-        let mut same_fold = a;
-        same_fold.score ^= 0x0F0F;
-        same_fold.static_eval ^= 0x0F0F;
-        same_fold.key16 = 0x4321;
-        assert_eq!(
-            super::fold16(super::pack_entry(a)),
-            super::fold16(super::pack_entry(same_fold))
-        );
-        let cluster = torn(a, same_fold);
-        let loaded = cluster.load(0, a.key16).expect("equal folds hide the tear");
-        assert!(
-            same_payload(loaded, same_fold),
-            "the payload is the other store's"
-        );
-    }
-
-    /// Four threads store into and probe one slot at once, as hard as two
-    /// writers can race. Every probe that verifies must return the payload of
-    /// the key it asked for: a torn pair reaches it only through the tag's
-    /// 2^-16 blind spot. A tag without the payload's fold returns about 30
-    /// wrong payloads a run in a debug build, whose slower loop tears far
-    /// more often than release's, so the debug suite is this test's teeth.
-    #[test]
-    fn four_threads_on_one_shared_cluster_never_return_a_torn_entry() {
-        const THREADS: u16 = 4;
-        const ROUNDS: u32 = 1_000_000;
-        let cluster = SharedCluster::default();
-        let start = std::sync::Barrier::new(usize::from(THREADS));
-        let (verified, wrong) = std::thread::scope(|scope| {
-            let workers: Vec<_> = (0..THREADS)
-                .map(|thread| {
-                    let (cluster, start) = (&cluster, &start);
-                    scope.spawn(move || {
-                        let (mut verified, mut wrong) = (0_u32, 0_u32);
-                        start.wait();
-                        for round in 0..ROUNDS {
-                            let key16 = (thread << 14)
-                                | u16::try_from(round & 0x3FFF).expect("fourteen bits");
-                            cluster.store(0, key16, keyed_entry(key16));
-                            // Widen the window in which another writer can
-                            // land between this store and its probe, and keep
-                            // the optimiser from handing the probe the value
-                            // this thread just stored.
-                            for _ in 0..16 {
-                                std::hint::spin_loop();
-                            }
-                            if let Some(entry) = std::hint::black_box(cluster).load(0, key16) {
-                                verified += 1;
-                                wrong += u32::from(!same_payload(entry, keyed_entry(key16)));
-                            }
-                        }
-                        (verified, wrong)
-                    })
-                })
-                .collect();
-            workers
-                .into_iter()
-                .map(|worker| worker.join().expect("worker thread"))
-                .fold((0, 0), |(v, w), (dv, dw)| (v + dv, w + dw))
-        });
-        assert!(verified > 0, "no probe verified");
-        assert!(
-            wrong <= 3,
-            "{wrong} of {verified} verified probes returned another store's payload"
-        );
-    }
-
-    /// The table places the mate band by the search's ply cap, so its copy
-    /// must be the search's.
-    #[test]
-    fn the_tables_ply_cap_is_the_searchs() {
-        assert_eq!(usize::try_from(MAX_PLY).ok(), Some(crate::search::MAX_PLY));
-    }
-
-    #[test]
-    fn decisive_scores_round_trip_through_the_table_at_any_ply() {
-        for ply in [0, 1, MAX_PLY - 1].map(|p| usize::try_from(p).expect("a ply")) {
-            let p = i32::try_from(ply).expect("small ply");
-            for score in [
-                TB_VALUE - p,
-                -(TB_VALUE - p),
-                MATE_SCORE - p - 3,
-                -(MATE_SCORE - p - 3),
-                TB_WIN_SCORE - 1,
-                -(TB_WIN_SCORE - 1),
-                0,
-                731,
-            ] {
-                assert_eq!(
-                    score_from_tt(score_to_tt(score, ply), ply, 0),
-                    score,
-                    "{score} at {ply}"
-                );
-            }
-        }
-        // Every tablebase value at every ply is decisive and below the mates.
-        for ply in 0..MAX_PLY {
-            let win = TB_VALUE - ply;
-            assert!((TB_WIN_SCORE..MATE_SCORE - MAX_PLY).contains(&win), "{win}");
-        }
-    }
-
-    #[test]
-    fn a_mate_beyond_the_rule50_horizon_reads_back_as_not_decisive() {
-        // A mate in 10 plies stored at the node: on the horizon at clock 90 and
-        // kept; past it at 91 and below the decisive band.
-        let (stored, ply) = (MATE_SCORE - 10, 3usize);
-        let p = i32::try_from(ply).expect("small ply");
-        assert_eq!(score_from_tt(stored, ply, 90), stored - p);
-        assert_eq!(score_from_tt(stored, ply, 91), TB_WIN_SCORE - 1);
-        assert_eq!(score_from_tt(-stored, ply, 90), -stored + p);
-        assert_eq!(score_from_tt(-stored, ply, 91), -TB_WIN_SCORE + 1);
-        // A tablebase-band value passes through unchanged at any clock.
-        assert_eq!(score_from_tt(TB_VALUE - 10, ply, 99), TB_VALUE - 10);
-    }
-
-    #[test]
-    fn a_miss_grants_no_capability() {
-        let miss = TtProbe::MISS;
-        assert_eq!(miss.depth, -1);
-        assert!(miss.bound.is_none());
-        assert!(miss.mv.is_none());
-    }
-
-    #[test]
-    fn pv_line_is_the_union_of_node_and_stored_bits() {
-        let stored = TtProbe {
-            stored_pv: true,
-            ..TtProbe::MISS
-        };
-        assert!(stored.pv_line(false));
-        assert!(TtProbe::MISS.pv_line(true));
-        assert!(!TtProbe::MISS.pv_line(false));
-    }
-
-    /// Every key lands in the table at any count, the extremes included, and
-    /// the keys cover it evenly at a count that is no power of two.
-    #[test]
-    fn cluster_index_covers_any_table_evenly() {
-        for clusters in [1usize, 3, 1000, 32_000_000, 1 << 40] {
-            assert_eq!(cluster_index(0, clusters), 0);
-            assert_eq!(cluster_index(u64::MAX, clusters), clusters - 1);
-        }
-        const CLUSTERS: usize = 1000;
-        let mut hits = [0u32; CLUSTERS];
-        let mut key = 0x9E37_79B9_7F4A_7C15_u64;
-        for _ in 0..1_000_000 {
-            key = key.wrapping_mul(0x5851_F42D_4C95_7F2D).wrapping_add(1);
-            hits[cluster_index(key, CLUSTERS)] += 1;
-        }
-        let (least, most) = (hits.iter().min(), hits.iter().max());
-        assert!(
-            least >= Some(&800) && most <= Some(&1200),
-            "{least:?} {most:?}"
-        );
-    }
-
-    /// The tag and the cluster read opposite ends of the key, so keys that
-    /// share a cluster still differ in the tag.
-    #[test]
-    fn the_tag_is_independent_of_the_cluster() {
-        let key = 0x0123_4567_89AB_CDEF_u64;
-        assert_eq!(key16_of(key), 0xCDEF);
-        assert_eq!(key16_of(key ^ 0xFFFF_0000_0000_0000), 0xCDEF);
-        assert_eq!(
-            cluster_index(key, 1 << 20),
-            cluster_index(key ^ 0xFFFF, 1 << 20)
-        );
-    }
-
-    /// `Hash` is the size asked for, not the power of two below it: 1000 MiB
-    /// is not floored to 512.
-    #[test]
-    fn a_table_takes_the_whole_hash_at_any_size() {
-        for mb in [1000usize, 2000, 3000, 32_000] {
-            let bytes = mb << 20;
-            assert_eq!(
-                cluster_count::<LocalCluster>(mb) * size_of::<LocalCluster>(),
-                bytes
-            );
-            assert_eq!(
-                cluster_count::<SharedCluster>(mb) * size_of::<SharedCluster>(),
-                bytes
-            );
-        }
-    }
-
-    mod core {
-        use super::super::{
-            AGE_MASK, AGE_QUALITY_DIVISOR, AGE_STRIDE, Bound, EVAL_ONLY_DEPTH, LocalTable, PV_BIT,
-            QUIESCENCE_DEPTH, TranspositionTable, TtEntry, TtProbe, TtStorage, TtStore,
-            entry_quality,
-        };
-        use crate::board::Move;
-        use crate::eval::VALUE_NONE;
-
-        const KEY: u64 = 0xA5A5_1234_5678_9ABC;
-
-        fn stored(depth: i32, score: i32, bound: Bound, mv: Move, is_pv: bool) -> TtStore {
-            TtStore {
-                key: KEY,
-                depth,
-                score,
-                bound,
-                mv,
-                ply: 0,
-                static_eval: 17,
-                is_pv,
-            }
-        }
-
-        fn both_backends() -> [TranspositionTable; 2] {
-            let local = TranspositionTable::new(1);
-            let mut shared = TranspositionTable::new(1);
-            shared.make_shared(1);
-            [local, shared]
-        }
-
-        #[test]
-        fn five_bit_age_costs_four_plies_a_generation_and_wraps_after_32() {
-            let entry = TtEntry {
-                depth: 40,
-                flag_age: Bound::Exact as u8 | PV_BIT,
-                ..TtEntry::default()
-            };
-            for generation in 0_u8..32 {
-                let age = generation.wrapping_mul(AGE_STRIDE) & AGE_MASK;
-                assert_eq!(
-                    entry_quality(entry, age),
-                    40 - i32::from(generation) * 4,
-                    "generation {generation}"
-                );
-            }
-            assert_eq!(AGE_QUALITY_DIVISOR, 2);
-            let mut tt = TranspositionTable::new(1);
-            for _ in 0..32 {
-                tt.new_search();
-            }
-            let TtStorage::Local(LocalTable { age, .. }) = &tt.storage else {
-                panic!("new table must use local storage");
-            };
-            assert_eq!(*age, 0, "32 searches wrap the five-bit age");
-        }
-
-        #[test]
-        fn an_eval_only_entry_carries_the_eval_and_nothing_else() {
-            for mut tt in both_backends() {
-                tt.store_eval(KEY, -123, true);
-                let entry = tt.probe(KEY).expect("eval-only entry is found");
-                let probe = TtProbe::from_entry(Some(entry), 0, 0);
-                assert_eq!(probe.raw_static_eval, -123);
-                assert_eq!(probe.bound, None);
-                assert_eq!(probe.score, VALUE_NONE);
-                assert_eq!(probe.depth, EVAL_ONLY_DEPTH);
-                assert_eq!(probe.mv, None);
-                assert!(probe.pv_line(false), "the PV bit is stored");
-            }
-            // Eval-only entries occupy their slots: a table holding nothing
-            // else reports them in `hashfull`.
-            for mut tt in both_backends() {
-                assert_eq!(tt.hashfull(), 0);
-                for i in 0..20_000_u64 {
-                    tt.store_eval(i.wrapping_mul(0x9E37_79B9_7F4A_7C15), -123, true);
-                }
-                assert!(tt.hashfull() > 0, "eval-only entries count as used");
-            }
-        }
-
-        /// The keep rule reads a quiescence store as the donor's table does:
-        /// it keeps a same-position entry three plies deep (five for a PV
-        /// store) and replaces a shallower one.
-        #[test]
-        fn a_quiescence_store_keeps_an_entry_three_plies_deep_and_replaces_a_shallower_one() {
-            let mv = Move::from_uci("e2e4").expect("valid move");
-            for (is_pv, kept) in [(false, 3), (true, 5)] {
-                for mut tt in both_backends() {
-                    tt.store(stored(kept, 50, Bound::Lower, mv, false));
-                    tt.store(stored(
-                        QUIESCENCE_DEPTH,
-                        10,
-                        Bound::Exact,
-                        Move::NULL,
-                        is_pv,
-                    ));
-                    let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
-                    assert_eq!((probe.depth, probe.score), (kept, 50), "pv {is_pv}");
-                }
-                for mut tt in both_backends() {
-                    tt.store(stored(kept - 1, 50, Bound::Lower, mv, false));
-                    tt.store(stored(
-                        QUIESCENCE_DEPTH,
-                        10,
-                        Bound::Exact,
-                        Move::NULL,
-                        is_pv,
-                    ));
-                    let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
-                    assert_eq!(
-                        (probe.depth, probe.score),
-                        (QUIESCENCE_DEPTH, 10),
-                        "pv {is_pv}"
-                    );
-                    assert_eq!(probe.mv, Some(mv), "a store without a move keeps the move");
-                }
-            }
-        }
-
-        /// A quiescence result and an evaluation-only entry rank level as
-        /// victims, below every searched depth, as in the donor's table.
-        #[test]
-        fn quiescence_and_evaluation_only_entries_rank_level_as_victims() {
-            let at = |depth: i32, bound: u8| TtEntry {
-                depth: i8::try_from(depth).expect("a small depth"),
-                flag_age: bound,
-                ..TtEntry::default()
-            };
-            let quiescence = entry_quality(at(QUIESCENCE_DEPTH, Bound::Exact as u8), 0);
-            let eval_only = entry_quality(at(EVAL_ONLY_DEPTH, 0), 0);
-            assert_eq!(quiescence, eval_only);
-            assert!(entry_quality(at(1, Bound::Lower as u8), 0) > quiescence);
-            assert!(at(EVAL_ONLY_DEPTH, 0).is_occupied() && !TtEntry::default().is_occupied());
-        }
-
-        #[test]
-        fn a_searched_result_replaces_an_eval_only_entry() {
-            let mv = Move::from_uci("e2e4").expect("valid move");
-            for mut tt in both_backends() {
-                tt.store_eval(KEY, 40, false);
-                tt.store(stored(0, 25, Bound::Lower, mv, false));
-                let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
-                assert_eq!(probe.bound, Some(Bound::Lower));
-                assert_eq!(probe.depth, 0);
-                assert_eq!(probe.score, 25);
-                assert_eq!(probe.mv, Some(mv));
-            }
-        }
-
-        #[test]
-        fn a_much_deeper_entry_keeps_its_result_but_takes_a_new_move() {
-            let old = Move::from_uci("e2e4").expect("valid move");
-            let new = Move::from_uci("d2d4").expect("valid move");
-            for mut tt in both_backends() {
-                tt.store(stored(12, 90, Bound::Exact, old, false));
-                // 8 + 4 <= 12: refused, move refreshed.
-                tt.store(stored(8, -40, Bound::Upper, new, false));
-                let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
-                assert_eq!(
-                    (probe.depth, probe.score, probe.bound),
-                    (12, 90, Some(Bound::Exact))
-                );
-                assert_eq!(probe.mv, Some(new));
-                // On a PV line the margin is six: 7 + 4 + 2 > 12 replaces.
-                tt.store(stored(7, -30, Bound::Upper, Move::NULL, true));
-                let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
-                assert_eq!((probe.depth, probe.score), (7, -30));
-                assert_eq!(probe.mv, Some(new), "a store without a move keeps the move");
-                // A new generation lifts the refusal.
-                tt.store(stored(20, 5, Bound::Exact, old, false));
-                tt.new_search();
-                tt.store(stored(3, 6, Bound::Lower, Move::NULL, false));
-                let probe = TtProbe::from_entry(tt.probe(KEY), 0, 0);
-                assert_eq!((probe.depth, probe.score), (3, 6));
-            }
-        }
-    }
-}
+mod tests;

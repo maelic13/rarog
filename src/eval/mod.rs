@@ -15,8 +15,6 @@ mod attacks;
 pub(crate) mod endgame;
 mod initiative;
 mod king;
-#[cfg(feature = "tune")]
-mod masks;
 mod material;
 mod params;
 mod passers;
@@ -28,8 +26,8 @@ mod trace;
 #[cfg(feature = "texel")]
 use std::cell::RefCell;
 
+use crate::board::geometry::RELATIVE_RANKS;
 use crate::board::{ATTACKS, Bitboard, Board, Color, GameResult, Piece, Square};
-use crate::infra;
 use attacks::AttackMaps;
 use endgame::scale_endgame;
 use material::{IMBALANCE_TABLE_SIZE, ImbalanceEntry, PHASE_W};
@@ -37,22 +35,12 @@ use material::{IMBALANCE_TABLE_SIZE, ImbalanceEntry, PHASE_W};
 use params::{CompiledParams, CompiledTables};
 #[cfg(any(feature = "tune", feature = "texel", test))]
 use params::{EvalTables, build_tables};
-use pawns::RELATIVE_RANKS;
 use trace::{tr_eg, tr_mg};
 
-// Read only by the search's test that ties it to `MAX_PLY`.
-#[cfg_attr(not(test), expect(unused_imports))]
-pub(crate) use endgame::MOPUP_ASSUMED_MAX_PLY;
 pub use king::KS_MAP_SCALE_MAX;
-#[cfg(feature = "tune")]
-pub use masks::{FAMILY_MASKS, MaskedFamily};
 pub use params::{EVAL_PARAM_NAMES, EvalParams};
 #[cfg(feature = "texel")]
 pub use trace::{EvalCounts, EvalTrace, linear_delta_scale};
-
-pub const MATE_SCORE: i32 = 32_000;
-pub(crate) const INF_SCORE: i32 = 32_001;
-pub(crate) const VALUE_NONE: i32 = 32_002;
 
 /// A foreign evaluation called in place of this one, from the side to
 /// move's point of view: the board, and the root's last score this search
@@ -80,7 +68,7 @@ const TOTAL_PHASE: i32 = 24;
 /// `texel` fits, which never set the margin, describe a function the engine
 /// does not play.
 const LAZY_MARGIN: i32 = 475;
-const PIECE_VALUES: [i32; 6] = [100, 320, 330, 500, 900, MATE_SCORE];
+const PIECE_VALUES: [i32; 6] = [100, 320, 330, 500, 900, crate::score::MATE_SCORE];
 /// The pieces whose material and squares `evaluate` sums itself. The pawns'
 /// depend on the pawns alone, so the pawn entry holds them with the
 /// structure, except under `texel`, which bypasses that cache and traces
@@ -98,7 +86,13 @@ const PSQ_PIECES: [Piece; 6] = Piece::ALL;
 
 // Under `texel` the caches are written but never read (hits are bypassed so
 // every position re-emits its trace), so the fields look dead to that build.
-#[cfg_attr(feature = "texel", allow(dead_code))]
+#[cfg_attr(
+    feature = "texel",
+    expect(
+        dead_code,
+        reason = "the texel build writes no cache entry, so the cache looks dead there"
+    )
+)]
 #[derive(Copy, Clone, Default)]
 struct PawnEntry {
     key: u64,
@@ -113,7 +107,6 @@ struct PawnEntry {
     shelter: [Option<CachedShelter>; 2],
 }
 
-#[cfg_attr(feature = "texel", allow(dead_code))]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 struct CachedShelter {
     king: Square,
@@ -127,7 +120,13 @@ struct CachedShelter {
 pub struct Evaluator {
     pawn_table: Vec<PawnEntry>,
     /// Imbalances by piece counts; see `eval_imbalance`.
-    #[cfg_attr(feature = "texel", allow(dead_code))]
+    #[cfg_attr(
+        feature = "texel",
+        expect(
+            dead_code,
+            reason = "the texel build writes no cache entry, so the cache looks dead there"
+        )
+    )]
     imbalance_table: Vec<Option<ImbalanceEntry>>,
     #[cfg(any(feature = "tune", feature = "texel", test))]
     params: EvalParams,
@@ -144,12 +143,6 @@ pub struct Evaluator {
     /// piece activity and borrowed by its consumers. Kept across calls so the
     /// per-square slots are not re-zeroed every evaluation (see `AttackMaps`).
     attacks: AttackMaps,
-    /// Where this evaluator reads the family masks (`FAMILY_MASKS` outside
-    /// tests), and the masks the current evaluation applies.
-    #[cfg(feature = "tune")]
-    mask_source: &'static masks::MaskCell,
-    #[cfg(feature = "tune")]
-    masks: masks::FamilyMasks,
     /// Per-call feature trace, recorded only under `--features texel`. Held in
     /// a `RefCell` so the `&self` eval helpers can append to it; the field does
     /// not exist in production builds.
@@ -180,10 +173,6 @@ impl Default for Evaluator {
             tables,
             lazy_margin: LAZY_MARGIN,
             attacks: AttackMaps::new(),
-            #[cfg(feature = "tune")]
-            mask_source: &masks::FAMILY_MASKS,
-            #[cfg(feature = "tune")]
-            masks: masks::FamilyMasks::default(),
             #[cfg(feature = "texel")]
             trace: RefCell::new(EvalTrace::default()),
             #[cfg(feature = "donor-eval")]
@@ -247,7 +236,7 @@ impl Evaluator {
     }
 
     pub fn evaluate_result(&self, result: GameResult, color: Color, ply: usize) -> i32 {
-        let mate = MATE_SCORE - infra::to_i32(ply);
+        let mate = crate::score::mate_in(ply);
         match (result, color) {
             (GameResult::WhiteCheckmates, Color::White)
             | (GameResult::BlackCheckmates, Color::Black) => mate,
@@ -284,10 +273,6 @@ impl Evaluator {
         // every call.
         #[cfg(feature = "texel")]
         self.trace.borrow_mut().reset();
-        #[cfg(feature = "tune")]
-        {
-            self.masks = self.mask_source.fix();
-        }
 
         let atk = &ATTACKS;
         let mut mg = 0;
@@ -307,7 +292,10 @@ impl Evaluator {
                     // Material and PST are separate tunable params; the cooked
                     // table folds them, so trace each separately. The PST index
                     // mirrors build_tables: sq for white, sq^56 for black.
-                    #[cfg_attr(not(feature = "texel"), allow(unused_variables))]
+                    #[cfg_attr(
+                        not(feature = "texel"),
+                        expect(unused_variables, reason = "the square feeds only the texel trace")
+                    )]
                     let pst_sq = if color == Color::White {
                         sq.index()
                     } else {

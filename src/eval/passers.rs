@@ -2,11 +2,11 @@
 //! the unstoppable-passer race, rooks behind and blockaders, and king
 //! proximity.
 
-use super::pawns::{FILE_BBS, FORWARD_RANKS, KING_DISTANCE, SQUARE_FILE, SQUARE_RANK};
 use super::trace::{tr_eg, tr_mg};
 use super::{Evaluator, color_sign, forward_square, relative_rank};
 use crate::board::attacks::{knight_attacks_of, pawn_attacks_of};
-use crate::board::movegen;
+use crate::board::geometry;
+use crate::board::geometry::{FILE_BBS, FORWARD_RANKS, KING_DISTANCE, SQUARE_FILE, SQUARE_RANK};
 use crate::board::{ATTACKS, Bitboard, Board, Color, Piece, Square};
 use crate::infra;
 
@@ -82,7 +82,7 @@ impl Evaluator {
             };
             while pp.any() {
                 let sq = pp.pop_lsb();
-                let rel_rank = relative_rank(color, sq) as i32;
+                let rel_rank = i32::from(relative_rank(color, sq));
                 if let Some(stop) = forward_square(color, sq)
                     && (occupied & Bitboard::from(stop)).is_empty()
                 {
@@ -92,7 +92,7 @@ impl Evaluator {
                     tr_eg!(self, passed_freestop_eg_per_rank, 0, sign * rel_rank);
                     debug_assert_eq!(
                         attacked(Bitboard::from(stop)),
-                        board.is_attacked_by_with_occ(stop, them, occupied)
+                        board.attacked_by(stop, them, occupied, occupied)
                     );
                     if !attacked(Bitboard::from(stop)) {
                         *eg += sign * rel_rank * self.params.passed_safestop_eg_per_rank[0];
@@ -153,13 +153,13 @@ impl Evaluator {
                 ps.index() % 8
             };
             let promo_sq = Square(infra::to_u8(promo));
-            let path = movegen::between(ps, promo_sq) | Bitboard::from(promo_sq);
+            let path = geometry::between(ps, promo_sq) | Bitboard::from(promo_sq);
             if (path & occupied).any() {
                 continue;
             }
-            let rel = relative_rank(color, ps) as i32;
+            let rel = i32::from(relative_rank(color, ps));
             let pawn_steps = (7 - rel) - if rel == 1 { 1 } else { 0 };
-            let king_steps = KING_DISTANCE[enemy_king.index()][promo] as i32;
+            let king_steps = i32::from(KING_DISTANCE[enemy_king.index()][promo]);
             // The rule of the square, counting the king's capture of the new
             // queen: moving first, the king catches the pawn from one square
             // further than the pawn's steps; moving second, from its steps.

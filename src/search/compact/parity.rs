@@ -44,8 +44,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
-use crate::eval::VALUE_NONE;
-use crate::tt::{Bound, TB_WIN_SCORE};
+use crate::score::{TB_WIN_SCORE, VALUE_NONE};
+use crate::tt::Bound;
 
 use super::super::history::apply_bonus;
 use super::rules::{self, SEED_FIELDS, Seeds};
@@ -1419,22 +1419,6 @@ const UNDETECTABLE: &[(&str, &str)] = &[
         "the depth, not the reduction, is compared, and none of the 1,449 records with a deep \
          stored score at a TT-PV node in the 2026-11-17 capture lies within a quarter of \
          it of a depth bar",
-    ),
-    (
-        "fds_singular",
-        "the full-depth search reads it only with the TT move's score and a singular score, \
-         but a singular search needs depth 5 and from depth 2 every move after the first is \
-         reduced, so the full-depth search runs only for the first move, before its score exists",
-    ),
-    (
-        "fds_singular_offset",
-        "read only inside the full-depth search's singular term, which never runs \
-         (fds_singular)",
-    ),
-    (
-        "fds_singular_cap",
-        "read only inside the full-depth search's singular term, which never runs \
-         (fds_singular)",
     ),
     (
         "fds_spread_thread",

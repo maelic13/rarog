@@ -44,7 +44,7 @@ impl Rule {
     /// The sampling stride's log2 on the compact kernel, set from each
     /// rule's decision count so a compact `bench 13` probes about 10,000
     /// decisions of each.
-    pub(super) const fn compact_shift(self) -> u32 {
+    const fn compact_shift(self) -> u32 {
         match self {
             Self::LmrFailLow | Self::ReverseFutility => 7,
             Self::QuietSee => 6,
@@ -109,7 +109,7 @@ impl Searcher {
     }
 
     /// Whether the compact kernel's decision is in the sample.
-    pub(super) fn compact_sampled(&self, rule: Rule, key: u64, mv: Move, depth: i32) -> bool {
+    fn compact_sampled(&self, rule: Rule, key: u64, mv: Move, depth: i32) -> bool {
         self.pricing_draw(rule, rule.compact_shift(), key, mv, depth)
     }
 
@@ -251,7 +251,7 @@ impl Searcher {
     /// A node a rule cut or razored, searched again at its entry depth and
     /// window with the rule off at its ply; with `RAROG_PRICING_IDENTITY=1`
     /// a second time with nothing off, which must reproduce the decision.
-    pub(super) fn compact_price_node<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
+    fn compact_price_node<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
         decision: &Decision,
@@ -319,7 +319,7 @@ impl Searcher {
     /// A move a rule pruned, searched as the move loop would have searched
     /// it at full depth: pushed, made, searched with the null window above
     /// alpha, unmade.
-    pub(super) fn compact_price_pruned_move<P: FnMut() -> SearchEvent + ?Sized>(
+    fn compact_price_pruned_move<P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
         decision: &Decision,
@@ -340,7 +340,7 @@ impl Searcher {
 
     /// A reduced move that failed low, still made, searched again at the
     /// depth its reduction denied.
-    pub(super) fn compact_price_reduced_move<P: FnMut() -> SearchEvent + ?Sized>(
+    fn compact_price_reduced_move<P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
         decision: &Decision,
@@ -374,7 +374,7 @@ impl Searcher {
     }
 
     /// A move quiescence skipped, searched as quiescence searches its moves.
-    pub(super) fn compact_price_q_move<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
+    fn compact_price_q_move<NODE: NodeType, P: FnMut() -> SearchEvent + ?Sized>(
         &mut self,
         board: &mut Board,
         decision: &Decision,

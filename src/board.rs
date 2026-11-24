@@ -4,17 +4,21 @@
 // every `use crate::board::board::…` path for a naming-style lint with no
 // functional effect. The re-exports below mean callers write
 // `crate::board::Board` regardless.
-#![allow(clippy::module_inception)]
+#![expect(
+    clippy::module_inception,
+    reason = "`board::board` holds the `Board` type, its siblings its parts"
+)]
 
 pub mod attacks;
-pub mod bitboard;
+pub(crate) mod bitboard;
 pub mod board;
 mod cuckoo;
-pub mod movegen;
+pub(crate) mod geometry;
+pub(crate) mod movegen;
 pub mod moves;
 pub mod piece;
 pub mod square;
-pub mod zobrist;
+pub(crate) mod zobrist;
 
 // Convenient re-exports of the most commonly used types.
 pub use attacks::ATTACKS;

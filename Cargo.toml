@@ -100,6 +100,18 @@ semicolon_if_nothing_returned = "deny"
 # the same suppression. Revisit only if a genuinely cohesive group appears.
 too_many_arguments = "allow"
 
+# Adopted from the 2026-11-01 review (RUST-9, RUST-10): mechanical, the same
+# code. `suboptimal_flops` stays off: `mul_add` changes the clock's f64
+# results. `allow_attributes` keeps suppressions as `#[expect]`, which warns
+# when a suppression is no longer needed.
+cast_lossless = "warn"
+borrow_as_ptr = "warn"
+checked_conversions = "warn"
+manual_assert = "warn"
+no_effect_underscore_binding = "warn"
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+
 # Cast lints at ZERO. Every numeric narrowing goes through `infra`'s checked
 # conversions (`index`, `to_i32`, `to_usize`, `to_u8`, `saturating_i16/i8` —
 # debug-asserted, tested, 64-bit-guarded), or sits under a scoped fn-level

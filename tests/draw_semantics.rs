@@ -5,7 +5,7 @@
 //! null move; the arbiter's threefold stays the rule's own.
 
 use rarog::board::{Board, GameResult, Move};
-use rarog::eval::MATE_SCORE;
+use rarog::score::MATE_SCORE;
 use rarog::search::DRAW_SPREAD;
 use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, Searcher};

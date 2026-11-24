@@ -5,10 +5,10 @@
 
 use super::TOTAL_PHASE;
 use super::attacks::KsMaps;
-use super::pawns::KING_DISTANCE;
 use super::trace::{tr_eg, tr_mg};
 use super::{Evaluator, color_sign};
 use crate::board::attacks::AttackTables;
+use crate::board::geometry::KING_DISTANCE;
 use crate::board::{ATTACKS, Bitboard, Board, Color, Piece};
 use crate::infra;
 
@@ -258,7 +258,7 @@ impl Evaluator {
             let mut mb = minors;
             while mb.any() {
                 let m = mb.pop_lsb();
-                protector += KING_DISTANCE[own_king.index()][m.index()] as i32;
+                protector += i32::from(KING_DISTANCE[own_king.index()][m.index()]);
             }
             if protector != 0 {
                 *mg -= sign * protector * self.params.king_protector_mg[0];

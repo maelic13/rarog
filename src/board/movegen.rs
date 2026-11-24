@@ -5,6 +5,7 @@
 use super::attacks::ATTACKS;
 use super::bitboard::Bitboard;
 use super::board::Board;
+use super::geometry::{between, on_same_ray, ray_through};
 use super::moves::{
     CAPTURE, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, DOUBLE_PUSH, EN_PASSANT, Move, MoveList,
     PROMO_BISHOP, PROMO_CAPTURE_BISHOP, PROMO_CAPTURE_KNIGHT, PROMO_CAPTURE_QUEEN,
@@ -287,9 +288,12 @@ fn gen_moves_pinned<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
         let occ_no_king = all_occ ^ Bitboard::from(king_sq);
         let safe = match king_danger {
             Some(danger) => !danger.contains(to),
-            None => !board.is_attacked_with_occ(to, them, occ_no_king),
+            None => !board.attacked_by(to, them, occ_no_king, Bitboard::FULL),
         };
-        debug_assert_eq!(safe, !board.is_attacked_with_occ(to, them, occ_no_king));
+        debug_assert_eq!(
+            safe,
+            !board.attacked_by(to, them, occ_no_king, Bitboard::FULL)
+        );
         if safe {
             add_move::<CAPTURES, QUIETS, _>(king_sq, to, their_occ, moves);
         }
@@ -407,11 +411,11 @@ fn gen_unpinned_captures(
         // See `gen_moves_pinned` for `king_danger`.
         let safe = match king_danger {
             Some(danger) => !danger.contains(to),
-            None => !board.is_attacked_with_occ(to, them, all_occ ^ king_bb),
+            None => !board.attacked_by(to, them, all_occ ^ king_bb, Bitboard::FULL),
         };
         debug_assert_eq!(
             safe,
-            !board.is_attacked_with_occ(to, them, all_occ ^ king_bb)
+            !board.attacked_by(to, them, all_occ ^ king_bb, Bitboard::FULL)
         );
         if safe {
             moves.push_move(Move::new(king_sq, to, CAPTURE));
@@ -444,7 +448,7 @@ fn gen_unpinned_captures(
             let captures_checker =
                 checkers.is_empty() || (checkers & Bitboard::from(ep_cap_sq)).any();
 
-            if captures_checker && ep_capture_is_legal(board, us, them, from, ep_sq, ep_cap_sq) {
+            if captures_checker && board.ep_capture_is_legal(us, from, ep_sq, ep_cap_sq) {
                 moves.push_move(Move::new(from, ep_sq, EN_PASSANT));
             }
         }
@@ -489,27 +493,6 @@ fn gen_unpinned_captures(
             moves.push_move(Move::new(from, to, CAPTURE));
         }
     }
-}
-
-#[inline]
-fn ep_capture_is_legal(
-    board: &Board,
-    us: Color,
-    them: Color,
-    from: Square,
-    ep_sq: Square,
-    ep_cap_sq: Square,
-) -> bool {
-    let atk = &ATTACKS;
-    let king_sq = board.king_sq(us);
-    let occ_after =
-        board.occupied() ^ Bitboard::from(from) ^ Bitboard::from(ep_sq) ^ Bitboard::from(ep_cap_sq);
-    let exposed_rook = (board.pieces(them, Piece::Rook) | board.pieces(them, Piece::Queen))
-        & atk.rook(king_sq, occ_after);
-    let exposed_diag = (board.pieces(them, Piece::Bishop) | board.pieces(them, Piece::Queen))
-        & atk.bishop(king_sq, occ_after);
-
-    exposed_rook.is_empty() && exposed_diag.is_empty()
 }
 
 // -----------------------------------------------------------------------
@@ -607,7 +590,7 @@ fn gen_pawn_moves<const CAPTURES: bool, const QUIETS: bool, S: MoveSink>(
                 if (pinned & Bitboard::from(from)).any() && !on_same_ray(from, ep_sq, king_sq) {
                     continue;
                 }
-                if ep_capture_is_legal(board, us, them, from, ep_sq, ep_cap_sq) {
+                if board.ep_capture_is_legal(us, from, ep_sq, ep_cap_sq) {
                     moves.push_move(Move::new(from, ep_sq, EN_PASSANT));
                 }
             }
@@ -646,7 +629,7 @@ fn gen_unpinned_pawn_quiets<S: MoveSink>(
     while targets.any() {
         let to = targets.pop_lsb();
         moves.push_move(Move::new(
-            Square(infra::to_u8(to.0 as i16 - push_offset)),
+            Square(infra::to_u8(i16::from(to.0) - push_offset)),
             to,
             QUIET,
         ));
@@ -661,7 +644,7 @@ fn gen_unpinned_pawn_quiets<S: MoveSink>(
     while targets.any() {
         let to = targets.pop_lsb();
         moves.push_move(Move::new(
-            Square(infra::to_u8(to.0 as i16 - double_offset)),
+            Square(infra::to_u8(i16::from(to.0) - double_offset)),
             to,
             DOUBLE_PUSH,
         ));
@@ -676,7 +659,7 @@ fn gen_unpinned_pawn_quiets<S: MoveSink>(
     while targets.any() {
         let to = targets.pop_lsb();
         push_pawn_move_flags(
-            Square(infra::to_u8(to.0 as i16 - push_offset)),
+            Square(infra::to_u8(i16::from(to.0) - push_offset)),
             to,
             false,
             moves,
@@ -700,7 +683,7 @@ fn gen_unpinned_pawn_captures<S: MoveSink>(
     while targets.any() {
         let to = targets.pop_lsb();
         push_pawn_move_flags(
-            Square(infra::to_u8(to.0 as i16 - east_offset)),
+            Square(infra::to_u8(i16::from(to.0) - east_offset)),
             to,
             true,
             moves,
@@ -711,7 +694,7 @@ fn gen_unpinned_pawn_captures<S: MoveSink>(
     while targets.any() {
         let to = targets.pop_lsb();
         push_pawn_move_flags(
-            Square(infra::to_u8(to.0 as i16 - west_offset)),
+            Square(infra::to_u8(i16::from(to.0) - west_offset)),
             to,
             true,
             moves,
@@ -873,166 +856,6 @@ fn filter_pinned(from: Square, targets: Bitboard, pinned: Bitboard, king_sq: Squ
         targets & ray_through(from, king_sq)
     } else {
         targets
-    }
-}
-
-// -----------------------------------------------------------------------
-// Geometry helpers
-// -----------------------------------------------------------------------
-
-/// Bitboard of squares strictly between `a` and `b` on a rank, file, or diagonal.
-/// Returns `EMPTY` if they are not aligned.
-pub fn between(a: Square, b: Square) -> Bitboard {
-    // Use precomputed table
-    BETWEEN[a.index()][b.index()]
-}
-
-/// Full ray through both `a` and `b` (including both endpoints).
-fn ray_through(a: Square, b: Square) -> Bitboard {
-    LINE[a.index()][b.index()]
-}
-
-/// Returns true if `from`, `to`, and `king` are all on the same rank/file/diagonal.
-#[inline]
-pub(super) fn on_same_ray(from: Square, to: Square, king: Square) -> bool {
-    (ray_through(from, to) & Bitboard::from(king)).any()
-}
-
-// -----------------------------------------------------------------------
-// Precomputed between / line tables
-// -----------------------------------------------------------------------
-
-static BETWEEN: [[Bitboard; 64]; 64] = init_between();
-static LINE: [[Bitboard; 64]; 64] = init_line();
-
-const fn abs_i8(v: i8) -> i8 {
-    if v < 0 { -v } else { v }
-}
-
-const fn signum_i8(v: i8) -> i8 {
-    if v > 0 {
-        1
-    } else if v < 0 {
-        -1
-    } else {
-        0
-    }
-}
-
-const fn aligned(ar: i8, af: i8, br: i8, bf: i8) -> bool {
-    ar == br || af == bf || abs_i8(br - ar) == abs_i8(bf - af)
-}
-
-// Const-evaluated init — helpers are non-const; any out-of-range would fail
-// the compile-time evaluation itself, so plain casts are sound here.
-#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-const fn init_between() -> [[Bitboard; 64]; 64] {
-    let mut table = [[Bitboard::EMPTY; 64]; 64];
-    let mut a = 0usize;
-    while a < 64 {
-        let mut b = 0usize;
-        while b < 64 {
-            if a != b {
-                let ar = (a / 8) as i8;
-                let af = (a % 8) as i8;
-                let br = (b / 8) as i8;
-                let bf = (b % 8) as i8;
-
-                if aligned(ar, af, br, bf) {
-                    let sr = signum_i8(br - ar);
-                    let sf = signum_i8(bf - af);
-                    let mut r = ar + sr;
-                    let mut f = af + sf;
-                    let mut bits = 0u64;
-                    while r != br || f != bf {
-                        bits |= 1u64 << ((r as u8) * 8 + f as u8);
-                        r += sr;
-                        f += sf;
-                    }
-                    table[a][b] = Bitboard(bits);
-                }
-            }
-            b += 1;
-        }
-        a += 1;
-    }
-    table
-}
-
-// Const-evaluated init — helpers are non-const; any out-of-range would fail
-// the compile-time evaluation itself, so plain casts are sound here.
-#[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-const fn init_line() -> [[Bitboard; 64]; 64] {
-    let mut table = [[Bitboard::EMPTY; 64]; 64];
-    let mut a = 0usize;
-    while a < 64 {
-        let mut b = 0usize;
-        while b < 64 {
-            if a != b {
-                let ar = (a / 8) as i8;
-                let af = (a % 8) as i8;
-                let br = (b / 8) as i8;
-                let bf = (b % 8) as i8;
-
-                if aligned(ar, af, br, bf) {
-                    let sr = signum_i8(br - ar);
-                    let sf = signum_i8(bf - af);
-                    let mut bits = (1u64 << a) | (1u64 << b);
-
-                    let mut r = ar + sr;
-                    let mut f = af + sf;
-                    while r >= 0 && r < 8 && f >= 0 && f < 8 {
-                        bits |= 1u64 << ((r as u8) * 8 + f as u8);
-                        r += sr;
-                        f += sf;
-                    }
-
-                    let mut r = ar - sr;
-                    let mut f = af - sf;
-                    while r >= 0 && r < 8 && f >= 0 && f < 8 {
-                        bits |= 1u64 << ((r as u8) * 8 + f as u8);
-                        r -= sr;
-                        f -= sf;
-                    }
-
-                    table[a][b] = Bitboard(bits);
-                }
-            }
-            b += 1;
-        }
-        a += 1;
-    }
-    table
-}
-// -----------------------------------------------------------------------
-// Extend Board with occ-parameterized attack check (needed for EP)
-// -----------------------------------------------------------------------
-
-impl Board {
-    fn is_attacked_with_occ(&self, sq: Square, attacker: Color, occ: Bitboard) -> bool {
-        let atk = &ATTACKS;
-        if (atk.pawn(!attacker, sq) & self.pieces(attacker, Piece::Pawn)).any() {
-            return true;
-        }
-        if (atk.knight(sq) & self.pieces(attacker, Piece::Knight)).any() {
-            return true;
-        }
-        if (atk.king(sq) & self.pieces(attacker, Piece::King)).any() {
-            return true;
-        }
-        if (atk.bishop(sq, occ)
-            & (self.pieces(attacker, Piece::Bishop) | self.pieces(attacker, Piece::Queen)))
-        .any()
-        {
-            return true;
-        }
-        if (atk.rook(sq, occ)
-            & (self.pieces(attacker, Piece::Rook) | self.pieces(attacker, Piece::Queen)))
-        .any()
-        {
-            return true;
-        }
-        false
     }
 }
 

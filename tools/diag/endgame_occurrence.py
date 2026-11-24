@@ -20,7 +20,7 @@ other is what produced the error above.
 
 The counters are dumped once per position, so attribution needs no extra run --
 `bench_counters.py --per-position` retains the sequence, and bench order matches
-`BENCH_FENS` order. The FENs are read from `src/bench.rs` rather than copied,
+`BENCH_FENS` order. The FENs are read from `src/tools/bench.rs` rather than copied,
 so the suite cannot drift away from its classification.
 
 Occurrence PRIORITISES. It is never evidence of value, and a family absent from
@@ -48,7 +48,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bench_counters  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-BENCH_RS = ROOT / "src" / "bench.rs"
+BENCH_RS = ROOT / "src" / "tools" / "bench.rs"
 
 # A root with this many men or fewer is an ENDGAME root.
 #

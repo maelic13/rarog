@@ -26,7 +26,7 @@ macro_rules! search_params {
 
         impl $name {
             /// The compiled-in values.
-            pub const DEFAULT: Self = Self { $( $field: $default, )+ };
+            pub(crate) const DEFAULT: Self = Self { $( $field: $default, )+ };
         }
 
         impl Default for $name {
@@ -40,7 +40,7 @@ macro_rules! search_params {
             /// same literals as the defaults and clamps — they cannot disagree.
             /// Tune builds only (production must not advertise these).
             #[cfg(feature = "tune")]
-            pub fn uci_option_strings() -> Vec<String> {
+            pub(crate) fn uci_option_strings() -> Vec<String> {
                 vec![$(
                     format!(
                         "option name {} type spin default {} min {} max {}",
@@ -54,7 +54,7 @@ macro_rules! search_params {
             /// `false` if the name is not a tunable, so the caller can fall
             /// through to the engine options.
             #[cfg(feature = "tune")]
-            pub fn set_uci_option(&mut self, name: &str, value: &str) -> bool {
+            pub(crate) fn set_uci_option(&mut self, name: &str, value: &str) -> bool {
                 $(
                     if name.eq_ignore_ascii_case($uci) {
                         if let Ok(v) = value.parse::<i32>() {

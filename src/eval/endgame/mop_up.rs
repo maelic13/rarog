@@ -3,18 +3,14 @@
 //! sum: on the full path after piece activity and before imbalance, on the
 //! lazy path in place of both.
 
-use super::super::pawns::{KING_DISTANCE, SQUARE_FILE, SQUARE_RANK};
-use super::super::{Evaluator, MATE_SCORE, color_sign};
+use super::super::{Evaluator, color_sign};
+use crate::board::geometry::{KING_DISTANCE, MANHATTAN_DISTANCE, SQUARE_FILE, SQUARE_RANK};
 use crate::board::{Bitboard, Board, Color, Piece};
 use crate::infra;
+use crate::score::{MATE_BOUND, TB_WIN_SCORE};
 
 /// Manhattan (taxicab) distance between squares, used only by the mate drive.
 ///
-/// Chebyshev distance alone is FLAT: every square in a ring around the target
-/// scores identically, so over 300 won KBNK positions 94% had a tied best move.
-/// A term that cannot order its own moves cannot steer a search, whatever its
-/// magnitude. Manhattan breaks the rings.
-const MANHATTAN_DISTANCE: [[u8; 64]; 64] = init_manhattan_distance();
 /// Mate-drive weights. Chebyshev carries the coarse pull and Manhattan
 /// supplies the resolution that breaks its rings. The diagonal weight sets the
 /// ratio of the corner pull to the king pull, which must dominate, not merely
@@ -33,14 +29,6 @@ const MOPUP_KING_MAN: i32 = 10;
 /// supremum rather than a bound with slack.
 const MOPUP_MAX: i32 = MOPUP_DIAGONAL * 7 + MOPUP_KING_CHEB * 7 + MOPUP_KING_MAN * 14;
 
-/// The search's ply horizon, mirrored here on purpose.
-///
-/// `search::MAX_PLY` is module-private, and the evaluator should not depend on
-/// the search to know its own safety bound. `search::tests::
-/// mopup_mirror_matches_the_real_ply_horizon` ties the two together in a module
-/// that legitimately sees both, so the mirror cannot drift silently.
-pub(crate) const MOPUP_ASSUMED_MAX_PLY: i32 = 240;
-
 /// A guidance term must never reach the band the search reads as a forced mate.
 ///
 /// This is a `const` assertion rather than a debug check or a validator inside
@@ -51,14 +39,14 @@ pub(crate) const MOPUP_ASSUMED_MAX_PLY: i32 = 240;
 /// If this fails, the drive can manufacture a mate score out of king geometry
 /// and the search will believe it.
 const _: () = assert!(
-    MOPUP_MAX < MATE_SCORE - MOPUP_ASSUMED_MAX_PLY,
+    MOPUP_MAX < MATE_BOUND,
     "mop-up drive can reach the search's mate band; lower MOPUP_DIAGONAL"
 );
 
 /// The search reads everything from the tablebase-win score up as decisive,
 /// below the mate band, so the drive must stay under that lower line too.
 const _: () = assert!(
-    MOPUP_MAX < crate::tt::TB_WIN_SCORE,
+    MOPUP_MAX < TB_WIN_SCORE,
     "mop-up drive can reach the search's decisive band; lower MOPUP_DIAGONAL"
 );
 
@@ -69,36 +57,6 @@ const _: () = assert!(
 // `LIGHT_SQUARES`.
 const KBNK_DARK_CORNERS: [usize; 2] = [0, 63]; // a1, h8
 const KBNK_LIGHT_CORNERS: [usize; 2] = [7, 56]; // h1, a8
-
-// Const-evaluated init, same justification as `init_relative_ranks` above: the
-// `infra` helpers are not `const fn`, both operands are file/rank differences in
-// 0..=7 so the sum is 0..=14, and any out-of-range would surface at COMPILE
-// time. Sign loss cannot occur because both differences are taken larger-minus-
-// smaller.
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::cast_sign_loss
-)]
-const fn init_manhattan_distance() -> [[u8; 64]; 64] {
-    let mut table = [[0u8; 64]; 64];
-    let mut a = 0usize;
-    while a < 64 {
-        let af = (a & 7) as i32;
-        let ar = (a >> 3) as i32;
-        let mut b = 0usize;
-        while b < 64 {
-            let bf = (b & 7) as i32;
-            let br = (b >> 3) as i32;
-            let df = if af > bf { af - bf } else { bf - af };
-            let dr = if ar > br { ar - br } else { br - ar };
-            table[a][b] = (df + dr) as u8;
-            b += 1;
-        }
-        a += 1;
-    }
-    table
-}
 
 impl Evaluator {
     /// Mate-drive "mop-up": when one side is clearly winning, nudge the losing
@@ -117,7 +75,7 @@ impl Evaluator {
             let sign = color_sign(winning);
             let lksq = board.king_sq(losing);
             let wksq = board.king_sq(winning);
-            let king_distance = KING_DISTANCE[wksq.index()][lksq.index()] as i32;
+            let king_distance = i32::from(KING_DISTANCE[wksq.index()][lksq.index()]);
             // The corner drive applies ONLY to MINOR-PIECE mates: a losing bare
             // king against a winner with no pawn, rook or queen, read from the
             // position evaluated (a pawn-root family can reach this material

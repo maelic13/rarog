@@ -75,7 +75,7 @@ static ENABLED: AtomicBool = AtomicBool::new(true);
 /// Turn large pages on or off for the page allocations that follow; the
 /// tables already allocated keep their backing until they are allocated
 /// again.
-pub fn set_enabled(enabled: bool) {
+pub(crate) fn set_enabled(enabled: bool) {
     if ENABLED.swap(enabled, Ordering::Relaxed) != enabled {
         // What `large_pages` reports describes the tables allocated after
         // the change, not a mix with the ones the change replaces.
@@ -146,11 +146,12 @@ mod win {
             if OpenProcessToken(
                 GetCurrentProcess(),
                 TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
-                &mut token,
+                &raw mut token,
             ) != 0
             {
                 let mut luid = Luid { low: 0, high: 0 };
-                if LookupPrivilegeValueW(std::ptr::null(), LOCK_MEMORY.as_ptr(), &mut luid) != 0 {
+                if LookupPrivilegeValueW(std::ptr::null(), LOCK_MEMORY.as_ptr(), &raw mut luid) != 0
+                {
                     let privileges = TokenPrivileges {
                         count: 1,
                         luid,
@@ -162,7 +163,7 @@ mod win {
                     granted = AdjustTokenPrivileges(
                         token,
                         0,
-                        &privileges,
+                        &raw const privileges,
                         0,
                         std::ptr::null_mut(),
                         std::ptr::null_mut(),

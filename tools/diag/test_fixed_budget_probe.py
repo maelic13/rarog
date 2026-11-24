@@ -55,10 +55,10 @@ def test_a_node_budget_reads_the_last_completed_iteration_not_a_bound_line():
 
 def test_engine_spec_carries_uci_options():
     assert probe.parse_engine_spec("core=D:/x/rarog.exe") == ("core", "D:/x/rarog.exe", [])
-    assert probe.parse_engine_spec("core=rarog.exe|AblationMask=128|Hash=16") == (
-        "core", "rarog.exe", [("AblationMask", "128"), ("Hash", "16")])
+    assert probe.parse_engine_spec("core=rarog.exe|MultiPV=2|Hash=16") == (
+        "core", "rarog.exe", [("MultiPV", "2"), ("Hash", "16")])
     try:
-        probe.parse_engine_spec("core=rarog.exe|AblationMask")
+        probe.parse_engine_spec("core=rarog.exe|MultiPV")
     except SystemExit as exit_:
         assert "Name=Value" in str(exit_)
     else:
@@ -66,7 +66,7 @@ def test_engine_spec_carries_uci_options():
 
 
 def test_option_rejection_is_recognised():
-    assert probe.option_rejected("info string No such option: AblationMask\n")
+    assert probe.option_rejected("info string No such option: KingDangerMask\n")
     assert probe.option_rejected("No such option: Foo")
     assert not probe.option_rejected("info depth 3 score cp 0 nodes 10 time 1 pv e2e4")
 

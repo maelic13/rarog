@@ -19,7 +19,7 @@ use crate::board::{Board, Move, Piece, Square};
 pub(crate) const DEFAULT_WAC_DEPTH: u16 = 10;
 
 /// The raw EPD suite: `<placement> <stm> <castling> <ep> bm <san...>; id "WAC.n";`
-const WAC_EPD: &str = include_str!("wac.epd");
+const WAC_EPD: &str = include_str!("../wac.epd");
 
 /// One suite entry: a position, its accepted best moves (SAN), and its id.
 pub struct WacPosition {

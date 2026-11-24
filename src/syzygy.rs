@@ -129,7 +129,7 @@ pub enum Wdl {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct RootMove {
+pub(crate) struct RootMove {
     pub from: u8,
     pub to: u8,
     promotes: Option<Piece>,
@@ -148,6 +148,106 @@ struct TbPosition {
     rule50: u32,
     ep: u32,
     turn: bool,
+}
+
+impl TbPosition {
+    /// The position's Fathom form: one bitboard per colour and per piece
+    /// kind, the rule-50 counter, the en passant square (0 for none) and the
+    /// side to move.
+    fn of(board: &Board) -> Self {
+        TbPosition {
+            white: board.color_occ(Color::White).0,
+            black: board.color_occ(Color::Black).0,
+            kings: (board.pieces(Color::White, Piece::King)
+                | board.pieces(Color::Black, Piece::King))
+            .0,
+            queens: (board.pieces(Color::White, Piece::Queen)
+                | board.pieces(Color::Black, Piece::Queen))
+            .0,
+            rooks: (board.pieces(Color::White, Piece::Rook)
+                | board.pieces(Color::Black, Piece::Rook))
+            .0,
+            bishops: (board.pieces(Color::White, Piece::Bishop)
+                | board.pieces(Color::Black, Piece::Bishop))
+            .0,
+            knights: (board.pieces(Color::White, Piece::Knight)
+                | board.pieces(Color::Black, Piece::Knight))
+            .0,
+            pawns: (board.pieces(Color::White, Piece::Pawn)
+                | board.pieces(Color::Black, Piece::Pawn))
+            .0,
+            rule50: u32::from(board.halfmove_clock()),
+            ep: board.ep_square().map_or(0, |sq| u32::from(sq.0)),
+            turn: board.side_to_move() == Color::White,
+        }
+    }
+
+    /// Fathom's WDL probe.
+    fn probe_wdl(self) -> u32 {
+        // SAFETY: FFI into Fathom with by-value bitboards; no pointers are
+        // passed and the tables were initialised by `tb_init`.
+        unsafe {
+            tb_probe_wdl_impl(
+                self.white,
+                self.black,
+                self.kings,
+                self.queens,
+                self.rooks,
+                self.bishops,
+                self.knights,
+                self.pawns,
+                self.ep,
+                self.turn,
+            )
+        }
+    }
+
+    /// Fathom's DTZ root probe: each legal move's result into `results`,
+    /// with the terminator after them.
+    fn probe_root(self, results: &mut [u32; TB_MAX_MOVES + 1]) -> u32 {
+        // SAFETY: FFI into Fathom. `results` holds TB_MAX_MOVES + 1 entries, enough
+        // for every legal move and the terminator Fathom writes after them.
+        unsafe {
+            tb_probe_root_impl(
+                self.white,
+                self.black,
+                self.kings,
+                self.queens,
+                self.rooks,
+                self.bishops,
+                self.knights,
+                self.pawns,
+                self.rule50,
+                self.ep,
+                self.turn,
+                results.as_mut_ptr(),
+            )
+        }
+    }
+
+    /// Fathom's WDL ranking of the root moves into `results`; zero on failure.
+    fn probe_root_wdl(self, use_rule50: bool, results: &mut TbRootMovesRaw) -> c_int {
+        // SAFETY: FFI into Fathom. `results` is a live `TbRootMovesRaw` that
+        // outlives the call and is only written by Fathom.
+        unsafe {
+            tb_probe_root_wdl(
+                self.white,
+                self.black,
+                self.kings,
+                self.queens,
+                self.rooks,
+                self.bishops,
+                self.knights,
+                self.pawns,
+                self.rule50,
+                0,
+                self.ep,
+                self.turn,
+                use_rule50,
+                results,
+            )
+        }
+    }
 }
 
 pub fn initialize(path: &str) -> usize {
@@ -220,30 +320,13 @@ pub fn probe_wdl(board: &Board, use_rule50: bool) -> Option<Wdl> {
         return None;
     }
 
-    let pos = tb_position(board);
-    // SAFETY: FFI into Fathom with by-value bitboards from `tb_position`; no
-    // pointers are passed and the tables were initialised by `tb_init`.
-    let result = unsafe {
-        tb_probe_wdl_impl(
-            pos.white,
-            pos.black,
-            pos.kings,
-            pos.queens,
-            pos.rooks,
-            pos.bishops,
-            pos.knights,
-            pos.pawns,
-            pos.ep,
-            pos.turn,
-        )
-    };
-    wdl_from_raw(result)
+    wdl_from_raw(TbPosition::of(board).probe_wdl())
 }
 
 /// Rank scale of the root ranking: a clean win ranks `MAX_DTZ`, less its
 /// distance to zeroing when moves are ordered by it; a win the rule-50
 /// counter may spoil ranks below `MAX_DTZ / 2`; losses mirror wins.
-pub(crate) const MAX_DTZ: i32 = 1 << 18;
+const MAX_DTZ: i32 = 1 << 18;
 
 /// One root move and its rank, higher better.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -287,7 +370,7 @@ pub(crate) fn rank_root_moves(
 /// centipawns growing toward the real win, a draw 0, losses mirrored. A WDL
 /// ranking knows no distance, so its cursed results show 2.
 pub(crate) fn display_score(rank: i32, dtz: bool, use_rule50: bool) -> i32 {
-    use crate::tt::TB_VALUE;
+    use crate::score::TB_VALUE;
     const PAWN: i32 = 100;
     if !dtz {
         return match rank {
@@ -311,26 +394,8 @@ pub(crate) fn display_score(rank: i32, dtz: bool, use_rule50: bool) -> i32 {
 }
 
 fn rank_by_dtz(board: &Board, use_rule50: bool, rank_dtz: bool) -> Option<RootRanking> {
-    let pos = tb_position(board);
     let mut results = [TB_RESULT_FAILED; TB_MAX_MOVES + 1];
-    // SAFETY: FFI into Fathom. `results` holds TB_MAX_MOVES + 1 entries, enough
-    // for every legal move and the terminator Fathom writes after them.
-    let root = unsafe {
-        tb_probe_root_impl(
-            pos.white,
-            pos.black,
-            pos.kings,
-            pos.queens,
-            pos.rooks,
-            pos.bishops,
-            pos.knights,
-            pos.pawns,
-            pos.rule50,
-            pos.ep,
-            pos.turn,
-            results.as_mut_ptr(),
-        )
-    };
+    let root = TbPosition::of(board).probe_root(&mut results);
     if root == TB_RESULT_FAILED {
         return None;
     }
@@ -408,28 +473,8 @@ fn rank_by_wdl(board: &Board, use_rule50: bool) -> Option<RootRanking> {
 }
 
 fn probe_root_moves_wdl(board: &Board, use_rule50: bool) -> Option<Vec<(RootMove, i32)>> {
-    let pos = tb_position(board);
     let mut results = Box::new(TbRootMovesRaw::EMPTY);
-    // SAFETY: FFI into Fathom. `results` is a live, zeroed `TbRootMovesRaw`
-    // that outlives the call and is only written by Fathom.
-    let ok = unsafe {
-        tb_probe_root_wdl(
-            pos.white,
-            pos.black,
-            pos.kings,
-            pos.queens,
-            pos.rooks,
-            pos.bishops,
-            pos.knights,
-            pos.pawns,
-            pos.rule50,
-            0,
-            pos.ep,
-            pos.turn,
-            use_rule50,
-            &mut *results,
-        )
-    };
+    let ok = TbPosition::of(board).probe_root_wdl(use_rule50, &mut results);
     if ok == 0 {
         return None;
     }
@@ -458,31 +503,6 @@ fn can_probe(board: &Board, use_rule50: bool, root: bool) -> bool {
         return false;
     }
     board.occupied_count() as usize <= largest()
-}
-
-fn tb_position(board: &Board) -> TbPosition {
-    TbPosition {
-        white: board.color_occ(Color::White).0,
-        black: board.color_occ(Color::Black).0,
-        kings: (board.pieces(Color::White, Piece::King) | board.pieces(Color::Black, Piece::King))
-            .0,
-        queens: (board.pieces(Color::White, Piece::Queen)
-            | board.pieces(Color::Black, Piece::Queen))
-        .0,
-        rooks: (board.pieces(Color::White, Piece::Rook) | board.pieces(Color::Black, Piece::Rook))
-            .0,
-        bishops: (board.pieces(Color::White, Piece::Bishop)
-            | board.pieces(Color::Black, Piece::Bishop))
-        .0,
-        knights: (board.pieces(Color::White, Piece::Knight)
-            | board.pieces(Color::Black, Piece::Knight))
-        .0,
-        pawns: (board.pieces(Color::White, Piece::Pawn) | board.pieces(Color::Black, Piece::Pawn))
-            .0,
-        rule50: board.halfmove_clock() as u32,
-        ep: board.ep_square().map_or(0, |sq| sq.0 as u32),
-        turn: board.side_to_move() == Color::White,
-    }
 }
 
 fn root_move_from_result(result: u32) -> Option<RootMove> {
@@ -527,233 +547,4 @@ fn wdl_from_raw(value: u32) -> Option<Wdl> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    use crate::board::Square;
-    use std::fs;
-    use std::sync::{LazyLock, Mutex};
-
-    static TEST_SYZYGY_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
-
-    fn encoded_root_result(from: Square, to: Square, promotes: u32) -> u32 {
-        (TB_WIN << TB_RESULT_WDL_SHIFT)
-            | ((to.0 as u32) << TB_RESULT_TO_SHIFT)
-            | ((from.0 as u32) << TB_RESULT_FROM_SHIFT)
-            | (promotes << TB_RESULT_PROMOTES_SHIFT)
-    }
-
-    fn encoded_tb_move(from: Square, to: Square, promotes: u16) -> u16 {
-        ((from.0 as u16) << 6) | to.0 as u16 | (promotes << 12)
-    }
-
-    /// The value of `#define <name> <value>` in Fathom's header, where the
-    /// value is a number or a parenthesised sum of numbers.
-    fn fathom_define(header: &str, name: &str) -> u64 {
-        let values: Vec<&str> = header
-            .lines()
-            .filter_map(|line| {
-                let rest = line.trim().strip_prefix("#define")?.trim_start();
-                let rest = rest.strip_prefix(name)?;
-                rest.starts_with(char::is_whitespace).then_some(rest)
-            })
-            .collect();
-        assert_eq!(values.len(), 1, "{name} is defined once in tbprobe.h");
-        let value = values[0].split("/*").next().unwrap_or_default().trim();
-        value
-            .trim_start_matches('(')
-            .trim_end_matches(')')
-            .split('+')
-            .map(|term| {
-                let term = term.trim();
-                match term.strip_prefix("0x") {
-                    Some(hex) => u64::from_str_radix(hex, 16),
-                    None => term.parse(),
-                }
-                .unwrap_or_else(|_| panic!("{name}: {term:?} is not a number"))
-            })
-            .sum()
-    }
-
-    #[test]
-    fn mirrored_constants_match_fathoms_header() {
-        let header = fs::read_to_string(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/vendor/fathom/src/tbprobe.h"
-        ))
-        .expect("read Fathom's header");
-        let mirrored: [(&str, u64); 18] = [
-            ("TB_MAX_MOVES", TB_MAX_MOVES as u64),
-            ("TB_MAX_PLY", TB_MAX_PLY as u64),
-            ("TB_LOSS", TB_LOSS.into()),
-            ("TB_BLESSED_LOSS", TB_BLESSED_LOSS.into()),
-            ("TB_DRAW", TB_DRAW.into()),
-            ("TB_CURSED_WIN", TB_CURSED_WIN.into()),
-            ("TB_WIN", TB_WIN.into()),
-            ("TB_RESULT_FAILED", TB_RESULT_FAILED.into()),
-            ("TB_RESULT_WDL_MASK", TB_RESULT_WDL_MASK.into()),
-            ("TB_RESULT_TO_MASK", TB_RESULT_TO_MASK.into()),
-            ("TB_RESULT_FROM_MASK", TB_RESULT_FROM_MASK.into()),
-            ("TB_RESULT_PROMOTES_MASK", TB_RESULT_PROMOTES_MASK.into()),
-            ("TB_RESULT_DTZ_MASK", TB_RESULT_DTZ_MASK.into()),
-            ("TB_RESULT_WDL_SHIFT", TB_RESULT_WDL_SHIFT.into()),
-            ("TB_RESULT_TO_SHIFT", TB_RESULT_TO_SHIFT.into()),
-            ("TB_RESULT_FROM_SHIFT", TB_RESULT_FROM_SHIFT.into()),
-            ("TB_RESULT_PROMOTES_SHIFT", TB_RESULT_PROMOTES_SHIFT.into()),
-            ("TB_RESULT_DTZ_SHIFT", TB_RESULT_DTZ_SHIFT.into()),
-        ];
-        for (name, value) in mirrored {
-            assert_eq!(fathom_define(&header, name), value, "{name}");
-        }
-    }
-
-    #[test]
-    fn wdl_from_raw_maps_fathom_values() {
-        assert_eq!(wdl_from_raw(TB_LOSS), Some(Wdl::Loss));
-        assert_eq!(wdl_from_raw(TB_BLESSED_LOSS), Some(Wdl::BlessedLoss));
-        assert_eq!(wdl_from_raw(TB_DRAW), Some(Wdl::Draw));
-        assert_eq!(wdl_from_raw(TB_CURSED_WIN), Some(Wdl::CursedWin));
-        assert_eq!(wdl_from_raw(TB_WIN), Some(Wdl::Win));
-        assert_eq!(wdl_from_raw(TB_RESULT_FAILED), None);
-        assert_eq!(wdl_from_raw(99), None);
-    }
-
-    #[test]
-    fn root_move_from_result_decodes_square_and_promotion_fields() {
-        assert_eq!(
-            root_move_from_result(encoded_root_result(Square::A7, Square::A8, 1)),
-            Some(RootMove {
-                from: Square::A7.0,
-                to: Square::A8.0,
-                promotes: Some(Piece::Queen),
-            })
-        );
-        assert_eq!(
-            root_move_from_result(encoded_root_result(Square::B2, Square::B1, 4)),
-            Some(RootMove {
-                from: Square::B2.0,
-                to: Square::B1.0,
-                promotes: Some(Piece::Knight),
-            })
-        );
-        assert_eq!(
-            root_move_from_result(encoded_root_result(Square::E2, Square::E4, 0)),
-            Some(RootMove {
-                from: Square::E2.0,
-                to: Square::E4.0,
-                promotes: None,
-            })
-        );
-    }
-
-    #[test]
-    fn root_move_from_result_rejects_no_move_and_unknown_promotion() {
-        assert_eq!(
-            root_move_from_result(encoded_root_result(Square::E2, Square::E2, 0)),
-            None
-        );
-        assert_eq!(
-            root_move_from_result(encoded_root_result(Square::A7, Square::A8, 7)),
-            None
-        );
-    }
-
-    #[test]
-    fn root_move_from_tb_move_decodes_fathom_move_fields() {
-        assert_eq!(
-            root_move_from_tb_move(encoded_tb_move(Square::C6, Square::C7, 0)),
-            Some(RootMove {
-                from: Square::C6.0,
-                to: Square::C7.0,
-                promotes: None,
-            })
-        );
-        assert_eq!(
-            root_move_from_tb_move(encoded_tb_move(Square::A7, Square::A8, 1)),
-            Some(RootMove {
-                from: Square::A7.0,
-                to: Square::A8.0,
-                promotes: Some(Piece::Queen),
-            })
-        );
-        assert_eq!(
-            root_move_from_tb_move(encoded_tb_move(Square::A7, Square::A8, 7)),
-            None
-        );
-    }
-
-    #[test]
-    fn tablebase_file_counts_scan_semicolon_separated_paths() {
-        let base =
-            std::env::temp_dir().join(format!("rarog-syzygy-counts-{}-{}", std::process::id(), 1));
-        let first = base.join("a");
-        let second = base.join("b");
-        fs::create_dir_all(&first).expect("create first temp tablebase directory");
-        fs::create_dir_all(&second).expect("create second temp tablebase directory");
-        fs::write(first.join("KQvK.rtbw"), []).expect("write WDL file");
-        fs::write(first.join("KQvK.rtbz"), []).expect("write DTZ file");
-        fs::write(second.join("KRvK.RTBW"), []).expect("write upper-case WDL file");
-        fs::write(second.join("README.txt"), []).expect("write ignored file");
-
-        let path = format!("{};{}", first.display(), second.display());
-        assert_eq!(tablebase_file_counts(&path), (2, 1));
-
-        let _ = fs::remove_dir_all(base);
-    }
-
-    #[test]
-    fn tb_position_exports_bitboards_side_ep_and_rule50_state() {
-        let board = Board::from_fen("4k3/8/8/8/4Pp2/8/8/4K3 b - e3 7 42").expect("valid FEN");
-
-        let pos = tb_position(&board);
-
-        assert_eq!(pos.white, board.color_occ(Color::White).0);
-        assert_eq!(pos.black, board.color_occ(Color::Black).0);
-        assert_eq!(
-            pos.kings,
-            (board.pieces(Color::White, Piece::King) | board.pieces(Color::Black, Piece::King)).0
-        );
-        assert_eq!(
-            pos.pawns,
-            (board.pieces(Color::White, Piece::Pawn) | board.pieces(Color::Black, Piece::Pawn)).0
-        );
-        assert_eq!(pos.rule50, 7);
-        assert_eq!(pos.ep, Square::E3.0 as u32);
-        assert!(!pos.turn);
-    }
-
-    #[test]
-    fn legal_move_from_root_probe_requires_exact_promotion_match() {
-        let board = Board::from_fen("4k3/P7/8/8/8/8/8/4K3 w - - 0 1").expect("valid FEN");
-
-        let queen_promo = legal_move_from_root_probe(
-            &board,
-            RootMove {
-                from: Square::A7.0,
-                to: Square::A8.0,
-                promotes: Some(Piece::Queen),
-            },
-        )
-        .expect("queen promotion must be legal");
-
-        assert_eq!(queen_promo.to_string(), "a7a8q");
-        assert!(
-            legal_move_from_root_probe(
-                &board,
-                RootMove {
-                    from: Square::A7.0,
-                    to: Square::A8.0,
-                    promotes: None,
-                },
-            )
-            .is_none()
-        );
-    }
-
-    #[test]
-    fn initialize_rejects_path_with_nul_without_calling_fathom() {
-        let _guard = TEST_SYZYGY_LOCK.lock().expect("syzygy test lock poisoned");
-        assert_eq!(initialize("bad\0path"), 0);
-        assert_eq!(largest(), 0);
-    }
-}
+mod tests;

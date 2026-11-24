@@ -121,7 +121,7 @@ impl Evaluator {
         let count = |c: Color| -> [i32; 6] {
             let bishops = infra::to_i32(board.pieces(c, Piece::Bishop).count());
             [
-                (bishops >= 2) as i32,
+                i32::from(bishops >= 2),
                 infra::to_i32(board.pieces(c, Piece::Pawn).count()),
                 infra::to_i32(board.pieces(c, Piece::Knight).count()),
                 bishops,
@@ -203,7 +203,13 @@ pub(super) const IMBALANCE_TABLE_SIZE: usize = 1024;
 
 /// One cached imbalance and the piece counts it is for. The texel build
 /// writes no entry, so there the fields look dead.
-#[cfg_attr(feature = "texel", allow(dead_code))]
+#[cfg_attr(
+    feature = "texel",
+    expect(
+        dead_code,
+        reason = "the texel build writes no cache entry, so the cache looks dead there"
+    )
+)]
 #[derive(Copy, Clone)]
 pub(super) struct ImbalanceEntry {
     material: u64,
@@ -212,7 +218,13 @@ pub(super) struct ImbalanceEntry {
 
 /// Both sides' pawn, knight, bishop, rook and queen counts, four bits each
 /// (no count exceeds ten), which determine the imbalance.
-#[cfg_attr(feature = "texel", allow(dead_code))]
+#[cfg_attr(
+    feature = "texel",
+    expect(
+        dead_code,
+        reason = "the texel build writes no cache entry, so the cache looks dead there"
+    )
+)]
 fn material_signature(cnt: &[[i32; 6]; 2]) -> u64 {
     cnt.iter()
         .flat_map(|side| side[1..].iter())
@@ -221,7 +233,13 @@ fn material_signature(cnt: &[[i32; 6]; 2]) -> u64 {
         })
 }
 
-#[cfg_attr(feature = "texel", allow(dead_code))]
+#[cfg_attr(
+    feature = "texel",
+    expect(
+        dead_code,
+        reason = "the texel build writes no cache entry, so the cache looks dead there"
+    )
+)]
 fn imbalance_slot(material: u64) -> usize {
     infra::index(material.wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 54) & (IMBALANCE_TABLE_SIZE - 1)
 }

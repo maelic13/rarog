@@ -151,6 +151,66 @@ impl Rates {
     }
 }
 
+/// The kernel's seeds that no `bench` decision reaches (D.7.11) but play
+/// does: how often each one's term is asked and how often it binds, that
+/// is, changes its rule's result.
+#[derive(Copy, Clone, Debug)]
+pub(in crate::search) enum Seed {
+    /// The table cutoff refused this close to the fifty-move limit.
+    TtCutFifty,
+    /// Reverse futility's margin at its floor.
+    RfpMin,
+    /// The null-move gate's margin at its floor.
+    NmpMin,
+    /// The window's held count at its cap.
+    WindowStabilityCap,
+    /// An in-check noisy move's good or bad tier other than it would be
+    /// without the check base, the only order the base can change.
+    PickCheckBase,
+}
+
+const SEEDS: usize = Seed::PickCheckBase as usize + 1;
+
+const SEED_NAMES: [&str; SEEDS] = [
+    "tt_cut_fifty",
+    "rfp_min_16",
+    "nmp_min_16",
+    "window_stability_cap",
+    "pick_check_base",
+];
+
+thread_local! {
+    static SEED_ASKS: [Cell<u64>; SEEDS] = const { [const { Cell::new(0) }; SEEDS] };
+    static SEED_BINDS: [Cell<u64>; SEEDS] = const { [const { Cell::new(0) }; SEEDS] };
+}
+
+/// One asking of `seed`'s term on this thread, and whether it bound.
+#[inline(always)]
+pub(in crate::search) fn seed(seed: Seed, bound: bool) {
+    let index = seed as usize;
+    SEED_ASKS.with(|asks| asks[index].set(asks[index].get() + 1));
+    SEED_BINDS.with(|binds| binds[index].set(binds[index].get() + u64::from(bound)));
+}
+
+/// Forget this thread's seed counts, at a search's start.
+pub(in crate::search) fn seed_clear() {
+    SEED_ASKS.with(|asks| asks.iter().for_each(|cell| cell.set(0)));
+    SEED_BINDS.with(|binds| binds.iter().for_each(|cell| cell.set(0)));
+}
+
+/// The line printed before `bestmove`, beside the rates.
+pub(in crate::search) fn seed_line() -> String {
+    let mut line = String::from("seeds");
+    SEED_ASKS.with(|asks| {
+        SEED_BINDS.with(|binds| {
+            for (index, name) in SEED_NAMES.iter().enumerate() {
+                let _ = write!(line, " {name}={}/{}", binds[index].get(), asks[index].get());
+            }
+        });
+    });
+    line
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,5 +228,22 @@ mod tests {
         assert_eq!(line.split(' ').count(), KINDS + 1);
         rates.clear();
         assert!(rates.line().contains(" rfp=0/0 "));
+    }
+
+    #[test]
+    fn the_seed_line_counts_asks_and_binds_per_seed() {
+        seed_clear();
+        seed(Seed::RfpMin, true);
+        seed(Seed::RfpMin, false);
+        seed(Seed::PickCheckBase, false);
+        let line = seed_line();
+        assert!(
+            line.starts_with("seeds tt_cut_fifty=0/0 rfp_min_16=1/2 "),
+            "{line}"
+        );
+        assert!(line.ends_with(" pick_check_base=0/1"), "{line}");
+        assert_eq!(line.split(' ').count(), SEEDS + 1);
+        seed_clear();
+        assert!(seed_line().contains(" rfp_min_16=0/0 "));
     }
 }

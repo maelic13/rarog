@@ -1,5 +1,5 @@
 use rarog::board::{Board, Move};
-use rarog::eval::MATE_SCORE;
+use rarog::score::MATE_SCORE;
 use rarog::search::options::SearchOptions;
 use rarog::search::{SearchEvent, SearchResult, Searcher};
 
