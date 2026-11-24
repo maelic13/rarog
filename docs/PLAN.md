@@ -5410,7 +5410,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       4's sweep, rule 2's SPSA over the live coordinates, one gate (E.4.4).
       Results on `hce-v4-tb` fit nothing in it (RAR-E74). E.4.2 and E.4.3
       fold into it; the method question above is E.4.5. E.4's units keep
-      their place after the release (maintainer decision 2026-10-22).
+      their place after the release (maintainer decision 2026-10-22,
+      reaffirmed for E.4.4 on 2026-11-24).
         - **E.4.0.1 The donor's evaluation inside the kernel — `I2`, then `V`, DONE 2026-11-24.**
           Added 2026-11-23 (maintainer decision on E.0's packet), E.4.0's
           first read and RAR-O07's mirror: Stockfish's classical
