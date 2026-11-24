@@ -406,7 +406,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
 | D.8.14 | RESEARCH | R2 | `R2` first on how aspiration and MultiPV share the driver |
-| D.8.18 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.19 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.20 | READY_FOR_IMPLEMENTATION | I1 | Its census has no dependency |
 | D.8.21 | RESEARCH | V | Added 2026-11-20 from D.7.11, open since D.7.14's adoption (2026-11-21); a count on replayed gate games of how often each of eight seeds' terms binds, a seed deleted only if its term never does |
@@ -3976,12 +3975,26 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       *Closed* (maintainer decision 2026-11-24): E.4.4 rebuilds the
       evaluation whole in `sf_11`'s form, and writes the rebuilt one in
       this shape; reshaping today's would be work the rebuild deletes.
-    - **D.8.18 P17: lints — `I1`.** Lints (RUST-9, RUST-10): enable `cast_lossless`,
+    - **D.8.18 P17: lints — `I1`, DONE 2026-11-24.** Lints (RUST-9, RUST-10): enable `cast_lossless`,
       `borrow_as_ptr`, `checked_conversions`, `manual_assert_eq` and
       `no_effect_underscore_binding` (65 mechanical edits, same code), the
       three plain `allow`s to `expect`, reasons on the twelve bare `expect`s,
       `clippy::allow_attributes` on; `suboptimal_flops` rejected because
       `mul_add` changes the clock's f64 results.
+      *Done* (`95d755e`): `cast_lossless`, `borrow_as_ptr`,
+      `checked_conversions`, `manual_assert` (clippy's name for the
+      review's `manual_assert_eq`), `no_effect_underscore_binding`,
+      `allow_attributes` and `allow_attributes_without_reason` warn in
+      `Cargo.toml`, and CI's `-D warnings` holds them at zero. 74 fixes:
+      clippy's own where it applies, by hand inside the trace macro. No
+      `#[allow]` is left in `src/`, `tests/` or `benches/`: every
+      suppression is an `#[expect]` with its reason, and the three that
+      hold in one configuration only are scoped to it
+      (`cfg_attr(not(windows), …)` for `LargePages`'s `mut`, the clock's
+      factors outside `diag` and tests). `suboptimal_flops` stays off.
+      Fingerprint 3,694,298 on both slider backends; every consumer,
+      clippy in every feature set and the workspace, debug 552, release
+      554, `texel` lib 302 and `tune` lib 300 tests pass.
     - **D.8.19 P18: the node frame — `I1`.** The node frame (RUST-3, NODE-9): every `negamax` and
       `quiescence` copy has a 5.0–5.6 KB frame and calls `__chkstk` per node
       (the picker's 4,104-byte list and the ProbCut and quiescence lists); a
