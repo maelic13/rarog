@@ -372,25 +372,7 @@ impl Searcher {
             self.notice(format_args!("{}", self.td.rates.line()));
             self.notice(format_args!("{}", compact::probes::seed_line()));
         }
-        let best_score = best_score;
-        let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
-        SearchResult {
-            bestmove,
-            pondermove,
-            score: best_score,
-            depth: completed_depth,
-            pv: reported.pv,
-            seldepth: reported.seldepth,
-            nodes: self.td.nodes,
-            tb_hits: self.td.tb_hits,
-            elapsed_ms: self.cfg.start.elapsed().as_millis(),
-            exit: if self.td.quit {
-                SearchExit::Quit
-            } else {
-                SearchExit::Stop
-            },
-            ponderhit: self.td.ponderhit,
-        }
+        self.root_result(bestmove, pondermove, best_score, completed_depth)
     }
 
     /// What the clock reads after a completed iteration ended on
@@ -467,6 +449,34 @@ impl Searcher {
             self.cfg.limits.optimum_ms,
             soft.target_ms,
         ));
+    }
+    /// The search's result from the root's last completed iteration, as
+    /// both drivers report it.
+    fn root_result(
+        &self,
+        bestmove: Move,
+        pondermove: Move,
+        score: i32,
+        completed_depth: usize,
+    ) -> SearchResult {
+        let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
+        SearchResult {
+            bestmove,
+            pondermove,
+            score,
+            depth: completed_depth,
+            pv: reported.pv,
+            seldepth: reported.seldepth,
+            nodes: self.td.nodes,
+            tb_hits: self.td.tb_hits,
+            elapsed_ms: self.cfg.start.elapsed().as_millis(),
+            exit: if self.td.quit {
+                SearchExit::Quit
+            } else {
+                SearchExit::Stop
+            },
+            ponderhit: self.td.ponderhit,
+        }
     }
 
     /// Iterative deepening with more than one principal variation.
@@ -746,25 +756,7 @@ impl Searcher {
         if best_score > -INF_SCORE {
             self.td.compact_previous_score = best_score;
         }
-        let best_score = best_score;
-        let reported = self.reported_line(bestmove, completed_depth, RootBound::Exact);
-        SearchResult {
-            bestmove,
-            pondermove,
-            score: best_score,
-            depth: completed_depth,
-            pv: reported.pv,
-            seldepth: reported.seldepth,
-            nodes: self.td.nodes,
-            tb_hits: self.td.tb_hits,
-            elapsed_ms: self.cfg.start.elapsed().as_millis(),
-            exit: if self.td.quit {
-                SearchExit::Quit
-            } else {
-                SearchExit::Stop
-            },
-            ponderhit: self.td.ponderhit,
-        }
+        self.root_result(bestmove, pondermove, best_score, completed_depth)
     }
 
     pub(super) fn root_record(&self, mv: Move) -> Option<&RootMove> {
