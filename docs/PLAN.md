@@ -405,8 +405,7 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.16.2 | RESEARCH | V | After D.16.1 (done 2026-11-23, its self pair −0.16% [−0.41%, +0.08%]): the bench and game-position reads on two accepted speed changes of different kinds; agreement closes D.16, a disagreement opens D.16.3 |
-| D.16.3 | READY_FOR_IMPLEMENTATION | R2 | Opened 2026-11-23 by the maintainer on E.0's packet; D.16.3.1's card (done 2026-11-23) leaves one behaviour-neutral item (`I1`), the quiet-scoring history loads prefetched ahead (ceiling 3.5% of samples), built after D.16.2 and priced by the read it chose |
+| D.16.3 | READY_FOR_IMPLEMENTATION | R2 | Opened 2026-11-23 by the maintainer on E.0's packet; D.16.3.1's card (done 2026-11-23) leaves one behaviour-neutral item (`I1`), the quiet-scoring history loads prefetched ahead (ceiling 3.5% of samples), priced by the bench read, which D.16.2 kept (done 2026-11-24; on the memory change the bench read did not exclude zero at step 1 where the games read did, a choice for this item's registration) |
 | E.4.0.1 | RESEARCH | I2 | Added 2026-11-23 (maintainer decision on E.0's packet), E.4.0's first read: Stockfish's classical evaluation inside the kernel through a diagnostic bridge, against the kernel, at equal nodes; under +25 a rebuild is not indicated |
 | E.4.0 | RESEARCH | R3 | Moved ahead of D.8 2026-11-23 (maintainer decision on E.0's packet), research only: the donor and the form, decided on E.4.0.1's reads; E.4's units stay after the release |
 | D.8.1 | READY_FOR_IMPLEMENTATION | I1 | After D.7 and the review of D.6: the census taken on the tree without the classic kernel, every later item read against it |
@@ -4854,7 +4853,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       read's tests are `tools/diag/test_nps_read.py` (33 pass). It is in
       PROCESS beside the bench read; the bench read stays the speed read
       until D.16.2 decides.
-    - **D.16.2 The bench read against play — `V`.**
+    - **D.16.2 The bench read against play — `V`, DONE 2026-11-24.**
       Both reads on the same pools for at least two accepted speed
       changes of different kinds, rebuilt from their committed trees: a
       memory change (D.7.8.12's table prefetch) and a move-loop or
@@ -4863,6 +4862,21 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       read, D.16.3 is not opened and D.16 closes; a change whose deltas
       differ beyond that makes the game-position read the speed read for
       its kind of change and opens D.16.3.
+      *Done 2026-11-24* (`analysis/d162_bench_vs_play_2026-11-23.md`,
+      registered `d7815f5` before any reading): three pools rebuilt from
+      `42e3073`, `b88700a` and `1ff6522`, four pext PGO builds each at
+      3,320,355, each read by step 1 of both reads, none disturbed, the
+      games trees identical between arms. A, the table prefetch
+      (`1ff6522` against `b88700a`): bench +0.27% (−0.08 to +0.62), games
+      +0.70% (+0.44 to +0.95), gap 0.425 against the frozen band 0.432.
+      B, the node work (`b88700a` against `42e3073`): bench +1.23% (+0.95
+      to +1.51), games +1.29% (+0.99 to +1.58), gap 0.057 against 0.405.
+      **Both agree, so the bench read stays the speed read**; D.16.3, open
+      by the maintainer's decision, is read by it, and D.16 closes with
+      D.16.3. Recorded for D.16.3's registration: on the memory change,
+      the bench read did not exclude zero at step 1 where the games read
+      did, and A's bench delta did not reproduce its acceptance read
+      (+1.09%, 0.82 points away).
     - **D.16.3 One more speed pass on the compact kernel — `R2` card, `I1` items, `V` reads.**
       Opened by D.16.2's discrepancy or by the maintainer. A profile on
       game positions with Stockfish as the reference (Reckless's binary

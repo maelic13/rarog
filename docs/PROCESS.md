@@ -539,8 +539,13 @@ warning. The pools, host guards, archive, estimator, steps and thresholds are
 the bench read's. A cycle takes under three minutes, step 1 about seven minutes.
 The self pair (two four-build pools of `415ec4f`, engine source as at
 `4ea670f`) read **−0.16%
-[−0.41%, +0.08%]** over 2 cycles. Which read prices which kind of
-change is D.16.2's to decide; until then the bench read stays the speed read.
+[−0.41%, +0.08%]** over 2 cycles. D.16.2 (2026-11-24) kept the bench read as
+the speed read: on a memory change and a node-work change the two reads
+agreed within their combined intervals, the memory change by 0.007
+points. On the memory change the bench read's step 1 did not exclude zero
+where this read's did, so a registration of a small memory change may
+name this read beside it, before its reads
+(`analysis/d162_bench_vs_play_2026-11-23.md`).
 
 Speed to Elo at `3+0.03`: roughly 2 Elo per 1% NPS, measured twice on
 behaviour-neutral speed passes, +10.35% NPS for +20.3 ± 7.1 Elo and +18.4%

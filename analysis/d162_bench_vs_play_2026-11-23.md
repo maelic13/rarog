@@ -110,3 +110,58 @@ against the files. The worktrees were removed after the build.
 Untimed smoke (`smoke.py`, one build of each pool, five positions of the
 set): the older binaries follow the game-position dialogue, and each
 change's two arms search the same trees there. Rates were not read.
+
+## Result (2026-11-24)
+
+The four reads ended between 07:39 and 07:55 on an idle host. The CPU before each
+cycle was 0.0% to 0.5%, no cycle was disturbed, and the bench fingerprint
+was 3,320,355 on every arm. In each games read the two arms searched the
+same 200 trees (best moves and last counts). Raw runs and reports are in
+`analysis/artifacts/d162-2026-11-23/{a,b}-{bench,games}/`; the rule was
+applied at full precision by `apply_rule.py` (`rule.json`).
+
+| Change | Bench delta | Games delta | Gap | Band `sqrt(hb²+hg²)` | Rule |
+|---|---|---|---|---|---|
+| A, table prefetch (`1ff6522` / `b88700a`) | +0.27% (−0.08 to +0.62) | +0.70% (+0.44 to +0.95) | +0.425 | 0.432 | agree |
+| B, node work (`b88700a` / `42e3073`) | +1.23% (+0.95 to +1.51) | +1.29% (+0.99 to +1.58) | +0.057 | 0.405 | agree |
+
+**By the frozen rule both changes agree, so the bench read stays the speed
+read.** D.16.3 stays open by the maintainer's decision, and its item is read
+by the bench read. Change A agrees with 0.007 points to spare. Its two
+intervals overlap, which is the looser reading.
+
+What the rule does not decide, recorded for whoever registers D.16.3's
+read:
+
+- **On the memory change, the bench read did not resolve the change; the
+  game read did.** At step 1, the bench read of A is *between*, with zero
+  in its interval. The games read excludes zero and has a narrower
+  interval (±0.25 against ±0.35), at 2.6 times the bench's delta. D.16.3's
+  item is also a memory change. Its stop rule reverts a read whose
+  interval does not exclude zero. On this evidence, a bench read of a
+  small prefetch at step 1 can revert a change the games read would keep.
+  PROCESS's step 2 narrows the bench read to about ±0.3. Running the games
+  read beside it is a choice for D.16.3's registration, made before its
+  reads. It is not taken here.
+- **The bench read of A differs from its acceptance read.** On 2026-11-20,
+  `analysis/artifacts/d7812/nps/read_s1` read +1.09% (+0.52 to +1.67) on
+  other pools of the same two sources. Today's +0.27% (−0.08 to +0.62) is
+  0.82 points away, against a combined 95% band of 0.67. B's two bench
+  reads agree: +0.95% at acceptance and +1.23% today. PROCESS's figure,
+  that two pools of one source read within ±0.4%, does not cover A's two
+  reads. That points to build luck larger than PROCESS states on this
+  change. One instance is not a measured rate.
+- **The host's level moved.** The `b88700a` pool's bench level was 2,554,373
+  nodes a second today, against 2,418,811 for its predecessor pool on
+  2026-11-20 (+5.6%). The cause is not known: the pools and host state are
+  both different. The paired deltas carry no level, so the rule is
+  unaffected.
+
+**Calibration.** The prediction for agreement held for both changes (P 0.75
+and 0.8; both, P 0.6). A's bench delta, predicted at +1.1% (80% band +0.5 to
++1.7), read +0.27%: a miss in magnitude. It leaned on the acceptance read,
+which today's pools did not reproduce, so the miss is in the instrument's
+reproducibility, not the mechanism. A's games delta, +0.70%, fell inside its
+band (+0.5 to +2.2), and the direction predicted, games above bench, held.
+B read +1.23% on the bench and +1.29% on games, both inside their bands
+(+0.3 to +1.5, +0.2 to +1.6), above the central +0.9.
