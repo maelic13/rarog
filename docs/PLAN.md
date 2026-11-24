@@ -405,7 +405,6 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.8.2 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.3 | READY_FOR_IMPLEMENTATION | I1 | No dependency |
 | D.8.4 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
 | D.8.5 | READY_FOR_IMPLEMENTATION | I1 | Own branch; exact fingerprint on both slider backends |
@@ -3792,17 +3791,36 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      *Done:* `--review` reproduces every headline number of the review's
      tables at `a3dd950` (`test_arch_census.py` checks it where the commit
      is in the clone). D.8's baseline, the tree at its start
-     (`2a0690b`): `src/` 72 files, 38,375 lines, 10,561 of them in-file
-     tests and 21,633 code; 886 public items, 89 with no outside-file
-     reference, 72 used only by tests or tools, 36 `pub(crate)` or
-     `pub(super)` that could be private; feature lines `tune` 69, `diag`
-     25, `texel` 67; 11 functions over 150 lines, the largest
-     `compact_negamax` at 1,233; the one mutual pair `eval` and `tt`;
-     37 duplicated runs of eight lines or more (361 lines).
-    - **D.8.2 P1: in-file tests into child files — `I1`.** In-file tests into `<stem>/tests.rs` for the 13 files holding
+     (`2a0690b`, `--at 2a0690b`): `src/` 72 files, 38,375 lines, 12,473
+     of them test code and 19,951 code; 886 public items, 89 with no
+     outside-file reference, 77 used only by tests or tools, 36
+     `pub(crate)` or `pub(super)` that could be private; feature lines
+     `tune` 69, `diag` 25, `texel` 67, `probes` 22; 9 functions over
+     150 lines, the largest `compact_negamax` at 1,233; the one mutual
+     pair `eval` and `tt`; 37 duplicated runs of eight lines or more
+     (361 lines). Corrected 2026-11-24 at D.8.2: a file declared by a
+     test-gated `mod name;` (`compact/parity.rs`, 1,688 lines) is test
+     code, which the first count read as production.
+    - **D.8.2 P1: in-file tests into child files — `I1`, DONE 2026-11-24.** In-file tests into `<stem>/tests.rs` for the 13 files holding
      5,391 test lines (`node.rs` 3,609 → 2,462, `search/mod.rs` 2,977 → 1,979,
      `time.rs` 966 → 392, `king.rs` 924 → 521); test bodies untouched, counts
      equal before and after, release bytes identical. Neutral by construction.
+     *Done:* every test-gated module of 100 lines or more with no
+     production code after it, 26 modules and 9,046 lines, now lives in
+     `<stem>/<name>.rs` (`<dir>/<name>.rs` beside a `mod.rs`).
+     `rules.rs` 3,802 → 2,546, `search/mod.rs` 3,701 → 2,116, `board.rs`
+     3,264 → 2,576, `tt.rs` 1,344 → 925. Code lines 19,951 before and
+     after. A checker against `HEAD` found every moved body equal token
+     for token and every literal equal, `king.rs`'s two fixture paths one
+     `../` longer. The test lists of the six feature sets (default,
+     `tune`, `diag`, `texel`, `probes`, `donor-eval`; 563 to 575 tests)
+     are identical. The release binaries, built with one fixed dev id,
+     differ only in the linker's stamps: 24 bytes, the timestamps and
+     the PDB GUID. One test named its old file in a literal
+     (`crash_report.rs:`); it now names the panic's file by `file!()`,
+     its own commit before the move (`65e8368`). fmt, clippy
+     (`--all-features --all-targets` and default), debug 555, release
+     557, `texel` lib 304 and `tune` lib 305 tests pass.
     - **D.8.3 P2: one `score` module — `I1`.** One `score` module: the constants, one `MAX_PLY` (defined twice
      today), `MATE_BOUND`, `is_decisive`, `mate_in`; the nine inline threshold
      sites; ends the `eval` and `tt` cycle. Neutral.
