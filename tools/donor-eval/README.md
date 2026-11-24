@@ -42,7 +42,9 @@ correction.
 RAR-O13: each evaluation's K on `hce-v4-tb`'s validation rows, positions
 not in check, fitted as the tuner fits its K; the scale is K_donor over
 K_rarog, so a score predicts the same result in both. `donor-k <rows>`
-measures it. `donor-scale <fens>` prints the size ratios the rule was
+measures it. `donor-dump <rows> <out>` writes, for each row, Rarog's
+evaluation and the donor's raw value from white (or `check`), the input of
+RAR-E74's static read. `donor-scale <fens>` prints the size ratios the rule was
 chosen over (mean |·|, RAR-O08's rule, is dominated by Stockfish's
 known-win scores; RAR-O13 records them).
 

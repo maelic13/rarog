@@ -332,6 +332,48 @@ fn k_scale(rows_path: &str) -> i32 {
     0
 }
 
+/// One line per row of `rows_path` (`fen;...`, anything after the FEN is
+/// ignored), in order: Rarog's evaluation and the donor's raw value at root
+/// 0, both from white and tab-separated, or `check` for a position in check,
+/// which neither evaluation scores. The static reads join it to the rows by
+/// line number.
+fn dump(rows_path: &str, out: &str) -> i32 {
+    let text = fs::read_to_string(rows_path).unwrap_or_else(|error| {
+        eprintln!("cannot read {rows_path}: {error}");
+        process::exit(2)
+    });
+    let mut file = std::io::BufWriter::new(fs::File::create(out).unwrap_or_else(|error| {
+        eprintln!("cannot write {out}: {error}");
+        process::exit(2)
+    }));
+    let mut evaluator = Evaluator::default();
+    let (mut scored, mut in_check) = (0usize, 0usize);
+    for line in text.lines().filter(|line| !line.trim().is_empty()) {
+        let fen = line.split(';').next().unwrap_or(line);
+        let board = Board::from_fen(fen).unwrap_or_else(|error| {
+            eprintln!("bad FEN `{fen}`: {error}");
+            process::exit(2)
+        });
+        if board.is_in_check() {
+            writeln!(file, "check").expect("write the dump");
+            in_check += 1;
+            continue;
+        }
+        let white = if board.side_to_move() == Color::White {
+            1
+        } else {
+            -1
+        };
+        let rarog = white * evaluator.evaluate(&board);
+        let donor = white * rarog_donor_eval(&donor_position(&board, 0));
+        writeln!(file, "{rarog}\t{donor}").expect("write the dump");
+        scored += 1;
+    }
+    file.flush().expect("write the dump");
+    println!("dump: sf{DONOR_VERSION} {scored} rows scored, {in_check} in check");
+    0
+}
+
 fn main() {
     let version = rarog_donor_init();
     assert_eq!(
@@ -343,6 +385,7 @@ fn main() {
         Some("donor-parity") if args.len() == 3 => process::exit(parity(&args[1], &args[2])),
         Some("donor-scale") if args.len() == 2 => process::exit(scale(&args[1])),
         Some("donor-k") if args.len() == 2 => process::exit(k_scale(&args[1])),
+        Some("donor-dump") if args.len() == 3 => process::exit(dump(&args[1], &args[2])),
         _ => {}
     }
     let repeat = std::env::var("RAROG_HCE_BRIDGE_REPEAT")
