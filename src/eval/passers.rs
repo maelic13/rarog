@@ -2,11 +2,11 @@
 //! the unstoppable-passer race, rooks behind and blockaders, and king
 //! proximity.
 
-use super::pawns::{FILE_BBS, FORWARD_RANKS, KING_DISTANCE, SQUARE_FILE, SQUARE_RANK};
 use super::trace::{tr_eg, tr_mg};
 use super::{Evaluator, color_sign, forward_square, relative_rank};
 use crate::board::attacks::{knight_attacks_of, pawn_attacks_of};
-use crate::board::movegen;
+use crate::board::geometry;
+use crate::board::geometry::{FILE_BBS, FORWARD_RANKS, KING_DISTANCE, SQUARE_FILE, SQUARE_RANK};
 use crate::board::{ATTACKS, Bitboard, Board, Color, Piece, Square};
 use crate::infra;
 
@@ -92,7 +92,7 @@ impl Evaluator {
                     tr_eg!(self, passed_freestop_eg_per_rank, 0, sign * rel_rank);
                     debug_assert_eq!(
                         attacked(Bitboard::from(stop)),
-                        board.is_attacked_by_with_occ(stop, them, occupied)
+                        board.attacked_by(stop, them, occupied, occupied)
                     );
                     if !attacked(Bitboard::from(stop)) {
                         *eg += sign * rel_rank * self.params.passed_safestop_eg_per_rank[0];
@@ -153,7 +153,7 @@ impl Evaluator {
                 ps.index() % 8
             };
             let promo_sq = Square(infra::to_u8(promo));
-            let path = movegen::between(ps, promo_sq) | Bitboard::from(promo_sq);
+            let path = geometry::between(ps, promo_sq) | Bitboard::from(promo_sq);
             if (path & occupied).any() {
                 continue;
             }

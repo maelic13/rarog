@@ -2,13 +2,12 @@
 //! shelter and storm, and the central-king danger.
 
 use super::attacks::{KsMaps, RingAttackers};
-use super::pawns::{FILE_BBS, FORWARD_RANKS, SQUARE_FILE, SQUARE_RANK};
 use super::trace::{tr_eg, tr_mg};
 #[cfg(not(feature = "texel"))]
 use super::{CachedShelter, PAWN_TABLE_SIZE};
 use super::{Evaluator, color_sign, relative_rank};
 use crate::board::attacks::AttackTables;
-use crate::board::movegen::between;
+use crate::board::geometry::{FILE_BBS, FORWARD_RANKS, SQUARE_FILE, SQUARE_RANK, between};
 use crate::board::{ATTACKS, Bitboard, Board, CastlingRights, Color, Piece, Square};
 use crate::infra;
 

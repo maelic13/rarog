@@ -2,8 +2,8 @@
 //! sum, so it must stay the last term piece activity adds.
 
 use super::Evaluator;
-use super::pawns::{FILE_BBS, SQUARE_FILE};
 use super::trace::tr_eg;
+use crate::board::geometry::{FILE_BBS, SQUARE_FILE};
 use crate::board::{Board, Color, Piece};
 use crate::infra;
 

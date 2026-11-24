@@ -28,6 +28,7 @@ mod trace;
 #[cfg(feature = "texel")]
 use std::cell::RefCell;
 
+use crate::board::geometry::RELATIVE_RANKS;
 use crate::board::{ATTACKS, Bitboard, Board, Color, GameResult, Piece, Square};
 use attacks::AttackMaps;
 use endgame::scale_endgame;
@@ -36,7 +37,6 @@ use material::{IMBALANCE_TABLE_SIZE, ImbalanceEntry, PHASE_W};
 use params::{CompiledParams, CompiledTables};
 #[cfg(any(feature = "tune", feature = "texel", test))]
 use params::{EvalTables, build_tables};
-use pawns::RELATIVE_RANKS;
 use trace::{tr_eg, tr_mg};
 
 pub use king::KS_MAP_SCALE_MAX;

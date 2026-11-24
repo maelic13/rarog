@@ -135,14 +135,6 @@ impl Square {
         (self.0 & 63) as usize
     }
 
-    /// Chebyshev (king) distance between two squares.
-    #[inline(always)]
-    pub(super) fn chebyshev_distance(self, other: Self) -> u8 {
-        let df = (self.file() as i8 - other.file() as i8).unsigned_abs();
-        let dr = (self.rank() as i8 - other.rank() as i8).unsigned_abs();
-        df.max(dr)
-    }
-
     /// Parse from algebraic notation (e.g. "e4").
     pub(super) fn from_algebraic(s: &str) -> Option<Self> {
         let mut chars = s.chars();

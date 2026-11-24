@@ -175,7 +175,7 @@ fn tablebase_file_counts_scan_semicolon_separated_paths() {
 fn tb_position_exports_bitboards_side_ep_and_rule50_state() {
     let board = Board::from_fen("4k3/8/8/8/4Pp2/8/8/4K3 b - e3 7 42").expect("valid FEN");
 
-    let pos = tb_position(&board);
+    let pos = TbPosition::of(&board);
 
     assert_eq!(pos.white, board.color_occ(Color::White).0);
     assert_eq!(pos.black, board.color_occ(Color::Black).0);

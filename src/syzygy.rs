@@ -150,6 +150,106 @@ struct TbPosition {
     turn: bool,
 }
 
+impl TbPosition {
+    /// The position's Fathom form: one bitboard per colour and per piece
+    /// kind, the rule-50 counter, the en passant square (0 for none) and the
+    /// side to move.
+    fn of(board: &Board) -> Self {
+        TbPosition {
+            white: board.color_occ(Color::White).0,
+            black: board.color_occ(Color::Black).0,
+            kings: (board.pieces(Color::White, Piece::King)
+                | board.pieces(Color::Black, Piece::King))
+            .0,
+            queens: (board.pieces(Color::White, Piece::Queen)
+                | board.pieces(Color::Black, Piece::Queen))
+            .0,
+            rooks: (board.pieces(Color::White, Piece::Rook)
+                | board.pieces(Color::Black, Piece::Rook))
+            .0,
+            bishops: (board.pieces(Color::White, Piece::Bishop)
+                | board.pieces(Color::Black, Piece::Bishop))
+            .0,
+            knights: (board.pieces(Color::White, Piece::Knight)
+                | board.pieces(Color::Black, Piece::Knight))
+            .0,
+            pawns: (board.pieces(Color::White, Piece::Pawn)
+                | board.pieces(Color::Black, Piece::Pawn))
+            .0,
+            rule50: board.halfmove_clock() as u32,
+            ep: board.ep_square().map_or(0, |sq| sq.0 as u32),
+            turn: board.side_to_move() == Color::White,
+        }
+    }
+
+    /// Fathom's WDL probe.
+    fn probe_wdl(self) -> u32 {
+        // SAFETY: FFI into Fathom with by-value bitboards; no pointers are
+        // passed and the tables were initialised by `tb_init`.
+        unsafe {
+            tb_probe_wdl_impl(
+                self.white,
+                self.black,
+                self.kings,
+                self.queens,
+                self.rooks,
+                self.bishops,
+                self.knights,
+                self.pawns,
+                self.ep,
+                self.turn,
+            )
+        }
+    }
+
+    /// Fathom's DTZ root probe: each legal move's result into `results`,
+    /// with the terminator after them.
+    fn probe_root(self, results: &mut [u32; TB_MAX_MOVES + 1]) -> u32 {
+        // SAFETY: FFI into Fathom. `results` holds TB_MAX_MOVES + 1 entries, enough
+        // for every legal move and the terminator Fathom writes after them.
+        unsafe {
+            tb_probe_root_impl(
+                self.white,
+                self.black,
+                self.kings,
+                self.queens,
+                self.rooks,
+                self.bishops,
+                self.knights,
+                self.pawns,
+                self.rule50,
+                self.ep,
+                self.turn,
+                results.as_mut_ptr(),
+            )
+        }
+    }
+
+    /// Fathom's WDL ranking of the root moves into `results`; zero on failure.
+    fn probe_root_wdl(self, use_rule50: bool, results: &mut TbRootMovesRaw) -> c_int {
+        // SAFETY: FFI into Fathom. `results` is a live `TbRootMovesRaw` that
+        // outlives the call and is only written by Fathom.
+        unsafe {
+            tb_probe_root_wdl(
+                self.white,
+                self.black,
+                self.kings,
+                self.queens,
+                self.rooks,
+                self.bishops,
+                self.knights,
+                self.pawns,
+                self.rule50,
+                0,
+                self.ep,
+                self.turn,
+                use_rule50,
+                results,
+            )
+        }
+    }
+}
+
 pub fn initialize(path: &str) -> usize {
     let mut current_path = SYZYGY_PATH.lock().expect("syzygy path mutex poisoned");
     if *current_path == path {
@@ -220,24 +320,7 @@ pub fn probe_wdl(board: &Board, use_rule50: bool) -> Option<Wdl> {
         return None;
     }
 
-    let pos = tb_position(board);
-    // SAFETY: FFI into Fathom with by-value bitboards from `tb_position`; no
-    // pointers are passed and the tables were initialised by `tb_init`.
-    let result = unsafe {
-        tb_probe_wdl_impl(
-            pos.white,
-            pos.black,
-            pos.kings,
-            pos.queens,
-            pos.rooks,
-            pos.bishops,
-            pos.knights,
-            pos.pawns,
-            pos.ep,
-            pos.turn,
-        )
-    };
-    wdl_from_raw(result)
+    wdl_from_raw(TbPosition::of(board).probe_wdl())
 }
 
 /// Rank scale of the root ranking: a clean win ranks `MAX_DTZ`, less its
@@ -311,26 +394,8 @@ pub(crate) fn display_score(rank: i32, dtz: bool, use_rule50: bool) -> i32 {
 }
 
 fn rank_by_dtz(board: &Board, use_rule50: bool, rank_dtz: bool) -> Option<RootRanking> {
-    let pos = tb_position(board);
     let mut results = [TB_RESULT_FAILED; TB_MAX_MOVES + 1];
-    // SAFETY: FFI into Fathom. `results` holds TB_MAX_MOVES + 1 entries, enough
-    // for every legal move and the terminator Fathom writes after them.
-    let root = unsafe {
-        tb_probe_root_impl(
-            pos.white,
-            pos.black,
-            pos.kings,
-            pos.queens,
-            pos.rooks,
-            pos.bishops,
-            pos.knights,
-            pos.pawns,
-            pos.rule50,
-            pos.ep,
-            pos.turn,
-            results.as_mut_ptr(),
-        )
-    };
+    let root = TbPosition::of(board).probe_root(&mut results);
     if root == TB_RESULT_FAILED {
         return None;
     }
@@ -408,28 +473,8 @@ fn rank_by_wdl(board: &Board, use_rule50: bool) -> Option<RootRanking> {
 }
 
 fn probe_root_moves_wdl(board: &Board, use_rule50: bool) -> Option<Vec<(RootMove, i32)>> {
-    let pos = tb_position(board);
     let mut results = Box::new(TbRootMovesRaw::EMPTY);
-    // SAFETY: FFI into Fathom. `results` is a live, zeroed `TbRootMovesRaw`
-    // that outlives the call and is only written by Fathom.
-    let ok = unsafe {
-        tb_probe_root_wdl(
-            pos.white,
-            pos.black,
-            pos.kings,
-            pos.queens,
-            pos.rooks,
-            pos.bishops,
-            pos.knights,
-            pos.pawns,
-            pos.rule50,
-            0,
-            pos.ep,
-            pos.turn,
-            use_rule50,
-            &mut *results,
-        )
-    };
+    let ok = TbPosition::of(board).probe_root_wdl(use_rule50, &mut results);
     if ok == 0 {
         return None;
     }
@@ -458,31 +503,6 @@ fn can_probe(board: &Board, use_rule50: bool, root: bool) -> bool {
         return false;
     }
     board.occupied_count() as usize <= largest()
-}
-
-fn tb_position(board: &Board) -> TbPosition {
-    TbPosition {
-        white: board.color_occ(Color::White).0,
-        black: board.color_occ(Color::Black).0,
-        kings: (board.pieces(Color::White, Piece::King) | board.pieces(Color::Black, Piece::King))
-            .0,
-        queens: (board.pieces(Color::White, Piece::Queen)
-            | board.pieces(Color::Black, Piece::Queen))
-        .0,
-        rooks: (board.pieces(Color::White, Piece::Rook) | board.pieces(Color::Black, Piece::Rook))
-            .0,
-        bishops: (board.pieces(Color::White, Piece::Bishop)
-            | board.pieces(Color::Black, Piece::Bishop))
-        .0,
-        knights: (board.pieces(Color::White, Piece::Knight)
-            | board.pieces(Color::Black, Piece::Knight))
-        .0,
-        pawns: (board.pieces(Color::White, Piece::Pawn) | board.pieces(Color::Black, Piece::Pawn))
-            .0,
-        rule50: board.halfmove_clock() as u32,
-        ep: board.ep_square().map_or(0, |sq| sq.0 as u32),
-        turn: board.side_to_move() == Color::White,
-    }
 }
 
 fn root_move_from_result(result: u32) -> Option<RootMove> {

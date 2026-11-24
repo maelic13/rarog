@@ -9,7 +9,8 @@ use std::fmt;
 use super::attacks::{ATTACKS, knight_attacks_of, pawn_attacks_of};
 use super::bitboard::Bitboard;
 use super::cuckoo::CUCKOO;
-use super::movegen::{between, generate_legal_moves};
+use super::geometry::{KING_DISTANCE, between};
+use super::movegen::generate_legal_moves;
 use super::moves::{
     CAPTURE, CASTLE_KINGSIDE, CASTLE_QUEENSIDE, DOUBLE_PUSH, EN_PASSANT, Move, MoveList,
     PROMO_BISHOP, PROMO_CAPTURE_BISHOP, PROMO_CAPTURE_KNIGHT, PROMO_CAPTURE_QUEEN,
@@ -1086,16 +1087,15 @@ impl Board {
         let to = mv.to_sq();
         let from_bb = Bitboard::from(from);
         let to_bb = Bitboard::from(to);
-        let captured = self.piece_at(to).map(|(_, piece)| (to, piece));
+        let captured = if self.piece_at(to).is_some() {
+            to_bb
+        } else {
+            Bitboard::EMPTY
+        };
 
         if self.moving_piece(mv) == Piece::King {
             return mv.is_castling()
-                || !self.is_attacked_after_capture_removed(
-                    to,
-                    them,
-                    self.all_occ ^ from_bb,
-                    captured,
-                );
+                || !self.attacked_by(to, them, self.all_occ ^ from_bb, !captured);
         }
 
         let king_sq = self.king_sq(us);
@@ -1107,51 +1107,12 @@ impl Board {
             };
             (
                 (self.all_occ ^ from_bb ^ Bitboard::from(cap_sq)) | to_bb,
-                Some((cap_sq, Piece::Pawn)),
+                Bitboard::from(cap_sq),
             )
         } else {
             ((self.all_occ ^ from_bb) | to_bb, captured)
         };
-        !self.is_attacked_after_capture_removed(king_sq, them, occ_after, captured)
-    }
-
-    fn is_attacked_after_capture_removed(
-        &self,
-        sq: Square,
-        attacker: Color,
-        occ: Bitboard,
-        captured: Option<(Square, Piece)>,
-    ) -> bool {
-        let atk = &ATTACKS;
-        let captured_bb = captured.map_or(Bitboard::EMPTY, |(captured_sq, _)| {
-            Bitboard::from(captured_sq)
-        });
-        let captured_piece = captured.map(|(_, piece)| piece);
-        let pieces = |piece| {
-            let bb = self.pieces(attacker, piece);
-            if captured_piece == Some(piece) {
-                bb & !captured_bb
-            } else {
-                bb
-            }
-        };
-
-        if (atk.pawn(!attacker, sq) & pieces(Piece::Pawn)).any() {
-            return true;
-        }
-        if (atk.knight(sq) & pieces(Piece::Knight)).any() {
-            return true;
-        }
-        if (atk.king(sq) & pieces(Piece::King)).any() {
-            return true;
-        }
-        if (atk.bishop(sq, occ) & (pieces(Piece::Bishop) | pieces(Piece::Queen))).any() {
-            return true;
-        }
-        if (atk.rook(sq, occ) & (pieces(Piece::Rook) | pieces(Piece::Queen))).any() {
-            return true;
-        }
-        false
+        !self.attacked_by(king_sq, them, occ_after, !captured)
     }
 
     /// Rule-50 draw with mate precedence (the FIDE Laws' mate-first rule):
@@ -1458,30 +1419,36 @@ impl Board {
             & occ
     }
 
-    /// Short-circuiting `attackers_to_color(sq, occ, color).any()`.
-    ///
-    /// Exactly equivalent — each piece set is intersected with `occ` the same
-    /// way — but it returns on the first attacker found instead of building the
-    /// whole set, and it tests the two magic lookups last. Callers that only
-    /// need the boolean (the passed-pawn stop/path scans in eval) skip both
-    /// slider lookups whenever a pawn, knight or king already answers it.
+    /// Whether `attacker` attacks `sq` through the occupancy `occ`, counting
+    /// only its pieces on `present`: the one attacked-square test. It reads
+    /// the leapers first and the two slider lookups last, so a pawn, knight
+    /// or king answers without them. `present` is `occ` to drop the pieces a
+    /// line of play has taken off, everything but a captured piece's square
+    /// to test after a capture, and the full board otherwise.
     #[inline(always)]
-    pub(crate) fn is_attacked_by_with_occ(&self, sq: Square, color: Color, occ: Bitboard) -> bool {
+    pub(crate) fn attacked_by(
+        &self,
+        sq: Square,
+        attacker: Color,
+        occ: Bitboard,
+        present: Bitboard,
+    ) -> bool {
         let atk = &ATTACKS;
-        if (atk.pawn(!color, sq) & self.pieces(color, Piece::Pawn) & occ).any() {
+        let pieces = |piece| self.pieces(attacker, piece) & present;
+        if (atk.pawn(!attacker, sq) & pieces(Piece::Pawn)).any() {
             return true;
         }
-        if (atk.knight(sq) & self.pieces(color, Piece::Knight) & occ).any() {
+        if (atk.knight(sq) & pieces(Piece::Knight)).any() {
             return true;
         }
-        if (atk.king(sq) & self.pieces(color, Piece::King) & occ).any() {
+        if (atk.king(sq) & pieces(Piece::King)).any() {
             return true;
         }
-        let queens = self.pieces(color, Piece::Queen);
-        if (atk.bishop(sq, occ) & (self.pieces(color, Piece::Bishop) | queens) & occ).any() {
+        let queens = pieces(Piece::Queen);
+        if (atk.bishop(sq, occ) & (pieces(Piece::Bishop) | queens)).any() {
             return true;
         }
-        (atk.rook(sq, occ) & (self.pieces(color, Piece::Rook) | queens) & occ).any()
+        (atk.rook(sq, occ) & (pieces(Piece::Rook) | queens)).any()
     }
 
     /// Select the least-valued LEGAL recapturer under the evolving exchange
@@ -1686,39 +1653,10 @@ impl Board {
     // Check / attack queries
     // -----------------------------------------------------------------------
 
-    /// Is the given square attacked by any piece of `attacker_color`?
+    /// Is `sq` attacked by `attacker` on the board as it stands?
     #[inline(always)]
     pub(crate) fn is_attacked(&self, sq: Square, attacker: Color) -> bool {
-        let occ = self.all_occ;
-        let atk = &ATTACKS;
-
-        // Pawn attacks
-        if (atk.pawn(!attacker, sq) & self.pieces(attacker, Piece::Pawn)).any() {
-            return true;
-        }
-        // Knight
-        if (atk.knight(sq) & self.pieces(attacker, Piece::Knight)).any() {
-            return true;
-        }
-        // King
-        if (atk.king(sq) & self.pieces(attacker, Piece::King)).any() {
-            return true;
-        }
-        // Bishop / Queen (diagonal)
-        if (atk.bishop(sq, occ)
-            & (self.pieces(attacker, Piece::Bishop) | self.pieces(attacker, Piece::Queen)))
-        .any()
-        {
-            return true;
-        }
-        // Rook / Queen (orthogonal)
-        if (atk.rook(sq, occ)
-            & (self.pieces(attacker, Piece::Rook) | self.pieces(attacker, Piece::Queen)))
-        .any()
-        {
-            return true;
-        }
-        false
+        self.attacked_by(sq, attacker, self.all_occ, Bitboard::FULL)
     }
 
     /// Is the side-to-move's king currently in check?
@@ -1899,7 +1837,7 @@ impl Board {
                 } else {
                     Square(to.0 + 8)
                 };
-                if self.legal_ep_capture_exists(them, ep).unwrap_or(false) {
+                if self.legal_ep_capture_exists(them, ep) {
                     self.ep_sq = ep.0;
                     self.hash ^= zob.ep(ep.file());
                 }
@@ -2235,7 +2173,7 @@ impl Board {
 
         let white_king_sq = white_king.lsb();
         let black_king_sq = black_king.lsb();
-        if white_king_sq.chebyshev_distance(black_king_sq) <= 1 {
+        if KING_DISTANCE[white_king_sq.index()][black_king_sq.index()] <= 1 {
             return Err("kings may not be adjacent".to_string());
         }
 
@@ -2281,29 +2219,33 @@ impl Board {
             return Err(format!("en passant origin square is occupied: {origin_sq}"));
         }
 
-        if self.legal_ep_capture_exists(capturer, ep_sq)? {
+        if self.legal_ep_capture_exists(capturer, ep_sq) {
             self.ep_sq = ep_sq.0;
             self.hash ^= ZOBRIST.ep(ep_sq.file());
         }
         Ok(())
     }
 
-    fn legal_ep_capture_exists(&self, capturer: Color, ep_sq: Square) -> Result<bool, String> {
+    fn legal_ep_capture_exists(&self, capturer: Color, ep_sq: Square) -> bool {
         let Some(cap_sq) = ep_capture_square(capturer, ep_sq) else {
-            return Ok(false);
+            return false;
         };
         let atk = &ATTACKS;
         let mut attackers = atk.pawn(!capturer, ep_sq) & self.pieces(capturer, Piece::Pawn);
         while attackers.any() {
             let from = attackers.pop_lsb();
             if self.ep_capture_is_legal(capturer, from, ep_sq, cap_sq) {
-                return Ok(true);
+                return true;
             }
         }
-        Ok(false)
+        false
     }
 
-    fn ep_capture_is_legal(
+    /// Whether `capturer`'s pawn on `from` may take en passant on `ep_sq`,
+    /// removing the pawn on `cap_sq`, without uncovering a slider on its own
+    /// king along the rank or a diagonal the two pawns leave.
+    #[inline]
+    pub(super) fn ep_capture_is_legal(
         &self,
         capturer: Color,
         from: Square,

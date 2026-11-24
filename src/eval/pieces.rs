@@ -5,10 +5,10 @@
 
 use super::TOTAL_PHASE;
 use super::attacks::KsMaps;
-use super::pawns::KING_DISTANCE;
 use super::trace::{tr_eg, tr_mg};
 use super::{Evaluator, color_sign};
 use crate::board::attacks::AttackTables;
+use crate::board::geometry::KING_DISTANCE;
 use crate::board::{ATTACKS, Bitboard, Board, Color, Piece};
 use crate::infra;
 

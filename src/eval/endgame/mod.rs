@@ -4,8 +4,10 @@
 pub(crate) mod kpk;
 mod mop_up;
 
-use super::pawns::{FILE_BBS, KING_DISTANCE, PASSED_PAWN_MASKS, SQUARE_FILE, SQUARE_RANK};
 use super::relative_rank;
+use crate::board::geometry::{
+    FILE_BBS, KING_DISTANCE, PASSED_PAWN_MASKS, SQUARE_FILE, SQUARE_RANK,
+};
 use crate::board::{ATTACKS, Bitboard, Board, Color, Piece, Square};
 use crate::infra;
 
