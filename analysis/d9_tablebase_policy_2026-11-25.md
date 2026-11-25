@@ -494,6 +494,110 @@ Falsifiers:
 - If V1 and V3 each fail and V2 holds, one more variant is allowed, V1
   with V3; nothing else is added after results are seen.
 
+### The separating read's result
+
+The builds are `v0.exe` to `v3.exe` beside the traces
+(`build_variants.sh`, `variant_d93.py`; SHA-256 `c848da0a…`, `ebc513c3…`,
+`c482f7ae…`, `f258d143…` in `hashes.txt` there).
+
+    python tools/diag/tb_probe_read.py --epd tools/books/ocb_cohort_v1.epd --men 7,8 --per-count 24 --depth 20 --max-nodes 30000000 --only 26,30,11 --syzygy D:/chess/tablebases/syzygy3456 --out analysis/artifacts/d93-2026-11-25/read_variants.json v0=analysis/artifacts/d93-2026-11-25/v0.exe v1=analysis/artifacts/d93-2026-11-25/v1.exe v2=analysis/artifacts/d93-2026-11-25/v2.exe v3=analysis/artifacts/d93-2026-11-25/v3.exe
+
+It exited 0. Depth reached inside the 30M cap, and the nodes of the last
+finished iteration:
+
+| Root | As built | V1, band by ply | V2, probe ends the node | V3, pruning at a winning beta |
+|---|---|---|---|---|
+| 26 | 17, short | 17, short | **20** at 645,030 | **20** at 600,181 |
+| 30 | 15, short | 14, short | 16, short | 15, short |
+| 11 | **20** at 1,903,586 | 18, short | 19, short | 17, short |
+| `bench 13` | 3,694,298 | 3,694,298 | 3,694,298 | 3,293,080 / EBF 2.318 |
+
+The counters (`counters.py`, exit 0, `counters_variants.txt`) under V2:
+
+| Under V2, to the cap | Root 30 | Root 11 |
+|---|---|---|
+| The window that does not return | depth 17, −31,953 to −18,542 | depth 20, 1,500 to 31,894 |
+| Interior nodes, and inside the tables | 17,044,339, 1,284 | 19,877,916, 527 |
+| Interior nodes off the PV with beta in the win band | 7,097,726 | 3,108,702 |
+| the same with beta in the loss band | 8,005,975 | 5,443,213 |
+
+A census of the moves searched (`census.txt`, the tree as built on root
+26 and V2 on root 30; `bench 13` exact with it):
+
+| Moves searched at nodes off the PV | Root 26, as built | Root 30, V2 |
+|---|---|---|
+| Beta in the win band: nodes, moves | 7,913,155, 8,254,777 | 7,097,726, 17,221,000 |
+| Beta in the loss band: nodes, moves | 7,240,388, 8,538,160 | 8,005,975, 7,421,609 |
+| of those moves, the node's first | 4,223,364 | 4,848,886 |
+| of those moves, later ones searched with the best score still a loss | 4,314,796 | 2,572,723 |
+| of those moves, at a node in check | 4,450,200 | 4,537,745 |
+
+Priors from two other engines on the same roots and tables, one thread;
+they are not evidence about Rarog:
+- Stockfish 19: root 26 at depth 27 by 581,720 nodes; root 30 at depth
+  35 by 11,625,172; root 11 at depth 40 by 1,687,186.
+- Reckless 0.9.0, the binary only: root 26 at depth 21 by 1,400,863;
+  root 30 at depth 23 by 10,794,134; root 11 at depth 22 by 2,741,570.
+
+**Reading.**
+- The path-relative distance is refuted as the cause: V1 leaves all
+  three roots short, root 11 among them, which the tree as built
+  finishes.
+- The accounting holds and its conclusion does not. With V2 the search
+  inside the tables is gone (a few hundred to a few thousand nodes), and
+  roots 30 and 11 still do not finish: the nodes move to seven- and
+  eight-man positions searched in a window whose beta is in the decisive
+  band. The unit of cost is therefore the **window in the decisive
+  band**, on either side of the tables' edge, not the position inside
+  the tables.
+- In such a window nothing static can decide a node: no evaluation
+  reaches the band, reverse futility and the null move are off at a
+  losing beta, late-move pruning is off at a winning one, and a node
+  whose first move returns a loss searches every other move with the
+  move-loop pruning off, which is half or more of the later moves there.
+  Half of the loss-band moves come from nodes in check. The search has
+  become a distance proof, with a mate search's width.
+- V2 and V3 each finish root 26 and neither finishes the other two.
+- Both donors pass these roots at these depths, so the width is Rarog's:
+  in its port, or in the tablebase code that is its own.
+
+**Calibration**, appended; the predictions above stand as written.
+- V1, predicted to finish all three at 0.6: wrong in sign and mechanism.
+  A window in the band is not cut on wrong distances; it is not cut at
+  all.
+- V1's `bench 13`, predicted to change at 0.6: wrong. It is exact, so
+  B.5.2's reason for keeping band values as stored, a changed search
+  without tables, does not show on the compact kernel's bench. That is
+  one bench, not a proof of neutrality, and V1 made root 11 worse.
+- V2, predicted to finish all three at 0.9: wrong, and overconfident.
+  The accounting it tested held; the miss was the assumption that the
+  cost belongs to positions inside the tables.
+- V3, predicted to leave a root short at 0.65, and its bench to change:
+  both held.
+- The extra variant the registration allowed (V1 with V3) had the
+  condition "V2 holds"; it did not fire and was not run.
+
+### One more variant, registered 2026-11-25 before it ran
+
+**V2 with V3**, on the same three roots with the same read, the counters
+and `bench 13`. It asks whether the two rules that each finish root 26
+are together enough, which decides whether a repair can be the two of
+them or needs a third mechanism found first.
+
+Frozen predictions:
+- root 26 finishes depth 20, confidence 0.9;
+- roots 30 and 11 both finish, confidence 0.35: each rule alone left
+  them further from the depth than V2 did, and the census points at the
+  loss-band nodes, which neither rule touches;
+- `bench 13` reads V3's 3,293,080, since V2 changes nothing without
+  tables.
+
+Falsifier and stop: if root 30 or root 11 stays short, the two rules are
+not the repair, and no further variant is run in this read. The next
+step is then the census's lead, as a new registration: what the donors
+do at a node off the PV whose best score is still a loss, and at one in
+check, when beta is in the decisive band.
+
 ## Corrections, the same day
 
 A second review of D.9 (2026-11-25), checked against the code and the
