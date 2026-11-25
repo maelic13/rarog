@@ -99,6 +99,7 @@ fn fixture_tablebase_root_probes_display_and_extension() {
     multi_threaded_multipv_reports_distinct_legal_lines();
     syzygy_probe_limit_caps_root_and_extension_below_loaded_tables();
     syzygy_probe_depth_gates_only_the_largest_usable_size();
+    threaded_no_clock_search_extends_pv_beside_helper_wdl_probes();
 }
 
 /// KQ v K, white to move: a DTZ-best move, a ponder move, `cp 20000` at a
@@ -355,6 +356,51 @@ fn syzygy_probe_depth_gates_only_the_largest_usable_size() {
         !line_above.contains(" tbhits 0 "),
         "limit (7) > loaded (4) zeroes probe_depth: {line_above}"
     );
+}
+
+/// PROTO-15: a threaded no-clock search on a 4-man root that captures into
+/// the 3-man KQvK fixture extends the PV on the main thread at every iteration
+/// while helper threads probe WDL concurrently. Restricting the probe limit to
+/// 3 keeps the root outside the tables so helpers keep probing alongside the
+/// main thread's extension.
+fn threaded_no_clock_search_extends_pv_beside_helper_wdl_probes() {
+    let fen = "4k3/8/8/8/8/8/3r4/3QK3 w - - 0 1";
+    let (raw, bestmove, _) = search(fen, |o| {
+        o.engine.threads = 4;
+        o.engine.syzygy.probe_limit = 3;
+        o.limits.depth = Some(7);
+    });
+    assert!(
+        ["d1d2", "e1d2"].contains(&bestmove.to_string().as_str()),
+        "rook is captured: {raw:#?}"
+    );
+    let pv_lines: Vec<&String> = raw
+        .iter()
+        .filter(|line| line.starts_with("info depth") && line.contains(" pv "))
+        .collect();
+    assert!(!pv_lines.is_empty(), "{raw:#?}");
+    for line in &pv_lines {
+        play_pv(fen, line);
+    }
+    let last = pv_lines.last().expect("at least one PV line");
+    assert!(!last.contains(" tbhits 0 "), "helpers probed WDL: {last}");
+    let score = score_of(last);
+    if let Some(cp) = score
+        .strip_prefix("cp ")
+        .and_then(|s| s.parse::<i32>().ok())
+    {
+        assert!(cp > 19_000, "expected TB win: {last}");
+        let (end, _) = play_pv(fen, last);
+        assert!(
+            end.is_in_check() && end.generate_legal_moves().is_empty(),
+            "extended TB PV reaches mate: {last}"
+        );
+    } else {
+        assert!(
+            score.starts_with("mate "),
+            "expected TB win or mate: {last}"
+        );
+    }
 }
 
 /// `stop` or `ponderhit` written with `go ponder` in one write at a tablebase
