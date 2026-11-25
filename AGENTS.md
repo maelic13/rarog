@@ -4,6 +4,9 @@ The rules an agent follows while working on Rarog. `GUIDE.md` says what to work
 on; the relevant section of `docs/PLAN.md` says why; `docs/PROCESS.md` holds the
 procedures these rules assume. Each rule is stated once, here. The incidents
 that produced a rule are in the ledger rows it cites or in `docs/HISTORY.md`.
+Read this file in full from disk before work: some agent tools load rule
+files only up to a size limit, and the last sections bind as much as the
+first.
 
 ## Classify the work
 
@@ -185,10 +188,11 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 - Before differencing two counters, confirm they are in the same unit (per
   node versus per move produced RAR-S25). A passing invariant does not prove
   comparability.
-- Never compare raw search counters (nodes, hits per thousand nodes, rule
-  rates) across different engines or trees: compare before and after on Rarog's
-  own tree. Never state unmeasured timings or sizes as numbers; measure them
-  or mark them unmeasured.
+- A counter from another engine or another tree (nodes, hits per thousand
+  nodes, rule rates) is at most a prior for a prediction, never evidence
+  about Rarog: the evidence is Rarog's own before and after. A timing or
+  size that was not measured is marked unmeasured, never stated as a
+  number.
 - A binary entered in a rated pool is a tagged release or a development
   build of a committed tree, whose `id name` names its commit
   (`dev-20261104-209b555a`; a dirty tree's `-m` is refused for testing); a
