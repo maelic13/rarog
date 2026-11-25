@@ -75,7 +75,7 @@ source was read. "Confirmed live" means the head's binary was run
 | Item | Status on the kernel | Decision |
 |---|---|---|
 | PROTO-9: the PV extension and `tb_root_board` gate on the loaded size, not on `SyzygyProbeLimit` | Still present: `search/mod.rs:565` sets the board when `syzygy::largest() > 0`, and `syzygy::can_probe` bounds by `largest()`. Confirmed by code. | Repair, D.9.1 |
-| PROTO-10: the pre-search root ranking and each extension step are unabortable FFI calls | Partly repaired since the review: `go movetime` now has a box (`time.rs:179`), the box is checked between probes, and under a clock the start rule keeps ten overheads (RAR-S97). Under `go movetime` the start rule is still absent (`tb_extension_latest_start_ms` stays infinite), so the extension can begin after the move time; the second review reproduced 14 ms on `go movetime 10`. The pre-search ranking is still one call with no clock check. | The `go movetime` start rule: repair, D.9.1. The rest: `NO_CHANGE` (below) |
+| PROTO-10: the pre-search root ranking and each extension step are unabortable FFI calls | Partly repaired since the review: `go movetime` now has a box (`time.rs:179`), the box is checked between probes, and under a clock the start rule keeps ten overheads (RAR-S97). Under `go movetime` no start rule applies, by design: `time.rs` and its test `the_tablebase_extension_is_unbounded_without_a_clock_and_boxed_under_movetime` hold that `go movetime` has no clock to protect, so the box alone bounds the overrun, at half of `Move Overhead`. The 14 ms the second review measured on `go movetime 10` is that box (10 ms plus up to 5 ms). The pre-search ranking is still one call with no clock check. | `NO_CHANGE` (below) |
 | PROTO-11: Fathom calls `exit()` when a lazy table map fails | Inherent to Fathom. No incidence recorded. | `NO_CHANGE`; a trigger for the port |
 | PROTO-12: the file-count notice splits on `;` on every platform | Still present (`syzygy.rs`, `.split(';')`). Confirmed by code; Windows is unaffected. | Repair, D.9.1 |
 | PROTO-13: the dead `probe_root` and its `unsafe` | Already gone, removed in D.5. `syzygy.rs` holds 5 `unsafe` sites: the extern block and four calls. | Closed earlier |
@@ -110,7 +110,9 @@ source was read. "Confirmed live" means the head's binary was run
     fixed.
   - Trigger: a time loss at a tablebase root, or one inside a helper's
     read, in any run with tables. Or a rated pool that adopts tables below
-    one second a move.
+    one second a move. Under `go movetime`, a forfeit or a harness timeout
+    with tables loaded; an overrun up to half of `Move Overhead` there is
+    the box working, not a defect.
   - Cheapest repair then: rank move by move through a single-position DTZ
     probe exported from the vendored C, with a deadline between moves, as
     Stockfish does. Fathom's `tb_probe_root_dtz` cannot serve, because it
@@ -203,7 +205,8 @@ depth at the defaults are Stockfish's. Two implementation steps are ready.
      on its own. Otherwise an unrelated option such as `Hash` would
      re-run `tb_init` and repeat the notice.
    - PROTO-10, its `go movetime` part: the extension's start rule under
-     `go movetime`, by the clock's slack rule.
+     `go movetime`, by the clock's slack rule. Withdrawn on
+     implementation, a false premise (*Corrections*, last item).
    - PROTO-15's test: a threaded no-clock search on a 4-man root that
      captures into the KQvK fixture. Helpers' WDL probes then run beside
      the main thread's DTZ extension on every CI platform.
@@ -255,22 +258,20 @@ records, found these. They are corrected above:
   at a DTZ root.
 - The PROTO-10 trigger's repair named `tb_probe_root_dtz`, which ranks
   clean wins equally.
-- The `go movetime` start rule was missing.
+- The `go movetime` start rule was missing. (Withdrawn, last item.)
 - B.5.2's probe stress test was not cited.
 - The post-probe poll was missing.
 - `tb_activation.py`'s budget formula is stale.
 - `configure`'s re-send of every option was not noted.
-- Implementing PROTO-10's `go movetime` start rule found a contradiction in
-  the plan above. Applying `movetime - 10 * Move Overhead` inside
-  `Budget::tb_extension` broke the existing unit contract in
-  `src/search/time/tests.rs`
-  (`the_tablebase_extension_is_unbounded_without_a_clock_and_boxed_under_movetime`),
-  whose comment states that `go movetime` names no clock to protect and
-  requires the 100 ms `movetime(100)` case (with default 10 ms overhead) to
-  return `Boxed(5.0)` rather than `Skip`. Moreover, in `go movetime T`
-  mode both `optimum_ms` and `maximum_ms` equal `T`, so stopping within
-  `T - 10 * overhead` prevents the extension for any move near the normal
-  deadline. That sub-item was reverted and held for a maintainer decision;
-  the other six D.9.1 repairs (PROTO-9, PROTO-14, PROTO-12, A4, PROTO-15,
-  and PROTO-24 with `vendor/fathom/patches/01-utf8-windows-open.patch`)
-  landed on `d9`.
+- Implementing D.9.1 showed that the `go movetime` start rule added above
+  rests on a false premise. `search/time.rs` and its test
+  `the_tablebase_extension_is_unbounded_without_a_clock_and_boxed_under_movetime`
+  hold that `go movetime` has no clock to protect, so the box alone
+  applies; the movetime branch's comment records that `go movetime` never
+  forfeited and that harnesses tolerate about 10% past the nominal time.
+  A start rule of ten overheads would skip the extension at every
+  `go movetime` of 100 ms or less, and Stockfish does not limit its
+  extension under `go movetime` at all. The 14 ms measured on
+  `go movetime 10` is the box working. The item closes `NO_CHANGE`, its
+  trigger under PROTO-10 above; the other six repairs closed D.9.1 on
+  2026-11-25.
