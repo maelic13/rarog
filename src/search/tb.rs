@@ -261,7 +261,13 @@ impl Searcher {
         if ply == 0 || !excluded.is_null() || !self.can_probe_syzygy(board, depth) {
             return None;
         }
-        let wdl = syzygy::probe_wdl(board, self.shared.syzygy.fifty_move_rule)?;
+        let probed = syzygy::probe_wdl(board, self.shared.syzygy.fifty_move_rule);
+        // The read may have been cold: the main thread checks the GUI and the
+        // clock at the next node, as the donor's does, whatever it returned.
+        if self.td.thread_id == 0 {
+            self.td.poll_next_node = true;
+        }
+        let wdl = probed?;
         self.record_tb_hit();
         Some(self.score_from_syzygy_wdl(wdl, ply))
     }

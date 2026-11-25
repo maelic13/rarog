@@ -643,6 +643,7 @@ impl Searcher {
         self.cfg.start = limits.issued.unwrap_or_else(Instant::now);
         self.td.nodes = 0;
         self.td.tb_hits = 0;
+        self.td.poll_next_node = false;
         self.td.seldepth = 0;
         self.td.stopped = false;
         self.td.quit = false;
@@ -723,7 +724,8 @@ impl Searcher {
 
     /// Count the position a move just reached, then look for a reason to
     /// stop: another thread's stop, the node limit, and on every 2048th
-    /// count the GUI and the clock. A count is a move made, as Stockfish
+    /// count, or at once after the main thread's tablebase probe, the GUI and
+    /// the clock. A count is a move made, as Stockfish
     /// and Reckless keep it: a null move, a re-search, the hand-off to
     /// quiescence, razoring's quiescence search, a null-move verification
     /// and an exclusion search add nothing, so `nodes`, `nps`, `go nodes`
@@ -759,7 +761,8 @@ impl Searcher {
             }
             return;
         }
-        if self.td.nodes & 2047 == 0 {
+        if self.td.nodes & 2047 == 0 || self.td.poll_next_node {
+            self.td.poll_next_node = false;
             match poll() {
                 SearchEvent::Quit => {
                     self.td.quit = true;

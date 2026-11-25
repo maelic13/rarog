@@ -100,6 +100,42 @@ fn fixture_tablebase_root_probes_display_and_extension() {
     syzygy_probe_limit_caps_root_and_extension_below_loaded_tables();
     syzygy_probe_depth_gates_only_the_largest_usable_size();
     threaded_no_clock_search_extends_pv_beside_helper_wdl_probes();
+    an_in_search_probe_polls_at_the_next_node();
+}
+
+/// A cold table read can take tens of milliseconds, and the ordinary poll
+/// waits up to 2,048 nodes, which may hold several reads: after an in-search
+/// probe the main thread polls the GUI and the clock at the next node. Each
+/// probe is followed by a counted node before the next probe, so the polls
+/// cover every probe but the last.
+fn an_in_search_probe_polls_at_the_next_node() {
+    let fen = "4k3/8/8/8/8/8/3r4/3QK3 w - - 0 1";
+    let board = Board::from_fen(fen).expect("valid FEN");
+    let mut searcher = Searcher::with_sink(Box::new(Recorder(Arc::new(Mutex::new(Vec::new())))));
+    let mut options = SearchOptions {
+        board: board.clone(),
+        ..SearchOptions::default()
+    };
+    options.engine.syzygy.path = fixture_path();
+    options.engine.syzygy.probe_limit = 3;
+    options.limits.depth = Some(9);
+    searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
+    let mut polls = 0u64;
+    let result = searcher.search(board, &options, true, || {
+        polls += 1;
+        SearchEvent::None
+    });
+    assert!(
+        result.tb_hits > 10,
+        "the root's captures into KQvK are probed: {} hits",
+        result.tb_hits
+    );
+    assert!(
+        polls + 1 >= result.tb_hits,
+        "{polls} polls for {} probes over {} nodes",
+        result.tb_hits,
+        result.nodes
+    );
 }
 
 /// KQ v K, white to move: a DTZ-best move, a ponder move, `cp 20000` at a
