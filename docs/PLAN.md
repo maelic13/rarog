@@ -405,7 +405,8 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.9 | RESEARCH | R2 | Tablebase policy, with the review's probe-path items (PROTO-9 to 15, DRIVER-15, NODE-11, TT-11) and the cached empty `SyzygyPath` |
+| D.9.1 | READY_FOR_IMPLEMENTATION | I1 | The option and loading repairs: PROTO-9, PROTO-14, PROTO-12, the cached path (A4) and the non-ASCII path (PROTO-24, confirmed live); defaults unchanged, exact fingerprint, repair case 1 |
+| D.9.2 | READY_FOR_IMPLEMENTATION | I1 | The in-search probe after the table cutoff (NODE-11, Stockfish's order); exact fingerprint, repair case 1 with a with-tables activation read on 7–8-man roots, prediction frozen in PLAN |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
 | D.11.2 | RESEARCH | R2 | After D.11.1: GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
@@ -4171,6 +4172,51 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   probe reorder (NODE-11 here) read +0.3 ± 3.2 at `10+0.1` with tables
   (8,000 games), a neutral repair, and cut table reads by 70% on six 7–8-man
   endings at depth 18, with 2,285 of 2,286 tablebase wins converted (H29).
+  **Researched 2026-11-25** (`analysis/d9_tablebase_policy_2026-11-25.md`,
+  zero games). CCRL's Blitz and 40/15 conditions list 4-, 5- or 6-man
+  tables, while no Rarog pool sets `SyzygyPath`, so the tablebase path is in
+  the goal's rated configuration and in none of Rarog's; 44.4% of an earlier
+  pool's games reach six men. The policy is Stockfish's at the defaults (the
+  root's DTZ ranking, probes off when DTZ ranks, the probe's bounds and
+  storage), so it closes `NO_CHANGE`; RAR-S93's conversion stands, D.7 left
+  the ranking untouched, and the local 3–6-man suites pass on the kernel.
+  With tables the ≤6-man part of E.4.2's value is partly masked (an
+  inference; read E.4.2 without tables). On the kernel PROTO-9, PROTO-12,
+  PROTO-14 and NODE-11 stand; PROTO-24 and A4 are confirmed live; PROTO-13
+  went in D.5. `NO_CHANGE` with their triggers in the record: PROTO-10 and
+  DRIVER-15 (partly repaired since the review; a time loss at a tablebase
+  root or in a helper's read reopens them), PROTO-11, PROTO-15 (Fathom's
+  probe path writes no shared state outside its guarded lazy mapping),
+  TT-11 (the band is root-relative, so the donor's downgrade has no
+  counterpart; the cutoff already refuses at a counter of 90) and the ±2
+  score of a cursed result. `shakmaty-syzygy` exposes DTZ (`probe_dtz`,
+  `MaybeRounded<Dtz>`), weighs `shakmaty` and seven small crates, needs a
+  `shakmaty::Chess` a probe, reads by system calls unless its `unsafe`
+  memory map is enabled: not ported now, triggers in the record.
+    - **D.9.1 The option and loading repairs — `I1`.** One commit each:
+      the extension and `tb_root_board` gate on `shared.syzygy.largest`,
+      tested with a committed 4-man pair and `SyzygyProbeLimit 3`
+      (PROTO-9); Stockfish's depth rule, `SyzygyProbeDepth` at the largest
+      size only and zero when the limit exceeds the loaded tables
+      (PROTO-14); `std::env::split_paths`, the test built by `join_paths`
+      (PROTO-12); only a path that loaded tables is cached, with a
+      `uci_process` case for an empty directory and then the fixture (A4);
+      a UTF-8 `SyzygyPath` opens on Windows, by a small recorded patch to
+      the vendored open (`MultiByteToWideChar(CP_UTF8, …)` and
+      `CreateFileW`) or an embedded UTF-8 code-page manifest, with a test
+      on a non-ASCII directory (PROTO-24). Every default is unchanged:
+      `bench 13` exact, repair case 1, PROTO-9's 4-man test its static
+      differential. A4 and PROTO-24 get CHANGELOG entries.
+    - **D.9.2 The in-search probe after the table cutoff — `I1`, then `V`.**
+      Stockfish's order (NODE-11). `bench 13` exact, repair case 1, since no
+      rated pool loads tables. Activation and correctness read, before and
+      after on one build pair: fixed-depth searches on 7–8-man roots with
+      the local 3–6-man tables. Frozen prediction: `tbhits` fall 40% to
+      80% (Basilisk 70%), nodes within ±10%, no root's tablebase result
+      class changes, the fixture and local suites pass. Falsifier: `tbhits`
+      fall less than 20% or a result class changes; the step then returns
+      to research. A 2,000-game with-tables read is the maintainer's
+      option, not the rule's.
 - **D.10 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
   Renumbered from D.7 on 2026-11-13 (maintainer decision), when the
   search-shape step took that number.
