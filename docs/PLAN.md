@@ -411,8 +411,8 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.9.3 | RESEARCH | R2 | The search explosion with tables loaded, found by D.9.2's read: on three 7–8-man roots one iteration's tree grows past 30M–100M nodes where the one before took under 2M, in every build since before D.9.1; find the mechanism, then repair it (`analysis/d9_tablebase_policy_2026-11-25.md`, *A search explosion with tables*) |
-| D.9.2 | RESEARCH | I1 | Falsified 2026-11-25 by its registered read: table reads −51.9% at −0.9% nodes with no class change, but one root left short of its depth; the reorder reverted, the post-probe poll kept; held on D.9.3, then the same read runs again |
+| D.9.3 | RESEARCH | R2 | The search explosion with tables loaded: a defect, diagnosed 2026-11-25 to its unit, a window off the PV with beta in the decisive band, searched at a mate search's width inside and outside the tables; no rule tried and no pair of them repairs all three roots, and Stockfish and Reckless pass them. Next: the rule table against Stockfish, one more registered variant read, and the registered clock read on an idle host; a repair that leaves `bench 13` exact is case 1, one that changes it is a gate for the maintainer, and with neither the leaf closes `NO_CHANGE` (`analysis/d9_tablebase_policy_2026-11-25.md`, *D.9 from here*) |
+| D.9.2 | RESEARCH | I1 | Held on D.9.3 (decision 2026-11-25): falsified by its registered read, table reads −51.9% at −0.9% nodes with no class change but one root left short of its depth; the reorder reverted, the post-probe poll kept. It does not close on its own value and is not read again under a softer rule: the same read runs unchanged when D.9.3 lands a repair, and it closes `NO_CHANGE` with D.9.3 otherwise |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
 | D.11.2 | RESEARCH | R2 | After D.11.1: GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
@@ -4199,6 +4199,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   `MaybeRounded<Dtz>`), weighs `shakmaty` and seven small crates, needs a
   `shakmaty::Chess` a probe, reads by system calls unless its `unsafe`
   memory map is enabled: not ported now, triggers in the record.
+  **Before D.9 closes** (decision 2026-11-25, the record, *D.9 from
+  here*): D.9.3 and D.9.2 resolved, and the maintainer's yes or no on
+  RAR-S93's activation read with tables in the release qualification,
+  which has no step. Nothing else is owed: no `NO_CHANGE` trigger fired,
+  and `shakmaty-syzygy` stays not ported.
     - **D.9.1 The option and loading repairs — `I1`, DONE 2026-11-25.**
       One commit each on `d9`. PROTO-9: the extension, the root ranking
       and `tb_root_board` gate on the loaded size capped by the limit
@@ -4240,22 +4245,51 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       amendment counts as a changed result. The reorder is reverted. The
       post-probe poll stays as its own repair: it reads only the GUI and
       the clock, `bench 13` is exact with it, and a unit test holds it.
-      Held on D.9.3; when D.9.3 repairs the explosion, the same
-      registered read runs again.
+      Held on D.9.3 (decision 2026-11-25, the record, *D.9 from here*):
+      it does not close on its own value, fewer table reads at a
+      strength prior of zero, and is not read again under a rule that
+      tolerates a short root. When D.9.3 lands a repair the same
+      registered read runs again, unchanged; if D.9.3 closes
+      `NO_CHANGE` this step closes `NO_CHANGE` with it, on the trigger
+      in the record.
     - **D.9.3 The search explosion with tables loaded — `R2`.** Found by
-      D.9.2's read. On three seven- and eight-man roots of
-      `tools/books/ocb_cohort_v1.epd`, with the local tables, one
-      iteration's tree grows from under 2M nodes past 30M to 100M at a
-      normal speed; root 26 does it at depth 18 in every build since
-      before D.9.1, and finishes that depth at 3.2M nodes without
-      tables. Under a clock a game loses time, not the move; a
-      fixed-depth search or `go infinite` never finishes. Research names
-      the mechanism among the record's candidates (the tablebase floor
-      and cap against the aspiration window, results stored at
-      `depth + 6` cutting against the search's scores, pruning that
-      stops at decided scores), starting from the cheapest test there:
-      aspiration steps and nodes per root move in the exploding
-      iteration, then the same with in-search probes off.
+      D.9.2's read and diagnosed 2026-11-25 (the record, *D.9.3's
+      diagnosis* and *D.9 from here*; zero games). On roots 26, 30 and
+      11 of D.9.2's selection one iteration grows from under 2M nodes
+      past 30M. **Established:** it is a defect, not an artefact of a
+      fixed depth. Its unit is a window off the PV whose beta is in the
+      decisive band, which tables put at a seven- or eight-man root.
+      There 97% to 98% of the nodes are positions the tables decide,
+      below probes that do not decide such a window; with those probes
+      ending their nodes the search moves outside the tables at the
+      same size. Stockfish 19 and Reckless 0.9.0 pass the three roots
+      (priors). **Refuted:** the floor and cap against the aspiration
+      window as the cost; the table's path-relative distances (moving
+      the band by ply finishes no root, `bench 13` exact); as the
+      repair, an undecided probe ending its node off the PV, late-move
+      pruning at a winning beta, and the two together (roots 26 and 11
+      finish, root 30 stops at depth 19; the pruning rule reads
+      `bench 13` 3,293,080). **Unknown:** which rule makes Rarog's band
+      window wider than its donors', the cost under a clock, the cost
+      in Elo. Under a clock the iteration ends at the hard limit and
+      the last finished move is played; CCRL loads tables and no Rarog
+      pool does. **Next, in the record's order:** (1) the rule table,
+      every rule that reads `is_win`, `is_loss` or `is_decisive` beside
+      Stockfish's form, read first where the census points (the node
+      with a losing beta whose best score is still a loss, the node in
+      check, quiescence); (2) one more variant read, registered before
+      it runs, one variant per difference, on the three roots with
+      `tools/diag/tb_probe_read.py` at depth 20 and a 30M cap, the
+      counters and `bench 13`, built from an exported copy and never
+      committed; (3) the registered clock read on D.9.2's 48 roots at
+      CCRL Blitz's control, with and without tables, on an idle host.
+      **Stop rule:** a set of rules that finishes the three roots
+      becomes the repair's registration, case 1 with D.9.2's read on
+      all 48 roots where `bench 13` stays exact, and a gate for the
+      maintainer to decide where it changes; with no such set after
+      step 2 the leaf closes `NO_CHANGE` on the record's triggers,
+      with no third round. No repair is implemented while the leaf is
+      in research.
 - **D.10 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
   Renumbered from D.7 on 2026-11-13 (maintainer decision), when the
   search-shape step took that number.

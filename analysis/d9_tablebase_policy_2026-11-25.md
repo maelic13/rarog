@@ -598,6 +598,175 @@ step is then the census's lead, as a new registration: what the donors
 do at a node off the PV whose best score is still a loss, and at one in
 check, when beta is in the decisive band.
 
+### V2 with V3: the result
+
+`v23c.exe` (SHA-256 `5da58490…`), the same read and counters, both exit 0
+(`read_v23.json`, `counters_v23.txt`).
+
+| Root | V2 with V3 |
+|---|---|
+| 26 | **20** at 1,081,830 |
+| 11 | **20** at 4,905,994, the last window searched at depth 10 after fail highs |
+| 30 | 19 (`cp -19980`), short at depth 20 in a fully open window |
+| `bench 13` | 3,293,080 / EBF 2.318 |
+
+On root 30 to the cap: 17,084,163 interior nodes, 576 inside the tables;
+6,647,104 with beta in the win band and 6,560,836 with it in the loss
+band. Of 7,489,756 moves searched at the loss-band nodes, 4,310,040 are a
+node's first, the other 3,179,716 were all searched with the best score
+still a loss, and 5,910,005 (79%) come from nodes in check.
+
+**Verdict:** the falsifier fired. The two rules together finish roots 26
+and 11 and move root 30 from depth 15 to depth 19, and they are not the
+repair. By the stop rule no further variant ran.
+
+**Calibration.** Root 26 finishing (0.9) held. Both other roots finishing
+(0.35) did not happen, as the larger share of that prediction expected;
+`bench 13` held.
+
+## D.9 from here: the decision, 2026-11-25
+
+Evidence layer throughout: node counts and counters at fixed depth, one
+thread, three roots of one opposite-bishop cohort, and two foreign
+binaries as priors. None of it is Elo, and no game was played.
+
+**Is the explosion a defect or an artefact of fixed-depth reads?** A
+defect in Rarog's search, which a fixed depth shows and does not cause.
+- Established: its unit is a window off the PV whose beta is in the
+  decisive band. Tables are what put a seven- or eight-man root's window
+  there, so it appears with tables loaded. Once there, Rarog searches a
+  distance proof at close to a mate search's width, inside the tables
+  below probes that do not decide such a window, and outside them.
+- Refuted: the floor and cap against the aspiration window as the cost
+  (one window, a few dozen firings); the table's path-relative distances
+  as the cause (V1); either rule alone, and both together, as the repair
+  (V2, V3, V2 with V3).
+- Not yet known: which of Rarog's rules make the band window wider than
+  Stockfish's and Reckless's, both of which pass these roots at these
+  depths; how often it occurs in games; what it costs in Elo.
+
+**Does it matter where CCRL rates?** It is active there and in none of
+Rarog's pools, because CCRL loads tables and the pools do not. What it
+can cost is clock: the iteration is abandoned at the hard limit, and the
+move played is the last finished iteration's. On root 26 that move's
+score is already a tablebase win, so the result is not at risk there;
+roots 30 and 11 explode at scores of −849 and +1,456, which the tables
+have not decided. RAR-S93 and RAR-S94 played with tables and recorded no
+time loss from this. The expected strength effect is therefore small and
+unmeasured, and Basilisk's related repair read +0.3 ± 3.2. The time it
+costs under a clock has never been read; the read below is registered
+for that.
+
+**Does it matter for analysis?** Yes. With tables, `go infinite` and a
+fixed depth stop advancing on two of 48 roots by depth 20 (three with
+D.9.2's reorder), for tens of millions of nodes.
+
+**Order.** D.9.3 stays ahead of D.9.2, as research with a stop rule, and
+D.9.2 stays held on it.
+- D.9.2 does not close on its own value. Its measured value is 51.9%
+  fewer table reads at a strength prior of zero, and its registered read
+  was falsified by its own amendment. Reading it again under a rule that
+  tolerates a short root would be an acceptance rule chosen after the
+  result.
+- D.9.2 reopens when D.9.3 lands a repair: the same registered read runs
+  again, unchanged. If D.9.3 closes `NO_CHANGE`, D.9.2 closes `NO_CHANGE`
+  with it. Its trigger then: a run with tables in which table reads are
+  shown to cost time (a cold read past `Move Overhead`, or a node rate
+  that falls with `tbhits`).
+- I recommend against implementing a repair now. The two rules found are
+  not sufficient, one of them (late-move pruning at a winning beta)
+  changes the search without tables (`bench 13` 3,293,080), and a change
+  to every game's search needs a strength gate that a tablebase defect
+  with a near-zero strength prior does not justify on its own.
+
+**D.9.3's next steps and its stop rule.**
+1. *The rule table* (no host needed, zero runs): every rule in
+   `compact/rules.rs` and `compact/node.rs` that reads `is_win`,
+   `is_loss` or `is_decisive`, beside Stockfish's form of the same rule
+   (`search.cpp`: the guards at steps 6 to 11, the move loop's
+   `!is_loss(bestValue)` gate, late-move and futility pruning, the
+   reductions' `!is_decisive(alpha)`, quiescence). Stockfish is the
+   primary donor; Reckless teaches ideas only, and its binary is a
+   prior. D.7.3's tracing twin would show the kernel's donor's own
+   decisions in a band window, but its patches are among those D.11
+   holds, so it is used only on the maintainer's word. The census
+   gives the order to read in: the node off the PV
+   with a losing beta whose best score is still a loss, the node in
+   check, then quiescence. Frozen prediction: the table shows at least
+   one more difference than V3's guard, confidence 0.7. Refuted if it
+   shows none; then the width is not in a decisive-score rule, and the
+   next place to look is what the kernel adds to its donor (the line
+   bound, the proven-win rule, the root window keeping its reduction
+   after a fail low).
+2. *One more variant read*, registered with its own predictions before
+   it runs: one variant per difference the table finds, on roots 26, 30
+   and 11 with this read's instrument, cap and counters, and `bench 13`
+   for each. Variants are built from an exported copy, as here, and
+   never committed.
+3. *The clock read* below (needs an idle host).
+4. *Stop rule.* If step 2 finds a set of rules that finishes the three
+   roots, the leaf writes the repair's registration: a part that leaves
+   `bench 13` exact is a repair of case 1 with D.9.2's read on all 48
+   roots as its activation and correctness read, every root finishing
+   depth 20 in both builds; a part that changes `bench 13` is a playing
+   change in every configuration and goes to the maintainer as a gate to
+   decide, registered on its own. If step 2 does not find one, D.9.3
+   closes `NO_CHANGE` with the triggers below and no third round.
+
+**The clock read, registered 2026-11-25, not run.** It answers what the
+defect costs in the rated configuration, which decides whether a repair
+or a containment is worth a gate.
+- Instrument: `tools/diag/tb_probe_read.py`, extended to take the `go`
+  arguments and to record the time of the last `info` line and the wall
+  time to `bestmove` (a tooling change with its own test).
+- Roots and settings: D.9.2's 48 roots, a fresh process each,
+  `Threads 1`, `Hash 64`, `go wtime 120000 btime 120000 winc 1000 binc
+  1000` (CCRL Blitz's control at its first move), one arm with the local
+  tables and one without, one default build of the committed tree,
+  archived with its hash.
+- Reading: per root, the time used in each arm and their ratio; the
+  number of roots that use at least twice the time with tables.
+- Frozen prediction: 3 to 12 of the 48 roots use at least twice the time
+  with tables, roots 26 and 30 among them; the median ratio over the
+  rest is 0.8 to 1.25; every search answers inside its own hard limit.
+  Confidence 0.5: the roots are known to depth 20 only, and a clock
+  reaches deeper.
+- Falsifier: no root uses twice the time. The defect is then confined to
+  searches without a clock, and D.9.3 closes `NO_CHANGE` for the rated
+  configuration with the analysis trigger alone.
+- It is a timed read: an idle host, by `docs/rules/measurement.md`.
+
+**A containment, recorded and not proposed.** At a DTZ root the hard
+limit is already the soft one, because the result is decided. The same
+rule for a search whose last finished score is in the tablebase band
+would bound root 26's cost under a clock, leave `bench 13` exact and
+do nothing for analysis or for roots 30 and 11. It is worth registering
+only if the clock read shows the cost and step 2 finds no repair.
+
+**Triggers if D.9.3 closes `NO_CHANGE`:** a hard-limit stop or a time
+loss in a run with tables at a root of seven men or more; a user's
+report of a stalled depth with tables; a rated pool or a release
+qualification that adopts tables.
+
+**What else D.9 owes before it closes.**
+- Nothing further on the policy, D.9.1 or the `NO_CHANGE` items: none of
+  their triggers fired in today's reads (no time loss, no crash, no
+  move changed by a cursed score or a stored score past the fifty-move
+  limit).
+- TT-11's neighbour, found today: moving band values by ply leaves
+  `bench 13` exact on the compact kernel, so B.5.2's obstacle is gone.
+  It is still `NO_CHANGE`: it repaired nothing here and left root 11
+  short. Its trigger is TT-11's.
+- `shakmaty-syzygy` stays not ported. No trigger fired, and its probe
+  and conversion cost stays unmeasured, since measuring it needs the
+  crate downloaded, which is the maintainer's call.
+- The recommendation outside D.9, RAR-S93's activation read with tables
+  in the release qualification, has no PLAN step yet. It needs the
+  maintainer's yes or no before D.9 closes, and `tb_activation.py`'s
+  budget formula brought to `search/time.rs` if yes.
+- At the close: D.9's parent marked, the board regenerated, and `d9`'s
+  pull request, which is the maintainer's.
+
 ## Corrections, the same day
 
 A second review of D.9 (2026-11-25), checked against the code and the
