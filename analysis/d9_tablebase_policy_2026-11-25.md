@@ -75,15 +75,15 @@ source was read. "Confirmed live" means the head's binary was run
 | Item | Status on the kernel | Decision |
 |---|---|---|
 | PROTO-9: the PV extension and `tb_root_board` gate on the loaded size, not on `SyzygyProbeLimit` | Still present: `search/mod.rs:565` sets the board when `syzygy::largest() > 0`, and `syzygy::can_probe` bounds by `largest()`. Confirmed by code. | Repair, D.9.1 |
-| PROTO-10: the pre-search root ranking and each extension step are unabortable FFI calls | Partly repaired since the review: `go movetime` now has a box (`time.rs:179`), the box is checked between probes, and the start rule keeps ten overheads (RAR-S97). The pre-search ranking is still one call with no clock check. | `NO_CHANGE` (below) |
+| PROTO-10: the pre-search root ranking and each extension step are unabortable FFI calls | Partly repaired since the review: `go movetime` now has a box (`time.rs:179`), the box is checked between probes, and under a clock the start rule keeps ten overheads (RAR-S97). Under `go movetime` the start rule is still absent (`tb_extension_latest_start_ms` stays infinite), so the extension can begin after the move time; the second review reproduced 14 ms on `go movetime 10`. The pre-search ranking is still one call with no clock check. | The `go movetime` start rule: repair, D.9.1. The rest: `NO_CHANGE` (below) |
 | PROTO-11: Fathom calls `exit()` when a lazy table map fails | Inherent to Fathom. No incidence recorded. | `NO_CHANGE`; a trigger for the port |
 | PROTO-12: the file-count notice splits on `;` on every platform | Still present (`syzygy.rs`, `.split(';')`). Confirmed by code; Windows is unaffected. | Repair, D.9.1 |
 | PROTO-13: the dead `probe_root` and its `unsafe` | Already gone, removed in D.5. `syzygy.rs` holds 5 `unsafe` sites: the extern block and four calls. | Closed earlier |
 | PROTO-14: `SyzygyProbeDepth` gates every piece count | Still present (`search/tb.rs`, `can_probe_syzygy`). It matters only when `SyzygyProbeDepth > 1`, because the search probes only at depth ≥ 1. | Repair, D.9.1 |
-| PROTO-15: root probes are documented "NOT thread safe" and run beside helpers' WDL probes | This happens only in the no-clock `shown_line` extension (`report.rs:59`) at `Threads > 1` with the root outside the tables. Fathom's mutable statics (`tbprobe.c:301-514`) are written by `tb_init` alone. A table's lazy mapping is guarded by `tbMutex` with the acquire/release flag. `tb_probe_root_impl` writes only the caller's buffer. The final extension runs after the join (`threads.rs:477`). | `NO_CHANGE` by code reading |
+| PROTO-15: root probes are documented "NOT thread safe" and run beside helpers' WDL probes | This happens only in the no-clock `shown_line` extension (`report.rs:59`) at `Threads > 1` with the root outside the tables. Fathom's mutable statics (`tbprobe.c:301-514`) are written by `tb_init` alone. A table's lazy mapping is guarded by `tbMutex` with the acquire/release flag. `tb_probe_root_impl` writes only the caller's buffer. The final extension runs after the join (`threads.rs:477`). B.5.2 also ran a stress test of about 53 million probes per run on the Windows build, each checked against its thread's expected result (`analysis/b52_research_2026-10-01.md`). The Unix branch of Fathom's lock was never stress-tested. | `NO_CHANGE` in the code. A threaded fixture test goes into D.9.1, so that Linux and macOS CI run it. |
 | DRIVER-15: the join waits for a helper blocked in a table read | Still present (`threads.rs:425-429`). It is bounded by one read, at most 54 ms measured (RAR-S94). | `NO_CHANGE` (below) |
 | NODE-11: the probe runs before the TT cutoff | Still present (`compact/node.rs:151-176`). Basilisk's reorder read +0.3 ± 3.2 Elo at `10+0.1` with tables over 8,000 games, and cut table reads by 70% on six 7–8-man endings (H29). | Repair, D.9.2 |
-| TT-11: the tablebase band skips the rule-50 downgrade | Present by design. The band is stored root-relative (`score.rs:32-38`), and B.5.2's stop rule refuted moving it by ply. The donor's test `VALUE_TB − v > 100 − r50c` therefore has no faithful counterpart here. The kernel's table cutoff already refuses to return at a counter of 90 or more (`tt_cut_returns`, seed `tt_cut_fifty` 90). | `NO_CHANGE` |
+| TT-11: the tablebase band skips the rule-50 downgrade | Present by design. The band is stored root-relative (`score.rs:32-38`), and B.5.2's stop rule refuted moving it by ply. The donor's test `VALUE_TB − v > 100 − r50c` therefore has no faithful counterpart here. The kernel's table cutoff already refuses to return at a counter of 90 or more (`tt_cut_returns`, seed `tt_cut_fifty` 90; Stockfish's refuses at 96). | `NO_CHANGE` |
 | PROTO-24: a non-ASCII `SyzygyPath` cannot load on Windows | **Confirmed live.** The five fixture files copied into `ascii_tb` print "Found 3 WDL and 2 DTZ tablebase files (up to 3-man)". The same files in `tabulky_žluťoučký` print "SyzygyPath loaded no usable tablebases". Fathom's `_UNICODE` branch converts with `mbstowcs_s` under the C locale, so defining `_UNICODE` alone does not fix it. | Repair, D.9.1 |
 | A4: an unchanged `SyzygyPath` is cached even when it loaded nothing | **Confirmed live.** A path to an empty directory prints "loaded no usable tablebases". After the fixture files were copied in, sending the same path printed nothing, and KQK at `go depth 6` read `score cp 348 … tbhits 0`. A fresh process on the same directory loads them and reads `score cp 20000 … tbhits 1`. | Repair, D.9.1 |
 
@@ -111,9 +111,12 @@ source was read. "Confirmed live" means the head's binary was run
   - Trigger: a time loss at a tablebase root, or one inside a helper's
     read, in any run with tables. Or a rated pool that adopts tables below
     one second a move.
-  - Cheapest repair then: rank move by move with `tb_probe_root_dtz` and a
-    deadline, as Stockfish does. Or skip the ranking once
-    `elapsed + k·overhead` passes the hard ceiling.
+  - Cheapest repair then: rank move by move through a single-position DTZ
+    probe exported from the vendored C, with a deadline between moves, as
+    Stockfish does. Fathom's `tb_probe_root_dtz` cannot serve, because it
+    ranks every clean win equally (`analysis/tb_root_pv_2026-09-27.md`).
+    Or skip the ranking once `elapsed + k·overhead` passes the hard
+    ceiling.
 - **PROTO-15.**
   - Trigger: a crash or a garbled line at `Threads > 1` with tables.
   - Cheapest check then: a threaded no-clock search on a 7-man root that
@@ -186,13 +189,24 @@ is near zero, and the risk falls on endgame truth.
 depth at the defaults are Stockfish's. Two implementation steps are ready.
 
 1. **D.9.1, the option and loading repairs (`I1`).** One commit each:
-   - PROTO-9: the extension and the root board gate on
-     `shared.syzygy.largest`.
+   - PROTO-9: the extension and the root board gate on the loaded size
+     capped by the limit, `syzygy::largest().min(probe_limit)`. They must
+     not gate on `shared.syzygy.largest`: `apply_tb_root` sets it to 0 at a
+     DTZ root, which would turn the extension off exactly where it is
+     wanted.
    - PROTO-14: Stockfish's depth rule.
    - PROTO-12: `std::env::split_paths`, with the test built through
      `join_paths`.
    - A4: cache only a path that loaded tables. The test is a `uci_process`
-     case with an empty directory, then the fixture.
+     case with an empty directory, then the fixture. `configure` receives
+     every option on each `setoption`, so it keeps the last requested path
+     on its own. Otherwise an unrelated option such as `Hash` would
+     re-run `tb_init` and repeat the notice.
+   - PROTO-10, its `go movetime` part: the extension's start rule under
+     `go movetime`, by the clock's slack rule.
+   - PROTO-15's test: a threaded no-clock search on a 4-man root that
+     captures into the KQvK fixture. Helpers' WDL probes then run beside
+     the main thread's DTZ extension on every CI platform.
    - PROTO-24: UTF-8 paths reach the Windows open. Either a small patch to
      the vendored open that converts with `MultiByteToWideChar(CP_UTF8, …)`
      and calls `CreateFileW`, or an embedded manifest with
@@ -205,7 +219,11 @@ depth at the defaults are Stockfish's. Two implementation steps are ready.
      reproduces exactly. PROTO-9's static differential is the 4-man test.
    - CHANGELOG: PROTO-24 and A4 are fixed defects a user would notice.
 2. **D.9.2, the probe after the table cutoff (`I1`, then `V`).**
-   Stockfish's order.
+   Stockfish's order: the probe moves after the table cutoff and before
+   the threat maps and the evaluation. A main-thread probe forces the
+   next node's stop and clock poll, as Stockfish's `callsCnt = 0` does,
+   because the poll otherwise waits up to 2,048 nodes, which may hold
+   several cold reads.
    - Gate: AGENTS case 1, since no rated pool loads tables, so `bench 13`
      reproduces exactly. Its activation and correctness read is fixed-depth
      searches on 7–8-man roots with the local tables, before and after.
@@ -223,4 +241,22 @@ depth at the defaults are Stockfish's. Two implementation steps are ready.
 One recommendation outside D.9, for the maintainer: the release
 qualification (E.1, E.3.4) could carry RAR-S93's with-tables activation
 read. That is 1,500 games on the endgame cohort, about two minutes. It
-would cover the configuration CCRL rates, which no pool covers.
+would cover the configuration CCRL rates, which no pool covers. Its
+parser `tools/diag/tb_activation.py` still computes the time budget by
+the formula in use before D.7.9.1 (`optimum_ms`). That has to be brought
+to `search/time.rs`'s `budget` before the read is used.
+
+## Corrections, the same day
+
+A second review of D.9 (2026-11-25), checked against the code and the
+records, found these. They are corrected above:
+
+- The PROTO-9 repair named the wrong gate: `shared.syzygy.largest` is 0
+  at a DTZ root.
+- The PROTO-10 trigger's repair named `tb_probe_root_dtz`, which ranks
+  clean wins equally.
+- The `go movetime` start rule was missing.
+- B.5.2's probe stress test was not cited.
+- The post-probe poll was missing.
+- `tb_activation.py`'s budget formula is stale.
+- `configure`'s re-send of every option was not noted.

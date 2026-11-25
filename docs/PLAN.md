@@ -405,7 +405,7 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.9.1 | READY_FOR_IMPLEMENTATION | I1 | The option and loading repairs: PROTO-9, PROTO-14, PROTO-12, the cached path (A4) and the non-ASCII path (PROTO-24, confirmed live); defaults unchanged, exact fingerprint, repair case 1 |
+| D.9.1 | READY_FOR_IMPLEMENTATION | I1 | The option and loading repairs: PROTO-9, PROTO-14, PROTO-12, the cached path (A4), the non-ASCII path (PROTO-24, confirmed live), PROTO-10's `go movetime` start rule and PROTO-15's threaded test; defaults unchanged, exact fingerprint, repair case 1 |
 | D.9.2 | READY_FOR_IMPLEMENTATION | I1 | The in-search probe after the table cutoff (NODE-11, Stockfish's order); exact fingerprint, repair case 1 with a with-tables activation read on 7–8-man roots, prediction frozen in PLAN |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
@@ -4194,13 +4194,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   `shakmaty::Chess` a probe, reads by system calls unless its `unsafe`
   memory map is enabled: not ported now, triggers in the record.
     - **D.9.1 The option and loading repairs — `I1`.** One commit each:
-      the extension and `tb_root_board` gate on `shared.syzygy.largest`,
-      tested with a committed 4-man pair and `SyzygyProbeLimit 3`
+      the extension and `tb_root_board` gate on the loaded size capped by
+      the limit, never on `shared.syzygy.largest`, which a DTZ root sets
+      to 0, tested with a committed 4-man pair and `SyzygyProbeLimit 3`
       (PROTO-9); Stockfish's depth rule, `SyzygyProbeDepth` at the largest
       size only and zero when the limit exceeds the loaded tables
       (PROTO-14); `std::env::split_paths`, the test built by `join_paths`
       (PROTO-12); only a path that loaded tables is cached, with a
-      `uci_process` case for an empty directory and then the fixture (A4);
+      `uci_process` case for an empty directory and then the fixture, the
+      last requested path kept apart so an unrelated option does not
+      reload (A4); the extension's start rule under `go movetime` (PROTO-10);
+      a threaded no-clock test on a 4-man root capturing into the KQvK
+      fixture (PROTO-15);
       a UTF-8 `SyzygyPath` opens on Windows, by a small recorded patch to
       the vendored open (`MultiByteToWideChar(CP_UTF8, …)` and
       `CreateFileW`) or an embedded UTF-8 code-page manifest, with a test
@@ -4208,7 +4213,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `bench 13` exact, repair case 1, PROTO-9's 4-man test its static
       differential. A4 and PROTO-24 get CHANGELOG entries.
     - **D.9.2 The in-search probe after the table cutoff — `I1`, then `V`.**
-      Stockfish's order (NODE-11). `bench 13` exact, repair case 1, since no
+      Stockfish's order (NODE-11), after the table cutoff and before the
+      threat maps and the evaluation, with a main-thread probe forcing the
+      next stop and clock poll as Stockfish's does. `bench 13` exact, repair case 1, since no
       rated pool loads tables. Activation and correctness read, before and
       after on one build pair: fixed-depth searches on 7–8-man roots with
       the local 3–6-man tables. Frozen prediction: `tbhits` fall 40% to
