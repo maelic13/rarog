@@ -292,11 +292,10 @@ pub fn largest() -> usize {
 pub(crate) fn tablebase_file_counts(path: &str) -> (usize, usize) {
     let mut wdl = 0usize;
     let mut dtz = 0usize;
-    for part in path
-        .split(';')
-        .map(str::trim)
-        .filter(|part| !part.is_empty())
-    {
+    for part in std::env::split_paths(path) {
+        if part.as_os_str().is_empty() {
+            continue;
+        }
         let Ok(entries) = fs::read_dir(part) else {
             continue;
         };
