@@ -982,6 +982,110 @@ with tables (`roots_at_least_twice`), gives the median ratio
 It is a timed read and needs an idle host. Its length is unmeasured: 96
 searches at the first move of a 2+1 clock.
 
+### The clock read's result, 2026-11-25
+
+The maintainer ran the prepared command on an idle host; the output is
+`read_clock.json` beside the binary. Evidence layer: wall time from `go`
+to `bestmove` per root, one thread, the first move of a 2+1 clock, the 48
+roots of one opposite-bishop cohort. These are not games and not Elo.
+
+All 96 searches answered. At this clock the hard limit is 88,099.7 ms:
+`HARD_SCALE` 0.7281 of the clock less Move Overhead, plus 0.75 of the
+increment, less 15 ms. Four searches ended at it, each spending 73% of
+the clock on one move:
+
+| Root | Men | Without tables | With tables |
+|---|---|---|---|
+| 11 | 7 | 3,360 ms, depth 22, `cp 697` | **88,100 ms**, last finished depth 23 at 554 ms, `cp 5929` |
+| 14 | 7 | 5,165 ms, depth 33, `cp -36` | **88,100 ms**, last finished depth 31 at 1,287 ms, `cp -171` |
+| 26 | 8 | 1,148 ms, depth 17, `cp 1329` | **88,101 ms**, depth 17, `cp 19987` |
+| 30 | 8 | **88,100 ms**, last finished depth 15 at 178 ms, `cp -385` | **88,100 ms**, last finished depth 15 at 322 ms, `cp -849` |
+
+- On the other 44 roots the two arms cost the same: 61.4 s of wall time
+  with tables against 61.8 s without. No other root takes twice the time
+  (the most is 1.69, root 34). Roots 20, 21 and 29 take at most half.
+- Root 30 without tables was read again at depth 20 with a 30M-node cap
+  (`r30_notb_d20.json`). It finishes depth 15 at 495,516 nodes, as under
+  the clock, and depth 16 does not finish in 30M nodes. **The explosion
+  does not need tables.** Root 30 has it in the configuration every
+  Rarog pool plays.
+- Depth 20 does not reach root 14's stall (depth 32) or root 11's (depth
+  24). That is why the fixed-depth reads never showed root 14 and showed
+  root 11 only under some variants.
+
+**Against the registration.**
+- Roots that take at least twice the time with tables: three (11, 14 and
+  26), inside the predicted 3 to 12. Held.
+- Roots 26 and 30 among them: 26 is, 30 is not. Root 30 ends at the hard
+  limit in both arms, a ratio of 1.00. **Missed.**
+- The median ratio over the 45 other roots: 1.07, inside 0.8 to 1.25.
+  Held.
+- Every search answers inside its hard limit: held, to the node poll.
+  The longest search, 88,101.1 ms, is 1.4 ms past the computed limit,
+  against a ceiling of 119,980 ms. No search lost on time.
+- The falsifier, no root at twice the time, did not fire.
+- Calibration: the prediction carried confidence 0.5 as a whole, and it
+  failed on one clause. The miss was taking root 30's explosion for a
+  defect of the tables, when it had been read only with them.
+
+**Decision, 2026-11-25.**
+- The reopen trigger fired: three roots take twice the time with tables.
+  The `NO_CHANGE` trigger for a hard-limit stop with tables at a root of
+  seven men or more fired with it. D.9.3's repair reopens.
+- The scope widens. Root 30 shows the explosion without tables, so the
+  defect is in Rarog's search in every configuration; tables make it
+  more common.
+- The containment would cover one of the four stops: root 26, whose
+  finished score is the tablebase win. Roots 11, 14 and 30 finish on
+  ordinary scores. I recommend against making it the next step: it would
+  leave three of the four stops, and the repair candidate's read is
+  cheaper to answer first. The containment stays the fallback, a case-1
+  change for decided roots only, if the candidate fails.
+- Next: the repair candidate's read below.
+
+### The repair candidate's read, registered 2026-11-25 before it ran
+
+- **Candidate:** WU with V2, that is W1 to W4, V3 and V2, applied by
+  `variant_d93.py` to an export of `1ed64e6` (engine source the same as
+  `546adc4`'s). It is a default release build and is never committed:
+  `cand.exe`, `id name` `Rarog dev-20261125-nogit`, SHA-256
+  `1c7b82ec293c2a38148659b1345e7478a42a0ab98bc4751ccdc2eb02da7cceaf`,
+  build log `cand_build.log`. Its `bench 13` was read when it was built,
+  before this registration, so it is not a prediction: 3,114,639 / EBF
+  2.303. That is WU's count, since V2 acts only at a probe.
+- **Instrument:** the clock read's, unchanged, on all 48 roots, with the
+  candidate in both arms. All 48 roots, because at a fixed depth eight
+  of nine variants moved the explosion to another root rather than end
+  it, and only the rest of the roots can show a moved stall. It is a
+  timed read, so it needs an idle host.
+- **Reading:** per arm, the searches that end at the hard limit (more
+  than 88,000 ms of wall time), against the baseline's four.
+- **Frozen prediction:**
+  - With tables, no search ends at the hard limit: confidence 0.4.
+  - Without tables, root 30 still ends at it: 0.5. V2 does not act
+    there, and none of W1 to W4 finished root 30 at a fixed depth with
+    tables.
+  - None of the 44 roots that the baseline finished in both arms ends at
+    the limit in either arm: 0.6.
+- **Decision rule:**
+  - No search at the limit with tables: the candidate becomes the
+    repair's registration. It moves `bench 13` and changes shared search
+    signals in every configuration, which makes it case 3 of
+    `docs/rules/gating.md` (`[-5,5]`, about 12,000 games) unless the
+    maintainer decides otherwise. It is registered on its own, with its
+    exposure, and the gate is the maintainer's to run.
+  - A stop at the limit without tables only: the same, with that stop
+    recorded open in D.9.3 as its own finding.
+  - Any stop at the limit with tables refutes the candidate at this
+    read. The next step then becomes a design question (`R3`): why
+    Rarog's search inside the tables, and at root 30 without them, is
+    wider than its donors'. The containment is the fallback for the
+    decided roots, and leaves `bench 13` exact.
+- **Command,** about 4 minutes if no search stalls and about 1.5 minutes
+  more for each stall:
+
+    python tools/diag/tb_probe_read.py --epd tools/books/ocb_cohort_v1.epd --men 7,8 --per-count 24 --go "wtime 120000 btime 120000 winc 1000 binc 1000" --syzygy D:/chess/tablebases/syzygy3456 --tables-off notb --out analysis/artifacts/d93w-2026-11-25/read_cand.json notb=analysis/artifacts/d93w-2026-11-25/cand.exe tb=analysis/artifacts/d93w-2026-11-25/cand.exe
+
 ## Corrections, the same day
 
 A second review of D.9 (2026-11-25), checked against the code and the

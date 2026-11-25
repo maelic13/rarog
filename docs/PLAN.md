@@ -411,7 +411,7 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.9.3 | RESEARCH | R2 | The search explosion with tables loaded, a defect of band windows; its repair search closed `NO_CHANGE` 2026-11-25 by its stop rule: the rule table found four differences from Stockfish, and no variant of them, nor their union with late-move pruning at a winning beta, finishes the three roots, while every one moves `bench 13`. Held on its registered clock read, which needs an idle host; its command is prepared. No root at twice the time with tables closes the leaf `NO_CHANGE` for the rated configuration; roots at twice the time reopen the repair, with the union plus the probe ending its node as the first candidate and a gate for the maintainer (`analysis/d9_tablebase_policy_2026-11-25.md`, *The second variant read's result*) |
+| D.9.3 | RESEARCH | R2 | The search explosion with tables loaded, a defect of band windows; its repair search closed `NO_CHANGE` 2026-11-25 by its stop rule: the rule table found four differences from Stockfish, and no variant of them, nor their union with late-move pruning at a winning beta, finishes the three roots, while every one moves `bench 13`. Its clock read, 2026-11-25: four of 96 first-move searches at 2+1 end at the hard limit, roots 11, 14 and 26 with tables and root 30 in both arms, so the defect does not need tables; the repair reopens by its trigger. Held on the repair candidate's read, WU with V2 under the clock read's command, registered with its binary for an idle host. No stop with tables makes it the repair's registration and a gate for the maintainer; a stop refutes it (`analysis/d9_tablebase_policy_2026-11-25.md`, *The clock read's result* and *The repair candidate's read*) |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
 | D.11.2 | RESEARCH | R2 | After D.11.1: GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
@@ -4310,6 +4310,20 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       time with tables closes the leaf `NO_CHANGE` for the rated
       configuration, on the analysis trigger. Roots at twice the time
       reopen the repair and the containment, each registered then.
+      **Step 3 done 2026-11-25** (the record, *The clock read's
+      result*). Four of the 96 first-move searches at 2+1 end at the
+      hard limit, 88.1 s or 73% of the clock: roots 11, 14 and 26
+      with tables, and root 30 in both arms. Root 30 also explodes at
+      depth 16 without tables at a fixed depth, so the defect does
+      not need tables. On the other 44 roots the two arms cost the
+      same, 61.4 s against 61.8 s. **The repair reopens** by its
+      trigger. The containment would cover root 26 alone and is the
+      fallback. **Held on the repair candidate's read**, registered in
+      the record: WU with V2, built and archived, under the clock
+      read's command on all 48 roots, on an idle host. No stop with
+      tables makes it the repair's registration, a gate for the
+      maintainer (case 3 unless decided otherwise); a stop with
+      tables refutes it and sends the leaf to a design question.
 - **D.10 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
   Renumbered from D.7 on 2026-11-13 (maintainer decision), when the
   search-shape step took that number.
