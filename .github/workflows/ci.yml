@@ -327,7 +327,7 @@ jobs:
       # Deliberately NOT `--all-features`: that is not a shipped configuration.
       # It enables `texel`, which bypasses the eval and pawn caches, and a
       # binary left in target/release by an --all-features test run must never
-      # be measured (AGENTS.md).
+      # be measured (docs/rules/measurement.md).
       - name: Feature matrix (all 32 subsets compile)
         run: python tools/diag/feature_matrix.py
 
@@ -366,6 +366,9 @@ jobs:
 
       - name: check_guide.py
         run: python tools/diag/check_guide.py
+
+      - name: check_rules.py
+        run: python tools/diag/check_rules.py
 
       - name: check_citations.py
         run: python tools/diag/check_citations.py
