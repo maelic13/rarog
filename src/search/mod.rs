@@ -562,7 +562,7 @@ impl Searcher {
         };
 
         let syzygy_root_moves = self.syzygy_root_moves(&board, root_candidates);
-        if syzygy::largest() > 0 {
+        if self.tb_probe_limit() > 0 {
             self.td.tb_root_board = Some(board.clone());
         }
         let root_moves = syzygy_root_moves.as_deref().unwrap_or(root_candidates);

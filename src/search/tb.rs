@@ -85,7 +85,14 @@ impl Searcher {
             let Some(mv) = board.legal_move(pv[kept]) else {
                 break;
             };
-            if let Some(ranking) = syzygy::rank_root_moves(&board, rule50, false) {
+            if let Some(ranking) = syzygy::rank_root_moves(
+                &board,
+                syzygy::RootRankOptions {
+                    use_rule50: rule50,
+                    rank_dtz: false,
+                    max_pieces: self.tb_probe_limit(),
+                },
+            ) {
                 let best = ranking.moves[0].rank;
                 if ranking
                     .moves
@@ -113,7 +120,14 @@ impl Searcher {
         }
         pv.truncate(kept);
         while pv.len() < 4 * MAX_PLY && !board.is_arbiter_draw(rule50) && !out_of_time() {
-            let Some(ranking) = syzygy::rank_root_moves(&board, rule50, true) else {
+            let Some(ranking) = syzygy::rank_root_moves(
+                &board,
+                syzygy::RootRankOptions {
+                    use_rule50: rule50,
+                    rank_dtz: true,
+                    max_pieces: self.tb_probe_limit(),
+                },
+            ) else {
                 break;
             };
             if !ranking.dtz {
@@ -166,7 +180,14 @@ impl Searcher {
         {
             return None;
         }
-        let ranking = syzygy::rank_root_moves(board, self.shared.syzygy.fifty_move_rule, false)?;
+        let ranking = syzygy::rank_root_moves(
+            board,
+            syzygy::RootRankOptions {
+                use_rule50: self.shared.syzygy.fifty_move_rule,
+                rank_dtz: false,
+                max_pieces: self.tb_probe_limit(),
+            },
+        )?;
         self.record_tb_hit();
         let rank_of = |mv: Move| {
             ranking
@@ -265,6 +286,13 @@ impl Searcher {
         Some((score, bound))
     }
 
+    /// Loaded table size capped by `SyzygyProbeLimit`: the cardinality the
+    /// root and PV extension may read, independent of `shared.syzygy.largest`,
+    /// which `apply_tb_root` zeroes to stop in-search probes at a DTZ root.
+    pub(super) fn tb_probe_limit(&self) -> usize {
+        syzygy::largest().min(self.shared.syzygy.probe_limit)
+    }
+
     fn can_probe_syzygy(&self, board: &Board, depth: i32) -> bool {
         self.shared.syzygy.largest > 0
             && depth >= self.shared.syzygy.probe_depth
@@ -273,9 +301,8 @@ impl Searcher {
     }
 
     fn can_probe_syzygy_root(&self, board: &Board) -> bool {
-        self.shared.syzygy.largest > 0
-            && board.castling().0 == 0
-            && board.occupied_count() as usize <= self.shared.syzygy.largest
+        let limit = self.tb_probe_limit();
+        limit > 0 && board.castling().0 == 0 && board.occupied_count() as usize <= limit
     }
 
     fn score_from_syzygy_wdl(&self, wdl: Wdl, ply: usize) -> i32 {

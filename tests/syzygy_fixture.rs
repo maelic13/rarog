@@ -39,7 +39,7 @@ fn search(fen: &str, configure: impl FnOnce(&mut SearchOptions)) -> (Vec<String>
     options.engine.syzygy.path = fixture_path();
     configure(&mut options);
     searcher.configure(&options.engine, rarog::search::options::HashRequest::Sent);
-    assert_eq!(syzygy::largest(), 3, "the fixture holds 3-man tables");
+    assert_eq!(syzygy::largest(), 4, "the fixture holds up to 4-man tables");
     let result = searcher.search(board, &options, true, || SearchEvent::None);
     let raw = output.lock().expect("recorder lock").clone();
     (raw, result.bestmove, result.pondermove)
@@ -97,6 +97,7 @@ fn fixture_tablebase_root_probes_display_and_extension() {
     a_capture_into_the_tables_is_scored_through_in_search_probes();
     a_best_group_of_one_is_searched_to_the_requested_depth();
     multi_threaded_multipv_reports_distinct_legal_lines();
+    syzygy_probe_limit_caps_root_and_extension_below_loaded_tables();
 }
 
 /// KQ v K, white to move: a DTZ-best move, a ponder move, `cp 20000` at a
@@ -244,6 +245,64 @@ fn multi_threaded_multipv_reports_distinct_legal_lines() {
             .all(|mv| winning.iter().any(|w| w.to_string() == *mv))
     );
     assert!(firsts.contains(&bestmove.to_string()));
+}
+
+/// PROTO-9: the fixture loads up to 4-man tables (`KRvKR`), yet lowering
+/// `SyzygyProbeLimit` to 3 keeps root ranking and in-search probing off 4-man
+/// positions, while still extending once the line enters 3-man `KRvK`; limit 0
+/// disables probing and extension completely.
+fn syzygy_probe_limit_caps_root_and_extension_below_loaded_tables() {
+    let fen = "4k2r/8/8/8/8/8/8/R3K3 w - - 0 1";
+
+    let (raw_4, best_4, _) = search(fen, |o| {
+        o.limits.depth = Some(4);
+        o.engine.syzygy.probe_limit = 4;
+    });
+    assert_eq!(best_4.to_string(), "a1a8", "{raw_4:#?}");
+    let line_4 = last_pv_line(&raw_4);
+    assert_eq!(score_of(line_4), "cp 20000", "{line_4}");
+    assert!(line_4.contains(" tbhits 1 "), "{line_4}");
+    let (end_4, _) = play_pv(fen, line_4);
+    assert!(
+        end_4.is_in_check() && end_4.generate_legal_moves().is_empty(),
+        "{line_4}"
+    );
+
+    let (raw_3, best_3, _) = search(fen, |o| {
+        o.limits.depth = Some(5);
+        o.engine.syzygy.probe_limit = 3;
+    });
+    assert_eq!(best_3.to_string(), "a1a8", "{raw_3:#?}");
+    let line_3 = last_pv_line(&raw_3);
+    assert_ne!(
+        score_of(line_3),
+        "cp 20000",
+        "4-man root must not be DTZ-ranked at limit 3: {line_3}"
+    );
+    let cp_3: i32 = score_of(line_3)
+        .strip_prefix("cp ")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or_else(|| panic!("expected TB centipawn score from 3-man hit: {line_3}"));
+    assert!(
+        (19_900..20_000).contains(&cp_3),
+        "expected in-search 3-man TB win below root 20000: {line_3}"
+    );
+    let (end_3, _) = play_pv(fen, line_3);
+    assert!(
+        end_3.is_in_check() && end_3.generate_legal_moves().is_empty(),
+        "3-man extension still finishes at mate: {line_3}"
+    );
+
+    let (raw_0, _, _) = search(fen, |o| {
+        o.limits.depth = Some(4);
+        o.engine.syzygy.probe_limit = 0;
+    });
+    let line_0 = last_pv_line(&raw_0);
+    assert!(line_0.contains(" tbhits 0 "), "{line_0}");
+    assert!(
+        score_of(line_0) != "cp 20000",
+        "limit 0 must not score as tablebase root: {line_0}"
+    );
 }
 
 /// `stop` or `ponderhit` written with `go ponder` in one write at a tablebase
