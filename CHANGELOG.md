@@ -44,6 +44,12 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   small for even the shortest search, the engine played its first legal
   move and reported being mated; it now finishes that search first, and
   never reports a score it did not find.
+- **An empty `SyzygyPath` can now be reloaded.** Setting `SyzygyPath` to a
+  folder that holds no tablebase files no longer stops the same path from
+  loading tables later in the session once files appear there.
+- **Non-ASCII tablebase folders open on Windows.** Setting `SyzygyPath` to
+  a directory whose path uses characters outside the Windows ANSI code
+  page now loads the tables cleanly instead of failing to open them.
 
 ## [2.7.0] - 2026-11-13
 

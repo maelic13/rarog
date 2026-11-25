@@ -260,3 +260,17 @@ records, found these. They are corrected above:
 - The post-probe poll was missing.
 - `tb_activation.py`'s budget formula is stale.
 - `configure`'s re-send of every option was not noted.
+- Implementing PROTO-10's `go movetime` start rule found a contradiction in
+  the plan above. Applying `movetime - 10 * Move Overhead` inside
+  `Budget::tb_extension` broke the existing unit contract in
+  `src/search/time/tests.rs`
+  (`the_tablebase_extension_is_unbounded_without_a_clock_and_boxed_under_movetime`),
+  whose comment states that `go movetime` names no clock to protect and
+  requires the 100 ms `movetime(100)` case (with default 10 ms overhead) to
+  return `Boxed(5.0)` rather than `Skip`. Moreover, in `go movetime T`
+  mode both `optimum_ms` and `maximum_ms` equal `T`, so stopping within
+  `T - 10 * overhead` prevents the extension for any move near the normal
+  deadline. That sub-item was reverted and held for a maintainer decision;
+  the other six D.9.1 repairs (PROTO-9, PROTO-14, PROTO-12, A4, PROTO-15,
+  and PROTO-24 with `vendor/fathom/patches/01-utf8-windows-open.patch`)
+  landed on `d9`.
