@@ -5,15 +5,20 @@ Drives each engine through `go depth N` on every position, one fresh process
 per position, so no hash, history or table state carries from one root to the
 next. Every engine gets `Threads 1`, `Hash 64` and the given `SyzygyPath`, and
 the run stops if the engine does not report the tables loaded. From the last
-`info depth` line it records nodes, `tbhits` and the score, and classes the
-score as a tablebase or mate win, a loss, or neither.
+`info depth` line it records nodes, `tbhits`, the depth reached and the score,
+and classes the score as a tablebase or mate win, a loss, or neither.
 
 Usage:
   python tools/diag/tb_probe_read.py --epd FILE --men 7,8 --per-count 16 \
       --depth 16 --syzygy DIR --out out.json NAME=ENGINE.exe [NAME=ENGINE.exe]
 
 Positions are the first `--per-count` lines of the EPD with each listed number
-of men, in file order. The summary compares every engine with the first one.
+of men, in file order, indexed from 0; `--only` or `--skip` keep or drop
+indices. `--max-nodes` adds a node cap (`go depth N nodes M`), so a root whose
+tree explodes ends instead of hanging; it is then recorded as not reaching the
+depth. The summary totals the roots that every engine searched to the depth,
+compares every engine with the first one, and lists the roots that any engine
+left short.
 """
 
 import argparse
@@ -47,6 +52,10 @@ def pick(epd: Path, counts: list[int], per_count: int) -> list[str]:
     return [fen for n in counts for fen in chosen[n]]
 
 
+def indices(text: str | None) -> set[int]:
+    return {int(i) for i in text.split(",")} if text else set()
+
+
 def score_class(kind: str, value: int) -> str:
     if kind == "mate":
         return "win" if value > 0 else "loss"
@@ -57,7 +66,7 @@ def score_class(kind: str, value: int) -> str:
     return "none"
 
 
-def search(exe: str, fen: str, depth: int, syzygy: str) -> dict:
+def search(exe: str, fen: str, depth: int, max_nodes: int, syzygy: str) -> dict:
     proc = subprocess.Popen(
         [exe], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1
     )
@@ -85,7 +94,7 @@ def search(exe: str, fen: str, depth: int, syzygy: str) -> dict:
         raise RuntimeError(f"{exe} did not report loading tables: {ready}")
     send("ucinewgame")
     send(f"position fen {fen}")
-    send(f"go depth {depth}")
+    send(f"go depth {depth}" + (f" nodes {max_nodes}" if max_nodes else ""))
     lines = read_until("bestmove")
     send("quit")
     proc.wait(timeout=30)
@@ -93,14 +102,13 @@ def search(exe: str, fen: str, depth: int, syzygy: str) -> dict:
     assert infos, f"no info line for {fen}"
     last = infos[-1]
     m = re.search(r" score (cp|mate) (-?\d+)", last)
-    nodes = int(re.search(r" nodes (\d+)", last).group(1))
-    tbhits = int(re.search(r" tbhits (\d+)", last).group(1))
     reached = int(re.search(r"^info depth (\d+)", last).group(1))
-    assert reached == depth, f"stopped at depth {reached} for {fen}"
     return {
         "fen": fen,
-        "nodes": nodes,
-        "tbhits": tbhits,
+        "depth": reached,
+        "complete": reached == depth,
+        "nodes": int(re.search(r" nodes (\d+)", last).group(1)),
+        "tbhits": int(re.search(r" tbhits (\d+)", last).group(1)),
         "score": f"{m.group(1)} {m.group(2)}",
         "class": score_class(m.group(1), int(m.group(2))),
         "bestmove": lines[-1].split()[1],
@@ -113,41 +121,58 @@ def main() -> int:
     ap.add_argument("--men", required=True)
     ap.add_argument("--per-count", required=True, type=int)
     ap.add_argument("--depth", required=True, type=int)
+    ap.add_argument("--max-nodes", type=int, default=0)
+    ap.add_argument("--only")
+    ap.add_argument("--skip")
     ap.add_argument("--syzygy", required=True)
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("engines", nargs="+")
     args = ap.parse_args()
 
     fens = pick(args.epd, [int(n) for n in args.men.split(",")], args.per_count)
+    only, skip = indices(args.only), indices(args.skip)
+    roots = [
+        (i, fen) for i, fen in enumerate(fens) if (not only or i in only) and i not in skip
+    ]
+    assert roots, "no roots selected"
     engines = [
         (name, str(Path(exe).resolve(strict=True)))
         for name, exe in (spec.split("=", 1) for spec in args.engines)
     ]
     results = {
-        name: [search(exe, fen, args.depth, args.syzygy) for fen in fens]
+        name: [
+            {"index": i} | search(exe, fen, args.depth, args.max_nodes, args.syzygy)
+            for i, fen in roots
+        ]
         for name, exe in engines
+    }
+    complete = [
+        k for k in range(len(roots)) if all(rows[k]["complete"] for rows in results.values())
+    ]
+    short = {
+        name: [rows[k]["index"] for k in range(len(roots)) if not rows[k]["complete"]]
+        for name, rows in results.items()
     }
     base_name = engines[0][0]
     base = results[base_name]
-    summary = {}
+    summary = {"roots": len(roots), "complete_in_all": len(complete), "short": short}
+    base_nodes = sum(base[k]["nodes"] for k in complete)
+    base_hits = sum(base[k]["tbhits"] for k in complete)
     for name, rows in results.items():
-        nodes = sum(r["nodes"] for r in rows)
-        tbhits = sum(r["tbhits"] for r in rows)
-        summary[name] = {"nodes": nodes, "tbhits": tbhits}
+        nodes = sum(rows[k]["nodes"] for k in complete)
+        tbhits = sum(rows[k]["tbhits"] for k in complete)
+        entry = {"nodes": nodes, "tbhits": tbhits}
         if name != base_name:
-            base_nodes = sum(r["nodes"] for r in base)
-            base_hits = sum(r["tbhits"] for r in base)
-            summary[name]["nodes_change"] = nodes / base_nodes - 1
-            summary[name]["tbhits_change"] = tbhits / base_hits - 1 if base_hits else None
-            summary[name]["class_changes"] = [
-                {"fen": b["fen"], "from": b["class"], "to": r["class"]}
+            entry["nodes_change"] = nodes / base_nodes - 1 if base_nodes else None
+            entry["tbhits_change"] = tbhits / base_hits - 1 if base_hits else None
+            entry["class_changes"] = [
+                {"index": b["index"], "fen": b["fen"], "from": b["class"], "to": r["class"]}
                 for b, r in zip(base, rows)
                 if b["class"] != r["class"]
             ]
-    args.out.write_text(
-        json.dumps({"args": vars(args) | {"epd": str(args.epd), "out": str(args.out)},
-                    "results": results, "summary": summary}, indent=1)
-    )
+        summary[name] = entry
+    record = {"args": vars(args) | {"epd": str(args.epd), "out": str(args.out)}}
+    args.out.write_text(json.dumps(record | {"results": results, "summary": summary}, indent=1))
     json.dump(summary, sys.stdout, indent=1)
     print()
     return 0
