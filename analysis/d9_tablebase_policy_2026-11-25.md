@@ -373,6 +373,127 @@ Then repeat with in-search probes off (`SyzygyProbeDepth` above the
 depth) and the root's tables still loaded. That separates the probe from
 the scores it leaves behind.
 
+## D.9.3's diagnosis, 2026-11-25
+
+Research on the explosion above, zero games. Every number is a node count
+or a counter of a single-thread search at a fixed depth and node cap, so
+it is deterministic and the host's load does not enter it.
+
+### Where the nodes are
+
+The instrument is a `diag` build of the tree at `546adc4` with counters
+added for this read only (`instrument_d93.py` beside the outputs; never
+committed). `bench 13` reads 3,694,298 / EBF 2.324 with them, and the
+searches below print the baseline's node counts line by line, so they
+observe and change nothing. The binary is `diag_tbx.exe`, SHA-256
+`1ed64375168263e13479cf42ec390d244070145eeb20e537e3a1d3c6e9ee5234`, under
+`analysis/artifacts/d93-2026-11-25/` with the traces.
+
+    python analysis/artifacts/d93-2026-11-25/uci_trace.py --exe analysis/artifacts/d93-2026-11-25/diag_tbx.exe --fen "8/6P1/8/3b3P/5B2/3k1pK1/2p5/8 b - - 0 1" --go "depth 18 nodes 30000000" --syzygy D:/chess/tablebases/syzygy3456 --out analysis/artifacts/d93-2026-11-25/r26_tb_d18_diag.txt
+    python analysis/artifacts/d93-2026-11-25/uci_trace.py --exe analysis/artifacts/d93-2026-11-25/diag_tbx.exe --fen "8/8/P5bP/6B1/1K1p4/3k4/2p5/8 b - - 0 1" --go "depth 16 nodes 30000000" --syzygy D:/chess/tablebases/syzygy3456 --out analysis/artifacts/d93-2026-11-25/r30_tb_d16_diag.txt
+
+Both exited 0. An interior node is one entry to the node function past
+the probe; "inside the tables" means six men or fewer.
+
+| Counter, whole search to the 30M cap | Root 26, depth 18 | Root 30, depth 16 |
+|---|---|---|
+| Interior nodes | 24,652,416 | 22,962,746 |
+| of them inside the tables | 24,287,016 (98.5%) | 22,251,824 (96.9%) |
+| of them at a PV node | 204 | 111 |
+| Quiescence nodes, and inside the tables | 4,604,650, 4,494,896 | 5,951,282, 5,718,498 |
+| In-search probes answered | 1,993,308 | 1,983,003 |
+| A win that reached beta, a loss at or below alpha, a draw: returned | 50,022, 524,485, 117,947 | 56,439, 592,225, 95,407 |
+| A win below beta or a loss above alpha, off the PV: searched on | 109,673, 1,191,124 | 112,938, 1,125,941 |
+| Floor, cap (PV nodes) | 20, 37 | 17, 36 |
+| Table cutoffs taken inside the tables | 7,004,886 | 5,973,668 |
+| Mean depth left at an interior node inside the tables | 5.06 | 4.87 |
+
+- Root 26 scores a tablebase win (`cp 19987`, the win 13 plies from the
+  root) at depths 16 and 17. Depth 18 opens one window, −30,002 to
+  +32,001, and that one search does not return in 29.5M nodes. Root 30's
+  depths 14 and 15 end on −724 and −849 after thirteen windows each,
+  which swing between that score and the loss band, for 4,899 and 6,058
+  nodes; depth 16's fifth window, −31,942 to −19,873, does not return.
+- So the explosion is one search, not a window that keeps failing, and
+  the floor and the cap act at a few dozen nodes. The record's first
+  candidate is refuted as the cost. The window's swings on root 30 are
+  real and cheap.
+- Almost every node is a position the tables already decide. The search
+  gets there below a probe that did not end its node: 65% of the answered
+  probes are a win below beta or a loss above alpha, which only a window
+  inside the tablebase band can produce, since a tablebase score is
+  `TB_VALUE − ply` and a win found deeper than the window's own win is
+  below its beta. Under the rule-50 option the next quiet move leaves a
+  position no probe may answer (the counter is not zero), so the
+  six-man position is searched as any other.
+- Stockfish 19 on root 26 with the same tables reads the win at depth 17
+  and reaches depth 27 at 581,720 nodes and depth 40 at 12,038,944
+  (`r26_sf19_tb.txt`). It is a prior only: the donor's design, which has
+  the same probe, verdict and counter rule, does not have to explode.
+
+### What differs from Stockfish, read in the source
+
+Two things on this path, and a third at the root.
+- **The table keeps a tablebase score as stored** (`tt.rs`,
+  `score_to_tt`): a win probed 9 plies from the root reads back as
+  `TB_VALUE − 9` at a node 15 plies from it, where a fresh probe says
+  `TB_VALUE − 15`. Stockfish stores every decisive score by its distance
+  from the node. B.5.2 recorded this as open, "a tablebase value's
+  distance in the table is path-relative", after its own change read
+  11,189,746 on the classic kernel's bench: there ProbCut and a
+  fail-hard quiescence wrote window bounds into the band without tables.
+  Whether the compact kernel still does is unread.
+- **Late-move pruning is off at a winning beta** (`lmp_prunes`,
+  `!is_win(beta)`); Stockfish's has no such guard. Reverse futility and
+  the null move are off at a losing beta in both.
+- At the root a fail low keeps the depth reduction earlier fail highs
+  built (`window_fail_low`), where Stockfish's resets its count. Root
+  30's "depth 15" score of −849 comes from a search at depth 7. Noted,
+  not part of this read: whether the kernel's own donor resets it was
+  not checked.
+
+### The separating read, registered before any variant ran
+
+Three one-rule variants of the same tree, each a `diag` build with the
+counters above, none a candidate for the tree as built:
+- **V1, the band by ply in the table:** `score_to_tt` and `score_from_tt`
+  move a score at or beyond `±TB_WIN_SCORE` by ply, as they move a mate;
+  the rule-50 horizon stays on mates alone.
+- **V2, an undecided probe ends its node off the PV:** `tb_verdict`
+  returns `Return` where it returns `Search`.
+- **V3, late-move pruning at a winning beta:** `lmp_prunes` without
+  `!is_win(beta)`.
+
+The read: `tools/diag/tb_probe_read.py` with the D.9.2 read's settings on
+roots 26, 30 and 11, `--depth 20 --max-nodes 30000000`, the tree as built
+and the three variants; then the counters on roots 26 and 30 for each
+variant; then `bench 13` for each variant.
+
+Frozen predictions, 2026-11-25:
+- The tree as built leaves roots 26 and 30 short and finishes root 11
+  (1,903,586 nodes at D.9.1's close).
+- V1 finishes all three roots at depth 20 inside the cap, and the share
+  of interior nodes inside the tables falls below a half. Confidence
+  about 0.6. If it holds, the path-relative distance is the cause: the
+  probe and the table disagree about the same position, so a window in
+  the band is cut on distances that are not the node's.
+- V2 finishes all three, confidence 0.9. It is the accounting check:
+  every interior node inside the tables lies below an undecided probe.
+- V3 alone leaves root 26 or root 30 short, confidence 0.65.
+- `bench 13`: V2 reproduces 3,694,298 exactly, since nothing probes
+  without tables. V1 and V3 each change it, confidence 0.6 each: the
+  band holds mates' neighbours and window bounds without tables.
+
+Falsifiers:
+- The path-relative distance is refuted as the cause if V1 leaves root
+  26 or root 30 short of depth 20.
+- The pruning guard is refuted as sufficient if V3 leaves one short,
+  and as necessary if V1 finishes both.
+- The accounting is refuted if V2 leaves one short: then nodes inside
+  the tables are reached some other way, and the diagnosis restarts.
+- If V1 and V3 each fail and V2 holds, one more variant is allowed, V1
+  with V3; nothing else is added after results are seen.
+
 ## Corrections, the same day
 
 A second review of D.9 (2026-11-25), checked against the code and the
