@@ -260,6 +260,29 @@ depth at the defaults are Stockfish's. Two implementation steps are ready.
    18). Fixed depth has no clock, so the post-probe poll is not read
    here; its contract is a unit test.
 
+   **Amended 2026-11-25, before the candidate build ran.** The registered
+   read stopped by its own rule on the baseline alone: two roots never
+   reach depth 20.
+   - Root 26 (`8/6P1/8/3b3P/5B2/3k1pK1/2p5/8 b - - 0 1`) reaches depth 17
+     at 484,662 nodes, scoring a tablebase win, and its depth-18
+     iteration was still unfinished at 30M nodes (11.6 s, about 2.6M
+     nodes a second, so the speed is normal and the tree explodes).
+     Without tables it finishes depth 18 at 3.2M nodes.
+   - Root 30 (`8/8/P5bP/6B1/1K1p4/3k4/2p5/8 b - - 0 1`) reaches depth 15
+     at 857,473 nodes, scoring −849, and does not finish depth 16 within
+     30 s.
+   - The build of the tree before D.9.1 (03049a2) behaves the same, so
+     the explosion is older than D.9.1 and D.9.2. It is a finding of its
+     own; see *A search explosion with tables* below.
+
+   The amended read keeps the instrument, the roots and the prediction:
+   - every search is capped at 100M nodes (`--max-nodes`), so a root
+     ends instead of hanging;
+   - primary: the 46 other roots at depth 20. The prediction and the
+     falsifier are read on their totals, and a primary root that the
+     new build leaves short of depth 20 counts as a changed result;
+   - secondary, reported only: roots 26 and 30 at depth 15.
+
 One recommendation outside D.9, for the maintainer: the release
 qualification (E.1, E.3.4) could carry RAR-S93's with-tables activation
 read. That is 1,500 games on the endgame cohort, about two minutes. It
