@@ -767,6 +767,99 @@ qualification that adopts tables.
 - At the close: D.9's parent marked, the board regenerated, and `d9`'s
   pull request, which is the maintainer's.
 
+## D.9.3's rule table, 2026-11-25
+
+Step 1 of *D.9 from here*, zero runs. Every rule of the compact kernel that
+reads a decisive score, or that acts at a node in check before the moves,
+beside Stockfish's form of it. Stockfish is read at the `sf_19` tag, the
+release whose binary passed the three roots (`src/search.cpp` there), in
+the order the census points: the node off the PV with a decisive beta, the
+node in check, quiescence.
+
+| Rule | Rarog | Stockfish 19 | Differs |
+|---|---|---|---|
+| Mate distance bounds | `node.rs:141` | 797–798 | no |
+| In-search probe and its verdict | `node.rs:155`, `tb_verdict` | 923–972 | no |
+| TT cutoff | `rules.rs:1313`, refuses at a counter of 90 | 893, refuses at 96 | the counter only |
+| Razoring | `rules.rs:1412`: not in check, **`alpha < 827`**, the TT move not quiet, no lower bound | 991: no guard but the PV | **yes, W1** |
+| Reverse futility | `rules.rs:1461`: `!is_loss(beta)`, `!is_win(estimate)` | 996: `!is_loss(beta)`, `!is_win(eval)` | no |
+| Null move, gate and result | `rules.rs:1512`, `:1576`: `!is_loss(beta)`; a decisive result fails | 1011: `beta >= -2000`; a win does not return | no in a band window |
+| Everything before the moves, in check | razoring, reverse futility and the null move ask `!in_check`; **ProbCut does not**, and in check its `eval` is `VALUE_NONE` (32,002), so its "`eval >= beta`" holds with no stored score, and its SEE bar, `probcut_beta − eval`, admits every capture | 975: `goto moves_loop` | **yes, W2** |
+| ProbCut's gate | `rules.rs:1619`: **`!is_win(beta)`**, so it runs at a losing beta | 1058: `!is_decisive(beta)`, `depth >= 3` | **yes, W3** |
+| ProbCut's value | `rules.rs:1668`: a decisive score returns | 1092: stored, not returned | yes; Rarog prunes more, no variant |
+| Small ProbCut | absent | 1100–1103: `!is_decisive(beta)` | off in a band window anyway |
+| The move loop's pruning gate | `node.rs:790`: `!is_loss(best_score)` | 1166: the same, with non-pawn material | no in a band window |
+| Late-move pruning | `rules.rs:1833`: `!is_win(beta)` | none | yes, V3 (read) |
+| Quiet futility and its value | `rules.rs:1862`, `node.rs:849`: `!is_decisive(best_score)` | 1218–1221: the same, with `!is_win(futilityValue)` | no |
+| SEE and history pruning | not in check | SEE also in check | Rarog prunes less in check, only where the gate is open |
+| Singular extension, multi-cut | `rules.rs:1684`, `:1767`: `!is_decisive` | 1247, 1277: the same; singular off under `seekMate` | no |
+| Late-move reduction at a winning beta | `rules.rs:1992`: one ply more | none | yes; Rarog reduces more, no variant |
+| Late-move reduction, alpha's gap to the estimate | `rules.rs:1996`: no guard, clamped to −0.21 and +0.30 of a ply; in check the estimate is `VALUE_NONE`, so the gap is at its floor | 1354: `!is_decisive(alpha)`; in check `eval` is the static evaluation two plies back | **yes, W4** |
+| Quiescence: the TT, stand pat, softening, pruning | `rules.rs:2286`–`2323`, `quiescence.rs:115`–`120`: `!is_decisive` at PV nodes, `best_score > −TB_WIN_SCORE` | 1733, 1787–1790, 1871: the same forms | no |
+| Root fail high | `rules.rs:2430`: reduction held at 1 on a decisive score | resets per window | not in a node |
+
+**Reading.** Four differences can widen a search in a band window, and
+three of them are new:
+- **W1, razoring's alpha limit.** A node off the PV with a winning beta
+  has alpha in the win band, far above any evaluation. Stockfish razors
+  it to quiescence at every depth where `eval < alpha − 482·depth²`, which
+  at a band alpha is every depth up to about six. Rarog never razors it,
+  because alpha is above 827. Such nodes are the children of every
+  loss-band node, whose moves the census counts as searched with the gate
+  closed; under V2 with V3 they carry 13.7M of root 30's moves.
+- **W2, ProbCut in check.** At an expected cut node in check without a
+  stored score, Rarog searches every legal capture to quiescence and then
+  at reduced depth before the moves. Stockfish skips this. Of the
+  loss-band moves under V2 with V3, 79% are at nodes in check.
+- **W3, ProbCut at a losing beta.** A stored ordinary score clears a
+  loss-band `probcut_beta`, so the gate opens and every capture is
+  searched against a window in the band.
+- **W4, the alpha-gap reduction at a decisive alpha and in check.** It is
+  a fifth of a ply at most, so it is the least likely of the four.
+
+The frozen prediction of step 1 (at least one difference beyond V3's,
+0.7) holds: there are four.
+
+## D.9.3's second variant read, registered 2026-11-25 before it ran
+
+Step 2 of *D.9 from here*. One variant per difference, each the form
+Stockfish has, and their union, registered together before any is built:
+- **W1:** `razors` without `alpha < razor_alpha_limit`.
+- **W2:** `probcut_gate` false in check.
+- **W3:** `probcut_gate` with `!is_decisive(beta)` for `!is_win(beta)`.
+- **W4:** the alpha-gap term of `late_move_reduction` zero at a decisive
+  alpha.
+- **WU:** W1 to W4 with V3.
+
+Each is a `diag` build of an exported copy of `546adc4` with the counters
+and the census, built by this read's copy of `build_variants.sh` and
+`variant_d93.py`, never committed. The read is the first one's:
+`tools/diag/tb_probe_read.py` on roots 26, 30 and 11 at depth 20 with a
+30M cap, against the census baseline `v0c.exe`; then `counters.py` on the
+three roots for each variant; then `bench 13` for each variant.
+
+Frozen predictions:
+- W1 finishes root 26, 0.7, and all three roots, 0.4. Its `bench 13`
+  changes, 0.85, since alphas above 827 occur without tables.
+- W2 finishes all three, 0.1. It changes `bench 13`, 0.8.
+- W3 finishes all three, 0.1. Its `bench 13` is exact, 0.55, since a
+  losing beta needs a mate in view without tables.
+- W4 finishes all three, 0.05. Its `bench 13` changes, 0.5.
+- WU finishes all three, 0.55. Its `bench 13` changes: V3 alone does.
+- Under W1, the moves searched at win-band nodes off the PV fall by more
+  than half on root 30, 0.6.
+
+Falsifiers and the stop rule, from *D.9 from here*, applied as written:
+- If no variant, WU included, finishes all three roots, the width is not
+  in these rules. D.9.3 then closes `NO_CHANGE` on the record's triggers,
+  with no third round.
+- If a variant that leaves `bench 13` exact finishes all three, it is a
+  repair of case 1 and its registration is written, with D.9.2's read on
+  all 48 roots as its activation and correctness read.
+- If only variants that change `bench 13` finish all three, the smallest
+  such set goes to the maintainer as a gate to decide, registered on its
+  own. The finding stands either way; no game is played here.
+
 ## Corrections, the same day
 
 A second review of D.9 (2026-11-25), checked against the code and the
