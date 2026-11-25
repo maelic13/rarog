@@ -12,7 +12,7 @@ use std::sync::{Arc, mpsc};
 
 use crate::engine_command::{EngineCommand, EngineCommandQueue, EngineControl};
 use crate::infra::{capitalize_first_letter, flush_stdout};
-use crate::search::options::{HashRequest, SearchOptions};
+use crate::search::options::{HashRequest, SearchOptions, SyzygyPathRequest};
 use crate::tools::bench::DEFAULT_BENCH_DEPTH;
 use crate::tools::wac::DEFAULT_WAC_DEPTH;
 use go::GoRequest;
@@ -212,9 +212,10 @@ impl UciProtocol {
     /// A rejected value changes nothing, so it queues nothing. Only a `Hash`
     /// the GUI sends asks the engine thread for a table.
     fn set_option(&mut self, args: &[String]) {
-        let hash = match options::apply(&mut self.search_options.engine, args) {
-            OptionUpdate::HashApplied => HashRequest::Sent,
-            OptionUpdate::Applied => HashRequest::NotSent,
+        let (hash, syzygy_path) = match options::apply(&mut self.search_options.engine, args) {
+            OptionUpdate::HashApplied => (HashRequest::Sent, SyzygyPathRequest::NotSent),
+            OptionUpdate::SyzygyPathApplied => (HashRequest::NotSent, SyzygyPathRequest::Sent),
+            OptionUpdate::Applied => (HashRequest::NotSent, SyzygyPathRequest::NotSent),
             OptionUpdate::ClearHash => {
                 self.commands.push(EngineCommand::ClearHash);
                 return;
@@ -231,6 +232,7 @@ impl UciProtocol {
         self.commands.push(EngineCommand::Configure {
             options: self.search_options.engine.clone(),
             hash,
+            syzygy_path,
         });
     }
 

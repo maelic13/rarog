@@ -54,6 +54,9 @@ pub(super) struct SearchShared {
     /// The `LargePages` value this searcher's tables were allocated under.
     pub(super) large_pages: bool,
     pub(super) syzygy: SyzygySettings,
+    /// The last `SyzygyPath` string applied by `configure_with`, whether or not
+    /// it loaded tables, so unrelated `setoption` commands do not retry it.
+    pub(super) last_syzygy_path: String,
     /// Threads in the current search. At `1` every pool gate is closed, which
     /// is what keeps a single-thread search deterministic.
     pub(super) threads: usize,
@@ -73,6 +76,7 @@ impl SearchShared {
             hash_mb: 64,
             large_pages: true,
             syzygy: SyzygySettings::default(),
+            last_syzygy_path: String::new(),
             threads: 1,
             context: Arc::new(SharedContext::new(0, 0, 1)),
         }

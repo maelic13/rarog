@@ -19,6 +19,9 @@ pub enum OptionUpdate {
     /// `Hash` took the value: the engine thread must try the table, and say
     /// so if it cannot have it, however often the same value is sent.
     HashApplied,
+    /// `SyzygyPath` took the value: the engine thread must try loading it even
+    /// if the text matches an earlier path that loaded no tables.
+    SyzygyPathApplied,
     /// The `Clear Hash` button: nothing to store, one action to run.
     ClearHash,
     /// A recognised option whose value was not taken; the setting is
@@ -297,6 +300,7 @@ pub fn apply(engine: &mut EngineOptions, args: &[String]) -> OptionUpdate {
     };
     match taken {
         Ok(()) if option.name == "Hash" => OptionUpdate::HashApplied,
+        Ok(()) if option.name == "SyzygyPath" => OptionUpdate::SyzygyPathApplied,
         Ok(()) => OptionUpdate::Applied,
         Err(Refusal::Unreadable) => OptionUpdate::Rejected {
             notice: format!("Invalid {} value.", option.name),

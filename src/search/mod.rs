@@ -44,6 +44,7 @@ use crate::infra;
 use crate::score::{INF_SCORE, MATE_BOUND, MATE_SCORE, MAX_PLY, TB_VALUE, TB_WIN_SCORE};
 use crate::search::options::{
     BOUND_LINES_FROM_NODES, EngineOptions, HashRequest, MAX_THREADS, SearchLimits, SearchOptions,
+    SyzygyPathRequest,
 };
 use crate::syzygy::{self, Wdl};
 use crate::tt::TranspositionTable;
@@ -377,6 +378,15 @@ impl Searcher {
     }
 
     pub fn configure(&mut self, options: &EngineOptions, hash: HashRequest) {
+        self.configure_with(options, hash, SyzygyPathRequest::NotSent);
+    }
+
+    pub(crate) fn configure_with(
+        &mut self,
+        options: &EngineOptions,
+        hash: HashRequest,
+        syzygy_path: SyzygyPathRequest,
+    ) {
         let in_use = self.shared.hash_mb;
         // The option decides each big table's backing when it is allocated,
         // so a change allocates them all again: the helpers with their own,
@@ -414,16 +424,21 @@ impl Searcher {
                 ));
             }
         }
-        let old_path = syzygy::current_path();
-        let largest = syzygy::initialize(&options.syzygy.path);
-        if old_path != options.syzygy.path && !options.syzygy.path.is_empty() {
-            if largest == 0 {
-                self.notice(format_args!("SyzygyPath loaded no usable tablebases."));
-            } else {
-                let (wdl, dtz) = syzygy::tablebase_file_counts(&options.syzygy.path);
-                self.notice(format_args!(
-                    "Found {wdl} WDL and {dtz} DTZ tablebase files (up to {largest}-man)."
-                ));
+        if syzygy_path == SyzygyPathRequest::Sent
+            || options.syzygy.path != self.shared.last_syzygy_path
+        {
+            let old_path = syzygy::current_path();
+            let largest = syzygy::initialize(&options.syzygy.path);
+            self.shared.last_syzygy_path = options.syzygy.path.clone();
+            if old_path != options.syzygy.path && !options.syzygy.path.is_empty() {
+                if largest == 0 {
+                    self.notice(format_args!("SyzygyPath loaded no usable tablebases."));
+                } else {
+                    let (wdl, dtz) = syzygy::tablebase_file_counts(&options.syzygy.path);
+                    self.notice(format_args!(
+                        "Found {wdl} WDL and {dtz} DTZ tablebase files (up to {largest}-man)."
+                    ));
+                }
             }
         }
         let wanted = options.threads.saturating_sub(1);

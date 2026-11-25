@@ -272,7 +272,11 @@ pub fn initialize(path: &str) -> usize {
         tb_init(c_path.as_ptr());
         TB_LARGEST as usize
     };
-    *current_path = path.to_string();
+    if largest > 0 {
+        *current_path = path.to_string();
+    } else {
+        current_path.clear();
+    }
     LARGEST.store(largest, Ordering::Relaxed);
     largest
 }

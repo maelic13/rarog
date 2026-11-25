@@ -182,11 +182,11 @@ fn setoption_and_reset_cover_engine_configuration() {
         &["name", "SyzygyProbeLimit", "value", "5"],
         &["name", "Syzygy50MoveRule", "value", "false"],
     ] {
-        // `Hash` says it is the table's size, so the engine thread tries it.
-        let want = if parts[1] == "Hash" {
-            OptionUpdate::HashApplied
-        } else {
-            OptionUpdate::Applied
+        // `Hash` and `SyzygyPath` ask the engine thread to apply them.
+        let want = match parts[1] {
+            "Hash" => OptionUpdate::HashApplied,
+            "SyzygyPath" => OptionUpdate::SyzygyPathApplied,
+            _ => OptionUpdate::Applied,
         };
         assert_eq!(options::apply(&mut engine, &args(parts)), want, "{parts:?}");
     }
@@ -438,7 +438,7 @@ fn the_empty_placeholder_sets_a_string_option_to_nothing() {
             &mut engine,
             &args(&["name", "SyzygyPath", "value", r"C:\TB\WDL"])
         ),
-        OptionUpdate::Applied
+        OptionUpdate::SyzygyPathApplied
     );
     assert_eq!(engine.syzygy.path, r"C:\TB\WDL");
 
@@ -447,7 +447,7 @@ fn the_empty_placeholder_sets_a_string_option_to_nothing() {
             &mut engine,
             &args(&["name", "SyzygyPath", "value", "<empty>"])
         ),
-        OptionUpdate::Applied
+        OptionUpdate::SyzygyPathApplied
     );
     assert_eq!(
         engine.syzygy.path, "",
@@ -460,7 +460,7 @@ fn the_empty_placeholder_sets_a_string_option_to_nothing() {
             &mut engine,
             &args(&["name", "SyzygyPath", "value", r"C:\<empty>"])
         ),
-        OptionUpdate::Applied
+        OptionUpdate::SyzygyPathApplied
     );
     assert_eq!(engine.syzygy.path, r"C:\<empty>");
 }

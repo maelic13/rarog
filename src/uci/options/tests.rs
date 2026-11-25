@@ -82,10 +82,10 @@ fn every_advertised_default_is_the_engine_s_default() {
             .iter()
             .map(ToString::to_string)
             .collect();
-        let want = if option.name == "Hash" {
-            OptionUpdate::HashApplied
-        } else {
-            OptionUpdate::Applied
+        let want = match option.name {
+            "Hash" => OptionUpdate::HashApplied,
+            "SyzygyPath" => OptionUpdate::SyzygyPathApplied,
+            _ => OptionUpdate::Applied,
         };
         assert_eq!(apply(&mut engine, &args), want, "{}", option.name);
     }

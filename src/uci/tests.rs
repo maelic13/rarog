@@ -121,13 +121,20 @@ fn go_sends_current_position_with_search_parameters() {
 fn setoption_sends_configure_and_clear_hash_sends_its_own_command() {
     let (mut protocol, commands) = protocol_fixture();
     let configured = |command: EngineCommand| match command {
-        EngineCommand::Configure { options, hash } => (options, hash),
+        EngineCommand::Configure {
+            options,
+            hash,
+            syzygy_path,
+        } => (options, hash, syzygy_path),
         _ => panic!("setoption must configure the engine"),
     };
 
     protocol.set_option(&args(&["name", "Hash", "value", "8"]));
-    let (options, hash) = configured(commands.wait_pop());
-    assert_eq!((options.hash_mb, hash), (8, HashRequest::Sent));
+    let (options, hash, syzygy_path) = configured(commands.wait_pop());
+    assert_eq!(
+        (options.hash_mb, hash, syzygy_path),
+        (8, HashRequest::Sent, SyzygyPathRequest::NotSent)
+    );
     // The same value again is still a request: the engine thread tries it.
     protocol.set_option(&args(&["name", "Hash", "value", "8"]));
     assert_eq!(configured(commands.wait_pop()).1, HashRequest::Sent);
@@ -142,15 +149,20 @@ fn setoption_sends_configure_and_clear_hash_sends_its_own_command() {
         "D:\\TB",
         "MixedCase",
     ]));
+    let (options, hash, syzygy_path) = configured(commands.wait_pop());
+    assert_eq!(options.syzygy.path, "D:\\TB MixedCase");
     assert_eq!(
-        configured(commands.wait_pop()).0.syzygy.path,
-        "D:\\TB MixedCase"
+        (hash, syzygy_path),
+        (HashRequest::NotSent, SyzygyPathRequest::Sent)
     );
 
     protocol.set_option(&args(&["name", "Ponder", "value", "true"]));
-    let (options, hash) = configured(commands.wait_pop());
+    let (options, hash, syzygy_path) = configured(commands.wait_pop());
     assert!(options.ponder);
-    assert_eq!(hash, HashRequest::NotSent);
+    assert_eq!(
+        (hash, syzygy_path),
+        (HashRequest::NotSent, SyzygyPathRequest::NotSent)
+    );
 }
 
 #[test]
