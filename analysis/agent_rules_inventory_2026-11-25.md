@@ -22,7 +22,12 @@ change; the rules move on without it.
   24,000 of the old file is on line 375, inside *Gating*: the end of
   *Gating*, then *Documents*, *Sequencing and holds* and *Handing work back*
   were never loaded.
-- The repository configures no other tool: `CLAUDE.md` is the only stub.
+- The supported tools are Claude (the app and Claude Code), Codex,
+  Antigravity and Gemini CLI; nothing is sized or adjusted for any other
+  (maintainer decision 2026-11-25). Gemini CLI reads `GEMINI.md`, which the
+  repository does not have, and its documentation was reported to state no
+  size limit; that page was not read again.
+- `CLAUDE.md` is the only stub in the repository.
   The global rule files on the development machine add nothing to a set
   (Codex's is empty, Antigravity's absent).
 - **The core budget is 18,000 bytes**: three quarters of the smallest limit.
@@ -419,6 +424,11 @@ Asked on the first draft of this split, and carried out in it:
   the maintainer left it, with two sentences added that say whose it is and
   where the agents' copy of the mapping is.
 - Duplicates that make sense to merge are merged (*Method and totals*).
+- Only the supported tools count (*Load limits and the budget*): Windsurf's
+  12,000 characters a rule file, which the core does not fit, calls for
+  nothing, and `check_rules.py` watches the supported tools' files alone.
+- The register budget (item 1 below) is left as it is for now, and items 2,
+  4 and 5 are for later.
 - The comment rule, `CHG-10`, moved to `docs/rules/engine.md`: it binds on
   the engine's code, and the tools' comments, which name ledger rows and
   incidents throughout, are outside it.
@@ -455,10 +465,8 @@ it, with a recommendation.
    depth sweep reversed by an `--all-features` binary. No rule file does, at
    the base commit or now. Not edited: it is a claim about history, not a
    section name.
-6. **Tools with no configuration here.** Windsurf documents 12,000
-   characters a rule file; the core does not fit it. Claude Code advises
-   under 200 lines a `CLAUDE.md`; the core is 243, and Claude Code loads it
-   whole. Neither was acted on.
+6. **Claude Code advises under 200 lines a `CLAUDE.md`.** The core is 243,
+   and Claude Code loads it whole. Not acted on.
 7. **The numbers in `GAT-3f`** (the harm read's threshold and power) are a
    derivation, kept in `docs/rules/gating.md` because a registration must
    state them. Recommendation: keep.
@@ -513,5 +521,4 @@ the core is what covers those.
   24,000 bytes is truncated and no more.
 - How Codex counts `~/.codex/AGENTS.md` against its 32 KiB. The page read
   says the limit is on the combined size; the global file here is empty.
-- Windsurf's figure was reported from its documentation and not read again.
 - The core's size in tokens: unmeasured (see *Load limits and the budget*).

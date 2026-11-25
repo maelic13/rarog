@@ -58,12 +58,13 @@ MODULE_BUDGET = 18_000
 ORIENTATION_BUDGET = 18_000
 REGISTER = "### Active workflow register"
 
-# Files a tool loads by itself, beside or instead of the core.
-STUB_FILES = ("CLAUDE.md", "CLAUDE.local.md", "GEMINI.md", ".cursorrules",
-              ".windsurfrules", ".github/copilot-instructions.md",
-              ".junie/guidelines.md", ".agents/AGENTS.md", ".agents/GEMINI.md")
-STUB_DIRS = (".claude/rules", ".cursor/rules", ".agents/rules", ".agent/rules",
-             ".windsurf/rules", ".github/instructions")
+# Files a supported tool loads by itself, beside or instead of the core. The
+# supported tools are Claude (the app and Claude Code), Codex, Antigravity and
+# Gemini CLI; no other tool's files or limits are provided for (maintainer
+# decision 2026-11-25).
+STUB_FILES = ("CLAUDE.md", "CLAUDE.local.md", "GEMINI.md", ".agents/AGENTS.md",
+              ".agents/GEMINI.md")
+STUB_DIRS = (".claude/rules", ".agents/rules", ".agent/rules")
 NESTED = ("AGENTS.md", "CLAUDE.md", "GEMINI.md")
 
 FENCE = re.compile(r"(?ms)^(```|~~~).*?^\1[^\n]*$")
