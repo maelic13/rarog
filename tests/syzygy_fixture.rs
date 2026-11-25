@@ -98,6 +98,7 @@ fn fixture_tablebase_root_probes_display_and_extension() {
     a_best_group_of_one_is_searched_to_the_requested_depth();
     multi_threaded_multipv_reports_distinct_legal_lines();
     syzygy_probe_limit_caps_root_and_extension_below_loaded_tables();
+    syzygy_probe_depth_gates_only_the_largest_usable_size();
 }
 
 /// KQ v K, white to move: a DTZ-best move, a ponder move, `cp 20000` at a
@@ -302,6 +303,57 @@ fn syzygy_probe_limit_caps_root_and_extension_below_loaded_tables() {
     assert!(
         score_of(line_0) != "cp 20000",
         "limit 0 must not score as tablebase root: {line_0}"
+    );
+}
+
+/// PROTO-14: `SyzygyProbeDepth` gates only probes at the largest usable size
+/// (`pieces == largest`) and is zeroed when `SyzygyProbeLimit` exceeds the
+/// loaded tables (`4` here).
+fn syzygy_probe_depth_gates_only_the_largest_usable_size() {
+    let four_man_fen = "4k3/8/8/8/8/8/3r4/3QK3 w - - 0 1";
+    let (raw_eq, _, _) = search(four_man_fen, |o| {
+        o.limits.depth = Some(5);
+        o.engine.syzygy.probe_limit = 3;
+        o.engine.syzygy.probe_depth = 20;
+    });
+    let line_eq = last_pv_line(&raw_eq);
+    assert!(
+        line_eq.contains(" tbhits 0 "),
+        "pieces == limit (3) below probe_depth 20 must not probe: {line_eq}"
+    );
+
+    let (raw_below, _, _) = search(four_man_fen, |o| {
+        o.limits.depth = Some(5);
+        o.engine.syzygy.probe_limit = 4;
+        o.engine.syzygy.probe_depth = 20;
+    });
+    let line_below = last_pv_line(&raw_below);
+    assert!(
+        !line_below.contains(" tbhits 0 "),
+        "pieces (3) < limit (4) probes regardless of probe_depth 20: {line_below}"
+    );
+
+    let five_man_fen = "4k2r/8/8/8/8/8/1p6/1R2K3 w - - 0 1";
+    let (raw_capped, _, _) = search(five_man_fen, |o| {
+        o.limits.depth = Some(5);
+        o.engine.syzygy.probe_limit = 4;
+        o.engine.syzygy.probe_depth = 20;
+    });
+    let line_capped = last_pv_line(&raw_capped);
+    assert!(
+        line_capped.contains(" tbhits 0 "),
+        "pieces == limit (4) below probe_depth 20 must not probe: {line_capped}"
+    );
+
+    let (raw_above, _, _) = search(five_man_fen, |o| {
+        o.limits.depth = Some(5);
+        o.engine.syzygy.probe_limit = 7;
+        o.engine.syzygy.probe_depth = 20;
+    });
+    let line_above = last_pv_line(&raw_above);
+    assert!(
+        !line_above.contains(" tbhits 0 "),
+        "limit (7) > loaded (4) zeroes probe_depth: {line_above}"
     );
 }
 

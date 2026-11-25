@@ -636,10 +636,18 @@ impl Searcher {
         self.td.stop_on_ponderhit = false;
         self.cfg.limits =
             compute_runtime_limits(limits, engine_options, side_to_move, game_ply, MAX_DEPTH);
-        self.shared.syzygy.probe_depth = engine_options.syzygy.probe_depth;
-        self.shared.syzygy.probe_limit = engine_options.syzygy.probe_limit;
+        let loaded = syzygy::largest();
+        let limit = engine_options.syzygy.probe_limit;
+        self.shared.syzygy.probe_limit = limit;
         self.shared.syzygy.fifty_move_rule = engine_options.syzygy.fifty_move_rule;
         self.shared.syzygy.root = TbRootDecision::default();
+        if limit > loaded {
+            self.shared.syzygy.largest = loaded;
+            self.shared.syzygy.probe_depth = 0;
+        } else {
+            self.shared.syzygy.largest = limit;
+            self.shared.syzygy.probe_depth = engine_options.syzygy.probe_depth;
+        }
         self.cfg.params = engine_options.search_params.clone();
         self.cfg.bound_lines_from_nodes = engine_options.bound_lines_from_nodes;
         self.cfg.show_wdl = engine_options.show_wdl;
@@ -660,7 +668,6 @@ impl Searcher {
         #[cfg(any(feature = "tune", feature = "pricing"))]
         self.td.hist.set_pawn_max(self.seeds().pawn_history_max);
         self.td.nmp_min_ply = 0;
-        self.shared.syzygy.largest = syzygy::largest().min(self.shared.syzygy.probe_limit);
         self.td.tb_root_scores.clear();
         self.td.tb_root_board = None;
         self.td.last_reported_move.set(Move::NULL);

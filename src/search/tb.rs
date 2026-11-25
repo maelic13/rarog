@@ -294,10 +294,11 @@ impl Searcher {
     }
 
     fn can_probe_syzygy(&self, board: &Board, depth: i32) -> bool {
+        let pieces = board.occupied_count() as usize;
         self.shared.syzygy.largest > 0
-            && depth >= self.shared.syzygy.probe_depth
+            && pieces <= self.shared.syzygy.largest
+            && (pieces < self.shared.syzygy.largest || depth >= self.shared.syzygy.probe_depth)
             && board.castling().0 == 0
-            && board.occupied_count() as usize <= self.shared.syzygy.largest
     }
 
     fn can_probe_syzygy_root(&self, board: &Board) -> bool {
