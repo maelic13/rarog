@@ -411,8 +411,7 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.9.3 | RESEARCH | R2 | The search explosion with tables loaded: a defect, diagnosed 2026-11-25 to its unit, a window off the PV with beta in the decisive band, searched at a mate search's width inside and outside the tables; no rule tried and no pair of them repairs all three roots, and Stockfish and Reckless pass them. Next: the rule table against Stockfish, one more registered variant read, and the registered clock read on an idle host; a repair that leaves `bench 13` exact is case 1, one that changes it is a gate for the maintainer, and with neither the leaf closes `NO_CHANGE` (`analysis/d9_tablebase_policy_2026-11-25.md`, *D.9 from here*) |
-| D.9.2 | RESEARCH | I1 | Held on D.9.3 (decision 2026-11-25): falsified by its registered read, table reads −51.9% at −0.9% nodes with no class change but one root left short of its depth; the reorder reverted, the post-probe poll kept. It does not close on its own value and is not read again under a softer rule: the same read runs unchanged when D.9.3 lands a repair, and it closes `NO_CHANGE` with D.9.3 otherwise |
+| D.9.3 | RESEARCH | R2 | The search explosion with tables loaded, a defect of band windows; its repair search closed `NO_CHANGE` 2026-11-25 by its stop rule: the rule table found four differences from Stockfish, and no variant of them, nor their union with late-move pruning at a winning beta, finishes the three roots, while every one moves `bench 13`. Held on its registered clock read, which needs an idle host; its command is prepared. No root at twice the time with tables closes the leaf `NO_CHANGE` for the rated configuration; roots at twice the time reopen the repair, with the union plus the probe ending its node as the first candidate and a gate for the maintainer (`analysis/d9_tablebase_policy_2026-11-25.md`, *The second variant read's result*) |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
 | D.11.2 | RESEARCH | R2 | After D.11.1: GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
@@ -4227,7 +4226,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       `go movetime 10` is that box; `NO_CHANGE`, its trigger in the
       record. `bench 13` 3,694,298 / EBF 2.324, repair case 1; debug and
       release tests, `fmt` and `clippy` clean.
-    - **D.9.2 The in-search probe after the table cutoff — `I1`, then `V`.**
+    - **D.9.2 The in-search probe after the table cutoff — `I1`, NO_CHANGE 2026-11-25.**
       Stockfish's order (NODE-11), after the table cutoff and before the
       threat maps and the evaluation, with a main-thread probe forcing the
       next stop and clock poll as Stockfish's does. `bench 13` exact, repair case 1, since no
@@ -4251,7 +4250,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       tolerates a short root. When D.9.3 lands a repair the same
       registered read runs again, unchanged; if D.9.3 closes
       `NO_CHANGE` this step closes `NO_CHANGE` with it, on the trigger
-      in the record.
+      in the record. **`NO_CHANGE` 2026-11-25**, with D.9.3's repair
+      search, which closed by its stop rule. Triggers: a repair of the
+      band-window explosion lands, and then this read runs again,
+      unchanged; or a run with tables shows table reads costing time.
+      The post-probe poll stays.
     - **D.9.3 The search explosion with tables loaded — `R2`.** Found by
       D.9.2's read and diagnosed 2026-11-25 (the record, *D.9.3's
       diagnosis* and *D.9 from here*; zero games). On roots 26, 30 and
@@ -4289,7 +4292,24 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       maintainer to decide where it changes; with no such set after
       step 2 the leaf closes `NO_CHANGE` on the record's triggers,
       with no third round. No repair is implemented while the leaf is
-      in research.
+      in research. **Steps 1 and 2 done 2026-11-25** (the record,
+      *D.9.3's rule table* and *The second variant read's result*).
+      Four rules differ from Stockfish's in a band window: razoring's
+      alpha limit, ProbCut in check, ProbCut at a losing beta, and the
+      alpha-gap reduction at a decisive alpha. Each was read as a
+      variant, with their union plus late-move pruning at a winning
+      beta. Every one finishes root 26, none finishes roots 30 and 11,
+      and every one moves `bench 13`. The union removes the census's
+      width, and the search inside the tables below undecided probes
+      remains. **The repair search closes `NO_CHANGE` by the stop
+      rule.** Its first candidate if it reopens is the union with an
+      undecided probe ending its node; any repair is a gate for the
+      maintainer. **Held on step 3**, the clock read: an idle host,
+      with its command prepared in the record (*The clock read's
+      command*). Its result decides the rest. No root at twice the
+      time with tables closes the leaf `NO_CHANGE` for the rated
+      configuration, on the analysis trigger. Roots at twice the time
+      reopen the repair and the containment, each registered then.
 - **D.10 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
   Renumbered from D.7 on 2026-11-13 (maintainer decision), when the
   search-shape step took that number.

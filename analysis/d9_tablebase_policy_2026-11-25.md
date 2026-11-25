@@ -860,6 +860,128 @@ Falsifiers and the stop rule, from *D.9 from here*, applied as written:
   such set goes to the maintainer as a gate to decide, registered on its
   own. The finding stands either way; no game is played here.
 
+### The second variant read's result
+
+The builds, each a `diag` build of an exported copy of `546adc4` with the
+counters and the census, are under `analysis/artifacts/d93w-2026-11-25/`
+with the scripts that made them. Each variant is the one-line change the
+registration names (W1 drops the conjunct `i.alpha < s.razor_alpha_limit`
+from `razors`; W2 puts `!in_check &&` before `probcut_gate`; W3 reads
+`!is_decisive(i.beta)` for `!is_win(i.beta)` in `probcut_gate`; W4
+multiplies the alpha-gap term by `i32::from(!is_decisive(i.alpha))`), and
+its `bench 13` is its fingerprint:
+
+| Build | SHA-256 | `bench 13` / EBF |
+|---|---|---|
+| `v0c.exe`, the census baseline (the first read's) | `ec272807…` | 3,694,298 / 2.324 |
+| `w1c.exe`, razoring without its alpha limit | `744bd49b…` | 3,097,711 / 2.315 |
+| `w2c.exe`, no ProbCut in check | `ca41c292…` | 3,650,025 / 2.320 |
+| `w3c.exe`, no ProbCut at a decisive beta | `1913f2d8…` | 3,351,026 / 2.319 |
+| `w4c.exe`, no alpha-gap term at a decisive alpha | `bba8b861…` | 3,243,195 / 2.319 |
+| `wuc.exe`, W1 to W4 with V3 | `af49b640…` | 3,114,639 / 2.303 |
+
+    python tools/diag/tb_probe_read.py --epd tools/books/ocb_cohort_v1.epd --men 7,8 --per-count 24 --depth 20 --max-nodes 30000000 --only 26,30,11 --syzygy D:/chess/tablebases/syzygy3456 --out analysis/artifacts/d93w-2026-11-25/read_w.json v0c=analysis/artifacts/d93-2026-11-25/v0c.exe w1c=analysis/artifacts/d93w-2026-11-25/w1c.exe w2c=analysis/artifacts/d93w-2026-11-25/w2c.exe w3c=analysis/artifacts/d93w-2026-11-25/w3c.exe w4c=analysis/artifacts/d93w-2026-11-25/w4c.exe wuc=analysis/artifacts/d93w-2026-11-25/wuc.exe
+
+It exited 0, as did `counters.py` for the five variants and for the
+baseline (`counters_w.txt`, `counters_v0c.txt`). The read ran on the tool
+as extended for the clock read, which takes a root's depth from its last
+exact `info` line; Rarog prints a bound line only past 10M nodes, and no
+root counted complete in this read or an earlier one passed 2.2M, so the
+rule changes no count. Depth reached inside the 30M cap, and the nodes of
+the last finished iteration:
+
+| Root | Baseline | W1 | W2 | W3 | W4 | WU |
+|---|---|---|---|---|---|---|
+| 26 | 17, short | **20** at 510,630 | **20** at 2,171,167 | **20** at 1,112,438 | **20** at 736,222 | **20** at 833,039 |
+| 30 | 15, short | 15, short | 18, short | 14, short | 14, short | 16, short |
+| 11 | **20** at 1,903,586 | 17, short | 19, short | 17, short | 18, short | 19, short |
+
+The census to the cap, moves searched at nodes off the PV:
+
+| Root 30 | Baseline | W1 | WU |
+|---|---|---|---|
+| Interior nodes, and inside the tables | 22,962,746, 22,251,824 | 21,079,803, 20,321,713 | 21,372,376, 20,632,521 |
+| Moves with beta in the win band | 8,086,242 | 4,126,876 | 3,786,067 |
+| Moves with beta in the loss band, and of them with the gate closed | 7,567,992, 3,497,209 | 2,804,492, 289,572 | 2,433,723, 90,307 |
+
+**Reading.**
+- No variant finishes all three roots, WU included. By the stop rule the
+  repair search ends here, with no third round.
+- What the four differences do is real and does not reach the cost.
+  Razoring at a band alpha halves the moves at win-band nodes on root 30
+  and removes nine tenths of the loss-band moves searched with the gate
+  closed. WU removes 97% of those. Yet the interior nodes stay at the cap,
+  and 96% of them are still inside the tables: the width the census
+  measured is gone, and the search inside the tables below undecided
+  probes, V2's mechanism, remains. WU did not include V2, because V2 is not
+  a difference from Stockfish.
+- The three roots do not rank variants. Across the nine variant builds
+  read (V1, V2, V3, V2 with V3, W1 to W4, WU), eight finish root 26, one
+  finishes root 11, which the baseline finishes, and none finishes root
+  30. The roots were chosen because they exploded, so any change to the
+  tree moves where an explosion falls. "Finishes all three" is therefore
+  a strict and noisy criterion, not a measure of how much of the cost a
+  rule removes.
+
+**Calibration**, appended; the predictions above stand as written.
+- W1 finishing root 26 (0.7) held, as it did for every variant but V1.
+  W1 finishing all three (0.4) did not happen. Its `bench 13` changed
+  (0.85), held.
+- W2, W3 and W4 each finishing all three (0.1, 0.1, 0.05) did not happen.
+- W3's `bench 13` exact (0.55) was wrong: 3,351,026. A losing beta occurs
+  in the bench without tables far more often than a mate in view would
+  suggest. W2's change (0.8) and W4's (0.5) both happened.
+- WU finishing all three (0.55) was wrong, and overconfident. The miss is
+  in mechanism: the census's width, which WU removes, was taken for the
+  whole cost, and the nodes inside the tables are a second part that none
+  of the differences touches.
+- W1 halving root 30's win-band moves (0.6) missed narrowly: −49.0%.
+
+**Decision, 2026-11-25.**
+- D.9.3's repair search closes `NO_CHANGE` by its stop rule.
+- What is established stands: the explosion is a defect of Rarog's
+  search in band windows, with tables. The four rules above and V2 are
+  its contributing parts, and no single rule is its cause.
+- What is not known: whether WU with V2 repairs it. That is a natural
+  next variant, read after the results, so the stop rule does not let it
+  run in this round. It is the first thing to try if the leaf reopens.
+- None of the parts is a case-1 repair: every one but V2 changes
+  `bench 13`. A repair of the defect is therefore a playing change in
+  every configuration, and needs a strength gate that a near-zero prior
+  does not justify on this evidence alone.
+- The clock read stays, because it now has a use: it says whether the
+  defect costs time where CCRL rates. If no root uses twice the time
+  with tables, the leaf closes `NO_CHANGE` for the rated configuration,
+  with the analysis trigger alone. If roots do, the defect has a measured
+  cost in the rated configuration. That fires the reopen trigger, and
+  the leaf registers its next step from there: the containment
+  (*D.9 from here*) for the roots already decided, and WU with V2 as the
+  repair candidate, with a gate for the maintainer to decide.
+- D.9.2 closes `NO_CHANGE` with the repair search, by its own rule. Its
+  triggers: a repair of the band-window explosion lands (then its
+  registered read runs again, unchanged), or a run with tables shows
+  table reads costing time.
+- Reopen triggers for D.9.3's repair, beyond those in *D.9 from here*:
+  the clock read finding roots at twice the time; a pool or release
+  qualification that adopts tables.
+
+### The clock read's command, prepared 2026-11-25
+
+The registered read (*D.9 from here*), on a default build of the
+committed tree. `clock.exe` is built from `bb4cf045`, which adds the
+tool's clock support, and its engine source is the same as `546adc4`'s.
+`id name` is `Rarog dev-20261125-bb4cf045`, SHA-256
+`972c8a3855054bb8c02d298177732f279e9b3ae7d970bfd55527c7ba1b37f129`,
+`bench 13` 3,694,298 / EBF 2.324. The arm without tables is first, so the
+summary's `tb` entry lists the roots that use at least twice the time
+with tables (`roots_at_least_twice`), gives the median ratio
+(`median_wall_ratio`), and each arm's longest search (`max_wall_ms`):
+
+    python tools/diag/tb_probe_read.py --epd tools/books/ocb_cohort_v1.epd --men 7,8 --per-count 24 --go "wtime 120000 btime 120000 winc 1000 binc 1000" --syzygy D:/chess/tablebases/syzygy3456 --tables-off notb --out analysis/artifacts/d93w-2026-11-25/read_clock.json notb=analysis/artifacts/d93w-2026-11-25/clock.exe tb=analysis/artifacts/d93w-2026-11-25/clock.exe
+
+It is a timed read and needs an idle host. Its length is unmeasured: 96
+searches at the first move of a 2+1 clock.
+
 ## Corrections, the same day
 
 A second review of D.9 (2026-11-25), checked against the code and the
