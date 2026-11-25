@@ -241,6 +241,25 @@ depth at the defaults are Stockfish's. Two implementation steps are ready.
    A with-tables game read (case 2, 2,000 games) is not required by the
    rule. It is the maintainer's option, given that CCRL plays with tables.
 
+   The read, registered 2026-11-25 before any exposure:
+   - instrument: `tools/diag/tb_probe_read.py`, a fresh process per root,
+     `Threads 1`, `Hash 64`, the local 3–6-man tables
+     (`D:/chess/tablebases/syzygy3456`), `go depth 20`;
+   - roots: the first 24 seven-man and the first 24 eight-man positions
+     of `tools/books/ocb_cohort_v1.epd`, in file order;
+   - builds: one before the change and one after, default features, each
+     from a committed tree and archived with its hash;
+   - reading: the totals of nodes and `tbhits` over the 48 roots against
+     the prediction, and each root's score class (win, loss or neither);
+     a root that does not reach depth 20 stops the run.
+
+   Limits, stated before the run: the cohort is opposite-coloured-bishop
+   endings, mostly drawn, so the class check is weak on wins; it is the
+   only book here with seven- and eight-man roots. The depth was sized on
+   two roots of the baseline alone (well under a second each at depth
+   18). Fixed depth has no clock, so the post-probe poll is not read
+   here; its contract is a unit test.
+
 One recommendation outside D.9, for the maintainer: the release
 qualification (E.1, E.3.4) could carry RAR-S93's with-tables activation
 read. That is 1,500 games on the endgame cohort, about two minutes. It
