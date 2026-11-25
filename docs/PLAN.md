@@ -405,7 +405,8 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.9.2 | READY_FOR_IMPLEMENTATION | I1 | The in-search probe after the table cutoff (NODE-11, Stockfish's order); exact fingerprint, repair case 1 with a with-tables activation read on 7–8-man roots, prediction frozen in PLAN |
+| D.9.3 | RESEARCH | R2 | The search explosion with tables loaded, found by D.9.2's read: on three 7–8-man roots one iteration's tree grows past 30M–100M nodes where the one before took under 2M, in every build since before D.9.1; find the mechanism, then repair it (`analysis/d9_tablebase_policy_2026-11-25.md`, *A search explosion with tables*) |
+| D.9.2 | RESEARCH | I1 | Falsified 2026-11-25 by its registered read: table reads −51.9% at −0.9% nodes with no class change, but one root left short of its depth; the reorder reverted, the post-probe poll kept; held on D.9.3, then the same read runs again |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
 | D.11.2 | RESEARCH | R2 | After D.11.1: GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
@@ -4226,7 +4227,29 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       class changes, the fixture and local suites pass. Falsifier: `tbhits`
       fall less than 20% or a result class changes; the step then returns
       to research. A 2,000-game with-tables read is the maintainer's
-      option, not the rule's.
+      option, not the rule's. **Falsified 2026-11-25** (the record,
+      *D.9.2's result*). On the 45 roots both builds finished at depth
+      20, table reads fell 51.9% and nodes 0.9%, with no class change.
+      But the new build left root 11 short of depth 20, which the read's
+      amendment counts as a changed result. The reorder is reverted. The
+      post-probe poll stays as its own repair: it reads only the GUI and
+      the clock, `bench 13` is exact with it, and a unit test holds it.
+      Held on D.9.3; when D.9.3 repairs the explosion, the same
+      registered read runs again.
+    - **D.9.3 The search explosion with tables loaded — `R2`.** Found by
+      D.9.2's read. On three seven- and eight-man roots of
+      `tools/books/ocb_cohort_v1.epd`, with the local tables, one
+      iteration's tree grows from under 2M nodes past 30M to 100M at a
+      normal speed; root 26 does it at depth 18 in every build since
+      before D.9.1, and finishes that depth at 3.2M nodes without
+      tables. Under a clock a game loses time, not the move; a
+      fixed-depth search or `go infinite` never finishes. Research names
+      the mechanism among the record's candidates (the tablebase floor
+      and cap against the aspiration window, results stored at
+      `depth + 6` cutting against the search's scores, pruning that
+      stops at decided scores), starting from the cheapest test there:
+      aspiration steps and nodes per root move in the exploding
+      iteration, then the same with in-search probes off.
 - **D.10 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
   Renumbered from D.7 on 2026-11-13 (maintainer decision), when the
   search-shape step took that number.

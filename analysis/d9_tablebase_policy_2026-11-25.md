@@ -291,6 +291,88 @@ parser `tools/diag/tb_activation.py` still computes the time budget by
 the formula in use before D.7.9.1 (`optimum_ms`). That has to be brought
 to `search/time.rs`'s `budget` before the read is used.
 
+## D.9.2's result, 2026-11-25
+
+The builds, default features, archived with their hashes under
+`analysis/artifacts/d92-2026-11-25/`:
+- before: `dev-20261125-3828d868`, D.9.1's close, SHA-256
+  `82f155341b7c5be6b8d2d6663641043604d19e9ca3830e4495aeaced5179000d`;
+- after: `dev-20261125-1b5f9d1e`, the probe after the cutoff and the
+  post-probe poll, SHA-256
+  `c9d451546bf796382c424e5eefa9768b2fb618c6ab45bdb2644a608e8df75b7f`,
+  `bench 13` 3,694,298 / EBF 2.324;
+- for the explosion only, the tree before D.9.1: `dev-20261125-03049a22`,
+  SHA-256 `ad704df5b21abab5de862c7a64e8fbb8de96e4ca323749a89c6b38611270773c`.
+
+The amended read, primary and secondary:
+
+    python tools/diag/tb_probe_read.py --epd tools/books/ocb_cohort_v1.epd --men 7,8 --per-count 24 --depth 20 --max-nodes 100000000 --skip 26,30 --syzygy D:/chess/tablebases/syzygy3456 --out read_primary.json before=before.exe after=after.exe
+    python tools/diag/tb_probe_read.py --epd tools/books/ocb_cohort_v1.epd --men 7,8 --per-count 24 --depth 15 --max-nodes 100000000 --only 26,30 --syzygy D:/chess/tablebases/syzygy3456 --out read_secondary.json before=before.exe after=after.exe
+
+| Read | Before | After | Change |
+|---|---|---|---|
+| Primary, the 45 roots both builds finished at depth 20: nodes | 2,623,236 | 2,599,182 | −0.9% |
+| Primary: `tbhits` | 118,225 | 56,865 | −51.9% |
+| Secondary, root 26 at depth 15: nodes, `tbhits` | 312,682, 14,338 | 330,632, 5,945 | +5.7%, −58.5% |
+
+- Per root on the 45: the median change in `tbhits` is −47.9%; node
+  changes run from −21.7% to +4.1%, median 0.0%. No score class changes.
+- Root 11 (`8/5K2/2B2p2/4pPb1/8/3k4/8/8 b - - 0 1`): the baseline
+  finishes depth 20 at 1,903,586 nodes. The new build reaches depth 19 at
+  1,917,508 and does not finish depth 20 within the 100M cap.
+- Root 30 at depth 15: the baseline finishes at 857,473 nodes. The new
+  build reaches depth 14 at 1,844,380 and does not finish depth 15 within
+  the cap.
+
+**Verdict: falsified.** By the amendment, a primary root that the new
+build leaves short of its depth is a changed result, and a changed result
+is the falsifier. D.9.2 returns to research, held on D.9.3. The reorder
+is reverted. The post-probe poll stays, as its own repair: it reads only
+the GUI and the clock, `bench 13` is exact with it, and its unit test
+holds.
+
+**Calibration**, appended; the prediction above stands as written.
+- The mechanism held in sign and magnitude: table reads fell 51.9%
+  (predicted 40% to 80%), nodes moved −0.9% (predicted within ±10%), and
+  no finished root changed class.
+- The miss is in interaction. The prediction did not foresee an older
+  search explosion with tables loaded, which the reorder moves onto other
+  roots and depths.
+- The instrument also missed: the registered read had no node cap, so the
+  explosion first showed as a hang. That was amended before the new build
+  ran.
+
+## A search explosion with tables
+
+Found by D.9.2's read; owned by D.9.3.
+- On three seven- and eight-man roots, with tables loaded, one
+  iteration's tree grows from under 2M nodes to beyond 30M to 100M, at a
+  normal speed of about 2.6M nodes a second.
+- Root 26 does it at depth 18 in both builds and in the tree before D.9.1.
+  Without tables it finishes depth 18 at 3.2M nodes and depth 19 at 12M.
+- Root 30 does it at depth 16 in the baseline and at depth 15 with the
+  reorder. Root 11 does it at depth 20 with the reorder only.
+- `stop` is answered at once, so the search is not stuck inside one call.
+- Under a clock the search stops on time and plays the move of the last
+  finished iteration, so a game loses time, not the move. A fixed-depth
+  search or `go infinite` never finishes the iteration. CCRL rates with
+  tables.
+
+Candidate explanations, none tested yet:
+- the tablebase floor and cap at PV nodes against the aspiration window,
+  so that the window keeps failing around a tablebase bound;
+- tablebase results stored at `depth + 6` cutting where the search's own
+  scores disagree, which makes iterations unstable;
+- a pruning rule that turns off at decided scores (null move, ProbCut,
+  futility near the score band), so that a decided line is searched
+  without pruning.
+
+Cheapest next test: in the exploding iteration of root 26 at depth 18,
+count the aspiration steps and the nodes per root move in a `diag` build.
+Then repeat with in-search probes off (`SyzygyProbeDepth` above the
+depth) and the root's tables still loaded. That separates the probe from
+the scores it leaves behind.
+
 ## Corrections, the same day
 
 A second review of D.9 (2026-11-25), checked against the code and the
