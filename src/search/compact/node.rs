@@ -148,34 +148,6 @@ impl Searcher {
         let stm = board.side_to_move();
         let hash = board.hash();
 
-        // A tablebase result ends the node where it decides the window; at a
-        // PV node a win otherwise raises the floor and a loss caps the moves.
-        let mut tb_floor = None;
-        let mut tb_cap = None;
-        if let Some((score, bound)) = self.syzygy_wdl_bound(board, depth, ply, excluded) {
-            match tb_verdict(score, bound, alpha, beta, NODE::PV) {
-                TbVerdict::Return => {
-                    self.tt_store(TtStore {
-                        key: hash,
-                        depth: (depth + 6).min(infra::to_i32(MAX_PLY) - 1),
-                        score,
-                        bound,
-                        mv: Move::NULL,
-                        ply,
-                        static_eval: VALUE_NONE,
-                        is_pv: NODE::PV,
-                    });
-                    return score;
-                }
-                TbVerdict::Floor => {
-                    tb_floor = Some(score);
-                    alpha = alpha.max(score);
-                }
-                TbVerdict::Cap => tb_cap = Some(score),
-                TbVerdict::Search => {}
-            }
-        }
-
         let entry = self.tt_probe(hash);
         let ev = TtProbe::from_entry(entry, ply, board.halfmove_clock());
         let tt_score = ev.score;
@@ -236,6 +208,37 @@ impl Searcher {
             }
             if rules::tt_cut_returns(self.seeds(), i32::from(board.halfmove_clock())) {
                 return tt_score;
+            }
+        }
+
+        // A tablebase result ends the node where it decides the window; at a
+        // PV node a win otherwise raises the floor and a loss caps the moves.
+        // The probe follows the table cutoff, as the donor's does: a result
+        // stored at `depth + 6` then answers the next visit from the table
+        // instead of another read.
+        let mut tb_floor = None;
+        let mut tb_cap = None;
+        if let Some((score, bound)) = self.syzygy_wdl_bound(board, depth, ply, excluded) {
+            match tb_verdict(score, bound, alpha, beta, NODE::PV) {
+                TbVerdict::Return => {
+                    self.tt_store(TtStore {
+                        key: hash,
+                        depth: (depth + 6).min(infra::to_i32(MAX_PLY) - 1),
+                        score,
+                        bound,
+                        mv: Move::NULL,
+                        ply,
+                        static_eval: VALUE_NONE,
+                        is_pv: NODE::PV,
+                    });
+                    return score;
+                }
+                TbVerdict::Floor => {
+                    tb_floor = Some(score);
+                    alpha = alpha.max(score);
+                }
+                TbVerdict::Cap => tb_cap = Some(score),
+                TbVerdict::Search => {}
             }
         }
 
