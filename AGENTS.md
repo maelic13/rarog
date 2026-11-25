@@ -58,12 +58,18 @@ that produced a rule are in the ledger rows it cites or in `docs/HISTORY.md`.
   rule-50, repetition and promotion closure can make a local feature non-local.
   Use a bounded baseline/A/B/A+B screen when it cheaply separates interaction;
   do not require a factorial for every small change.
+- Keep default-neutral repairs in a separate sub-step and commit cluster from
+  behaviour-changing ones so each read isolates one cause.
 
 ## Judgment toward the CCRL goal
 
 - The aim is CCRL top 100, ideally top 50: a direction for measured strength,
   reliability and prioritisation, not a promised ranking or a reason to
   accumulate features. Progress is resolved uncertainty and qualified results.
+- When evaluating a defect or repair, check whether it is active in the CCRL
+  rated configuration (such as tablebases, clocks, or threads) versus Rarog's
+  own pools and gates, because a feature absent from local pools can still
+  matter to CCRL and vice versa.
 - Before a substantial engine change, answer in the PLAN research card or the
   experiment registration (link earlier answers): **mechanism** — what should
   improve and what evidence says it is active here; **interactions** — which
@@ -179,6 +185,10 @@ never by eyeballing, and never by assuming a tool did what its name says.**
 - Before differencing two counters, confirm they are in the same unit (per
   node versus per move produced RAR-S25). A passing invariant does not prove
   comparability.
+- Never compare raw search counters (nodes, hits per thousand nodes, rule
+  rates) across different engines or trees: compare before and after on Rarog's
+  own tree. Never state unmeasured timings or sizes as numbers; measure them
+  or mark them unmeasured.
 - A binary entered in a rated pool is a tagged release or a development
   build of a committed tree, whose `id name` names its commit
   (`dev-20261104-209b555a`; a dirty tree's `-m` is refused for testing); a
