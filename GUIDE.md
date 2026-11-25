@@ -268,7 +268,9 @@ implementation and measurement sub-steps under its step.
 | `M` | Mechanical/docs/provenance | Claude Sonnet — Medium |
 | `V` | Verification/measurement | Claude Sonnet — High |
 
-Claude models only, by maintainer decision 2026-09-25.
+Claude models only, by maintainer decision 2026-09-25. `AGENTS.md`, *Handing
+work back*, carries the same mapping for the agents, and
+`python tools/diag/check_guide.py` fails when the two differ.
 
 ## Reusable research prompt
 
@@ -319,6 +321,8 @@ Claude models only, by maintainer decision 2026-09-25.
 
 ## About this guide
 
+This guide is the maintainer's: agents keep it current and orient from
+`docs/PLAN.md`, never from here (maintainer decision 2026-11-25).
 The board at the top is generated from `docs/PLAN.md` by
 `python tools/diag/guide_board.py`: edit PLAN's step heads (title, class,
 DONE) and its workflow register, then regenerate; never edit the board by

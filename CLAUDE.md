@@ -5,4 +5,5 @@ same file and cannot drift apart. It is imported here:
 
 @AGENTS.md
 
-Nothing else belongs in this file. Add rules to `AGENTS.md`.
+Nothing else belongs in this file, and no second import: `AGENTS.md` says
+where a new rule goes.

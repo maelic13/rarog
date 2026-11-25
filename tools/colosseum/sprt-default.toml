@@ -1,5 +1,5 @@
-# The default gate: [0,3] nElo, pentanomial and normalized, the bracket AGENTS
-# names for an ordinary playing change.
+# The default gate: [0,3] nElo, pentanomial and normalized, the bracket
+# docs/rules/gating.md names for an ordinary playing change.
 #
 #   colosseum-cli --run-file tools/colosseum/sprt-default.toml \
 #     <candidate.exe> <baseline.exe> --max-pairs <from RAR-M10> --seed <n> \

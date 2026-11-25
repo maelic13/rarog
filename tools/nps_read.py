@@ -309,7 +309,7 @@ def idle_refusal(state: dict, max_busy: float = MAX_BUSY_PERCENT) -> list[str]:
 
 
 def check_host(record: dict, allow_busy: bool) -> None:
-    """AGENTS, *Measurement*: measure only on an idle host; refuse otherwise,
+    """docs/rules/measurement.md: measure only on an idle host; refuse otherwise,
     unless waived, and archive the state and any waiver with the read."""
     state = host_state()
     reasons = idle_refusal(state)

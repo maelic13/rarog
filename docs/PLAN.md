@@ -99,8 +99,9 @@ miss and the budget above is corrected rather than defended.
 
 ## 2. Operating rules
 
-`AGENTS.md` is authoritative for measurement, verification, documents and
-gating. The rules below decide order and acceptance in this roadmap.
+`AGENTS.md` and the rule modules it indexes (`docs/rules/`) are authoritative
+for measurement, verification, documents and gating. The rules below decide
+order and acceptance in this roadmap.
 
 1. **Donor architecture, own implementation.** Which engine donates what,
    what may cross and how the code is written: `docs/PROCESS.md`, *The
@@ -128,7 +129,7 @@ gating. The rules below decide order and acceptance in this roadmap.
    baseline SHA, bracket, cap, stop rule and the frozen prediction. Bounds
    default to `[0,3]` nElo; a large prior uses `[0,10]` or `[3,10]` and says
    why; a removal uses a loss-permitting bracket, and a repair the gate of
-   its case in AGENTS' *Gating*. Never change a gate after seeing games.
+   its case in `docs/rules/gating.md`. Never change a gate after seeing games.
 6. **Two rejected clusters in one programme stop it** and force a new evidence
    audit before a third is built.
 7. **Every strength A/B runs with adjudication off**, at `3+0.03`, 1T, Hash 64,
@@ -289,7 +290,8 @@ returns a false premise to `RESEARCH` instead of rescuing it.
 | `M` | Mechanical documentation/provenance | ledger rows, archives, changelogs |
 | `V` | Verification/measurement | qualification runs, gate preparation, re-measurements |
 
-GUIDE maps classes to current model names and thinking modes. Investigation
+`AGENTS.md`, *Handing work back*, maps classes to model families and thinking
+modes; GUIDE shows the maintainer the same mapping. Investigation
 leaves (`R3`) are expected to **spawn** implementation and measurement
 sub-steps under their own step; the sub-steps listed below under an
 investigation are the expected shape and are confirmed, split or replaced by
@@ -312,7 +314,7 @@ linked analyses; this table is the index.
 | Diagnostic counter units and sampling | `analysis/phase4_counter_spec.md` |
 | Measurement layers for endgame work | `analysis/endgame_measurement_layers.md` |
 | Texel data contract, splits, instrument coverage | `analysis/texel_fitting_handbook.md`, `analysis/hce_archive_audit_2026-08-31.md` |
-| Behaviour-neutral change = exact fingerprint plus targeted checks plus pooled NPS | `AGENTS.md` |
+| Behaviour-neutral change = exact fingerprint plus targeted checks plus pooled NPS | `docs/rules/engine.md`, *Verification* |
 | Cross-engine board benchmark parity | `benches/board.rs`, `analysis/board_comparison_411b19_2026-09-09.md` |
 
 ## Phase A — Reset: repository, instruments, baselines, consolidation release — CLOSED 2026-09-11
@@ -354,6 +356,10 @@ readings are in the ledger rows each step names. The rule it left, the
 frozen classical evaluation, is a standing contract.
 
 ### Active workflow register
+
+An agent orients here, not in GUIDE (maintainer decision 2026-11-25):
+`python tools/diag/plan_leaf.py` prints this register and where the
+current leaf's text is, and `plan_leaf.py <ID>` any other step's.
 
 One row per open leaf in the active phase. The checker requires the state
 and class here to match GUIDE's suffix. Phases A, B and C are closed;
@@ -548,7 +554,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   §3.5). Each item is an unrecorded deviation from the donor's shape with a
   plausible mechanism; none is a measured strength defect, so each enters at
   `RESEARCH` and crosses `READY_FOR_IMPLEMENTATION` only with its screen read
-  and its prediction frozen (AGENTS, *Classify the work*). Rules: no
+  and its prediction frozen (`docs/rules/research.md`, *Readiness*). Rules: no
   implementation before its screen; one candidate per gate; rule 6 stops the
   leaf after two rejections in a row; a screen that reads nothing closes the
   item `NO_CHANGE`. The fingerprint moves with every one, so none rides in D.5
@@ -1668,7 +1674,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   depths, the option wire proven live first, a late mate resolution not
   read as explosion.
   Evidence layer: counters and node counts choose and never accept; only the
-  registered gate does (AGENTS, *Gating*).
+  registered gate does (`docs/rules/gating.md`).
 - **D.7 Search shape: the kernel against its donor on Rarog's evaluation, rebuilt whole as one compact kernel if the reads or the maintainer say so — `R3` investigation, `I1`/`I2`/`V`/`R2` sub-steps, DONE 2026-11-21.**
   Added 2026-11-13 from RAR-O08 and
   `analysis/search_shape_decision_2026-11-13.md` (maintainer decision the
@@ -1845,7 +1851,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   that changes play is part of the one cluster and has no gate of its own
   (rule 3): it is held to its contract and tests, to its zero-game read,
   and to one registered 2,000-game read at `3+0.03` against the build the
-  step started from, under AGENTS' case-2 harm rule (below −13 nElo it is
+  step started from, under the case-2 harm rule of `docs/rules/gating.md` (below −13 nElo it is
   reverted and recorded) unless the step states another rule. Those reads
   are the maintainer's commands unless he delegates them in the session;
   the step prepares the binaries, the registration and the one command.
@@ -2415,7 +2421,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
          after, exactly, on a fresh build. A count that moves stops the
          step until what the classic path still fed is found; nothing is
          kept "for now" to hold the count.
-      4. *The fingerprint record moves* to 3,488,485 / EBF 2.336 in AGENTS'
+      4. *The fingerprint record moves* to 3,488,485 / EBF 2.336 in the rules'
          "currently", GUIDE's checkpoint and PLAN's checkpoint row, in this
          step's documentation commit; `check_guide.py` passes.
       5. *Checks:* debug and release suites, fmt, clippy over all features
@@ -2972,7 +2978,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           rule (frozen 2026-11-20, before the counters ran):** a share
           below 1% closes the step `NO_CHANGE`, the code reverted, no
           games; otherwise the fingerprint moves and the step takes a
-          registered 2,000-game read against D.7.8.10's state, AGENTS'
+          registered 2,000-game read against D.7.8.10's state, `docs/rules/gating.md`'s
           case 2 (reverted below −13 nElo), with 200 games at four threads
           read for faults alone, as RAR-S132. **Prediction (frozen
           2026-11-20, before the counters ran):** the share 20%, 80% band
@@ -3011,7 +3017,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           prefetch competes for cache only, and code layout moves under PGO
           (PROCESS: an accept below +1% on code that moved is recorded as
           possibly layout). **Invariants:** the fingerprint exact at every
-          commit; AGENTS' per-node rule (no allocation, no clone, no
+          commit; the per-node rule of `docs/rules/engine.md` (no allocation, no clone, no
           `memcpy`; the node's assembly checked); no new `unsafe` site (the
           floor is 17); the board's contract and perft. *The items,* in
           order, each its own engine commit:
@@ -3706,7 +3712,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       - D.11's facts for the kernel named (D.11, *Named at D.7.14*);
       - GUIDE's two obligation rows reviewed; D.8.21 open;
       - the fingerprint record stands: 3,390,842 / EBF 2.317, D.7.11.8's,
-        in AGENTS, GUIDE and PLAN's checkpoint row;
+        in the rules, GUIDE and PLAN's checkpoint row;
       - the pre-NNUE meter and the conversion registered as RAR-M90, a
         7,800-game gauntlet against RAR-M89's field, the maintainer's
         run (about 1 hour 40 minutes). Speed is recorded from the
@@ -4064,7 +4070,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   leave it unreadable); a unified legal move generator (about 300 lines, the
   highest NPS risk, no defect behind it); the table's local backend (D.2,
   F16); the controller thread and its epochs (B.3.5); any `inline(always)`
-  pass (B.2.0 F24); the backup harness scripts (AGENTS); the three features
+  pass (B.2.0 F24); the backup harness scripts (`docs/rules/measurement.md`); the three features
   themselves (all in use). Kept after review, with their records:
   `cpu_advice`, `crash_report`, `large_pages`, `wac`, the `diag` counters, the
   `tune` options and the `texel` trace in the engine crate.
@@ -4485,7 +4491,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     - **D.11.3 The decision carried out — `I1`, or registered experiments under route 2.**
       After D.11.2. Route 1: the licence files, `Cargo.toml`, Reckless's
       copyright notice where its material is, the patches labelled,
-      PROCESS and AGENTS where they name the licence, and a `CHANGELOG.md`
+      PROCESS and `docs/rules/research.md` where they name the licence, and a `CHANGELOG.md`
       entry. Route 2: each part D.11.1 lists reimplemented or refitted as
       its own registered experiment (the clock's constants as a registered
       tune, read as Coda read its retune: values that return near the
@@ -4611,7 +4617,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       the key; rule-50, repetition and mate precedence audited apart;
       SEE against the legal exchange tree. Every check is shown able to
       fail by a negative control. A semantic defect found here takes the
-      correctness-repair path with its own gate (AGENTS, *Gating*). The
+      correctness-repair path with its own gate (`docs/rules/gating.md`). The
       timing instrument is Basilisk's contract cross-engine-board-v2
       (`D:/code/basilisk/tools/board_compare/CONTRACT.md`), reused rather
       than rebuilt: 512 positions of real games with a python-chess
@@ -4657,7 +4663,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           *Invariants:* the trace build reproduces the fingerprint, since
           it observes and changes nothing (`diag`'s contract); the
           recorder allocates, so it is never in a measured binary, and
-          that exception to AGENTS' per-node rule is stated where it is
+          that exception to the per-node rule of `docs/rules/engine.md` is stated where it is
           built; verify fails at once on a planted wrong result in each
           record class; `--all-features` compiles it.
           *Size:* about ten records a node at Rarog's mix, near 90
@@ -4936,15 +4942,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       search, evaluation or parameter change rides along. Each replaced
       component keeps, behind a build switch, a check that runs the old
       form beside the new at every node and aborts on the first
-      disagreement (TM-10). Per-node code obeys AGENTS' allocation and
-      copy rule; the footprint assertions move only with a measured
+      disagreement (TM-10). Per-node code obeys the allocation and
+      copy rule of `docs/rules/engine.md`; the footprint assertions move only with a measured
       reason.
     - **D.12.4 Board speed read and gate — `V`.** Pooled-PGO NPS of the
       rebuilt board against the head by PROCESS's method, D.12.1's
       microbenchmark per component beside it, and each component's share
       in the profile; a component that does not pay its cost returns to
       Rarog's form. A component that changes the generation order, and
-      so the tree, is registered and gated as AGENTS' *Gating* requires.
+      so the tree, is registered and gated as `docs/rules/gating.md` requires.
       Nanoseconds an operation are not NPS and not Elo.
 
 - **D.13 Correction tables shared between threads — `R2` card, then `I1`/`V`.**
@@ -4958,8 +4964,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   correction tables between threads; Rarog's are per thread, and
   four threads were worth 1.37 doublings of Rarog's time against
   Reckless's 1.49 (RAR-M83). *Card only:* what sharing needs (an
-  atomic read and write a node is the exception AGENTS' per-node
-  rule asks a reason and an NPS read for), its one-thread cost,
+  atomic read and write a node is the exception the per-node
+  rule of `docs/rules/engine.md` asks a reason and an NPS read for), its one-thread cost,
   and the four-thread read that would accept it with its cost in
   hours. The maintainer decides from the card whether it is built
   before D.7.13's four-thread read or left to the thread work
@@ -4977,8 +4983,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   shared state, their entries `AtomicI16`; the node reads them
   through the reference it already holds to the shared state (no
   `Arc` touched per node) and trains them with the same gravity
-  formula as a relaxed load and store. It is the exception AGENTS'
-  per-node rule asks a reason and an NPS read for; the atomic
+  formula as a relaxed load and store. It is the exception the
+  per-node rule of `docs/rules/engine.md` asks a reason and an NPS read for; the atomic
   signals one search's evaluation residuals to every thread of
   that search, and a new game clears it once rather than per
   thread. **One thread:** on x86-64 a relaxed 16-bit load or store
@@ -5156,8 +5162,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       game positions with Stockfish as the reference (Reckless's binary
       may be profiled beside it; its code is ideas only since 2026-11-23,
       PROCESS), items in
-      D.7.8.12's form: the fingerprint exact at every commit, AGENTS'
-      per-node rule, no new `unsafe` site (the floor is 17), each item
+      D.7.8.12's form: the fingerprint exact at every commit, the
+      per-node rule of `docs/rules/engine.md`, no new `unsafe` site (the floor is 17), each item
       priced by the read D.16.2 chose.
       *Handoff from D.16.3.1 (2026-11-23,* `analysis/d1631_node_profile_2026-11-23.md`*):* one item. In
       the quiet-scoring loop, prefetch the six history entries of the
@@ -5247,7 +5253,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      chains averaged; PLAN rules 4 and 7c are unchanged.
   4. *The evidence:* each run's games and reports copied into
      `tools/results/` with a manifest before the artifacts expire.
-  5. *The rules it changes:* AGENTS' idle host and pinned runner, and who
+  5. *The rules it changes:* `docs/rules/measurement.md`'s idle host and pinned runner, and who
      starts a long run; speed and timing reads never run there.
   Falsifier and stop: a null pair away from zero, a cross-check outside
   the intervals or more forfeits than on the host rejects the lane, and
@@ -5490,7 +5496,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       - The callers follow: `tools/build_test.ps1`, `release.yml` and
         `release-check` (which assert the name), PROCESS *Build* and
         *Release* step 6, the README's download table, a CHANGELOG entry
-        for the new file names, and AGENTS' pool-identity rule (the dev
+        for the new file names, and `docs/rules/measurement.md`'s pool-identity rule (the dev
         name identifies the commit; a feature arm is named in its file
         name and its sidecar). Testing a dirty build stays refused
         (`harness_common.ps1`).
@@ -5773,7 +5779,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       families with it: 15% of the kernel's games reach a pawnless family
       Stockfish 11 scales and Rarog does not
       (`analysis/artifacts/d610-review-2026-11-22/`). Then repairs grouped by
-      the families they touch, each gated as a repair (AGENTS, *Gating*).
+      the families they touch, each gated as a repair (`docs/rules/gating.md`).
       E.4.0 decided a rebuild (2026-11-24): these are its endgame
       cluster. Most of the items are Rarog's departures from
       `sf_11`'s endgame code, which E.4.4.1 replaces, so the Syzygy
@@ -5857,7 +5863,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
           endgames, scale factors and KPK bitbase included, the pawn and
           material tables per thread. Parity: every value equal to the
           bridge's `donor-parity` table on B.0's 10,039 positions, through
-          `tools/donor-eval`. The per-node rules of AGENTS hold, the colour
+          `tools/donor-eval`. The per-node rules of `docs/rules/engine.md` hold, the colour
           flip is symmetric, and the new bench fingerprint is recorded.
           A port that cannot reach parity stops the unit.
         - **E.4.4.2 Its cost and its tree — `V`.** The port's node rate by
@@ -6338,7 +6344,7 @@ anyway, stays with that leaf. Instruments, correctness checks and
 measurement-integrity reads are never small gains: they go to the leaf that
 consumes them. Every item here is a prior, never acceptance: it enters at
 `RESEARCH`, crosses `READY_FOR_IMPLEMENTATION` only on a local screen, and is
-gated as AGENTS' *Gating* requires, clustered where it shares a signal (rule
+gated as `docs/rules/gating.md` requires, clustered where it shares a signal (rule
 3). The step numbers H.1–H.4 are unrelated to the Basilisk cross-check's item
 labels H1–H45.
 
@@ -6533,7 +6539,8 @@ and adjudication never change after games are seen.
 
 | File | Purpose |
 |---|---|
-| `GUIDE.md` | The checkbox board first, generated from this file's step heads by `tools/diag/guide_board.py` (closed phases as one- or two-sentence summaries), then the hand-kept checkpoint, holds, model mapping, prompts and operator guide |
+| `AGENTS.md`, `docs/rules/` | The agents' rules: a core every tool loads whole and modules read in full on a trigger; `tools/diag/check_rules.py` holds their budgets |
+| `GUIDE.md` | The maintainer's board, which agents keep current and never orient from (maintainer decision 2026-11-25): the checkbox board first, generated from this file's step heads by `tools/diag/guide_board.py` (closed phases as one- or two-sentence summaries), then the hand-kept checkpoint, holds, model mapping, prompts and operator guide |
 | `docs/PLAN.md` | This roadmap: objective, rules, phases, protocols |
 | `docs/EXPERIMENTS.md` | Frozen predictions, results, calibration, retry triggers, recipes |
 | `docs/PROCESS.md` | Research/handoff template and recurring build, fit, gate and release procedures |

@@ -587,7 +587,7 @@ public static extern bool GetSystemTimes(out long idle, out long kernel, out lon
 }
 
 function Assert-HarnessHostIdle {
-    # AGENTS.md, "Measurement": measure only on an idle host; if the machine is
+    # docs/rules/measurement.md: measure only on an idle host; if the machine is
     # busy, stop and ask rather than measure. RAR-M48's first pool was discarded
     # for exactly this, and until now the rule lived only in prose — an operator
     # could start a gate on a loaded box and nothing would say so.
@@ -700,7 +700,7 @@ function Assert-EngineProvenance {
     if ($Kind -eq "tune" -and $manifest.flavor -notlike "*-tune") {
         throw "A tune requires a tune build manifest; $Label's flavor is '$($manifest.flavor)'."
     }
-    # A dirty tree is a REFUSAL, not a warning. AGENTS.md's evidence rule says a
+    # A dirty tree is a REFUSAL, not a warning. docs/rules/evidence.md says a
     # ledger row must reproduce its artifact without the branch it came from,
     # and a binary built from uncommitted changes cannot, by construction.
     if ($manifest.git_dirty -and -not $AllowDirtyTree) {

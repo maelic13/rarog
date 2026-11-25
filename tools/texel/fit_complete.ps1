@@ -147,7 +147,7 @@ function Invoke-Bench {
 
 # The accepted head's `bench 13` fingerprint, read from GUIDE.md's
 # `| Development head` row: the one place the documents declare it, which
-# tools/diag/check_guide.py holds AGENTS and PLAN to. A literal copied here went
+# tools/diag/check_guide.py holds the rule files and PLAN to. A literal copied here went
 # stale at every accepted change.
 #
 # WHAT THIS CANNOT PROVE. A fingerprint identifies the SEARCH, and a change

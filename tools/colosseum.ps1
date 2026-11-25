@@ -11,7 +11,7 @@
     run that could not be believed afterwards:
 
       - the host is idle (no engine, harness or build process; CPU under the
-        ceiling), which AGENTS.md has required since RAR-M48 discarded a pool
+        ceiling), which docs/rules/measurement.md requires since RAR-M48 discarded a pool
         measured on a busy box, and which no script checked before B.2.6.1;
       - tools/bin/colosseum-cli.exe is the build tools/colosseum/colosseum.pin.json
         pins, by SHA-256;
