@@ -429,7 +429,7 @@ pruning, is added as Phase D's last step, before the release.
 | D.15.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: each download a `.zip` or `.tar.gz` with the binary, the licences, the README and the changelog, where D.11's notices ship; before the next release |
 | D.15.2 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: the release notes as the section's summary and highlights, with a link to the full changelog; before the next release |
 | D.17 | RESEARCH | R2 | Added 2026-11-23 (maintainer request): not before the end of Phase D; a card on GitHub-hosted runners as a lane for self-play SPRTs and tunes, then a maintainer decision on the rules it changes |
-| D.18 | RESEARCH | R2 | Added 2026-11-26 (maintainer request): Phase D's last step, before the release; a card first: what stays tracked and why, what goes, the rules it touches, and the remote (delete refs only, or rewrite history), priced for the maintainer; foreign material found on the public remote: the `oracle/*` tags' Stockfish source, and Reckless and Stockfish patches on `master` |
+| D.18 | RESEARCH | R2 | Added 2026-11-26 (maintainer request): Phase D's last step, before the release; a card first: what stays tracked and why, what goes, the rules it touches, and the remote (delete refs only, rewrite history, or rebuild the history in a new repository), priced for the maintainer; foreign material found on the public remote: the `oracle/*` tags' Stockfish source, and Reckless and Stockfish patches on `master` |
 | D.9.4 | RESEARCH | I1 | Held 2026-11-26 on the maintainer's yes or no before D.9 closes: RAR-S93's activation read with tables in the release qualification (E.1, E.3.4), recommended by `analysis/d9_tablebase_policy_2026-11-25.md`; if yes, bring `tools/diag/tb_activation.py`'s budget formula to `src/search/time.rs` and add the read; if no, closes `NO_CHANGE` and D.9 closes with it |
 | D.12.1 | RESEARCH | R2 | Held 2026-11-23 (maintainer decision on E.0's packet): the board's work a node is level with Stockfish 16's; D.16.3.1's profile showed no board function above the donor's (2026-11-23); reopens when D.12.0 shows one |
 | D.12.1.1 | RESEARCH | I2 | Held 2026-11-23 with D.12.1 |
@@ -5451,7 +5451,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      - every file in `logo/` tracked;
      - the evidence and citation rules for files that leave the tree;
      - `tools/diag/check_citations.py`'s foreign list.
-  4. *The remote.* Two routes:
+  4. *The remote.* Three routes:
      - Delete refs only: merged branches, and the `oracle/*` tags.
        Deleting tags and branches is the maintainer's command. The
        foreign material then leaves the live refs, but `v2.7.0`'s tree
@@ -5461,7 +5461,34 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
        removal of the cached pull-request refs. Every hash changes: the
        1,486 cited in the documents, the release tags and their GitHub
        releases, and any clone or fork.
-     The card prices both, and the maintainer chooses.
+     - Rebuild the history and recreate the repository (added
+       2026-11-26, maintainer request). Rewrite the whole history with
+       `git filter-repo`, delete the GitHub repository, and create a new
+       one, under the same name if wanted. The rewrite removes the
+       foreign material from every commit and applies the keep list to
+       the past. It can also settle the early Lynx name, as the
+       maintainer decides.
+       - What it solves: deleting the repository removes everything
+         GitHub serves for it, the pull-request refs and unreferenced
+         commits included, with no Support request.
+       - What it does not solve: clones others made, and public
+         archives such as Software Heritage, which take removal
+         requests separately.
+       - Its costs:
+         - every hash changes, so the documents' 1,486 citations are
+           remapped from `filter-repo`'s commit map and checked by
+           `check_citations.py`;
+         - pull requests #10 onward and their discussions are lost,
+           with the documents' links to them;
+         - the releases are recreated on the rewritten tags, with
+           their binaries, which are downloaded before anything is
+           deleted, under the same tag names so that external download
+           links (CCRL's included) keep working;
+         - CI, branch protection, the description and the topics are
+           set up again, and stars and watchers are lost.
+       - Natural timing: just before the release, which is then
+         published from the new repository.
+     The card prices all three, and the maintainer chooses.
   **Done when:**
   - the tree holds only the keep list;
   - `check_guide.py`, `check_citations.py` and `check_rules.py` pass on
