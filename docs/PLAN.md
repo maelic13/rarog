@@ -429,7 +429,7 @@ pruning, is added as Phase D's last step, before the release.
 | D.15.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: each download a `.zip` or `.tar.gz` with the binary, the licences, the README and the changelog, where D.11's notices ship; before the next release |
 | D.15.2 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: the release notes as the section's summary and highlights, with a link to the full changelog; before the next release |
 | D.17 | RESEARCH | R2 | Added 2026-11-23 (maintainer request): not before the end of Phase D; a card on GitHub-hosted runners as a lane for self-play SPRTs and tunes, then a maintainer decision on the rules it changes |
-| D.18 | RESEARCH | R2 | Added 2026-11-26 (maintainer request): Phase D's last step, before the release; a card first: what stays tracked and why, what goes, the rules it touches, and the remote (delete refs only, or rewrite history), priced for the maintainer; foreign material found on the public remote: `dragon_nnue`'s network and recovered evaluation (kept by maintainer decision 2026-11-18), the `oracle/*` tags' Stockfish source, and Reckless and Stockfish patches on `master` |
+| D.18 | RESEARCH | R2 | Added 2026-11-26 (maintainer request): Phase D's last step, before the release; a card first: what stays tracked and why, what goes, the rules it touches, and the remote (delete refs only, or rewrite history), priced for the maintainer; foreign material found on the public remote: the `oracle/*` tags' Stockfish source, and Reckless and Stockfish patches on `master` |
 | D.9.4 | RESEARCH | I1 | Held 2026-11-26 on the maintainer's yes or no before D.9 closes: RAR-S93's activation read with tables in the release qualification (E.1, E.3.4), recommended by `analysis/d9_tablebase_policy_2026-11-25.md`; if yes, bring `tools/diag/tb_activation.py`'s budget formula to `src/search/time.rs` and add the read; if no, closes `NO_CHANGE` and D.9 closes with it |
 | D.12.1 | RESEARCH | R2 | Held 2026-11-23 (maintainer decision on E.0's packet): the board's work a node is level with Stockfish 16's; D.16.3.1's profile showed no board function above the donor's (2026-11-23); reopens when D.12.0 shows one |
 | D.12.1.1 | RESEARCH | I2 | Held 2026-11-23 with D.12.1 |
@@ -5412,13 +5412,6 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     11, `docs/` 4.9 MB in 450, `analysis/` 3.1 MB in 204, `tools/`
     2.6 MB in 249, `src/` 1.45 MB in 109 and `tests/` 0.65 MB in 52. The
     pack is 68 MB.
-  - The branch `dragon_nnue` holds two things from commercial engines,
-    whose licence to redistribute is not established: Dragon's network
-    (`assets/nnue/dragon-network.nnue`, 70 MB, added `0624717`
-    2026-10-15) and a recovered evaluation with its data
-    (`vendor/fritz16-hce/`, added `3de5d3d` 2026-10-15). The branch is
-    kept by maintainer decision 2026-11-18, and only the maintainer
-    revisits that.
   - The tags `oracle/hybrid`, `oracle/hybrid-ablate` and
     `oracle/hybrid-diag` hold Stockfish's source (`hybrid/stockfish/`,
     GPL-3.0, added `75d0d43` 2026-08-11).
@@ -5455,7 +5448,6 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
      maintainer, and the ignored evidence under `analysis/artifacts/`
      stays on this machine.
   3. *The rules it touches*, each a maintainer decision:
-     - `dragon_nnue` kept (2026-11-18);
      - every file in `logo/` tracked;
      - the evidence and citation rules for files that leave the tree;
      - `tools/diag/check_citations.py`'s foreign list.

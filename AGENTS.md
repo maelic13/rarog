@@ -113,9 +113,7 @@ never by eyeballing, and never by assuming a tool did what its name says.**
   the branch.
 - Never force-add evidence. Untracking uses `git rm --cached`, keeps the
   local bytes, and authorises neither deleting evidence nor rewriting history.
-- `dragon_nnue` is kept, locally and on GitHub: never delete it, whatever a
-  review finds (maintainer decision 2026-11-18). Deleting a remote tag or
-  branch is the maintainer's command.
+- Deleting a remote tag or branch is the maintainer's command.
 - Most of the tree is CRLF. Every scripted edit preserves the file's existing
   line endings, asserts each anchor is present exactly once and lands in
   executable code, and re-reads the region afterwards; a mixed-ending file or
