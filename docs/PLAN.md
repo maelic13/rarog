@@ -6012,6 +6012,15 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       refitted under each, and let held-out loss and the gate choose; the
       forms differ mostly in pure opposite-bishop endings, 1.5% of the
       kernel's positions.
+      Also for the sweep (added 2026-11-26, RAR-E75, zero games): the
+      evaluations are scaled unevenly by ending type. Its candidates, each
+      with its form, seeds and falsifier in the record and each reread on
+      the port: a multiplier for pawn endings, rook endings and pure
+      opposite-bishop endings, decided with D.6.9's form above, and the
+      pawn race in place of the unstoppable-pawn term, fitted beside it.
+      Its two other candidates, a rook on the seventh in the endgame and
+      several pieces attacked at once, are families beside the donor's:
+      they wait for their own read after E.4.4.4.
     - **E.4.3 The king-danger index rebuilt in the donor's structure — `R2` card, then `I2`/`V`.** The
       one hand-crafted lead Phase C left (added 2026-10-22, maintainer
       decision: classical work resumes only after Phases D and E). Evidence:
