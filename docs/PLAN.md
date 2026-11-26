@@ -405,13 +405,12 @@ the numbering again and every step keeps its number, a Phase E number
 among Phase D's rows included. D.16 runs first, its profile (D.16.3.1) ahead of its
 instrument steps; then E.4.0, opened by the donor's evaluation inside
 the kernel (E.4.0.1). Then D.8 to D.17 in ascending
-order, with D.12 cut to D.12.0 and its other leaves held in the last
-rows; then Phase E as numbered. E.4's units stay after the release
-(maintainer decision 2026-10-22).
+order, with D.12 cut to D.12.0 and D.9.4 and D.12's other leaves held in
+the last rows; then Phase E as numbered. E.4's units stay after the
+release (maintainer decision 2026-10-22).
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.9.3 | RESEARCH | R3 | The search explosion with tables loaded, a defect of band windows; its repair search closed `NO_CHANGE` 2026-11-25 by its stop rule: the rule table found four differences from Stockfish, and no variant of them, nor their union with late-move pruning at a winning beta, finishes the three roots, while every one moves `bench 13`. Its clock read, 2026-11-25: four of 96 first-move searches at 2+1 end at the hard limit, roots 11, 14 and 26 with tables and root 30 in both arms, so the defect does not need tables; the repair reopens by its trigger. The repair candidate, WU with V2, was refuted under the same clock on 2026-11-26: roots 26 and 30 still end at the limit with tables, and a stall moves onto root 14 without them. Next is the design question (`R3`), why a band window grows in Rarog's search and not in its donors', which ends in a repair with a mechanism, the containment, or `NO_CHANGE` (`analysis/d9_tablebase_policy_2026-11-25.md`, *The clock read's result* and *The repair candidate's read: the result*) |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
 | D.11.2 | RESEARCH | R2 | After D.11.1: GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
@@ -423,6 +422,7 @@ rows; then Phase E as numbered. E.4's units stay after the release
 | D.15.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: each download a `.zip` or `.tar.gz` with the binary, the licences, the README and the changelog, where D.11's notices ship; before the next release |
 | D.15.2 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: the release notes as the section's summary and highlights, with a link to the full changelog; before the next release |
 | D.17 | RESEARCH | R2 | Added 2026-11-23 (maintainer request): not before the end of Phase D; a card on GitHub-hosted runners as a lane for self-play SPRTs and tunes, then a maintainer decision on the rules it changes |
+| D.9.4 | RESEARCH | I1 | Held 2026-11-26 on the maintainer's yes or no before D.9 closes: RAR-S93's activation read with tables in the release qualification (E.1, E.3.4), recommended by `analysis/d9_tablebase_policy_2026-11-25.md`; if yes, bring `tools/diag/tb_activation.py`'s budget formula to `src/search/time.rs` and add the read; if no, closes `NO_CHANGE` and D.9 closes with it |
 | D.12.1 | RESEARCH | R2 | Held 2026-11-23 (maintainer decision on E.0's packet): the board's work a node is level with Stockfish 16's; D.16.3.1's profile showed no board function above the donor's (2026-11-23); reopens when D.12.0 shows one |
 | D.12.1.1 | RESEARCH | I2 | Held 2026-11-23 with D.12.1 |
 | D.12.1.2 | RESEARCH | V | Held 2026-11-23 with D.12.1 |
@@ -4199,10 +4199,11 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   `shakmaty::Chess` a probe, reads by system calls unless its `unsafe`
   memory map is enabled: not ported now, triggers in the record.
   **Before D.9 closes** (decision 2026-11-25, the record, *D.9 from
-  here*): D.9.3 and D.9.2 resolved, and the maintainer's yes or no on
-  RAR-S93's activation read with tables in the release qualification,
-  which has no step. Nothing else is owed: no `NO_CHANGE` trigger fired,
-  and `shakmaty-syzygy` stays not ported.
+  here*): D.9.3 and D.9.2 resolved (both `NO_CHANGE`), and the
+  maintainer's yes or no on RAR-S93's activation read with tables in the
+  release qualification (D.9.4 below, held on that decision). Nothing
+  else is owed: no `NO_CHANGE` trigger fired, and `shakmaty-syzygy`
+  stays not ported.
     - **D.9.1 The option and loading repairs — `I1`, DONE 2026-11-25.**
       One commit each on `d9`. PROTO-9: the extension, the root ranking
       and `tb_root_board` gate on the loaded size capped by the limit
@@ -4255,7 +4256,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       band-window explosion lands, and then this read runs again,
       unchanged; or a run with tables shows table reads costing time.
       The post-probe poll stays.
-    - **D.9.3 The search explosion with tables loaded — `R3` (from `R2` on 2026-11-26, when the variant search was spent and the design question remained).** Found by
+    - **D.9.3 The search explosion with tables loaded — `R3` (from `R2` on 2026-11-26, when the variant search was spent and the design question remained), NO_CHANGE 2026-11-26.** Found by
       D.9.2's read and diagnosed 2026-11-25 (the record, *D.9.3's
       diagnosis* and *D.9 from here*; zero games). On roots 26, 30 and
       11 of D.9.2's selection one iteration grows from under 2M nodes
@@ -4311,30 +4312,79 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       configuration, on the analysis trigger. Roots at twice the time
       reopen the repair and the containment, each registered then.
       **Step 3 done 2026-11-25** (the record, *The clock read's
-      result*). Four of the 96 first-move searches at 2+1 end at the
-      hard limit, 88.1 s or 73% of the clock: roots 11, 14 and 26
-      with tables, and root 30 in both arms. Root 30 also explodes at
-      depth 16 without tables at a fixed depth, so the defect does
-      not need tables. On the other 44 roots the two arms cost the
-      same, 61.4 s against 61.8 s. **The repair reopens** by its
-      trigger. The containment would cover root 26 alone and is the
-      fallback. **Held on the repair candidate's read**, registered in
-      the record: WU with V2, built and archived, under the clock
+      result*). Five of the 96 first-move searches at 2+1 across four
+      roots end at the hard limit, 88.1 s or 73% of the clock: roots
+      11, 14, 26 and 30 with tables, and root 30 without tables. Root
+      30 also explodes at depth 16 without tables at a fixed depth, so
+      the defect does not need tables. On the other 44 roots the two
+      arms cost the same, 61.4 s against 61.8 s. **The repair reopens**
+      by its trigger. The containment would cover root 26 alone and is
+      the fallback. **Held on the repair candidate's read**, registered
+      in the record: WU with V2, built and archived, under the clock
       read's command on all 48 roots, on an idle host. No stop with
       tables makes it the repair's registration, a gate for the
-      maintainer (case 3 unless decided otherwise); a stop with
-      tables refutes it and sends the leaf to a design question.
-      **The candidate's read done 2026-11-26** (the record, *The repair
+      maintainer (case 3 unless decided otherwise); a stop with tables
+      refutes it and sends the leaf to a design question. **The
+      candidate's read done 2026-11-26** (the record, *The repair
       candidate's read: the result*): refuted. With tables it ends
       roots 11 and 14 and leaves 26 and 30 at the hard limit; without
       tables it moves a stall onto root 14. No repair is registered and
-      no gate goes to the maintainer. **Next: the design question
-      (`R3`)**, read from the structure of Rarog's search against
-      Stockfish's and Reckless's, not from another variant round: why
-      a band window grows in Rarog's search, with or without tables.
-      It ends in a repair with a mechanism, read under the clock
-      instrument and then gated; the containment for decided roots,
-      with `bench 13` exact; or `NO_CHANGE` with the cost recorded.
+      no gate goes to the maintainer. **Design question answered and
+      closed `NO_CHANGE` 2026-11-26** (the record, *D.9.3's design
+      question*; deterministic 1T node counts and counters, zero games).
+      First, Reckless 0.9.0 does not pass root 30 without tables (99.5M
+      nodes at depth 20 across sixteen fail-lows, 192.2M at depth 21,
+      and 723.0M at depth 30 with tables), while Stockfish 19 finishes
+      depth 30 without tables in 29.0M nodes; and root 30 without tables
+      at depth 16 has zero decisive-band nodes, so a band window is an
+      accelerator rather than a precondition. Three coupled mechanisms
+      separate the compact kernel from Stockfish 19: (1) unguarded
+      `correction_update` saturates `|corr|` (378 to 466) on queening
+      and decisive transitions across sparse 6–8-man hash keys, which
+      through `lmr_correction = 9,252` (−4 plies against a
+      `move_count`-independent `274 · ilog2(d)` base), `singular +3`
+      (up to 949k firings), `ldse +1` and `hindsight`/`research` drives
+      67% to 98% of interior nodes past `2 · root_depth` to `LINE_BOUND`;
+      (2) 42% of interior nodes even on root 26 run in non-decisive
+      sub-windows (singular exclusion, `null_bound`, `MultiCut`/`ProbCut`
+      `lerp` phantom scores), while in-check nodes (35%) disable all
+      move-loop pruning and `Bound::Lower` TT cutoffs require
+      `tt_depth >= depth + 1`; (3) root 14 at depth 32 stalls below
+      `2 · root_depth` (74% to 99% of nodes) in Reckless's `27/128`
+      aspiration fail-low cascade, and `window_fail_low` keeps earlier
+      fail-high `w.reduction`. Two registered mechanism diagnostics on
+      exported copies (`d_lmr2`, `bench 13` 4,235,377, +14.65%;
+      `d_ply2`, 3,313,794, −10.30%) fired both falsifiers: capping LMR
+      extensions past `2 · root_depth` alone leaves all three of roots
+      11, 26 and 30 short of depth 20 as singular `+3` and hindsight
+      take over; clamping all four positive extenders past
+      `2 · root_depth` zeroes `ply >= 4 · root_depth` on every tablebase
+      trace and finishes roots 11 and 26 at depth 20, yet still stalls
+      on root 30 with tables (`d16`, 84.7% of nodes in `2d..3.5d`),
+      root 30 without tables (`d14`), root 11 at depth 24 (`d21`) and
+      root 14 at depth 32 (`d25`), because saturated `|corr|` still
+      inflates depth below `2 · root_depth` and leaves 50% to 66% of
+      late moves at zero LMR reduction (`reduced = new_depth`). Both a
+      standalone Case 3 patch (10%–16% bench move unfitting D.7.11's
+      seeds for a zero-time-loss defect) and the decided-root clock
+      containment (covers 1 of 5 stops, helps no analysis search, lacks
+      donor precedent, and aborts fail-low recovery from 50-move or
+      repetition traps on 7–8-man boards) are rejected now. Cost at
+      close: 5 of 96 first-move `2+1` searches on D.9.2's 48 roots end
+      at the 88.1 s hard limit (0 time losses; other 44 roots 61.4 s vs
+      61.8 s). Carried to **F.6** for joint evaluation and re-fitting;
+      reopens earlier on a game time loss from a hard-limit stall, a
+      rated pool or release qualification adopting tables and showing
+      clock harm, or an analysis hang needing an opt-in bound.
+    - **D.9.4 RAR-S93's activation read with tables in the release qualification — `I1`.**
+      Held 2026-11-26 on the maintainer's yes or no before D.9 closes
+      (`analysis/d9_tablebase_policy_2026-11-25.md`, *D.9 from here*).
+      Recommended outside D.9's engine repairs because `tools/diag/tb_activation.py`'s
+      budget formula predates D.7.9.1's time manager in `src/search/time.rs`
+      and E.1 / E.3.4 do not yet list a with-tables check. If yes:
+      update `tools/diag/tb_activation.py` with its test, record the
+      release-qualification check in E.1 / E.3.4, and close D.9; if no:
+      close `NO_CHANGE` and close D.9 with it.
 - **D.10 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
   Renumbered from D.7 on 2026-11-13 (maintainer decision), when the
   search-shape step took that number.
@@ -6279,6 +6329,19 @@ carries the architecture (F.6).
     registration.
   - `LazyMargin` has no successor on a network; with the HCE it is
     refitted by PROCESS's margin block (E.4, F.4.1).
+  *From D.9.3 (2026-11-26; `analysis/d9_tablebase_policy_2026-11-25.md`,
+  D.9.3's design question):* five coupled compact-kernel rules carry the
+  endgame/promotion search explosion (shared by Reckless 0.9.0) and cannot
+  be patched singly without unfitting the seed table: guarding
+  `correction_update` on `!is_decisive(best_score)`, `move_count` scaling
+  against `lmr_correction` in `late_move_reduction`, ply-relative
+  extension caps (`ply < 2 · root_depth` across LMR, singular, LDSE,
+  hindsight and re-search, plus singular depth penalties), in-check
+  move-loop pruning when `!is_loss(best_score)`, and resetting
+  `w.reduction` on `window_fail_low` alongside aspiration fail-low
+  widening. Evaluate before the surface freezes so any adopted change is
+  fitted inside the re-fit; if the explosion ends on D.9.2's 48 roots,
+  D.9.2's registered probe-after-TT-cutoff read reopens unchanged.
 - **F.7 Architecture ladder: output buckets, king buckets, relation/threat inputs; one axis at a time — `R3` with `I2`/`V` sub-steps.** Output buckets,
   king buckets with mirroring, then relation and threat inputs, one axis
   at a time (Stockfish's threat inputs the reference; Reckless's are ideas

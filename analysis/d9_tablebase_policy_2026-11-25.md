@@ -991,8 +991,9 @@ roots of one opposite-bishop cohort. These are not games and not Elo.
 
 All 96 searches answered. At this clock the hard limit is 88,099.7 ms:
 `HARD_SCALE` 0.7281 of the clock less Move Overhead, plus 0.75 of the
-increment, less 15 ms. Four searches ended at it, each spending 73% of
-the clock on one move:
+increment, less 15 ms. Five searches across four roots ended at it, each
+spending 73% of the clock on one move (corrected 2026-11-26 from "Four
+searches", which counted the four roots and missed root 30's two arms):
 
 | Root | Men | Without tables | With tables |
 |---|---|---|---|
@@ -1035,10 +1036,10 @@ the clock on one move:
 - The scope widens. Root 30 shows the explosion without tables, so the
   defect is in Rarog's search in every configuration; tables make it
   more common.
-- The containment would cover one of the four stops: root 26, whose
+- The containment would cover one of the five stops: root 26, whose
   finished score is the tablebase win. Roots 11, 14 and 30 finish on
   ordinary scores. I recommend against making it the next step: it would
-  leave three of the four stops, and the repair candidate's read is
+  leave four of the five stops, and the repair candidate's read is
   cheaper to answer first. The containment stays the fallback, a case-1
   change for decided roots only, if the candidate fails.
 - Next: the repair candidate's read below.
@@ -1093,8 +1094,9 @@ The maintainer ran the registered command on an idle host; the output is
 read's: wall time per root, one thread, the first move of a 2+1 clock,
 zero games.
 
-All 96 searches answered. Four ended at the hard limit, the same count
-as the baseline, but not on the same roots:
+All 96 searches answered. Four searches across three roots ended at the
+hard limit, against the baseline's five across four roots, and not on the
+same roots:
 
 | Root | Arm | Baseline | Candidate |
 |---|---|---|---|
@@ -1151,6 +1153,333 @@ as the baseline, but not on the same roots:
     seven- and eight-man roots) and its triggers.
 - No engine change is made while the leaf is research. The candidate,
   `cand.exe`, stays archived as the read's binary.
+
+## D.9.3's design question, 2026-11-26
+
+Research on why Rarog's compact search explodes on these roots where
+Stockfish's does not, read from the two searches' structure and deterministic
+single-thread traces (`analysis/artifacts/d93r3-2026-11-26/`; zero games).
+
+### Donor priors without tables, and the observational microscope
+
+First, the two donors on root 30 without tables (`Threads 1`, `Hash 64`,
+`uci_trace.py`, `r30_sf19_notb.txt` and `r30_reckless_notb.txt`):
+
+- **Stockfish 19** (`sf_19` release binary) passes root 30 without tables:
+  depth 16 at 1,840,961 nodes (`cp -846`), depth 20 at 2,146,007 (`cp -898`),
+  depth 29 at 23,815,306 (`cp -1621`) and depth 30 at 28,984,809 (`cp -1967`).
+  With tables (`r30_sf19_tb.txt`) it reaches depth 37 at 12,436,059 nodes and
+  then hits the 60M cap on move 1 of depth 38 once mating distance enters view.
+- **Reckless 0.9.0** (binary only, ideas-only reference; its UCI parser ignores
+  `nodes` beside `depth`) **does not** pass root 30 without tables inside 30M
+  nodes: it finishes depth 19 at 2,257,795 nodes (`cp -669`), then spends
+  **97.2M nodes** on depth 20 across sixteen aspiration fail-lows (finishing
+  depth 20 at 99,471,439 nodes, `cp -7289`) and **92.7M nodes** on depth 21
+  (192,193,100 nodes, `mate -20`). With tables (`r30_reckless_tb.txt`) it
+  reaches depth 23 in 10.8M nodes, depth 25 in 47.4M and depth 29 in 75.7M, and
+  at depth 30 jumps to **723,001,279 nodes** (`mate -15`). The compact kernel's
+  donor shares the class (`RAR-S127`).
+
+Second, an observational-only `diag,probes` build of the baseline (`obs_v0.exe`,
+SHA-256 `09e5a770f62c573f67b3f38b1b089610415d2a381fdf26f5b89ca5247dd635ff`,
+`bench 13` 3,694,298 / EBF 2.324) and of the refuted candidate (`obs_cand.exe`,
+SHA-256 `781cb6bf23584e369015f3f91c29061c441c19bf396a833e65b80b5af929cdf8`,
+`bench 13` 3,114,639 / EBF 2.303) was run to a 30M-node cap across the stalling
+roots and their preceding finished iterations (`obs_d93.py`, `run_obs.py`,
+`obs_summary.txt`, all exit 0):
+
+| Search (30M cap) | Int. nodes | `ply >= 2d` | `ply >= 4d` (`max_ply`) | `LINE_BOUND` hits | `hasQ` | Mean `\|corr\|` | LMR `+1/+2` ext % | Sing. `+3` | LDSE `+1` |
+|---|---|---|---|---|---|---|---|---|---|
+| `r30` notb `d15` (`v0`, finishes) | 316,254 | 7.7% | 0.0% (38) | 0 | 81.4% | 126.7 | 2.7% | 2,769 | 24,992 |
+| `r30` notb `d16` (`v0`, stalls) | 17,944,706 | **66.7%** | **51.5%** (127) | 252,363 | 98.9% | **413.3** | **53.3%** | 91,576 | 2,233,116 |
+| `r30` notb `d13` (`cand`, stalls) | 18,928,922 | **74.0%** | **46.3%** (103) | 419,452 | 98.4% | **449.8** | **41.8%** | 107,542 | 2,489,852 |
+| `r30` tb `d16` (`v0`, stalls) | 16,840,796 | **97.2%** | **93.1%** (119) | 1,599,685 | 99.7% | **429.4** | **45.5%** | 133,035 | 2,325,291 |
+| `r30` tb `d17` (`cand`, stalls) | 17,703,703 | **97.0%** | **96.4%** (127) | 1,887,891 | 99.7% | **427.7** | **27.6%** | **626,729** | 1,151,364 |
+| `r26` tb `d18` (`v0`, stalls) | 17,569,134 | **97.9%** | **95.1%** (143) | 2,054,848 | 99.8% | **445.3** | **45.4%** | 220,637 | 2,513,709 |
+| `r26` tb `d22` (`cand`, stalls) | 17,323,626 | **96.2%** | **93.4%** (175) | 1,380,189 | 99.8% | **378.4** | 8.3% | **949,015** | 1,278,193 |
+| `r11` tb `d24` (`v0`, stalls) | 17,545,680 | **94.4%** | **90.9%** (191) | 634,363 | 98.3% | **432.8** | **34.5%** | 129,156 | 2,316,062 |
+| `r14` tb `d32` (`v0`, stalls) | 17,208,998 | 25.9% | 0.04% (138) | 0 | 7.7% | 291.5 | **35.2%** | 105,478 | 1,416,623 |
+| `r14` notb `d32` (`cand`, stalls) | 19,679,262 | 0.9% | 0.0% (108) | 0 | 6.2% | 155.9 | 10.3% | 210,895 | 1,692,613 |
+
+### Structural diagnosis against Stockfish 19
+
+First, a correction to *The clock read's result*: on root 30 without tables at
+depth 16, **zero** nodes in the first 30M have `beta` in the decisive band
+(`obs_win_band = 0`, `obs_loss_band = 0`; 81.5% have `|beta|` in `1,000..3,000`
+and 2.5% in `3,000..31,519` from rule-50-downgraded mates blended by `lerp`).
+The explosion does not require a decisive-band window; a decisive-band window is
+the fastest way to trigger it.
+
+Three mechanisms separate Rarog's compact search from Stockfish 19 (`sf_19`,
+`src/search.cpp`), and the table above shows how they interact:
+
+1. **Unbounded depth inflation past `2 · root_depth` (`D1`, the carrier on
+   roots 26, 30 and 11).** On roots 26, 30 and 11 — both with and without
+   tables, and under `cand` (`WU + V2`) as well as the baseline — **66.7% to
+   97.9% of all interior nodes sit past `2 · root_depth` and 46.3% to 96.4%
+   past `4 · root_depth`**, running until `LINE_BOUND` (`8 · root_depth − ply`,
+   up to `MAX_PLY` 240 since D.6.7) clamps remaining depth (`252k` to `2.05M`
+   hits, mean remaining depth still 3.5 to 7.3 deep in the tail). Four rules
+   keep `child_depth >= depth` over 100+ plies once pawns promote (`hasQ` 98.3%
+   to 99.8%):
+   - **Correction-history saturation (`mean_|corr|` 378 to 450, near the 555
+     ceiling).** `correction_update` (`compact/rules.rs:2254`) has no
+     `!is_decisive(best_score)` guard (training 2.15M to 3.34M times on
+     decisive scores with tables, and 727k times on mates without tables on
+     root 30 alongside `±1,800` queening scores). Across the few pawn and
+     non-pawn keys of a 6-to-8-man board the five correction slots saturate.
+     In `late_move_reduction` (`:1988`), `-lmr_correction · |corr| / 1024`
+     (`lmr_correction` = 9,252) subtracts **3.3 to 4.9 plies**, against a base
+     `274 · ilog2(depth)` that does not grow with `move_count` (Stockfish's
+     `reductions[d] * reductions[mn]` does, and its `|correctionValue| / 26310`
+     removes at most ~1.5 plies) plus `-1,011` on Queen checks (32% to 47% of
+     LMR calls). `r` turns negative, and `lmr_depth` (`:2038`) allows
+     `new_depth + 2` (`depth + 1`, **one ply deeper than the parent**) at every
+     ply: **45% to 53% of all LMR calls on `v0` extend late moves by +1 or +2
+     plies**, and 75% to 78% do not reduce at all. Stockfish 19 explicitly
+     forbids LMR extensions at `ss->ply >= 2 * rootDepth` (`search.cpp:1403`:
+     *"To avoid search explosion, extensions are not allowed deep, relative to
+     rootDepth, in the search tree"*).
+   - **Singular triple extensions (`:1759`–`1765`).** The same saturated
+     `|corr|` drives both `double` and `triple` bars below zero, turning
+     **99.8% to 99.99% of singular extensions into +3-ply extensions**
+     (`new_depth = depth + 2`; **949,015** times on `r26` `d22` and **626,729**
+     on `r30` `d17` under `cand`, where LMR reduced more and singular took over
+     the tail). Stockfish penalises double and triple margins past `rootDepth`
+     (`:1291`–`1293`) and disables singular extensions under `seekMate`
+     (`:351`, `:1278`).
+   - **Low-depth singular extension (`ldse_extends`, `:1782`).** Absent in
+     Stockfish; adds +1 ply (`new_depth = depth`) on Move 1 at every
+     out-of-check cut node with `depth <= 7` and `estimate <= alpha − 10`,
+     which holds automatically whenever `alpha` is in the win band or a wide
+     queening window (1.15M to 2.51M firings per 30M nodes).
+   - **Deeper re-searches (`research_depth`, `:2055`) and hindsight (`:1383`).**
+     Add +1 ply on LMR fail-highs (258k to 608k times) and after large parent
+     reductions (69k to 463k times) at any ply.
+2. **Why decisive-window guards (`W1`–`W4`, `V2`, `V3`) cannot contain `D1`
+   (`D2`).** Even inside Root 26's band-window stall (`v0` `d18`), **42.1%** of
+   interior nodes (`7.41M` of `17.57M`) have non-decisive `(alpha, beta)`:
+   singular exclusion searches open ordinary windows around `tt_score − margin`,
+   `null_bound` (`:1553`) substitutes an ordinary `tt_score` for a winning
+   `beta`, and `MultiCut` (`:1768`) and `ProbCut` (`:1672`) `lerp` ordinary
+   scores toward decisive `beta`, injecting non-decisive phantom scores in
+   `3,000..31,519` (`1.88M` to `3.08M` nodes; Root 11's `cp 5929` at depth 23).
+   Meanwhile in check (34% to 36% of interior nodes on `v0`), Rarog disables
+   all move-loop pruning (`!in_check`), whereas Stockfish keeps LMP, history
+   and SEE pruning active once `!is_loss(bestValue)`; and at wide `alpha`,
+   `razors` is blocked by `alpha < 776` (and under `W1` by `!tt_quiet`,
+   `bound != Lower`, and `104 · d²` against Stockfish's linear `342 · d`).
+   Finally, `tt_cuts` (`:1317`, `tt_score < beta` against Stockfish's `<=`)
+   requires `tt_depth >= depth + 1` for every `Bound::Lower` cutoff (`885k` to
+   `2.15M` same-depth hits skipped).
+3. **Root aspiration fail-low cascades at high ordinary depth (`D3`, the
+   carrier on root 14 at depth 32 and an amplifier on root 30).** Root 14 at
+   depth 32 (`v0` with tables, and `cand` without tables) has **zero**
+   decisive-band nodes and **74.1% to 99.1% of its nodes below `2 · root_depth`
+   (`ply < 64`)**: when tables (or `WU`) expose a loss in the 7-man
+   opposite-bishop fortress, Reckless's `27/128` (+21.1%) fail-low widening
+   (`asp_max_fails = 20`, against Stockfish's `47/128` = +36.7%) steps through
+   more than a dozen depth-32 windows. And on root 30 with tables,
+   `window_fail_low` (`:2417`) preserves earlier fail-high `w.reduction`
+   (Stockfish resets `failedHighCnt = 0`), finishing iterations 9 to 15 at
+   effective depths 5 to 9 before iteration 16 jumps to depth 15.
+
+### The mechanism diagnostic read, registered 2026-11-26 before it ran
+
+To test `D1` causally — and to separate Stockfish's one-line LMR extension cap
+from the other three deep-ply extenders without `RAR-S127`'s −36% hard chop
+(`2 · root_depth − ply`, which zeroes remaining depth at `2 · root_depth`) — two
+diagnostic builds of an exported copy of `44836d3` (`obs_d93.py` counters kept,
+never committed) are registered before either is built:
+
+- **`d_lmr2`:** `lmr_depth` caps `-reduction / 1024` at `0` when
+  `ply >= 2 * root_depth` (and keeps `+2` when `ply < 2 * root_depth`).
+- **`d_ply2`:** `d_lmr2`, plus at `ply >= 2 * root_depth`: `extension =
+  extension.min(0)` (no positive singular or LDSE extension), no `+1` ply in
+  `hindsight_depth`, and no `+1` ply in `research_depth`. Remaining `depth > 0`
+  still searches out naturally at `−1` ply per move.
+
+**Measurements** (`Threads 1`, `Hash 64`, deterministic):
+1. `bench 13` on `d_lmr2` and `d_ply2`.
+2. `tools/diag/tb_probe_read.py --epd tools/books/ocb_cohort_v1.epd --men 7,8
+   --per-count 24 --depth 20 --max-nodes 30000000 --only 26,30,11 --syzygy
+   D:/chess/tablebases/syzygy3456` on `obs_v0`, `d_lmr2` and `d_ply2`; if
+   either diagnostic finishes all three, the same depth-20 read on all 48 roots
+   with tables.
+3. Without tables on root 30 at `--depth 20 --max-nodes 30000000`, plus single
+   traces (`nodes 30000000`) on root 30 without tables at depth 16, root 11
+   with tables at depth 24, and root 14 with tables at depth 32.
+
+**Frozen predictions:**
+- `bench 13` moves downward on both builds (0.95): by 0.5% to 8% on `d_lmr2`
+  and 2% to 15% on `d_ply2` (0.70), far smaller than `RAR-S127`'s −36% chop.
+- With tables at depth 20 (30M cap): `d_lmr2` finishes roots 26 and 11 (0.85)
+  and all three (0.55); `d_ply2` finishes all three of 26, 30 and 11 (0.80),
+  with zero interior nodes at `ply >= 4 * root_depth` (0.99).
+- Without tables on root 30 (30M cap): `d_ply2` finishes depth 16 (0.85);
+  finishing depth 20 without tables has confidence 0.45, since Reckless itself
+  takes 99.5M nodes at depth 20 across sixteen fail-lows into a 40-ply mate.
+- Deeper clock-stall roots (30M cap, with tables): `d_ply2` finishes root 11
+  at depth 24 (0.75) and leaves root 14 short at depth 32 (0.80), where 74.1%
+  of the baseline's nodes already lie below `2 * root_depth`.
+
+**Falsifiers:**
+- `D1` is refuted as the necessary carrier of the deep-tail explosions if
+  `d_ply2` leaves root 26 or root 30 short of depth 20 with tables, or root 30
+  short of depth 16 without tables.
+- LMR's negative reduction alone is sufficient if `d_lmr2` matches `d_ply2` on
+  all four of those checks, and insufficient (proving singular `+3` and LDSE
+  carry the tail when LMR is capped) if `d_lmr2` leaves one short that `d_ply2`
+  finishes.
+
+### The mechanism diagnostic read: the result, 2026-11-26
+
+Both diagnostic builds were compiled from fresh `git archive HEAD` (`44836d3`)
+copies with `obs_d93.py` and `diag_mech.py` (`--release --features diag,probes`)
+and archived beside their logs and outputs in
+`analysis/artifacts/d93r3-2026-11-26/` (`run_mech.py`, `run_mech.log`,
+`mech_summary.txt`, `read_mech_3.json`, `read_mech_r30_notb.json` and
+`mech_r*.txt`, all exit 0; evidence layer: deterministic single-thread node
+counts and diagnostic counters at `Hash 64`, zero games, not Elo):
+
+- **`d_lmr2.exe`:** SHA-256
+  `2ccc96d535a87f4eeadc54970ad6b4bb41334fcc6443850dc7631f589ac331a6`,
+  `bench 13` **4,235,377 (+14.65%) / EBF 2.352** (`d_lmr2_build.log`).
+- **`d_ply2.exe`:** SHA-256
+  `86bda611b3347b17b52b399199d2a70c438817b953c08a5a8de90bc8bf9d15d1`,
+  `bench 13` **3,313,794 (−10.30%) / EBF 2.313** (`d_ply2_build.log`).
+
+Neither build finished all three of roots 26, 30 and 11 at depth 20 with
+tables, so the conditional 48-root depth-20 read did not trigger:
+
+| Search (30M-node cap, 1T, `Hash 64`) | `obs_v0` (baseline) | `d_lmr2` | `d_ply2` | `d_ply2` `ply >= 2d` / `>= 4d` (`max_ply`) | `d_ply2` unreduced LMR (`r <= 0`) |
+|---|---|---|---|---|---|
+| Root 11, with tables, `depth 20` | **d20** at 1,903,586 (`cp 1456`) | d18 at 2,331,985 (`cp 1368`) | **d20** at 2,304,165 (`cp 19970`) | 29.7% / **0** (61) | 49.2% (35.2% at `0`) |
+| Root 26, with tables, `depth 20` | d17 at 484,662 (`cp 19987`) | d19 at 722,716 (`cp 19989`) | **d20** at 22,850,764 (`cp 19991`) | 80.8% / **0** (59) | 64.5% (58.6% at `0`) |
+| Root 30, with tables, `depth 20` | d15 at 857,473 (`cp -849`) | d16 at 15,810,668 (`cp -988`) | d16 at 12,297,646 (`cp -19982`) | 84.7% / **0** (54) | **71.5%** (**65.6%** at `0`) |
+| Root 30, no tables, `depth 20` | d15 at 495,516 (`cp -385`) | d14 at 685,983 (`cp -430`) | d14 at 29,187,335 (`cp -2852`) | — | — |
+| Root 30, no tables, `depth 16` | d15 (stalls in d16) | d14 (stalls in d15, `max_ply` 119) | d14 (stalls in d15, `max_ply` 63) | 46.9% / 807 (63) | **69.5%** (**49.7%** at `0`) |
+| Root 11, with tables, `depth 24` | d23 (stalls in d24) | d18 (stalls in d19, `max_ply` 143) | d21 at 22,760,691 (`cp 19972`) | 89.8% / **0** (68) | 53.6% (49.5% at `0`) |
+| Root 14, with tables, `depth 32` | d31 (stalls in d32) | d27 at 3,207,000 (`cp -140`) | d25 at 2,139,767 (`cp -174`) | 37.5% / **0** (80) | 71.9% (44.1% at `0`) |
+
+**What the counters prove.**
+1. **Both registered falsifiers fired, and together they finish the causal
+   map.** First, `d_lmr2` fails on all three roots at depth 20 (`d18`, `d19`,
+   `d16`) while `d_ply2` finishes roots 11 and 26: when LMR's `+1/+2` extension
+   is capped past `2 · root_depth` on its own, `singular +3` (`526,733` on
+   `r26`, `410,029` on `r11`), `hindsight +1` (`1,871,608` on `r26`, `501,564`
+   on `r11`) and `ldse +1` (`1,772,399` and `498,863`) immediately take over the
+   deep tail (`96.5%` and `88.3%` of interior nodes still at `ply >= 2d`,
+   `max_ply` 159 and 143). Stockfish's one-line LMR cap is therefore
+   insufficient in Rarog's kernel, and raises `bench 13` by +14.65%.
+2. **Clamping all four positive extenders past `2 · root_depth` (`d_ply2`)
+   completely removes the `4 · root_depth` tail (`0` nodes at `ply >= 4d` and
+   `0` `LINE_BOUND` hits on every tablebase trace; `max_ply` 54 to 80 instead of
+   119 to 191) — and still explodes inside `2d..3.5d`.** On root 30 with tables
+   at iteration 17 (`2d = 34`), `d_ply2` reaches no deeper than `ply = 54`, yet
+   spends `15,066,075` of `17,778,765` interior nodes (84.7%) in `ply 34..54`
+   and stalls before finishing depth 17 (having already found the tablebase loss
+   `cp -19982` at depth 16; on root 11 it likewise finds the tablebase win
+   `cp 19970` at depth 20 and stalls at depth 22). Two mechanics inside the
+   fitted kernel produce that `2d..3.5d` wall:
+   - **Depth build-up below `2 · root_depth`:** at `ply < 2 · root_depth`,
+     saturated `|corr|` (`433` to `466`) still triggers `singular +3` (`303,087`
+     on `r30` `tb`, `511,541` on `r11` `d24`), `lmr +2/+1` (`674,724` on `r30`
+     `tb`, `2,458,216` on `r30` `notb`) and `ldse +1` (`1.89M` to `2.27M`),
+     pushing remaining `depth` up to ~20 plies as lines cross `2 · root_depth`.
+   - **Collapse of LMR reduction to zero:** clamping `-reduction / 1024` at `0`
+     prevents late moves from *extending* past `2 · root_depth`, but when
+     `lmr_correction = 9,252` subtracts ~4 plies against a `move_count`-independent
+     base `274 · ilog2(depth)`, `reduction` is negative on nearly every move, so
+     clamping it at `0` leaves **`reduced = new_depth` (zero LMR reduction) on
+     49.5% to 65.6% of all LMR calls** (`7,524,132` of `11,472,322` on `r30`
+     `tb`), on top of unpruned checks (35% of nodes), non-decisive sub-windows
+     (`D2`) and `27/128` aspiration fail-low cascades (`D3`). Stockfish's
+     `reductions[d] * reductions[mn]` grows with `moveCount` and subtracts at
+     most ~1.5 plies from `|correctionValue|`, so its late moves still reduce by
+     3 to 4 plies even when correction history saturates.
+
+**Calibration**, appended; the frozen predictions above stand as written.
+- `bench 13` downward on both builds (0.95): **wrong on `d_lmr2`** (+14.65%,
+  4,235,377) and held on `d_ply2` (−10.30%, 3,313,794, inside −2% to −15%).
+  Confidence 0.95 missed an elementary alpha-beta effect: denying deep LMR
+  extensions alone delays tactical refutations on shallow bench positions and
+  widens sibling subtrees.
+- Depth 20 with tables: `d_lmr2` finishing 26 and 11 (0.85) and all three (0.55)
+  was **wrong** (0 of 3; overconfident because singular `+3` and hindsight `+1`
+  substituted 1:1 for LMR extensions). `d_ply2` finishing 26 and 11 held, and
+  finishing all three (0.80) **missed on root 30** (`d16`, stalling in `d17`).
+- Zero interior nodes at `ply >= 4 · root_depth` on `d_ply2` (0.99): **held** on
+  every tablebase trace (`0` on `r26`, `r30`, `r11 d20`, `r11 d24`, `r14 d32`);
+  `r30` without tables recorded `807` of `18,753,287` (0.004%) at iteration 14
+  (`4d = 56`, `max_ply = 63`) from depth accumulated before `ply = 28`.
+- Root 30 without tables: `d_ply2` finishing depth 16 (0.85) was **wrong**
+  (`d14`); not finishing depth 20 (0.55 against 0.45) held.
+- Deeper clock-stall roots on `d_ply2`: finishing root 11 at depth 24 (0.75) was
+  **wrong** (`d21`, `cp 19972`); leaving root 14 short at depth 32 (0.80)
+  **held** (`d25`).
+
+### Decision, 2026-11-26
+
+**D.9.3 closes `NO_CHANGE`**, with the structural answer, the measured cost and
+its triggers recorded.
+
+- **Why a standalone search patch is rejected now (End State 1).** I recommend
+  against implementing a search repair before a search re-fit. Across four
+  rounds and twelve builds (`V1`–`V3`, `V2+V3`, `W1`–`W4`, `WU`, `cand`,
+  `d_lmr2`, `d_ply2`), both donor-guard ports and deep-ply extension clamps are
+  refuted as standalone cures. The explosion is not a localized port bug or a
+  tablebase-only defect: Reckless 0.9.0 itself explodes to 99.5M nodes at depth
+  20 without tables and 723.0M at depth 30 with tables on root 30. Ending it
+  requires reshaping five coupled parts of the compact kernel together —
+  `!is_decisive(best_score)` in `correction_update`, `move_count` scaling
+  against `lmr_correction` in `late_move_reduction`, ply-relative extension
+  budgets (`ply < 2 · root_depth` and singular depth penalties), in-check
+  move-loop pruning when `!is_loss(best_score)`, and aspiration fail-low
+  widening / `w.reduction` reset — and **re-fitting** the seed table around them.
+  Changing those formulas unfitted moves `bench 13` by 10% to 16%, invalidates
+  D.7.11's 225-coordinate fit across every ordinary game, and requires a Case 3
+  gate (`[-5, 5]`, ~12,000 games without tables, 34% neutral rejection in
+  `RAR-M86`) for a defect that caused **zero time losses** in `RAR-S93`,
+  `RAR-S94` and all 96 clock-read searches. Those five items are carried to
+  **F.6** (the search re-fit).
+- **Why the decided-root containment is also rejected now (End State 2).** I
+  recommend against clamping `maximum_ms` to `optimum_ms` when the last finished
+  score is in the tablebase band. First, it covers **one of the five** baseline
+  hard-limit stops (`root 26`, where `bestmove` is already a proved tablebase
+  win with 31.9 s plus 1 s/move left and zero time-loss risk), leaves roots 11,
+  14 and 30 (both arms) and all `go infinite` / fixed-depth analysis untouched,
+  and has no precedent in Stockfish or Reckless (which shorten the clock only at
+  DTZ roots, as Rarog already does). Second, it introduces a tactical failure
+  mode on 7- and 8-man boards: when the previous iteration returned a tablebase
+  win or loss and the next iteration fails low at the root — for example because
+  a 50-move draw or repetition blocks `bestmove`'s route to the 6-man capture,
+  or because one loss-band move resists far longer in practice — clamping the
+  hard limit to `optimum_ms` (~1.4 s at `2+1`) aborts the fail-low recovery
+  immediately and plays the refuted move.
+- **Recorded cost at close.** On D.9.2's 48 seven- and eight-man opposite-bishop
+  roots at the first move of `2+1` (`Threads 1`, `Hash 64`, `read_clock.json`),
+  5 of 96 searches across 4 roots end at the 88.1 s hard limit (73% of the base
+  clock): roots 11, 14, 26 and 30 with 3–6-man tables, and root 30 without
+  tables; the other 44 roots spend 61.4 s total with tables against 61.8 s
+  without (median ratio 1.07), and 0 of 96 searches lose on time. Fixed-depth
+  and `go infinite` analysis stalls past 30M nodes on those roots once
+  correction history saturates.
+- **Triggers to reopen D.9.3 (and D.9.2 on its own triggers):**
+  1. **F.6 (the search re-fit):** evaluate and jointly fit the five coupled
+     mechanisms identified above (`correction_update` decisive guard, LMR
+     `move_count` scaling vs `lmr_correction`, ply-relative extension budgets,
+     in-check move-loop pruning at `!is_loss(best_score)`, and aspiration
+     fail-low `w.reduction` reset / widening). When a search re-fit ends the
+     explosion on D.9.2's 48 roots, D.9.2's registered probe-after-TT-cutoff
+     read also reopens unchanged.
+  2. **Before F.6:** a time loss in play (with or without tables) traced to a
+     hard-limit stall; a rated Rarog pool or release qualification adopting
+     tables and measuring clock harm; or a user report of an analysis hang that
+     justifies an analysis-only or opt-in bound.
+- **Remaining before D.9 closes:** only the maintainer's yes or no on RAR-S93's
+  with-tables activation read in the release qualification (`D.9.4` in PLAN),
+  and the timing of `d9`'s pull request.
 
 ## Corrections, the same day
 
