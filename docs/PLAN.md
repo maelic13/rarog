@@ -4339,51 +4339,46 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       tables it moves a stall onto root 14. No repair is registered and
       no gate goes to the maintainer. **Design question answered and
       closed `NO_CHANGE` 2026-11-26** (the record, *D.9.3's design
-      question*; deterministic 1T node counts and counters, zero games).
-      First, Reckless 0.9.0 does not pass root 30 without tables (99.5M
-      nodes at depth 20 across sixteen fail-lows, 192.2M at depth 21,
-      and 723.0M at depth 30 with tables), while Stockfish 19 finishes
-      depth 30 without tables in 29.0M nodes; and root 30 without tables
-      at depth 16 has zero decisive-band nodes, so a band window is an
-      accelerator rather than a precondition. Three coupled mechanisms
-      separate the compact kernel from Stockfish 19: (1) unguarded
-      `correction_update` saturates `|corr|` (378 to 466) on queening
-      and decisive transitions across sparse 6–8-man hash keys, which
-      through `lmr_correction = 9,252` (−4 plies against a
-      `move_count`-independent `274 · ilog2(d)` base), `singular +3`
-      (up to 949k firings), `ldse +1` and `hindsight`/`research` drives
-      67% to 98% of interior nodes past `2 · root_depth` to `LINE_BOUND`;
-      (2) 42% of interior nodes even on root 26 run in non-decisive
-      sub-windows (singular exclusion, `null_bound`, `MultiCut`/`ProbCut`
-      `lerp` phantom scores), while in-check nodes (35%) disable all
-      move-loop pruning and `Bound::Lower` TT cutoffs require
-      `tt_depth >= depth + 1`; (3) root 14 at depth 32 stalls below
-      `2 · root_depth` (74% to 99% of nodes) in Reckless's `27/128`
-      aspiration fail-low cascade, and `window_fail_low` keeps earlier
-      fail-high `w.reduction`. Two registered mechanism diagnostics on
-      exported copies (`d_lmr2`, `bench 13` 4,235,377, +14.65%;
-      `d_ply2`, 3,313,794, −10.30%) fired both falsifiers: capping LMR
-      extensions past `2 · root_depth` alone leaves all three of roots
-      11, 26 and 30 short of depth 20 as singular `+3` and hindsight
-      take over; clamping all four positive extenders past
-      `2 · root_depth` zeroes `ply >= 4 · root_depth` on every tablebase
-      trace and finishes roots 11 and 26 at depth 20, yet still stalls
-      on root 30 with tables (`d16`, 84.7% of nodes in `2d..3.5d`),
-      root 30 without tables (`d14`), root 11 at depth 24 (`d21`) and
-      root 14 at depth 32 (`d25`), because saturated `|corr|` still
-      inflates depth below `2 · root_depth` and leaves 50% to 66% of
-      late moves at zero LMR reduction (`reduced = new_depth`). Both a
-      standalone Case 3 patch (10%–16% bench move unfitting D.7.11's
-      seeds for a zero-time-loss defect) and the decided-root clock
-      containment (covers 1 of 5 stops, helps no analysis search, lacks
-      donor precedent, and aborts fail-low recovery from 50-move or
-      repetition traps on 7–8-man boards) are rejected now. Cost at
-      close: 5 of 96 first-move `2+1` searches on D.9.2's 48 roots end
-      at the 88.1 s hard limit (0 time losses; other 44 roots 61.4 s vs
-      61.8 s). Carried to **F.6** for joint evaluation and re-fitting;
-      reopens earlier on a game time loss from a hard-limit stall, a
-      rated pool or release qualification adopting tables and showing
-      clock harm, or an analysis hang needing an opt-in bound.
+      question*, and *D.9.3's close verified*, a second session's repeat
+      the same day that corrected the first's reasons; deterministic 1T
+      node counts and counters, zero games). All three engines meet the
+      wall on root 30 and differ in the depth at which it arrives:
+      Reckless 0.9.0 takes 99.5M nodes for depth 20 without tables and
+      723.0M for depth 30 with them; Stockfish 19 finishes depth 30
+      without tables in 29.0M and with tables has not finished depth 38
+      at 60M. Root 30 without tables at depth 16 has zero decisive-band
+      nodes, so a band window is an accelerator rather than a
+      precondition, and one window does not return inside two billion
+      nodes. Two registered ply clamps on exported copies (`d_lmr2`, the
+      Stockfish development tree's LMR cap, `bench 13` +14.65%;
+      `d_ply2`, every positive extender past `2 · root_depth`, −10.30%)
+      fired both falsifiers: the second removes the tail past
+      `4 · root_depth` and still stalls on root 30 in both arms, root 11
+      at depth 24 and root 14 at depth 32. The correction's reach into
+      depth, which those builds did not test, is the main accelerator:
+      with its size removed from the LMR, full-depth and singular rules
+      (`d_corr0`, `bench 13` −36.29%) every stalled read finishes, and
+      on D.9.2's 48 roots at depth 36 the short reads fall from seven to
+      two, both without tables and seven and eight plies deeper. It is
+      not a repair: the full dose reads root 14 as level where
+      Stockfish 19 with tables reads −640, and on the tree's own
+      tunables the tables' limits at half move `bench 13` by −9.79%
+      (five of six stalled reads finish), the four depth weights at half
+      by −20.20% (five) and both by −28.11% (six). The fail-low walk is
+      an amplifier: a lower `AspMaxFails` moves stalls between depths
+      and roots. Both a standalone patch (a change to the fitted surface
+      at any dose that helps) and the decided-root clock containment
+      (one of five stops, its result not at risk) are rejected now.
+      Cost at close: 5 of 96 first-move `2+1` searches on D.9.2's 48
+      roots end at the 88.1 s hard limit (0 time losses; other 44 roots
+      61.4 s vs 61.8 s). No game has tables on this kernel; without
+      them about 0.09% to 0.10% of its searches at `3+0.03` spend 65% or
+      more of the clock (RAR-S139, RAR-S138, RAR-M90; an upper estimate,
+      any cause), under D.6.20's rule. Carried to **F.6**, and the hard
+      bound's size to **H.3**; reopens earlier on a game time loss from
+      a hard-limit stall, a rated pool or release qualification adopting
+      tables and showing clock harm, or an analysis hang needing an
+      opt-in bound.
     - **D.9.4 RAR-S93's activation read with tables in the release qualification — `I1`.**
       Held 2026-11-26 on the maintainer's yes or no before D.9 closes
       (`analysis/d9_tablebase_policy_2026-11-25.md`, *D.9 from here*).
@@ -4393,6 +4388,10 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       update `tools/diag/tb_activation.py` with its test, record the
       release-qualification check in E.1 / E.3.4, and close D.9; if no:
       close `NO_CHANGE` and close D.9 with it.
+      Recommended yes 2026-11-26 (the record, *D.9.3's close verified*),
+      with the read also counting hard-limit stops: no game has tables
+      on the compact kernel, so this is the only place D.9.3's cost
+      with tables would be measured in games.
 - **D.10 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
   Renumbered from D.7 on 2026-11-13 (maintainer decision), when the
   search-shape step took that number.
@@ -6450,18 +6449,24 @@ carries the architecture (F.6).
   - `LazyMargin` has no successor on a network; with the HCE it is
     refitted by PROCESS's margin block (E.4, F.4.1).
   *From D.9.3 (2026-11-26; `analysis/d9_tablebase_policy_2026-11-25.md`,
-  D.9.3's design question):* five coupled compact-kernel rules carry the
-  endgame/promotion search explosion (shared by Reckless 0.9.0) and cannot
-  be patched singly without unfitting the seed table: guarding
-  `correction_update` on `!is_decisive(best_score)`, `move_count` scaling
-  against `lmr_correction` in `late_move_reduction`, ply-relative
-  extension caps (`ply < 2 · root_depth` across LMR, singular, LDSE,
-  hindsight and re-search, plus singular depth penalties), in-check
-  move-loop pruning when `!is_loss(best_score)`, and resetting
-  `w.reduction` on `window_fail_low` alongside aspiration fail-low
-  widening. Evaluate before the surface freezes so any adopted change is
-  fitted inside the re-fit; if the explosion ends on D.9.2's 48 roots,
-  D.9.2's registered probe-after-TT-cutoff read reopens unchanged.
+  D.9.3's close verified):* the endgame and promotion search explosion,
+  which both donors share in kind, has one tested lever: the correction's
+  reach into depth. Removing its size from the LMR, full-depth and
+  singular rules ends every stalled read at `bench 13` −36% and blinds
+  one root; the tables' limits at half (`KCorrKeyedMax`, `KCorrContMax`)
+  move `bench 13` by −9.8% and finish five of six stalled reads, the four
+  depth weights at half (`KLmrCorrection`, `KFdsCorrection`,
+  `KDoubleCorrection`, `KTripleCorrection`) by −20.2% and five, both by
+  −28.1% and six. Those six reads were chosen because they stall and
+  rank nothing: an arm is read on D.9.2's 48 roots in both arms before
+  it is believed. Untested candidates beside it: a decisive guard in
+  `correction_update`, a move-count term in LMR's base, ply-relative
+  extension budgets (clamping every extender past `2 · root_depth`
+  removed the deep tail and left the stalls) and in-check move-loop
+  pruning. Read and not a lever: `AspMaxFails`. Evaluate before the
+  surface freezes so any adopted change is fitted inside the re-fit; if
+  the explosion ends on D.9.2's 48 roots, D.9.2's registered
+  probe-after-TT-cutoff read reopens unchanged.
 - **F.7 Architecture ladder: output buckets, king buckets, relation/threat inputs; one axis at a time — `R3` with `I2`/`V` sub-steps.** Output buckets,
   king buckets with mirroring, then relation and threat inputs, one axis
   at a time (Stockfish's threat inputs the reference; Reckless's are ideas
@@ -6702,6 +6707,14 @@ labels H1–H45.
   (TT-10). Each lever is read at the control it acts at, against an external
   engine (TT-3); TT-5 holds the negatives. D.1's record and retry triggers
   stay the base.
+  *From D.9.3 (2026-11-26; `analysis/d9_tablebase_policy_2026-11-25.md`,
+  D.9.3's close verified):* a search that does not return costs the hard
+  bound, `HARD_SCALE` 0.7281 of the clock, one of the unfitted constants
+  below. Without tables about 0.09% to 0.10% of the kernel's searches at
+  `3+0.03` spend 65% or more of the clock (an upper estimate, any cause),
+  nearly all with under a second left; with tables nothing is measured
+  until D.9.4. The bound's size is this step's to fit; D.9.3 changed
+  nothing.
   *The clock's constants are owed a fit* (from D.7.11, 2026-11-20;
   `analysis/d711_fit_2026-11-20.md`, section 1). Since D.7.9.1 the clock
   is Reckless's, and nothing in it was fitted on Rarog: the fifteen
