@@ -161,6 +161,7 @@ field, about 3,475 on CCRL's Blitz scale.
     - [x] **D.16.3** One more speed pass on the compact kernel — NO_CHANGE 2026-11-24
         - [x] **D.16.3.1** The kernel's node beside Stockfish's, function by function — DONE 2026-11-23
 - [ ] **D.17** GitHub-hosted runners as a test lane for self-play SPRTs and tunes — **RESEARCH / R2**
+- [ ] **D.18** The repository pruned to the lean engine and the documents that matter — **RESEARCH / R2**
 
 ## Phase E — Classical checkpoint and release
 
@@ -249,7 +250,7 @@ Follow the earliest unblocked leaf in PLAN's register order, which the board's N
 2. **E.4.0**, the evaluation's donor and form: E.4.0.1 (the donor's evaluation inside the kernel), then E.4.0's decision.
 3. **D.8** to **D.11** in ascending order.
 4. **D.12.0** only; D.12.1 to D.12.4 are held (the table above).
-5. **D.13**, **D.14**, **D.15**, **D.17**.
+5. **D.13**, **D.14**, **D.15**, **D.17**, then **D.18**, the repository's pruning, before the release (maintainer request 2026-11-26; the order otherwise stands, E.4's units after the release).
 6. **Phase E** as numbered: E.1, E.2, E.3, then E.4.1 onward.
 
 ## Model mapping

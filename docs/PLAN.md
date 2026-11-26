@@ -408,10 +408,13 @@ On 2026-11-23 (maintainer decision on E.0's packet,
 the numbering again and every step keeps its number, a Phase E number
 among Phase D's rows included. D.16 runs first, its profile (D.16.3.1) ahead of its
 instrument steps; then E.4.0, opened by the donor's evaluation inside
-the kernel (E.4.0.1). Then D.8 to D.17 in ascending
+the kernel (E.4.0.1). Then D.8 to D.18 in ascending
 order, with D.12 cut to D.12.0 and D.9.4 and D.12's other leaves held in
 the last rows; then Phase E as numbered. E.4's units stay after the
 release (maintainer decision 2026-10-22).
+On 2026-11-26 (maintainer decision, after RAR-M93) the order stands:
+E.4's units stay after the release, and D.18, the repository's
+pruning, is added as Phase D's last step, before the release.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
@@ -426,6 +429,7 @@ release (maintainer decision 2026-10-22).
 | D.15.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: each download a `.zip` or `.tar.gz` with the binary, the licences, the README and the changelog, where D.11's notices ship; before the next release |
 | D.15.2 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: the release notes as the section's summary and highlights, with a link to the full changelog; before the next release |
 | D.17 | RESEARCH | R2 | Added 2026-11-23 (maintainer request): not before the end of Phase D; a card on GitHub-hosted runners as a lane for self-play SPRTs and tunes, then a maintainer decision on the rules it changes |
+| D.18 | RESEARCH | R2 | Added 2026-11-26 (maintainer request): Phase D's last step, before the release; a card first: what stays tracked and why, what goes, the rules it touches, and the remote (delete refs only, or rewrite history), priced for the maintainer; foreign material found on the public remote: `dragon_nnue`'s network and recovered evaluation (kept by maintainer decision 2026-11-18), the `oracle/*` tags' Stockfish source, and Reckless and Stockfish patches on `master` |
 | D.9.4 | RESEARCH | I1 | Held 2026-11-26 on the maintainer's yes or no before D.9 closes: RAR-S93's activation read with tables in the release qualification (E.1, E.3.4), recommended by `analysis/d9_tablebase_policy_2026-11-25.md`; if yes, bring `tools/diag/tb_activation.py`'s budget formula to `src/search/time.rs` and add the read; if no, closes `NO_CHANGE` and D.9 closes with it |
 | D.12.1 | RESEARCH | R2 | Held 2026-11-23 (maintainer decision on E.0's packet): the board's work a node is level with Stockfish 16's; D.16.3.1's profile showed no board function above the donor's (2026-11-23); reopens when D.12.0 shows one |
 | D.12.1.1 | RESEARCH | I2 | Held 2026-11-23 with D.12.1 |
@@ -5391,6 +5395,90 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   Falsifier and stop: a null pair away from zero, a cross-check outside
   the intervals or more forfeits than on the host rejects the lane, and
   it closes `NO_CHANGE`; the maintainer decides on adoption.
+- **D.18 The repository pruned to the lean engine and the documents that matter — `R2` card, then `I1`; the remote's refs by the maintainer.**
+  Added 2026-11-26 (maintainer request) as Phase D's last step, before
+  Phase E's release qualification. The aim is that the tree and the
+  public remote hold only the following, and nothing else:
+  - the engine and what builds, tests and releases it;
+  - the documents a user or a later developer needs;
+  - a compressed record of the history.
+  Everything no longer useful, or that does not belong under version
+  control, leaves the tree, and every snapshot or patch of another
+  engine's code leaves the tree and, as far as the maintainer decides,
+  the remote.
+  **Found on 2026-11-26** (zero games; `git ls-files`, `git ls-tree` on
+  every ref, `git ls-remote`):
+  - The repository is public. It tracks 1,106 files: `logo/` 12.2 MB in
+    11, `docs/` 4.9 MB in 450, `analysis/` 3.1 MB in 204, `tools/`
+    2.6 MB in 249, `src/` 1.45 MB in 109 and `tests/` 0.65 MB in 52. The
+    pack is 68 MB.
+  - The branch `dragon_nnue` holds two things from commercial engines,
+    whose licence to redistribute is not established: Dragon's network
+    (`assets/nnue/dragon-network.nnue`, 70 MB, added `0624717`
+    2026-10-15) and a recovered evaluation with its data
+    (`vendor/fritz16-hce/`, added `3de5d3d` 2026-10-15). The branch is
+    kept by maintainer decision 2026-11-18, and only the maintainer
+    revisits that.
+  - The tags `oracle/hybrid`, `oracle/hybrid-ablate` and
+    `oracle/hybrid-diag` hold Stockfish's source (`hybrid/stockfish/`,
+    GPL-3.0, added `75d0d43` 2026-08-11).
+  - On `master` and in `v2.7.0`, `tools/oracle-hybrids/` holds three
+    patches against Reckless (AGPL-3.0), which carry its lines as
+    context, against the rule of 2026-11-23 that no patch of its source
+    enters the tree. It also holds one patch against Stockfish. On
+    `master`, `tools/donor-eval/` holds two patches against Stockfish 11
+    and 16.
+  - `vendor/fathom/` is a dependency the engine builds (MIT, with its
+    licence), not a snapshot, and stays.
+  - GitHub keeps 22 pull-request refs that the owner cannot delete.
+    Together with the release tags, they keep every commit they reach
+    readable by hash, whatever the branches hold.
+  **The card answers, before anything is removed:**
+  1. *What stays tracked:*
+     - `src/`, `tests/`, `benches/`, `xtask/` and `vendor/fathom/`;
+     - the build and CI files;
+     - the release and fingerprint tooling;
+     - README, CHANGELOG, LICENSE, the agent rules (trimmed to what the
+       kept tree needs) and PLAN (reduced to open work);
+     - HISTORY as the compressed record;
+     - those ledger records and analyses that a kept document cites or
+       that carry a measurement still in use.
+     Each kept group gets one line on why it stays.
+  2. *What goes:*
+     - the records, analyses and `tools/` scripts of closed steps that
+       nothing kept cites;
+     - the foreign patches and bridges;
+     - anything `.gitignore` says should be ignored;
+     - generated files.
+     Removal uses `git rm`, and untracking keeps the local bytes
+     (`docs/rules/evidence.md`). Nothing local is deleted without the
+     maintainer, and the ignored evidence under `analysis/artifacts/`
+     stays on this machine.
+  3. *The rules it touches*, each a maintainer decision:
+     - `dragon_nnue` kept (2026-11-18);
+     - every file in `logo/` tracked;
+     - the evidence and citation rules for files that leave the tree;
+     - `tools/diag/check_citations.py`'s foreign list.
+  4. *The remote.* Two routes:
+     - Delete refs only: merged branches, and the `oracle/*` tags.
+       Deleting tags and branches is the maintainer's command. The
+       foreign material then leaves the live refs, but `v2.7.0`'s tree
+       and the pull-request refs keep what they reach.
+     - Rewrite history: `git filter-repo` removes the foreign paths from
+       every commit, followed by a forced push and GitHub Support's
+       removal of the cached pull-request refs. Every hash changes: the
+       1,486 cited in the documents, the release tags and their GitHub
+       releases, and any clone or fork.
+     The card prices both, and the maintainer chooses.
+  **Done when:**
+  - the tree holds only the keep list;
+  - `check_guide.py`, `check_citations.py` and `check_rules.py` pass on
+    it;
+  - `bench 13` reads the fingerprint unchanged;
+  - CI is green;
+  - the remote commands the route needs are handed to the maintainer as
+    one runnable block, and the maintainer has run them.
+  It removes no engine behaviour; a change to `src/` is out of scope.
 
 ## Phase E — Classical checkpoint and release
 
