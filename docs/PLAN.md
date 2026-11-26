@@ -34,6 +34,10 @@ rated field. On 2026-11-18 Rarog 2.7.0 is **160 below** it in a 13-engine
 field and **−164.8** [−187.1, −143.6] head to head at `3+0.03` 1T (RAR-M89).
 RAR-M91 (2026-11-22) reads the merged kernel 100.2 below it in a twelve-engine
 round robin, **−103.3** [−121.0, −86.0] head to head.
+RAR-M93 (2026-11-26) reads the `d9` head, `master`'s fingerprint, 96.7
+below it in a six-engine round robin, **−101.1** [−121.0, −81.8] head to
+head: unchanged since D.7. Basilisk's rebuilt evaluation stands 76.5 above
+it there.
 On 2026-11-21 the adopted kernel is **96.6 below** it in the same field,
 pinned at RAR-M89's ratings, and **−100.6** [−119.4, −82.3] head to head
 (RAR-M90).
