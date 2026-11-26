@@ -440,5 +440,91 @@ class GamePositionTests(unittest.TestCase):
         self.assertIn("different trees on 1 of 1", nps_read.game_tree_warning(record))
 
 
+class LinuxTests(unittest.TestCase):
+    """A Linux pool read in WSL: builds without `.exe`, the host measure
+    through Windows' PowerShell, the Linux side's processes from `/proc`, and
+    the multi-thread cell."""
+
+    def test_a_linux_pool_without_exe_names_is_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = pathlib.Path(tmp)
+            rows = []
+            for i in (1, 2):
+                exe = directory / f"pext-{i}"
+                exe.write_bytes(f"linux engine {i}".encode())
+                rows.append(f"{hashlib.sha256(exe.read_bytes()).hexdigest().upper()}  pext-{i}")
+            (directory / "manifest-pext.txt").write_text(
+                f"fingerprint   : {HEAD} (verified)\n\n" + "\n".join(rows) + "\n", encoding="utf-8")
+            self.assertEqual(nps_read.pool(directory), [directory / "pext-1", directory / "pext-2"])
+
+    def test_the_harness_shell_is_the_path_s_else_wsl_s_windows_one(self):
+        saved = (nps_read.shutil.which, nps_read.WSL_PWSH, nps_read.windows_path)
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = pathlib.Path(tmp) / "pwsh.exe"
+            try:
+                nps_read.shutil.which = lambda name: "/usr/bin/pwsh" if name == "pwsh" else None
+                self.assertEqual(nps_read.harness_shell(), ("/usr/bin/pwsh", str(nps_read.HARNESS)))
+                nps_read.shutil.which = lambda name: None
+                nps_read.WSL_PWSH = fake
+                self.assertIsNone(nps_read.harness_shell(), "no shell anywhere")
+                fake.write_bytes(b"")
+                nps_read.windows_path = lambda path: "D:\\code\\rarog\\tools\\harness_common.ps1"
+                self.assertEqual(nps_read.harness_shell(),
+                                 (str(fake), "D:\\code\\rarog\\tools\\harness_common.ps1"))
+
+                def broken(path):
+                    raise nps_read.subprocess.CalledProcessError(1, "wslpath")
+
+                nps_read.windows_path = broken
+                self.assertIsNone(nps_read.harness_shell(), "a path WSL cannot name")
+            finally:
+                nps_read.shutil.which, nps_read.WSL_PWSH, nps_read.windows_path = saved
+
+    def test_the_linux_side_s_competing_processes_are_found_by_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = pathlib.Path(tmp)
+            for pid, name in (("12", "cargo"), ("13", "python3"), ("14", "pext-2"), ("15", "rarog"),
+                              ("16", "pextra"), ("17", "bash")):
+                (proc / pid).mkdir()
+                (proc / pid / "comm").write_text(name + "\n", encoding="utf-8")
+            (proc / "self").mkdir()
+            (proc / "18").mkdir()  # gone before its name was read
+            self.assertEqual(nps_read.linux_busy_processes(proc), ["cargo:12", "pext-2:14", "rarog:15"])
+
+    def test_a_multi_thread_cell_checks_no_fingerprint_but_still_three_runs(self):
+        text = "\n".join(f"run {i}/3  nodes {n}  time 5000ms  nps 9000000" for i, n in
+                         ((1, 45_000_000), (2, 44_100_000), (3, 46_300_000)))
+        self.assertEqual([r["nodes"] for r in nps_read.parse_runs(text, "x", None)],
+                         [45_000_000, 44_100_000, 46_300_000])
+        with self.assertRaises(SystemExit):
+            nps_read.parse_runs(text, "x", HEAD)
+        with self.assertRaises(SystemExit):
+            nps_read.parse_runs(text.rsplit("\n", 1)[0], "x", None)
+        with self.assertRaises(SystemExit):
+            nps_read.parse_runs(text.replace("45000000", "0", 1), "x", None)
+
+    def test_smp_exactly_when_both_arms_run_more_than_one_thread(self):
+        four = {"base": [("Threads", "4")], "cand": [("Threads", "4"), ("LargePages", "false")]}
+        one = {"base": [], "cand": [("LargePages", "false")]}
+        nps_read.check_threads(four, smp=True)
+        nps_read.check_threads(one, smp=False)
+        with self.assertRaises(SystemExit):
+            nps_read.check_threads(four, smp=False)
+        with self.assertRaises(SystemExit):
+            nps_read.check_threads(one, smp=True)
+        with self.assertRaises(SystemExit):
+            nps_read.check_threads({"base": [("Threads", "4")], "cand": []}, smp=True)
+
+    def test_a_multi_thread_cell_reports_levels_and_no_verdict(self):
+        base = [[BENCH] * 2, [BENCH * 1.001] * 2]
+        cand = [[BENCH * 1.03] * 2, [BENCH * 1.031] * 2]
+        cell = record(base, cand)
+        cell["smp"] = True
+        text = nps_read.report(cell, False)
+        self.assertIn("verdict: none: a multi-thread cell", text)
+        self.assertNotIn("accepted", text)
+        self.assertIn("accepted by step 1", nps_read.report(record(base, cand), False))
+
+
 if __name__ == "__main__":
     unittest.main()

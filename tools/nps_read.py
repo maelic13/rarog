@@ -45,6 +45,17 @@ Arms at different fingerprints search different trees, so their NPS is not a
 speed read (PLAN rule 8: a tree-shape change reads time-to-depth). The read
 still runs, and its report and console carry a warning saying so.
 
+`--smp` reads arms that set `Threads` above one. Lazy SMP's node count varies
+by run, so no run is checked against a fingerprint, the arms' trees are not
+compared, and the report gives the levels and the interval with no verdict: a
+multi-thread cell beside a one-thread read, never a speed rule's read.
+
+On Linux under WSL the host measure is still the harness's: Windows' own
+PowerShell runs it through interop, over the whole machine, the Linux side's
+load included, and the Linux side's engine, harness and build processes are
+added from `/proc`, since Windows' process list does not show them. A Linux
+pool's builds have no `.exe`.
+
 `--positions <set.jsonl>` reads game positions instead of `bench 13 3` (PLAN
 D.16.1): a set frozen from a gate's games by nps_positions.py, refused unless
 its hash matches its manifest. A reading is one pass over the set, each
@@ -64,6 +75,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import re
 import shutil
 import statistics
@@ -73,13 +85,18 @@ import time
 from pathlib import Path
 
 RUN = re.compile(r"^run (\d)/3\s+nodes (\d+)\s+time (\d+)ms\s+nps (\d+)", re.M)
-MANIFEST_ROW = re.compile(r"^([0-9A-F]{64})\s+(\S+\.exe)$", re.M)
+MANIFEST_ROW = re.compile(r"^([0-9A-F]{64})\s+(\S+)$", re.M)
 MANIFEST_FINGERPRINT = re.compile(r"^fingerprint\s*:\s*(\d+)\b", re.M)
 # Two-sided 95% t quantiles by degrees of freedom; 6 is the four-build read,
 # 5 a three-build pool against a four-build one.
 T95 = {2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
        12: 2.179, 14: 2.145, 16: 2.120, 20: 2.086, 30: 2.042}
 HARNESS = Path(__file__).resolve().parent / "harness_common.ps1"
+# Windows' own PowerShell as WSL reaches it.
+WSL_PWSH = Path("/mnt/c/Program Files/PowerShell/7/pwsh.exe")
+# Get-HarnessBusyProcess's patterns, for the Linux side of a WSL read.
+LINUX_BUSY = re.compile(r"^(rarog|fastchess|colosseum-cli|cutechess|stockfish|basilisk|reckless|cargo|rustc)"
+                        r"|^(pext|avx2|x86-64|base)-[0-9]")
 MAX_BUSY_PERCENT = 15.0  # colosseum.ps1's default ceiling
 WARMUP_DEPTH = 8
 QUIET_CEILING_PERCENT = 10.0
@@ -127,12 +144,17 @@ def pool(directory: Path) -> list[Path]:
     return builds
 
 
-def parse_runs(output: str, exe: str, fingerprint: int) -> list[dict]:
+def parse_runs(output: str, exe: str, fingerprint: int | None) -> list[dict]:
+    """The bench's three runs, each at `fingerprint`; with none (`--smp`),
+    each merely searched something."""
     runs = [{"nodes": int(n), "ms": int(ms), "nps": int(nps)} for _, n, ms, nps in RUN.findall(output)]
     if len(runs) != 3:
         raise SystemExit(f"{exe}: expected three runs, got {len(runs)}")
     for run in runs:
-        if run["nodes"] != fingerprint:
+        if fingerprint is None:
+            if run["nodes"] <= 0:
+                raise SystemExit(f"{exe}: a run searched no nodes")
+        elif run["nodes"] != fingerprint:
             raise SystemExit(f"{exe}: benched {run['nodes']}, not {fingerprint}: not the binary you think it is")
     return runs
 
@@ -150,7 +172,7 @@ def bench_input(options, bench: str = "bench 13 3") -> str:
     return "".join(f"setoption name {n} value {v}\n" for n, v in options) + bench + "\n"
 
 
-def read(exe: Path, fingerprint: int, options=()) -> list[dict]:
+def read(exe: Path, fingerprint: int | None, options=()) -> list[dict]:
     out = subprocess.run([str(exe)], input=bench_input(options), capture_output=True, text=True,
                          timeout=900).stdout
     return parse_runs(out, str(exe), fingerprint)
@@ -260,6 +282,18 @@ def warm_up(exe: Path, options=()) -> dict:
     return {"exe": str(exe), "depth": WARMUP_DEPTH, "nodes": int(nodes), "ms": int(ms), "nps": int(nps)}
 
 
+def check_threads(options: dict, smp: bool) -> None:
+    """`--smp` exactly when the arms set `Threads` above one: a one-thread
+    read keeps its fingerprint check, and a multi-thread one cannot pass it."""
+    threads = {arm: max([int(v) for n, v in options[arm] if n.lower() == "threads"] or [1])
+               for arm in options}
+    multi = {arm for arm, count in threads.items() if count > 1}
+    if smp and multi != set(options):
+        raise SystemExit("--smp is for arms that both set Threads above 1")
+    if not smp and multi:
+        raise SystemExit("an arm sets Threads above 1: lazy SMP's node counts vary, read it with --smp")
+
+
 def check_arms(base_dir: Path, cand_dir: Path, builds: dict, options: dict) -> None:
     """Distinct pools must be distinct bytes; one pool on both arms is a
     same-binary comparison and needs the arms' options to differ."""
@@ -272,13 +306,54 @@ def check_arms(base_dir: Path, cand_dir: Path, builds: dict, options: dict) -> N
         raise SystemExit("two pool binaries are identical")
 
 
+def windows_path(path: Path) -> str:
+    """`path` as Windows names it, from WSL."""
+    return subprocess.run(["wslpath", "-w", str(path)], capture_output=True, text=True,
+                          timeout=30, check=True).stdout.strip()
+
+
+def harness_shell() -> tuple[str, str] | None:
+    """The PowerShell that runs the harness's measure, and the harness's path
+    as that shell names it: one on the path, else under WSL Windows' own
+    through interop; None where there is neither."""
+    shell = shutil.which("pwsh") or shutil.which("powershell")
+    if shell:
+        return shell, str(HARNESS)
+    if WSL_PWSH.exists():
+        try:
+            return str(WSL_PWSH), windows_path(HARNESS)
+        except (OSError, subprocess.SubprocessError):
+            return None
+    return None
+
+
+def linux_busy_processes(proc: Path = Path("/proc")) -> list[str]:
+    """The Linux side's engine, harness and build processes, `name:pid`, by
+    the harness's patterns; this process is never one of them."""
+    found = []
+    for entry in proc.iterdir():
+        if not entry.name.isdigit() or int(entry.name) == os.getpid():
+            continue
+        try:
+            name = (entry / "comm").read_text(encoding="utf-8").strip().lower()
+        except OSError:
+            continue
+        if LINUX_BUSY.match(name):
+            found.append(f"{name}:{entry.name}")
+    return sorted(found)
+
+
 def host_state() -> dict:
     """Host CPU and competing processes by the harness's measure. A one-shot
     `Win32_Processor.LoadPercentage` from a fresh PowerShell, which this
     replaced, reported that PowerShell's own start-up: 12-14% on a host the
     harness measure read at 3%."""
-    shell = shutil.which("pwsh") or shutil.which("powershell")
-    script = (f". '{HARNESS}'; [pscustomobject]@{{ busy = Get-HarnessHostBusyPercent; "
+    linux = linux_busy_processes() if sys.platform == "linux" else []
+    found = harness_shell()
+    if found is None:
+        return {"busy_percent": None, "busy_processes": linux}
+    shell, harness = found
+    script = (f". '{harness}'; [pscustomobject]@{{ busy = Get-HarnessHostBusyPercent; "
               "procs = @(Get-HarnessBusyProcess | ForEach-Object { \"$($_.ProcessName):$($_.Id)\" }) }"
               " | ConvertTo-Json -Compress")
     try:
@@ -286,10 +361,10 @@ def host_state() -> dict:
                              capture_output=True, text=True, timeout=60).stdout.strip()
         state = json.loads(out)
     except (OSError, TypeError, ValueError, subprocess.TimeoutExpired):
-        return {"busy_percent": None, "busy_processes": []}
+        return {"busy_percent": None, "busy_processes": linux}
     busy = state.get("busy")
     return {"busy_percent": None if busy is None else round(float(busy), 1),
-            "busy_processes": list(state.get("procs") or [])}
+            "busy_processes": list(state.get("procs") or []) + linux}
 
 
 def cpu_load() -> float | None:
@@ -448,7 +523,8 @@ def tree_warning(fingerprints: dict) -> str | None:
 
 def report(record: dict, no_regression: bool) -> str:
     est = estimate(record)
-    verdict = decide(est, no_regression)
+    verdict = ("none: a multi-thread cell (--smp), its node counts vary by run; no speed rule reads it"
+               if record.get("smp") else decide(est, no_regression))
     lines = [
         f"== {record['label']}",
         f"base {record['arms']['base']['pool']} ({est['builds'][0]} builds)  cand {record['arms']['cand']['pool']} ({est['builds'][1]} builds)",
@@ -525,6 +601,8 @@ def main() -> int:
                         help="read this frozen game-position set instead of bench 13 3 (nps_positions.py)")
     parser.add_argument("--nodes", type=int, help="the game-position budget, if not the set manifest's")
     parser.add_argument("--hash", type=int, default=GAME_HASH_MB, help="Hash for game positions (default 64)")
+    parser.add_argument("--smp", action="store_true",
+                        help="arms at Threads above 1: no fingerprint check and no verdict")
     args = parser.parse_args()
 
     if args.report:
@@ -538,7 +616,7 @@ def main() -> int:
         if len(record["cycles"]) != 2:
             raise SystemExit(f"{out}: step 2 extends a two-cycle read, this one has {len(record['cycles'])}")
         builds = {arm: pool(Path(record["arms"][arm]["pool"])) for arm in ("base", "cand")}
-        fingerprints = {arm: record["arms"][arm].get("fingerprint")
+        fingerprints = {arm: None if record.get("smp") else record["arms"][arm].get("fingerprint")
                         or pool_fingerprint(Path(record["arms"][arm]["pool"])) for arm in builds}
         options = {arm: [tuple(o) for o in record["arms"][arm].get("options", [])] for arm in builds}
         for arm in builds:
@@ -558,10 +636,14 @@ def main() -> int:
         if (out / "raw.json").exists():
             raise SystemExit(f"{out}/raw.json exists: --extend it or choose another directory")
         builds = {"base": pool(args.base), "cand": pool(args.cand)}
-        fingerprints = {"base": args.base_fingerprint or pool_fingerprint(args.base),
-                        "cand": args.cand_fingerprint or pool_fingerprint(args.cand)}
         options = {"base": [parse_option(o) for o in args.base_option],
                    "cand": [parse_option(o) for o in args.cand_option]}
+        check_threads(options, args.smp)
+        if args.smp and (args.positions or args.base_fingerprint or args.cand_fingerprint):
+            parser.error("--smp reads bench 13 3 with no fingerprint")
+        fingerprints = ({"base": None, "cand": None} if args.smp else
+                        {"base": args.base_fingerprint or pool_fingerprint(args.base),
+                         "cand": args.cand_fingerprint or pool_fingerprint(args.cand)})
         check_arms(args.base, args.cand, builds, options)
         warning = tree_warning(fingerprints)
         if warning:
@@ -570,6 +652,7 @@ def main() -> int:
             parser.error("--nodes is for a game-position read (--positions)")
         record = {
             "label": args.label, "started": time.strftime("%Y-%m-%dT%H:%M:%S"), "no_regression": args.no_regression,
+            "smp": args.smp,
             "arms": {arm: {"pool": str(path), "builds": [str(e) for e in builds[arm]],
                            "fingerprint": fingerprints[arm], "options": options[arm]}
                      for arm, path in (("base", args.base), ("cand", args.cand))},
