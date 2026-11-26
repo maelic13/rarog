@@ -12,6 +12,10 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Added
 
+- **Large pages on Linux.** The `LargePages` option now works on Linux too:
+  the engine asks the kernel to keep its hash table and other large tables
+  in 2 MB pages, with no setup or special rights needed. `bench` shows
+  whether they are in use.
 - **Win, draw and loss rates.** With the new option `UCI_ShowWDL` on, each
   info line also shows the engine's chances of winning, drawing and losing,
   as GUIs that support it display beside the score.

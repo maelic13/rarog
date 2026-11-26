@@ -418,7 +418,7 @@ pruning, is added as Phase D's last step, before the release.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
+| D.10 | IMPLEMENTED | V | Linux transparent huge pages for the page allocations, behind `LargePages`: implemented 2026-11-26 (`cc08bc3`), `bench 13` exact on Windows and Linux; owes the Linux NPS read, RAR-P62, registered and handed to the maintainer (timed, an idle host); closes on it, behaviour-neutral, no game gate |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
 | D.11.2 | RESEARCH | R2 | After D.11.1: GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
 | D.11.3 | RESEARCH | I1 | After D.11.2: the decision carried out; registered experiments under the GPL route |
@@ -4430,6 +4430,38 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
     MySQL's macOS notes; not an Apple document), and its base page is
     already 16 KB. The 2 MB superpages macOS offers exist on Intel Macs
     alone. On macOS `large_pages()` stays as it is.
+  - **Implemented 2026-11-26** (`cc08bc3` on `d9`, `IMPLEMENTED`; the
+    read decides the rest). One `GlobalAlloc` impl serves Windows and
+    Linux. On Linux a page allocation is the system allocator's, its size
+    rounded up to whole 2 MB pages and aligned to one, advised with
+    `madvise(MADV_HUGEPAGE)` while the option is on; `large_pages()` reads
+    the kernel's mode at each call, `never` or no report reading `off`.
+    `madvise` joined `sysconf` in one Unix extern block (`src/unix.rs`), so
+    the `unsafe` sites stay at 17. `LargePages` is offered on Linux; macOS
+    is unchanged.
+    - Deterministic qualification, on the final tree: `bench 13`
+      3,694,298 / EBF 2.324 with the option on and off, on Windows and on
+      Linux (WSL2, Ubuntu 24.04, kernel 6.18, mode `madvise`); debug and
+      release suites (Windows 556 and 558 tests, Linux 557 and 559 with
+      the Linux-only test, no failure), `cargo fmt --check` and clippy at zero
+      (default and `--all-features`) on both. A new Linux test requires the
+      kernel to list each page allocation as advised (`hg` in
+      `/proc/self/smaps`). In WSL a 256 MB table was 284 of 289 MB resident
+      in huge pages with the option on, 0 MB off.
+    - Not built or tested here: macOS (unchanged code, but a cross lint from
+      WSL cannot compile the vendored Fathom C library without Apple's
+      headers), Windows on ARM and arm64 Linux. A cross clippy for
+      `aarch64-unknown-linux-gnu` reaches the Rust code and finds no lint in
+      the change; it stops on one pre-existing `#[allow]` in
+      `src/cpu_tier.rs` (`clippy::allow_attributes`, which the CI never
+      meets because it lints only x86-64). The CI's macOS, ARM and
+      cross-platform `bench` jobs cover these at the pull request.
+    - The read is **RAR-P62**, the maintainer's: one pext PGO binary, four
+      copies, the option on and off, the kernel's mode recorded, PROCESS's
+      two-step read and a four-thread cell; `nps_read.py` reads a Linux
+      pool in WSL since `1015348`. Its rule and prediction are in the
+      record. The WSL instrument may not resolve a few percent (RAR-P57);
+      the retry trigger for a `NO_CHANGE` there is a native Linux host.
 - **D.11 Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — `R2`, then `M`.** A
   small research step with its implementation. Added 2026-10-23 by
   maintainer decision. It held the 2.7.0 cut until 2026-11-13, when the
