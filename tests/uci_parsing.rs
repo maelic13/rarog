@@ -465,7 +465,7 @@ fn the_empty_placeholder_sets_a_string_option_to_nothing() {
     assert_eq!(engine.syzygy.path, r"C:\<empty>");
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "linux"))]
 #[test]
 fn large_pages_is_a_check_option_that_defaults_on() {
     let names = options::advertised().join("\n");
@@ -493,7 +493,7 @@ fn large_pages_is_a_check_option_that_defaults_on() {
     assert!(engine.large_pages);
 }
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "linux")))]
 #[test]
 fn large_pages_is_not_offered_without_the_page_allocator() {
     assert!(!options::advertised().join("\n").contains("LargePages"));

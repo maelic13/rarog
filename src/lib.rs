@@ -59,5 +59,15 @@ pub mod syzygy;
 pub mod tools;
 pub mod tt;
 pub mod uci;
+#[cfg(all(
+    unix,
+    any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "macos",
+        target_os = "ios"
+    )
+))]
+pub(crate) mod unix;
 #[cfg(windows)]
 pub mod win32;

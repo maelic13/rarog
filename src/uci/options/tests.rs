@@ -20,7 +20,7 @@ fn the_table_advertises_the_engine_s_option_list() {
         "option name SyzygyProbeLimit type spin default 7 min 0 max 7",
         "option name Syzygy50MoveRule type check default true",
     ];
-    if cfg!(windows) {
+    if cfg!(any(windows, target_os = "linux")) {
         expected.push("option name LargePages type check default true");
     }
     let advertised: Vec<String> = table().iter().map(UciOption::advertised).collect();

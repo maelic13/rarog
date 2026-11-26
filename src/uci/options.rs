@@ -120,8 +120,8 @@ fn check(name: &'static str, default: bool, apply: fn(&mut EngineOptions, bool))
 /// Every option, in the order `uci` lists them.
 fn table() -> Vec<UciOption> {
     #[cfg_attr(
-        not(windows),
-        expect(unused_mut, reason = "LargePages is pushed only on Windows")
+        not(any(windows, target_os = "linux")),
+        expect(unused_mut, reason = "LargePages is pushed only on Windows and Linux")
     )]
     let mut options = vec![
         spin(
@@ -182,8 +182,8 @@ fn table() -> Vec<UciOption> {
             engine.syzygy.fifty_move_rule = on;
         }),
     ];
-    // Only Windows has the page allocator the option switches.
-    #[cfg(windows)]
+    // Only Windows and Linux have the page allocator the option switches.
+    #[cfg(any(windows, target_os = "linux"))]
     options.push(check("LargePages", true, |engine, on| {
         engine.large_pages = on;
     }));
