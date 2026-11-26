@@ -1086,6 +1086,72 @@ the clock on one move:
 
     python tools/diag/tb_probe_read.py --epd tools/books/ocb_cohort_v1.epd --men 7,8 --per-count 24 --go "wtime 120000 btime 120000 winc 1000 binc 1000" --syzygy D:/chess/tablebases/syzygy3456 --tables-off notb --out analysis/artifacts/d93w-2026-11-25/read_cand.json notb=analysis/artifacts/d93w-2026-11-25/cand.exe tb=analysis/artifacts/d93w-2026-11-25/cand.exe
 
+### The repair candidate's read: the result, 2026-11-26
+
+The maintainer ran the registered command on an idle host; the output is
+`read_cand.json` beside `cand.exe`. The evidence layer is the clock
+read's: wall time per root, one thread, the first move of a 2+1 clock,
+zero games.
+
+All 96 searches answered. Four ended at the hard limit, the same count
+as the baseline, but not on the same roots:
+
+| Root | Arm | Baseline | Candidate |
+|---|---|---|---|
+| 11 | with tables | **88,100 ms**, depth 23 | 12,605 ms, depth 18, `cp 1144` |
+| 14 | with tables | **88,100 ms**, depth 31 | 1,837 ms, depth 29 |
+| 14 | without tables | 5,165 ms, depth 33 | **88,100 ms**, last finished depth 31 at 4,493 ms |
+| 26 | with tables | **88,101 ms**, depth 17, the win | **88,105 ms**, depth 21, the win (`cp 19984`) |
+| 30 | with tables | **88,100 ms**, depth 15 | **88,100 ms**, last finished depth 16 at 345 ms |
+| 30 | without tables | **88,100 ms**, depth 15 | **88,100 ms**, last finished depth 12 at 799 ms |
+
+- With tables, the candidate ends roots 11 and 14 and leaves roots 26
+  and 30 at the limit. Without tables, it moves a stall onto root 14,
+  which the baseline finished in 5.2 s.
+- On the 44 roots that the baseline finished in both arms, the candidate
+  took 62.4 s with tables (baseline 61.4 s) and 79.5 s without tables
+  (baseline 61.8 s). No score class changed against the baseline with
+  tables; 23 of the 48 best moves with tables differ. These are
+  descriptions only: neither number is a strength measure.
+- The longest search, 88,104.9 ms, is 5.2 ms past the computed limit,
+  against a ceiling of 119,980 ms. No search lost on time.
+
+**Against the registration.**
+- With tables, no search ends at the hard limit (0.4): **wrong**. Roots
+  26 and 30 do.
+- Without tables, root 30 still ends at the limit (0.5): held.
+- None of the 44 roots that the baseline finished in both arms ends at
+  the limit (0.6): held. The new stall is on root 14, which the clause
+  did not cover, because the baseline stopped on it with tables.
+- Calibration: the bet that the union and V2 together would close the
+  stops was the one in doubt, and it failed, as eight of nine fixed-depth
+  variants had. The pattern holds under a clock: each change moves the
+  explosion between roots and arms rather than ending it.
+
+**Decision, 2026-11-26.**
+- By the registered rule, a stop with tables refutes the candidate. No
+  repair is registered and no gate goes to the maintainer.
+- What is now established: the explosion is in Rarog's search in a band
+  window, with or without tables. The four rules that differ from
+  Stockfish's and the probe rule are among its parts, and removing them
+  all does not end it. The variant search has run its course: three
+  rounds, ten builds and one clock read of a candidate, with no
+  candidate that closes the stops.
+- The next step is the design question the rule names (`R3`): why
+  Rarog's search in a band window, inside the tables and at root 30
+  without them, grows where Stockfish's and Reckless's do not. It is
+  read from the two searches' structure, not from another variant
+  round, and it decides between three ends:
+  - a repair with a mechanism, read under this instrument and then
+    registered as a gate;
+  - the containment for decided roots, which leaves `bench 13` exact and
+    covers root 26 only;
+  - closing D.9.3 `NO_CHANGE` with the cost recorded (four of 96
+    first-move searches at 2+1 at the hard limit, on one cohort of
+    seven- and eight-man roots) and its triggers.
+- No engine change is made while the leaf is research. The candidate,
+  `cand.exe`, stays archived as the read's binary.
+
 ## Corrections, the same day
 
 A second review of D.9 (2026-11-25), checked against the code and the

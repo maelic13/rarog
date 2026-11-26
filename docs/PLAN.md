@@ -411,7 +411,7 @@ rows; then Phase E as numbered. E.4's units stay after the release
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.9.3 | RESEARCH | R2 | The search explosion with tables loaded, a defect of band windows; its repair search closed `NO_CHANGE` 2026-11-25 by its stop rule: the rule table found four differences from Stockfish, and no variant of them, nor their union with late-move pruning at a winning beta, finishes the three roots, while every one moves `bench 13`. Its clock read, 2026-11-25: four of 96 first-move searches at 2+1 end at the hard limit, roots 11, 14 and 26 with tables and root 30 in both arms, so the defect does not need tables; the repair reopens by its trigger. Held on the repair candidate's read, WU with V2 under the clock read's command, registered with its binary for an idle host. No stop with tables makes it the repair's registration and a gate for the maintainer; a stop refutes it (`analysis/d9_tablebase_policy_2026-11-25.md`, *The clock read's result* and *The repair candidate's read*) |
+| D.9.3 | RESEARCH | R3 | The search explosion with tables loaded, a defect of band windows; its repair search closed `NO_CHANGE` 2026-11-25 by its stop rule: the rule table found four differences from Stockfish, and no variant of them, nor their union with late-move pruning at a winning beta, finishes the three roots, while every one moves `bench 13`. Its clock read, 2026-11-25: four of 96 first-move searches at 2+1 end at the hard limit, roots 11, 14 and 26 with tables and root 30 in both arms, so the defect does not need tables; the repair reopens by its trigger. The repair candidate, WU with V2, was refuted under the same clock on 2026-11-26: roots 26 and 30 still end at the limit with tables, and a stall moves onto root 14 without them. Next is the design question (`R3`), why a band window grows in Rarog's search and not in its donors', which ends in a repair with a mechanism, the containment, or `NO_CHANGE` (`analysis/d9_tablebase_policy_2026-11-25.md`, *The clock read's result* and *The repair candidate's read: the result*) |
 | D.10 | READY_FOR_IMPLEMENTATION | I1 | Linux transparent huge pages for the page allocations, behind `LargePages` (macOS stays Apple silicon only, by maintainer decision 2026-11-02); stands on its own: RAR-M79 (2026-11-02) read no large-page cost in a healthy host state, and their part in the slow state is unread (audit 2026-11-02); exact fingerprint, a Linux NPS read |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
 | D.11.2 | RESEARCH | R2 | After D.11.1: GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
@@ -4255,7 +4255,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       band-window explosion lands, and then this read runs again,
       unchanged; or a run with tables shows table reads costing time.
       The post-probe poll stays.
-    - **D.9.3 The search explosion with tables loaded — `R2`.** Found by
+    - **D.9.3 The search explosion with tables loaded — `R3` (from `R2` on 2026-11-26, when the variant search was spent and the design question remained).** Found by
       D.9.2's read and diagnosed 2026-11-25 (the record, *D.9.3's
       diagnosis* and *D.9 from here*; zero games). On roots 26, 30 and
       11 of D.9.2's selection one iteration grows from under 2M nodes
@@ -4324,6 +4324,17 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       tables makes it the repair's registration, a gate for the
       maintainer (case 3 unless decided otherwise); a stop with
       tables refutes it and sends the leaf to a design question.
+      **The candidate's read done 2026-11-26** (the record, *The repair
+      candidate's read: the result*): refuted. With tables it ends
+      roots 11 and 14 and leaves 26 and 30 at the hard limit; without
+      tables it moves a stall onto root 14. No repair is registered and
+      no gate goes to the maintainer. **Next: the design question
+      (`R3`)**, read from the structure of Rarog's search against
+      Stockfish's and Reckless's, not from another variant round: why
+      a band window grows in Rarog's search, with or without tables.
+      It ends in a repair with a mechanism, read under the clock
+      instrument and then gated; the containment for decided roots,
+      with `bench 13` exact; or `NO_CHANGE` with the cost recorded.
 - **D.10 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
   Renumbered from D.7 on 2026-11-13 (maintainer decision), when the
   search-shape step took that number.
