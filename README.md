@@ -75,38 +75,6 @@ is 64-bit only — there is no 32-bit build.
 Rarog is tested with Arena, ChessBase/Fritz, ChessOK Aquarium and Hiarcs Chess
 Explorer. Any UCI-compatible GUI should work.
 
-### Large pages
-
-On Windows and Linux, Rarog can keep its hash table and other large tables
-in 2 MB memory pages instead of the usual 4 KB ones. The processor then
-spends less time looking up memory addresses; on Windows the engine searches
-a few percent more positions per second. Nothing else changes: moves and
-analysis are exactly the same. Setting `LargePages` to `false` turns them
-off.
-
-**On Linux** nothing needs to be set up: Rarog asks the kernel for
-transparent huge pages, which need no special rights. The kernel provides
-them unless its setting in `/sys/kernel/mm/transparent_hugepage/enabled` is
-`never`. `bench`'s first line, `Large pages`, reads `on` when the setting
-allows them, `off` when it does not, or `disabled` (the `LargePages` option
-is off).
-
-**On Windows** large pages are allowed only for accounts that hold the
-*Lock pages in memory* right. To grant it:
-
-1. Run `secpol.msc` (Local Security Policy; it needs administrator rights and
-   is not included in Windows Home editions).
-2. Open *Local Policies → User Rights Assignment → Lock pages in memory*.
-3. Add your user account and confirm.
-4. Sign out and sign in again; the right takes effect at the next sign-in.
-
-Without the right, Rarog runs normally with ordinary pages. To check, run
-`bench`: its first line, `Large pages`, reads `on`, `off` (the right is not
-held), `partial` (Windows could not find enough contiguous memory for every
-table; restarting the engine or the computer often helps) or `disabled`
-(the `LargePages` option is off). Setting `LargePages` to `false` turns large
-pages off without removing the right.
-
 ---
 
 ## UCI Options
@@ -159,6 +127,18 @@ Every `info` line carries `depth`, `seldepth`, `multipv`, `score`, `nodes`,
 
 `go` supports `depth`, `nodes`, `movetime`, `wtime`, `btime`, `winc`, `binc`,
 `movestogo`, `mate`, `searchmoves`, `ponder`, `perft` and `infinite`.
+
+### Large pages
+
+Large pages make Rarog search a few percent faster. They are on by default
+(`LargePages`) and on Linux need no setup. On Windows your account needs the
+*Lock pages in memory* right:
+
+1. Run `secpol.msc` as administrator (not available in Windows Home).
+2. Open *Local Policies → User Rights Assignment → Lock pages in memory*.
+3. Add your user account, then sign out and sign in again.
+
+`bench`'s first line reads `Large pages     : on` when they are in use.
 
 ---
 
@@ -284,15 +264,6 @@ bench
 
 ---
 
-## License
-
-Rarog is free software under the GNU General Public License v3.0 or later
-([LICENSE](LICENSE)). It includes [Fathom](https://github.com/jdart1/Fathom)
-for Syzygy tablebase probing, under the MIT licence
-([vendor/fathom/LICENSE](vendor/fathom/LICENSE)).
-
----
-
 ## Acknowledgements
 
 - [Stockfish](https://github.com/official-stockfish/Stockfish), whose
@@ -304,4 +275,12 @@ for Syzygy tablebase probing, under the MIT licence
   measurement methods
 - [Fathom](https://github.com/jdart1/Fathom), for Syzygy tablebase probing
 - The [Chess Programming Wiki](https://www.chessprogramming.org)
-- [CCRL](https://computerchess.org.uk/ccrl/) and all chess engine testers
+
+---
+
+## License
+
+Rarog is free software under the GNU General Public License v3.0 or later
+([LICENSE](LICENSE)). It includes [Fathom](https://github.com/jdart1/Fathom)
+for Syzygy tablebase probing, under the MIT licence
+([vendor/fathom/LICENSE](vendor/fathom/LICENSE)).
