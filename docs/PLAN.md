@@ -418,8 +418,7 @@ pruning, is added as Phase D's last step, before the release.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
-| D.11.2 | RESEARCH | R2 | After D.11.1: GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
+| D.11.2 | RESEARCH | R2 | After D.11.1, done 2026-11-27 (`analysis/d111_donor_inventory_2026-11-27.md`, with a recommendation on what route 2 resolves first): GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
 | D.11.3 | RESEARCH | I1 | After D.11.2: the decision carried out; registered experiments under the GPL route |
 | D.11.4 | RESEARCH | M | After D.11.3: the disclosure on Coda's model; its notices ship in D.15.1's archives |
 | D.12.0 | RESEARCH | R3 | Added 2026-11-14 (maintainer: Basilisk's findings are hints, not Rarog's best answer); not started: Rarog's own board interactions mapped and its options ranked before any of D.12's leaves runs |
@@ -4634,7 +4633,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   route 2 each refit is its own registered experiment, named by D.11.3.
   D.11 closes when D.11.1 to D.11.4 are done and D.15.1 ships the
   notices.
-    - **D.11.1 The donor inventory by licence, on the release head — `R2`.**
+    - **D.11.1 The donor inventory by licence, on the release head — `R2`, DONE 2026-11-27.**
       Item 1's rerun, widened from `src/` to everything tracked:
       - each donor's licence at each version Rarog read (Reckless's three
         periods above; Stockfish and Triumviratus GPL-3.0; Fathom MIT), in
@@ -4655,6 +4654,23 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       Output: the inventory in the review (`analysis/`), which D.11.2
       decides on and D.11.4 publishes. Closes when it covers the source,
       the tools and the documents at the release head.
+      *Done 2026-11-27* (`analysis/d111_donor_inventory_2026-11-27.md`; source scans at the
+      head, no build or game). Every Reckless version Rarog took code from
+      is AGPL-3.0; Stockfish and Triumviratus are GPL-3.0, Fathom MIT. From
+      Reckless the head holds the kernel's shape, the clock's formula and
+      its 22 constants, 32 of the kernel's 251 shipped seeds at the donor's
+      values, the ply cap 240, the two transcribed places and, new since
+      2.6.0, eleven move-loop fragments in `compact/node.rs` and
+      `quiescence.rs` that keep Reckless's text and names (255 and 53
+      tokens). Not shipped: the three oracle patches, `Seeds::DONOR` and two
+      parity constants. B.2's 37 constants shipped in 2.5.0 to 2.7.0 and
+      left with the classic kernel. No candidate the document scans found
+      quotes donor code beyond a single expression; 82 source comments say
+      "the donor" without naming
+      it. Not covered: the move-similarity screen, which needs the head's
+      binary and is owed before D.11.4 quotes a figure; shared runs under
+      20 tokens; Fathom's upstream commit. The recommendation for D.11.2 and
+      D.11.3 is the inventory's last section, not taken.
     - **D.11.2 The licence decision — `R2` card, then a maintainer decision.**
       After D.11.1. The card states, from the inventory, what each route
       costs (`analysis/coda_read_2026-11-23.md`, *What AGPL is*):
