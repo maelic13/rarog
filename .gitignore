@@ -80,3 +80,8 @@ tools/profile/addr_*.txt
 # The frozen oracle package (PLAN A.2.2): local binaries, never tracked
 /hybrid/
 
+# Diagnostics against an AGPL engine stay outside the tree (PROCESS,
+# The independence boundary); untracked 2026-11-27, the bytes kept here
+/tools/oracle-hybrids/reckless-*.patch
+/tools/oracle-hybrids/capture_trace.py
+

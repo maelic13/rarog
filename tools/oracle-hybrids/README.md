@@ -10,9 +10,8 @@ is worth on this HCE (RAR-O08).
 |---|---|---|---|
 | Stockfish classical | `9587eeeb`, the `oracle/hybrid` tag | the tag's tree | `rarog_hce.dll` (`tools/oracle-hce-ffi`) |
 | Stockfish dev | `def601cc` (2026-11-10) | `stockfish-def601cc-rarog-hce.patch` | `rarog_hce.dll` |
-| Reckless | `0756957` (2026-11-07) | `reckless-0756957-rarog-hce.patch` | links the `rarog` crate |
 
-Both bridges rebuild Rarog's board from the donor's bitboards with
+The bridge rebuilds Rarog's board from the donor's bitboards with
 `Board::from_placement` and call `Evaluator::evaluate`. The network is still
 loaded, so the `hcescale` command can compare it with the HCE, but the search
 never evaluates it and makes none of its incremental updates.
@@ -20,11 +19,11 @@ never evaluates it and makes none of its incremental updates.
 ## Scale
 
 `hcescale <file>` prints the mean |raw network| and mean |Rarog HCE| over a
-file of FENs. The constant (`SCALE_1024` in Reckless's `src/hce.rs`,
-`Scale1024` in Stockfish's `evaluate.cpp`) is their ratio in 1/1024, measured on
+file of FENs. The constant (`Scale1024` in Stockfish's `evaluate.cpp`) is
+their ratio in 1/1024, measured on
 `tools/results/b0-20260913/scale_corpus.txt`, the corpus that gave B.0's
-0.406. The donor's own wrappers (Reckless's `correct_eval`, Stockfish's
-`scale_evaluation`) then apply as they do to the network.
+0.406. Stockfish's own wrapper, `scale_evaluation`, then applies as it
+does to the network.
 
 ## Bridge price and time odds
 
@@ -43,55 +42,21 @@ stdin, for Rarog's driver, whose `quit` aborts a bench read from stdin
 
 ## Building
 
-Reckless: clone `0756957`, copy its `networks/` file, `git apply` the patch,
-point the `rarog` path dependency in `Cargo.toml` at a checkout of the Rarog
-revision being measured, then with `RUSTFLAGS="-C target-cpu=native"`:
-`cargo pgo build -- --no-default-features`, run the instrumented binary's
-`bench`, `cargo pgo optimize build -- --no-default-features`. Syzygy is left
-out because Fathom's C needs the MSVC headers and the reads play without
-tablebases. The patch links `D:/code/rarog-oracle`: recreate it as a detached
-worktree of the Rarog revision being measured
-(`git worktree add --detach D:/code/rarog-oracle <rev>`).
+Stockfish dev: clone `def601cc`, `git apply` the patch, then in MSYS2's
+MinGW64 shell `make -j profile-build ARCH=x86-64-bmi2 COMP=mingw` in `src/`
+(the Makefile fetches the default network). `rarog_hce.dll` must sit beside
+the executable, also while the profile bench runs.
 
-Reckless's counting twin (RAR-O09): the same tree with
-`reckless-0756957-rarog-hce-count.patch` applied on top, built the same
-way. It counts the null moves it makes and prints
-`info string nullmoves <N> nodes <M>` before `bestmove`; it is never
-played, and its `bench` must report the node count of the plain hybrid.
+## Tree statistics
 
-Reckless's tracing twin (D.7.3): the hybrid's tree with
-`reckless-0756957-rarog-hce-trace.patch` on top, built with
-`cargo build --release --no-default-features` (no PGO: at a fixed depth
-the tree does not depend on code generation). With nothing set its
-`bench` is the hybrid's, 4,158,758, and with tracing on as well.
-
-- `RAROG_TRACE=<file>` writes one line per decision of every n-th node
-  (`RAROG_TRACE_STRIDE`, default 64): `<kind> fire=<0|1> <name>=<int>`.
-- `RAROG_SPREAD_SALT=<k>` shifts the node count in the two LMR spread
-  terms and the draw score, for the noise floor.
-- `RAROG_PLANT` is `unreduced`, `lmr_check` or `q5`, a planted difference.
-- Every rule's firings and attempts are printed as
-  `info string rates ...` before `bestmove`.
-- Since D.7.4 the trace also carries what four records lacked
-  (`nmp_gate`'s capture refutation, `nmp_result`'s outcome, cut or
-  verified, `singular_result`'s searched move, `q_stand_pat`'s node type)
-  and eleven more kinds, one for each rule and
-  seed the 36 did not reach: `tt_cut_bonus`, `tt_cut_return`,
-  `eval_bonus_gate`, `null_bound`, `probcut_value`, `spread`, `malus_fade`,
-  `q_cutoff_bonus`, `score_held`, `pick_threshold` and `draw_score`. They
-  are written only, never counted, so the rates line is the one D.7.3
-  calibrated, and the twin's `bench` and its tree statistics are unchanged.
-
-Its tools:
+`tree_stats.py` reads the rule rates a `probes` build prints:
 
     python tools/oracle-hybrids/tree_stats.py positions <match.pgn> <positions.jsonl> [count] [seed]
     python tools/oracle-hybrids/tree_stats.py run <engine.exe> <positions.jsonl> <out.jsonl> [KEY=VALUE ...]
     python tools/oracle-hybrids/tree_stats.py compare <base.jsonl> <candidate.jsonl> --floor <salted.jsonl> ...
-    python tools/oracle-hybrids/capture_trace.py <engine.exe> <positions.jsonl> <out_dir> [count] [stride]
 
-`run` stops a search past `TREE_STATS_LIMIT_S` seconds (120) and marks it;
-`capture_trace.py` leaves out the ids in `TREE_STATS_EXCLUDE`. The
-calibration is `analysis/d73_parity_instrument_2026-11-16.md`.
+`run` stops a search past `TREE_STATS_LIMIT_S` seconds (120) and marks it.
+The calibration is `analysis/d73_parity_instrument_2026-11-16.md`.
 
 ## Reading the limits from a match
 
@@ -104,10 +69,5 @@ plus a tolerance (per engine after a colon, else `--tolerance`):
 
     python -I tools/oracle-hybrids/pgn_limits.py <games.pgn> <A>[=<budget>[:<tol>]] <B>[=<budget>[:<tol>]] [--tolerance 1]
 
-Stockfish dev: clone `def601cc`, `git apply` the patch, then in MSYS2's
-MinGW64 shell `make -j profile-build ARCH=x86-64-bmi2 COMP=mingw` in `src/`
-(the Makefile fetches the default network). `rarog_hce.dll` must sit beside
-the executable, also while the profile bench runs.
-
-Licences: Stockfish is GPL-3.0, Reckless AGPL-3.0. The patches are diagnostic
-diffs against them and ship nowhere.
+Licence: Stockfish is GPL-3.0. The patches are diagnostic diffs against
+it and ship nowhere.
