@@ -428,6 +428,7 @@ pruning, is added as Phase D's last step, before the release.
 | D.15.1 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: each download a `.zip` or `.tar.gz` with the binary, the licences, the README and the changelog, where D.11's notices ship; before the next release |
 | D.15.2 | READY_FOR_IMPLEMENTATION | I1 | Added 2026-11-21 from Basilisk 1.11.0: the release notes as the section's summary and highlights, with a link to the full changelog; before the next release |
 | D.17 | RESEARCH | R2 | Added 2026-11-23 (maintainer request): not before the end of Phase D; a card on GitHub-hosted runners as a lane for self-play SPRTs and tunes, then a maintainer decision on the rules it changes |
+| D.19 | RESEARCH | R2 | Added 2026-11-27 (maintainer decision: kept so it is not lost, not urgent): a multi-thread `go depth` can run for minutes on bench position 15 (RAR-P62's four-thread cell); a zero-game card first, the fix before the release; its row ahead of D.18's, which stays Phase D's last step |
 | D.18 | RESEARCH | R2 | Added 2026-11-26 (maintainer request): Phase D's last step, before the release; a card first: what stays tracked and why, what goes, the rules it touches, and the remote (delete refs only, rewrite history, or rebuild the history in a new repository), priced for the maintainer; foreign material found on the public remote: the `oracle/*` tags' Stockfish source, and Reckless and Stockfish patches on `master` |
 | D.9.4 | RESEARCH | I1 | Held 2026-11-26 on the maintainer's yes or no before D.9 closes: RAR-S93's activation read with tables in the release qualification (E.1, E.3.4), recommended by `analysis/d9_tablebase_policy_2026-11-25.md`; if yes, bring `tools/diag/tb_activation.py`'s budget formula to `src/search/time.rs` and add the read; if no, closes `NO_CHANGE` and D.9 closes with it |
 | D.12.1 | RESEARCH | R2 | Held 2026-11-23 (maintainer decision on E.0's packet): the board's work a node is level with Stockfish 16's; D.16.3.1's profile showed no board function above the donor's (2026-11-23); reopens when D.12.0 shows one |
@@ -4476,8 +4477,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       again and again (−1,100 cp sinking towards −10,000, seldepth about
       110), each re-search costing more nodes, while the helpers search
       without the depth limit; `stop` still answers at once, and one thread
-      is unaffected. Recorded in RAR-P62 with its evidence; whether it
-      becomes a step is the maintainer's decision. Until then
+      is unaffected. Recorded in RAR-P62 with its evidence; the fix is
+      **D.19** (maintainer decision 2026-11-27). Until it lands
       `nps_read.py --smp` cannot read a cell on `bench 13`.
 - **D.11 Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — `R2`, then `M`.** A
   small research step with its implementation. Added 2026-10-23 by
@@ -5546,6 +5547,38 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   - the remote commands the route needs are handed to the maintainer as
     one runnable block, and the maintainer has run them.
   It removes no engine behaviour; a change to `src/` is out of scope.
+- **D.19 The pool under a fixed depth: a multi-thread `go depth` that ends — `R2` card, then `I1`/`V`.**
+  Added 2026-11-27 (maintainer decision: recorded so it is not lost, not
+  urgent; before the release, its register row ahead of D.18's, which
+  stays Phase D's last step). Found by RAR-P62's four-thread cell: at
+  `Threads=4`, `go depth 13` on bench position 15
+  (`8/8/p1p5/1p5p/1P5P/P1P5/8/K1k5 w - - 0 1`) can run for minutes (past
+  900 s once), on Linux and on Windows, in builds from before D.10; one
+  thread is unaffected, and `stop` answers at once. The main thread's
+  iteration fails low again and again (−1,100 cp sinking towards −10,000,
+  seldepth about 110), each re-search costing more nodes, while the
+  helpers search without the depth limit (`search_worker` in
+  `src/search/threads.rs`: the main thread alone owns the depth). Their
+  deeper scores in the shared table are the likely trigger; that is a
+  reading of the code, not a measurement. A user analysing at a fixed
+  depth on several threads can wait without end. Timed play stops on the
+  clock; whether a timed search on such a position spends its time
+  failing low is unread. Kin to D.9.3's stalls (the fail-low walk an
+  amplifier, carried to F.6), but reached through the threads, with no
+  tables.
+  - *Card, untimed, zero games:* does it occur at two threads; does a
+    timed search on the position spend its clock failing low (if it does,
+    this is a strength question and takes a game gate); do helpers bounded
+    under `go depth` (stopping at the limit, or a set number of plies past
+    it) remove the stall. RAR-P62 holds the stall counts and their scripts
+    (`analysis/artifacts/d10-thp-nps/read-20261127-105810/4t-stall/`).
+  - *A fix on the `go depth` path alone* leaves timed play on its present
+    path, and `docs/rules/gating.md` decides what accepts it; `bench 13`
+    exact at one thread and no stall in a repeat of RAR-P62's four-thread
+    counts. Changing the wider search (a lower `AspMaxFails`, a faster
+    widening) changes the fitted surface and is not this step's.
+  - Until it lands `nps_read.py --smp` cannot read a cell on `bench 13`.
+    A `CHANGELOG.md` entry as a fixed defect when it lands.
 
 ## Phase E — Classical checkpoint and release
 

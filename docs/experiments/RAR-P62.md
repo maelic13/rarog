@@ -137,6 +137,8 @@ cell's failure).
     `bench 13`.
 
   Whether it becomes a step is the maintainer's decision. Until it is
-  resolved, `nps_read.py --smp` cannot read a cell on `bench 13`.
+  resolved, `nps_read.py --smp` cannot read a cell on `bench 13`. Placed
+  2026-11-27 as PLAN **D.19** (maintainer decision: kept, not urgent,
+  before the release).
 - **Disposition: accepted.** D.10 closes `DONE`; the option stays on by
   default on Linux. By the rule the cell decided nothing, and none is owed.
