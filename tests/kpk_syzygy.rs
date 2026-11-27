@@ -65,8 +65,8 @@ fn fen(
 fn every_kpk_position() -> Vec<(String, Wdl, i32)> {
     assert_eq!(
         syzygy::initialize(&fixture_path()),
-        3,
-        "the fixture holds 3-man tables"
+        4,
+        "the fixture holds up to 4-man tables"
     );
     let mut evaluator = Evaluator::default();
     let mut positions = Vec::with_capacity(LEGAL_KPK_POSITIONS);

@@ -44,6 +44,7 @@ use crate::infra;
 use crate::score::{INF_SCORE, MATE_BOUND, MATE_SCORE, MAX_PLY, TB_VALUE, TB_WIN_SCORE};
 use crate::search::options::{
     BOUND_LINES_FROM_NODES, EngineOptions, HashRequest, MAX_THREADS, SearchLimits, SearchOptions,
+    SyzygyPathRequest,
 };
 use crate::syzygy::{self, Wdl};
 use crate::tt::TranspositionTable;
@@ -377,6 +378,15 @@ impl Searcher {
     }
 
     pub fn configure(&mut self, options: &EngineOptions, hash: HashRequest) {
+        self.configure_with(options, hash, SyzygyPathRequest::NotSent);
+    }
+
+    pub(crate) fn configure_with(
+        &mut self,
+        options: &EngineOptions,
+        hash: HashRequest,
+        syzygy_path: SyzygyPathRequest,
+    ) {
         let in_use = self.shared.hash_mb;
         // The option decides each big table's backing when it is allocated,
         // so a change allocates them all again: the helpers with their own,
@@ -414,16 +424,21 @@ impl Searcher {
                 ));
             }
         }
-        let old_path = syzygy::current_path();
-        let largest = syzygy::initialize(&options.syzygy.path);
-        if old_path != options.syzygy.path && !options.syzygy.path.is_empty() {
-            if largest == 0 {
-                self.notice(format_args!("SyzygyPath loaded no usable tablebases."));
-            } else {
-                let (wdl, dtz) = syzygy::tablebase_file_counts(&options.syzygy.path);
-                self.notice(format_args!(
-                    "Found {wdl} WDL and {dtz} DTZ tablebase files (up to {largest}-man)."
-                ));
+        if syzygy_path == SyzygyPathRequest::Sent
+            || options.syzygy.path != self.shared.last_syzygy_path
+        {
+            let old_path = syzygy::current_path();
+            let largest = syzygy::initialize(&options.syzygy.path);
+            self.shared.last_syzygy_path = options.syzygy.path.clone();
+            if old_path != options.syzygy.path && !options.syzygy.path.is_empty() {
+                if largest == 0 {
+                    self.notice(format_args!("SyzygyPath loaded no usable tablebases."));
+                } else {
+                    let (wdl, dtz) = syzygy::tablebase_file_counts(&options.syzygy.path);
+                    self.notice(format_args!(
+                        "Found {wdl} WDL and {dtz} DTZ tablebase files (up to {largest}-man)."
+                    ));
+                }
             }
         }
         let wanted = options.threads.saturating_sub(1);
@@ -562,7 +577,7 @@ impl Searcher {
         };
 
         let syzygy_root_moves = self.syzygy_root_moves(&board, root_candidates);
-        if syzygy::largest() > 0 {
+        if self.tb_probe_limit() > 0 {
             self.td.tb_root_board = Some(board.clone());
         }
         let root_moves = syzygy_root_moves.as_deref().unwrap_or(root_candidates);
@@ -628,6 +643,7 @@ impl Searcher {
         self.cfg.start = limits.issued.unwrap_or_else(Instant::now);
         self.td.nodes = 0;
         self.td.tb_hits = 0;
+        self.td.poll_next_node = false;
         self.td.seldepth = 0;
         self.td.stopped = false;
         self.td.quit = false;
@@ -636,10 +652,18 @@ impl Searcher {
         self.td.stop_on_ponderhit = false;
         self.cfg.limits =
             compute_runtime_limits(limits, engine_options, side_to_move, game_ply, MAX_DEPTH);
-        self.shared.syzygy.probe_depth = engine_options.syzygy.probe_depth;
-        self.shared.syzygy.probe_limit = engine_options.syzygy.probe_limit;
+        let loaded = syzygy::largest();
+        let limit = engine_options.syzygy.probe_limit;
+        self.shared.syzygy.probe_limit = limit;
         self.shared.syzygy.fifty_move_rule = engine_options.syzygy.fifty_move_rule;
         self.shared.syzygy.root = TbRootDecision::default();
+        if limit > loaded {
+            self.shared.syzygy.largest = loaded;
+            self.shared.syzygy.probe_depth = 0;
+        } else {
+            self.shared.syzygy.largest = limit;
+            self.shared.syzygy.probe_depth = engine_options.syzygy.probe_depth;
+        }
         self.cfg.params = engine_options.search_params.clone();
         self.cfg.bound_lines_from_nodes = engine_options.bound_lines_from_nodes;
         self.cfg.show_wdl = engine_options.show_wdl;
@@ -660,7 +684,6 @@ impl Searcher {
         #[cfg(any(feature = "tune", feature = "pricing"))]
         self.td.hist.set_pawn_max(self.seeds().pawn_history_max);
         self.td.nmp_min_ply = 0;
-        self.shared.syzygy.largest = syzygy::largest().min(self.shared.syzygy.probe_limit);
         self.td.tb_root_scores.clear();
         self.td.tb_root_board = None;
         self.td.last_reported_move.set(Move::NULL);
@@ -701,7 +724,8 @@ impl Searcher {
 
     /// Count the position a move just reached, then look for a reason to
     /// stop: another thread's stop, the node limit, and on every 2048th
-    /// count the GUI and the clock. A count is a move made, as Stockfish
+    /// count, or at once after the main thread's tablebase probe, the GUI and
+    /// the clock. A count is a move made, as Stockfish
     /// and Reckless keep it: a null move, a re-search, the hand-off to
     /// quiescence, razoring's quiescence search, a null-move verification
     /// and an exclusion search add nothing, so `nodes`, `nps`, `go nodes`
@@ -737,7 +761,8 @@ impl Searcher {
             }
             return;
         }
-        if self.td.nodes & 2047 == 0 {
+        if self.td.nodes & 2047 == 0 || self.td.poll_next_node {
+            self.td.poll_next_node = false;
             match poll() {
                 SearchEvent::Quit => {
                     self.td.quit = true;

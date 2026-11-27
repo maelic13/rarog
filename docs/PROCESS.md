@@ -2,7 +2,7 @@
 
 The recurring procedures: how a leaf is researched, registered, implemented,
 gated and closed, and how the build, fit, tune and gate instruments are run.
-`AGENTS.md` holds the rules that stop wrong results; `docs/PLAN.md` holds the
+`AGENTS.md` and its modules in `docs/rules/` hold the rules that stop wrong results; `docs/PLAN.md` holds the
 roadmap. This file also owns the independence boundary with donor engines.
 
 ## Recurring procedures
@@ -62,6 +62,12 @@ by `,` `.` `;` `:` or ` — ` and any explanation; `check_dispositions.py`
 fails on a missing or disagreeing side (entries before 2026-11-08 are exempt,
 listed in `tools/diag/disposition_exempt.txt`, which only shrinks). A long
 analysis goes in an `analysis/` packet the entry cites.
+
+The registration is its own commit, made before the build or run it
+predicts, so that Git shows the order. `check_freeze.py` reads the branch's
+commits and fails on one that adds an entry with a prediction and a
+disposition other than `open`, or that adds a registration and, below it, a
+result to one `analysis/` file.
 
 ```markdown
 # RAR-<area><number> — <short name>
@@ -129,7 +135,7 @@ games until the end destroys attribution and lets losing structures hide.
    candidate scope, expected direction, gate, cap and stop rule, before games.
    Bounds default to `[0,3]` nElo; widen only for a genuinely large prior and
    justify it in the row. Removals need a bracket permitting a small loss;
-   a repair takes the gate of its case in AGENTS' *Gating* (none, a
+   a repair takes the gate of its case in `docs/rules/gating.md` (none, a
    registered 2,000-game harm read, or `[-5,5]`). Size from RAR-M10 at the
    EXPECTED value before choosing (`tools/spsa_convergence_model.py`).
 3. **Implement** — the smallest dependency-complete cluster. Substeps may be
@@ -280,7 +286,7 @@ backup only, the second opinion (maintainer decisions 2026-10-04 and
 2026-10-14). `sprt.ps1`, `spsa.ps1`, `gauntlet.ps1`,
 `datagen.ps1 -Runner fastchess`, their books, their patches and
 `setup_tools.ps1`'s staging of them are maintained, not deprecated. They
-retire only on a maintainer decision recorded in AGENTS. Both paths call one implementation of every guard
+retire only on a maintainer decision recorded in `docs/rules/measurement.md`. Both paths call one implementation of every guard
 (`tools/harness_common.ps1`), so they cannot come to disagree about what a
 measurable binary is.
 
@@ -490,7 +496,13 @@ cycles. The read is `tools/nps_read.py` (`--base <pool> --cand <pool> --out
 <dir>` for step 1, `--extend <dir>` for step 2, `--report <dir>` to recompute
 from the archive, `--no-regression` for a neutral change); its tests are
 `tools/diag/test_nps_read.py`, and on RAR-P32's archived runs it reproduces the
-study's deltas. `nps_multibuild.ps1`'s bootstrap interval is not this interval
+study's deltas. It also reads a Linux pool in WSL, where the host measure is
+the same, run through Windows' PowerShell, with the Linux side's processes
+added; Linux PGO builds of one source are byte-identical (RAR-P57), so a WSL
+read compares arms that differ by options on copies of one binary
+(RAR-P62). `--smp` reads a multi-thread cell beside a read: no fingerprint
+check and no verdict. It cannot yet read one on `bench 13`: at `Threads=4`
+a depth-13 search on bench position 15 can run for minutes (RAR-P62). `nps_multibuild.ps1`'s bootstrap interval is not this interval
 and is not quoted as one; that tool is kept only to compare with earlier rows.
 The read refuses a busy host before step 1 and step 2 by the harness's own
 measure (`--allow-busy-host` waives it, archived), and its per-cycle CPU
@@ -884,12 +896,12 @@ small verified commits, engine and documentation apart.
    (`STC 3+0.03: +32.7 ± 8.9 Elo (2,450 games)`); then `Bench: <n>`, the
    `bench 13` count `master` will have. A PR runs `CI` and `Release`; the
    maintainer squash-merges it once both are green.
-3. Before the PR, `python tools/diag/check_citations.py` passes (AGENTS,
-   *Changes*). After the merge the branch is deleted; its commits stay
+3. Before the PR, `python tools/diag/check_citations.py` passes
+   (`docs/rules/evidence.md`, *Cited commits*). After the merge the branch is deleted; its commits stay
    citable under the PR, and the next change names the squash commit as the
    landed state in the records.
 4. A gate arm or other throwaway branch is deleted once its recipe is
-   recorded (AGENTS, *Evidence*). No permanent release branches and no
+   recorded (`docs/rules/evidence.md`). No permanent release branches and no
    history tags: a tag or kept branch is proposed to the maintainer, never
    created alone.
 
@@ -900,9 +912,9 @@ A release is cut by pushing one tag; the GitHub form is never typed into.
 nothing exists on GitHub until every cell has passed.
 
 1. Close `CHANGELOG.md`'s `[Unreleased]`, which collected each change as it
-   landed (AGENTS, *Changes*), as `## [X.Y.Z] - YYYY-MM-DD`. The section
+   landed (`docs/rules/documents.md`), as `## [X.Y.Z] - YYYY-MM-DD`. The section
    becomes the release notes, so read it once as a user would and cut it
-   to AGENTS' user-facing rule (short, plain, one rounded strength line). Then
+   to `docs/rules/documents.md`'s user-facing rule (short, plain, one rounded strength line). Then
    bump `Cargo.toml` to `X.Y.Z` (bench unmoved), and mark the release
    released in GUIDE's checkpoint: its *Released baseline* row names
    `X.Y.Z` at the fingerprint the *Development head* row declares, and
@@ -1060,14 +1072,14 @@ cargo xtask verify-isa
 ```powershell
 # MAIN PATH — Colosseum. The gate: [0,3] nElo, the default bracket; -Bracket
 # removal | repair | wide for the three registered alternatives (repair is
-# [-5,5], AGENTS' third repair case). The cap comes from RAR-M10 at the
+# [-5,5], docs/rules/gating.md's third repair case). The cap comes from RAR-M10 at the
 # EXPECTED value, before any game is played.
 ./tools/colosseum.ps1 -Mode sprt -EngineA <candidate.exe> -EngineB <baseline.exe> `
   -NameA candidate -NameB baseline -MaxPairs <cap> -Seed <n> `
   -ExpectRevision <sha> -Dir tools/results/<experiment>
 
 # A measurement with an interval, which decides nothing, except as the
-# registered 2,000-game harm read of AGENTS' second repair case
+# registered 2,000-game harm read of docs/rules/gating.md's second repair case
 ./tools/colosseum.ps1 -Mode match -EngineA <a.exe> -EngineB <b.exe> `
   -Games 2000 -Seed <n> -Dir tools/results/<name>
 

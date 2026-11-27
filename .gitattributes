@@ -11,6 +11,9 @@ analysis/arm_patches/*.patch -text -whitespace
 # Oracle hybrid recipes apply to donor trees with their own endings.
 tools/oracle-hybrids/*.patch -text -whitespace
 
+# Vendored Fathom patches must stay byte-exact for `git apply`.
+vendor/fathom/patches/*.patch -text -whitespace
+
 # The donor-eval bridge's patches apply to the Stockfish tags' own LF bytes,
 # and its build script runs in Bash, which a CR breaks.
 tools/donor-eval/*.patch -text -whitespace

@@ -175,15 +175,22 @@ def parse_workflow_rows(lines):
     return rows, problems
 
 
-AGENTS = ROOT / "AGENTS.md"
+# The rule files: the core every tool loads, and the modules read on a trigger.
+RULE_CORE = "AGENTS.md"
+RULE_MODULES = ROOT / "docs" / "rules"
 # A bench fingerprint as the documents write it: "7,601,220 / EBF 2.474".
 FINGERPRINT = re.compile(r"(\d{1,3}(?:,\d{3})+) / EBF (\d\.\d{3})")
 
 
-def fingerprint_problems(guide_text, agents_text, plan_text):
-    """The fingerprint GUIDE's checkpoint declares must be the one AGENTS and
-    PLAN's checkpoint row quote. Manta's GUIDE carried two different
-    production fingerprints on the day it froze; nothing checked."""
+def fingerprint_problems(guide_text, rule_texts, plan_text):
+    """The fingerprint GUIDE's checkpoint declares must be the one the rule
+    files and PLAN's checkpoint row quote. Manta's GUIDE carried two different
+    production fingerprints on the day it froze; nothing checked.
+
+    `rule_texts` maps each rule file's name to its text. One of them must
+    quote the fingerprint beside "currently": the rule that does may sit in
+    any of them, and a check that finds no quote compares nothing.
+    """
     problems = []
     head = [l for l in guide_text.splitlines() if l.startswith("| Development head")]
     if not head:
@@ -192,13 +199,20 @@ def fingerprint_problems(guide_text, agents_text, plan_text):
     if not m:
         return ["GUIDE.md: the Development head row carries no 'N / EBF x.xxx' fingerprint"]
     canonical = m.group(0)
-    for n, line in enumerate(agents_text.splitlines(), 1):
-        if "currently" in line:
-            for found in FINGERPRINT.finditer(line):
-                if found.group(0) != canonical:
-                    problems.append(
-                        "AGENTS.md:%d: fingerprint %s disagrees with GUIDE's %s"
-                        % (n, found.group(0), canonical))
+    quoted = 0
+    for name, text in rule_texts.items():
+        for n, line in enumerate(text.splitlines(), 1):
+            if "currently" in line:
+                for found in FINGERPRINT.finditer(line):
+                    quoted += 1
+                    if found.group(0) != canonical:
+                        problems.append(
+                            "%s:%d: fingerprint %s disagrees with GUIDE's %s"
+                            % (name, n, found.group(0), canonical))
+    if not quoted:
+        problems.append(
+            "no rule file quotes the fingerprint beside 'currently': the "
+            "fingerprint check is passing on nothing")
     rows = [l for l in plan_text.splitlines() if l.startswith("| Fingerprint |")]
     for row in rows:
         found = FINGERPRINT.search(row)
@@ -206,6 +220,33 @@ def fingerprint_problems(guide_text, agents_text, plan_text):
             problems.append(
                 "PLAN.md checkpoint row: fingerprint %s disagrees with GUIDE's %s"
                 % (found.group(0), canonical))
+    return problems
+
+
+# The mapping of capability classes to model families, as GUIDE's table and
+# as the core's sentence write it.
+MAPPING_ROW = re.compile(r"^\| `(R3|R2|I2|I1|M|V)` \|[^|]*\| Claude (\w+) — (\w+) \|")
+MAPPING_ENTRY = re.compile(r"`(R3|R2|I2|I1|M|V)` (\w+) — (\w+)")
+
+
+def mapping_problems(guide_text, core_text):
+    """GUIDE's *Model mapping* and the mapping the core gives the agents must
+    agree, class by class. Agents do not read GUIDE, so a family changed in
+    one place alone is either recommended wrongly or shown wrongly."""
+    guide = {m.group(1): m.group(2, 3)
+             for m in map(MAPPING_ROW.match, guide_text.splitlines()) if m}
+    core = {}
+    for m in MAPPING_ENTRY.finditer(" ".join(core_text.split())):
+        core.setdefault(m.group(1), m.group(2, 3))
+    problems = []
+    for cls in ("R3", "R2", "I2", "I1", "M", "V"):
+        if cls not in guide:
+            problems.append("GUIDE.md: *Model mapping* has no row for `%s`" % cls)
+        elif cls not in core:
+            problems.append("AGENTS.md: no model mapping for `%s`" % cls)
+        elif guide[cls] != core[cls]:
+            problems.append("class `%s` maps to %s in GUIDE.md and to %s in AGENTS.md"
+                            % (cls, " — ".join(guide[cls]), " — ".join(core[cls])))
     return problems
 
 
@@ -331,13 +372,37 @@ def self_test():
     sys.stdout.write("workflow metadata negative self-test: PASS (3 failures detected)\n")
     fp = fingerprint_problems(
         "| Development head | fingerprint **7,601,220 / EBF 2.474** |",
-        "baseline (currently 7,000,000 / EBF 2.400) and\n  (currently **7,601,220 / EBF 2.474**)",
+        {"AGENTS.md": "the rules name a module",
+         "docs/rules/engine.md": "baseline (currently 7,000,000 / EBF 2.400) and\n"
+                                 "  (currently **7,601,220 / EBF 2.474**)"},
         "| Fingerprint | `bench 13` **7,601,221 / EBF 2.474** |",
     )
-    if len(fp) != 2:
-        sys.stdout.write("FAIL: fingerprint self-test expected 2 disagreements, got %d\n" % len(fp))
+    if len(fp) != 2 or not fp[0].startswith("docs/rules/engine.md:1:"):
+        sys.stdout.write("FAIL: fingerprint self-test expected 2 disagreements, got %r\n" % fp)
+        return 1
+    unquoted = fingerprint_problems(
+        "| Development head | fingerprint **7,601,220 / EBF 2.474** |",
+        {"AGENTS.md": "the fingerprint, 7,601,220 / EBF 2.474, without the word"}, "")
+    if len(unquoted) != 1 or "passing on nothing" not in unquoted[0]:
+        sys.stdout.write("FAIL: fingerprint self-test missed an unquoted fingerprint: %r\n" % unquoted)
         return 1
     sys.stdout.write("fingerprint negative self-test: PASS (2 disagreements detected)\n")
+    table = ("| `R3` | research | Claude Fable — High |\n| `R2` | reasoning | Claude Opus — High |\n"
+             "| `I2` | hard | Claude Opus — High |\n| `I1` | plain | Claude Sonnet — Medium |\n"
+             "| `M` | docs | Claude Sonnet — Medium |\n")
+    sentence = ("The mapping: `R3` Fable — High; `R2` Opus —\n  High; `I2` Opus — High; "
+                "`I1` Sonnet — High; `M` Sonnet — Medium; `V` Sonnet — High.")
+    mapped = mapping_problems(table, sentence)
+    # I1 differs, and GUIDE's table has no row for V.
+    if (len(mapped) != 2 or "`I1` maps to Sonnet — Medium" not in mapped[0]
+            or "no row for `V`" not in mapped[1]):
+        sys.stdout.write("FAIL: model-mapping self-test got %r\n" % mapped)
+        return 1
+    if mapping_problems(table + "| `V` | checks | Claude Sonnet — High |\n",
+                        sentence.replace("`I1` Sonnet — High", "`I1` Sonnet — Medium")):
+        sys.stdout.write("FAIL: model-mapping self-test rejected an equal mapping\n")
+        return 1
+    sys.stdout.write("model-mapping negative self-test: PASS (2 disagreements detected)\n")
     dead = dead_path_problems(
         {"PLAN.md": "see `src/search/mod.rs`, `src/search.rs` and `tools/<name>.ps1`"},
         lambda p: p == "src/search/mod.rs",
@@ -513,10 +578,15 @@ def main():
                           for p in ENTRIES.glob("*.md")} if ENTRIES.is_dir() else {}
         ledger_text = LEDGER.read_text(encoding="utf-8") if LEDGER.is_file() else ""
         problems.extend(ledger_problems(ledger_text, entry_headings))
-        agents_text = AGENTS.read_text(encoding="utf-8") if AGENTS.is_file() else ""
-        problems.extend(fingerprint_problems("\n".join(lines), agents_text, plan_text))
+        rule_names = [RULE_CORE] + sorted(
+            p.relative_to(ROOT).as_posix() for p in RULE_MODULES.glob("*.md"))
+        rule_texts = {name: (ROOT / name).read_text(encoding="utf-8")
+                      for name in rule_names if (ROOT / name).is_file()}
+        problems.extend(fingerprint_problems("\n".join(lines), rule_texts, plan_text))
+        problems.extend(mapping_problems("\n".join(lines), rule_texts.get(RULE_CORE, "")))
         texts = {name: (ROOT / name).read_text(encoding="utf-8")
                  for name in CURRENT_DOCS if (ROOT / name).is_file()}
+        texts.update(rule_texts)
         problems.extend(dead_path_problems(texts, repository_path_exists))
         absent = [s for s in step_numbers
                   if not re.search(STEP_IN_PLAN.pattern % re.escape(s), plan_text)]

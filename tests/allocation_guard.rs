@@ -1,4 +1,4 @@
-//! Per-node search code never allocates (AGENTS, *Research and implementation*).
+//! Per-node search code never allocates (`docs/rules/engine.md`, *Per-node code*).
 //!
 //! A counting global allocator watches whole searches of the same positions
 //! at two depths, at Threads 1 and 4. Search setup and each iteration may

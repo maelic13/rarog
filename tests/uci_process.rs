@@ -1178,3 +1178,104 @@ fn assert_uci_pv_lines_are_legal(root_fen: &str, lines: &[String]) {
     }
     assert!(saw_pv, "search should emit at least one PV line: {lines:?}");
 }
+
+/// A4: a `SyzygyPath` that loads zero tables must not be cached, so re-sending
+/// the same path once tablebase files exist loads them, while an unrelated
+/// option (`Hash`) does not re-probe or repeat the notice.
+#[test]
+fn empty_syzygy_path_is_not_cached_and_reloads_when_files_appear() {
+    let dir = std::env::temp_dir().join(format!("rarog-a4-syzygy-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("create temp syzygy dir");
+    let path = dir.to_str().expect("UTF-8 temp path").to_string();
+
+    let mut session = UciSession::ready();
+    session.send(&format!("setoption name SyzygyPath value {path}"));
+    session.send("isready");
+    let first = session.collect_until_line_containing("readyok", wait(5));
+    assert!(
+        first
+            .iter()
+            .any(|line| line.contains("SyzygyPath loaded no usable tablebases.")),
+        "empty dir notice missing: {first:?}"
+    );
+
+    session.send("setoption name Hash value 32");
+    session.send("isready");
+    let unrelated = session.collect_until_line_containing("readyok", wait(5));
+    assert!(
+        !unrelated
+            .iter()
+            .any(|line| line.contains("SyzygyPath") || line.contains("Found ")),
+        "unrelated option must not re-run SyzygyPath: {unrelated:?}"
+    );
+
+    let fixture = format!("{}/tests/fixtures/syzygy", env!("CARGO_MANIFEST_DIR"));
+    for file in ["KQvK.rtbw", "KQvK.rtbz"] {
+        std::fs::copy(format!("{fixture}/{file}"), dir.join(file)).expect("copy fixture file");
+    }
+
+    session.send(&format!("setoption name SyzygyPath value {path}"));
+    session.send("isready");
+    let second = session.collect_until_line_containing("readyok", wait(5));
+    assert!(
+        second
+            .iter()
+            .any(|line| line.contains("Found 1 WDL and 1 DTZ tablebase files (up to 3-man).")),
+        "retry after copying tables must load them: {second:?}"
+    );
+
+    session.send("position fen 4k3/8/8/8/8/8/8/3QK3 w - - 0 1");
+    session.send("go depth 4");
+    let search = session.collect_until_line_containing("bestmove", wait(10));
+    assert!(
+        search
+            .iter()
+            .any(|line| line.contains(" score cp 20000 ") && line.contains(" tbhits 1 ")),
+        "reloaded tables must rank the KQvK root: {search:?}"
+    );
+
+    session.quit();
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// PROTO-24: Windows must open `SyzygyPath` directories containing non-ASCII
+/// characters that cannot round-trip through the process ANSI code page.
+#[test]
+fn non_ascii_syzygy_path_loads_tablebases() {
+    let dir = std::env::temp_dir().join(format!(
+        "rarog-syzygy-\u{017e}lu\u{0165}ou\u{010d}k\u{00fd}-\u{68cb}-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("create non-ASCII temp syzygy dir");
+    let fixture = format!("{}/tests/fixtures/syzygy", env!("CARGO_MANIFEST_DIR"));
+    for file in ["KQvK.rtbw", "KQvK.rtbz"] {
+        std::fs::copy(format!("{fixture}/{file}"), dir.join(file)).expect("copy fixture file");
+    }
+    let path = dir.to_str().expect("UTF-8 temp path").to_string();
+
+    let mut session = UciSession::ready();
+    session.send(&format!("setoption name SyzygyPath value {path}"));
+    session.send("isready");
+    let loaded = session.collect_until_line_containing("readyok", wait(5));
+    assert!(
+        loaded
+            .iter()
+            .any(|line| line.contains("Found 1 WDL and 1 DTZ tablebase files (up to 3-man).")),
+        "non-ASCII SyzygyPath must load fixture tables: {loaded:?}"
+    );
+
+    session.send("position fen 4k3/8/8/8/8/8/8/3QK3 w - - 0 1");
+    session.send("go depth 4");
+    let search = session.collect_until_line_containing("bestmove", wait(10));
+    assert!(
+        search
+            .iter()
+            .any(|line| line.contains(" score cp 20000 ") && line.contains(" tbhits 1 ")),
+        "non-ASCII tables must rank the KQvK root: {search:?}"
+    );
+
+    session.quit();
+    let _ = std::fs::remove_dir_all(&dir);
+}

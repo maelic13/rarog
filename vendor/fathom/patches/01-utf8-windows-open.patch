@@ -1,0 +1,44 @@
+diff --git a/vendor/fathom/src/tbprobe.c b/vendor/fathom/src/tbprobe.c
+index 5eac014..c4c7c72 100644
+--- a/vendor/fathom/src/tbprobe.c
++++ b/vendor/fathom/src/tbprobe.c
+@@ -325,19 +325,26 @@ static FD open_tb(const char *str, const char *suffix)
+ #ifndef _WIN32
+     fd = open(file, O_RDONLY);
+ #else
+-#ifdef _UNICODE
+-    wchar_t ucode_name[4096];
+-    size_t len;
+-    mbstowcs_s(&len, ucode_name, 4096, file, _TRUNCATE);
+-    /* use FILE_FLAG_RANDOM_ACCESS because we are likely to access this file
+-       randomly, so prefetch is not helpful. See
+-       https://github.com/official-stockfish/Stockfish/pull/1829 */
+-    fd = CreateFile(ucode_name, GENERIC_READ, FILE_SHARE_READ, NULL,
+-			  OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
+-#else
+-    fd = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL,
+-			  OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
+-#endif
++    /* Convert the UTF-8 path explicitly instead of relying on CreateFileA or
++       mbstowcs_s, so non-ASCII SyzygyPath directories work regardless of the
++       process ANSI code page. */
++    int wlen = MultiByteToWideChar(CP_UTF8, 0, file, -1, NULL, 0);
++    if (wlen > 0) {
++      wchar_t *wfile = (wchar_t *)malloc((size_t)wlen * sizeof(wchar_t));
++      if (wfile != NULL
++          && MultiByteToWideChar(CP_UTF8, 0, file, -1, wfile, wlen) > 0) {
++        /* use FILE_FLAG_RANDOM_ACCESS because we are likely to access this
++           file randomly, so prefetch is not helpful. See
++           https://github.com/official-stockfish/Stockfish/pull/1829 */
++        fd = CreateFileW(wfile, GENERIC_READ, FILE_SHARE_READ, NULL,
++                         OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, NULL);
++      } else {
++        fd = FD_ERR;
++      }
++      free(wfile);
++    } else {
++      fd = FD_ERR;
++    }
+ #endif
+     free(file);
+     if (fd != FD_ERR) {

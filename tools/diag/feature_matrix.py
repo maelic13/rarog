@@ -113,7 +113,7 @@ def main() -> int:
     print("Reminder: --all-features is NOT a shipped configuration. It enables "
           "`texel`,\nwhich bypasses the eval and pawn caches; a binary left in "
           "target/release by\n`cargo test --all-features` must never be "
-          "measured (AGENTS.md).")
+          "measured (docs/rules/measurement.md).")
     return 0
 
 

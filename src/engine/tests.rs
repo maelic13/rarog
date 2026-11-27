@@ -30,6 +30,7 @@ fn only_quit_ends_the_engine_loop() {
         engine.handle(EngineCommand::Configure {
             options,
             hash: crate::search::options::HashRequest::Sent,
+            syzygy_path: crate::search::options::SyzygyPathRequest::NotSent,
         }),
         SearchExit::Stop
     );

@@ -9,8 +9,9 @@ use rarog::engine_command::{EngineCommandQueue, EngineControl};
 use rarog::infra::{THREAD_STACK_SIZE, capitalize_first_letter};
 use rarog::uci::{CommandOutcome, UciProtocol};
 
-// The big tables in large pages where Windows grants them; see `large_pages`.
-#[cfg(windows)]
+// The big tables in large pages where the system grants them; see
+// `large_pages`.
+#[cfg(any(windows, target_os = "linux"))]
 #[global_allocator]
 static ALLOCATOR: rarog::large_pages::PageAllocator = rarog::large_pages::PageAllocator;
 

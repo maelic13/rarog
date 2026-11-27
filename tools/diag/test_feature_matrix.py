@@ -32,7 +32,7 @@ class CoverageTests(unittest.TestCase):
                          self.declared_features())
 
     def test_texel_is_flagged_as_never_measurable(self):
-        """AGENTS.md: `texel` bypasses the eval and pawn caches."""
+        """docs/rules/measurement.md: `texel` bypasses the eval and pawn caches."""
         self.assertIn("texel", feature_matrix.NEVER_MEASURE)
 
     def test_never_measure_is_a_subset_of_the_shipped_features(self):

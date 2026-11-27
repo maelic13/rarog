@@ -20,7 +20,7 @@ fn the_table_advertises_the_engine_s_option_list() {
         "option name SyzygyProbeLimit type spin default 7 min 0 max 7",
         "option name Syzygy50MoveRule type check default true",
     ];
-    if cfg!(windows) {
+    if cfg!(any(windows, target_os = "linux")) {
         expected.push("option name LargePages type check default true");
     }
     let advertised: Vec<String> = table().iter().map(UciOption::advertised).collect();
@@ -82,10 +82,10 @@ fn every_advertised_default_is_the_engine_s_default() {
             .iter()
             .map(ToString::to_string)
             .collect();
-        let want = if option.name == "Hash" {
-            OptionUpdate::HashApplied
-        } else {
-            OptionUpdate::Applied
+        let want = match option.name {
+            "Hash" => OptionUpdate::HashApplied,
+            "SyzygyPath" => OptionUpdate::SyzygyPathApplied,
+            _ => OptionUpdate::Applied,
         };
         assert_eq!(apply(&mut engine, &args), want, "{}", option.name);
     }

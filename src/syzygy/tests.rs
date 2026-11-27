@@ -153,7 +153,7 @@ fn root_move_from_tb_move_decodes_fathom_move_fields() {
 }
 
 #[test]
-fn tablebase_file_counts_scan_semicolon_separated_paths() {
+fn tablebase_file_counts_scan_platform_separated_paths() {
     let base =
         std::env::temp_dir().join(format!("rarog-syzygy-counts-{}-{}", std::process::id(), 1));
     let first = base.join("a");
@@ -165,7 +165,10 @@ fn tablebase_file_counts_scan_semicolon_separated_paths() {
     fs::write(second.join("KRvK.RTBW"), []).expect("write upper-case WDL file");
     fs::write(second.join("README.txt"), []).expect("write ignored file");
 
-    let path = format!("{};{}", first.display(), second.display());
+    let path = std::env::join_paths([&first, &second])
+        .expect("join temp tablebase paths")
+        .into_string()
+        .expect("UTF-8 temp paths");
     assert_eq!(tablebase_file_counts(&path), (2, 1));
 
     let _ = fs::remove_dir_all(base);

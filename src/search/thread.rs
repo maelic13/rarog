@@ -27,6 +27,9 @@ pub(super) struct ThreadData {
     pub(super) sink: Box<dyn InfoSink>,
     pub(super) nodes: u64,
     pub(super) tb_hits: u64,
+    /// Set by the main thread's in-search probe: the next counted node polls
+    /// the GUI and the clock at once, since a cold read can be long.
+    pub(super) poll_next_node: bool,
     pub(super) seldepth: usize,
     pub(super) pv_table: PlyArray<[Move; MAX_PLY]>,
     pub(super) pv_len: PlyArray<usize>,
@@ -116,6 +119,7 @@ impl Default for ThreadData {
             sink: Box::new(SilentSink),
             nodes: 0,
             tb_hits: 0,
+            poll_next_node: false,
             seldepth: 0,
             pv_table: PlyArray::new([Move::NULL; MAX_PLY]),
             pv_len: PlyArray::new(0),

@@ -1,0 +1,155 @@
+{
+ "what": "compute_runtime_limits' optimum as a diag build prints it, to 0.1 ms",
+ "engine": "Rarog dev-20261127-cfc1c94e",
+ "recipe": "cargo build --release --features diag --bin rarog; python tools/diag/tb_activation_fixture.py --engine <exe>",
+ "source": {
+  "budget_sha256": "47e7054ffead5d52c4e7908a3f719e64c5a005e05e9a2b29ee79167b3deb8385",
+  "reserve_sha256": "ea4dbfe0ad56439d5454f91aa91c6455b25981104aea833cbcbebffe1f35d7e1"
+ },
+ "constants": {
+  "TIME_OVERHEAD_MS": 15.0,
+  "SOFT_SCALE_LATE": 0.0594,
+  "SOFT_SCALE_EARLY_CUT": 0.0492,
+  "SOFT_SCALE_RATE": 0.0386,
+  "HARD_SCALE": 0.7281,
+  "INCREMENT_SHARE": 0.75
+ },
+ "cases": [
+  {
+   "time_ms": 3000,
+   "inc_ms": 30,
+   "overhead_ms": 10,
+   "game_ply": 0,
+   "threads": 1,
+   "optimum_ms": 43.6
+  },
+  {
+   "time_ms": 3000,
+   "inc_ms": 30,
+   "overhead_ms": 10,
+   "game_ply": 1,
+   "threads": 1,
+   "optimum_ms": 43.6
+  },
+  {
+   "time_ms": 3000,
+   "inc_ms": 30,
+   "overhead_ms": 10,
+   "game_ply": 40,
+   "threads": 1,
+   "optimum_ms": 119.7
+  },
+  {
+   "time_ms": 3000,
+   "inc_ms": 30,
+   "overhead_ms": 10,
+   "game_ply": 120,
+   "threads": 1,
+   "optimum_ms": 171.1
+  },
+  {
+   "time_ms": 3000,
+   "inc_ms": 30,
+   "overhead_ms": 10,
+   "game_ply": 201,
+   "threads": 1,
+   "optimum_ms": 182.1
+  },
+  {
+   "time_ms": 2000,
+   "inc_ms": 30,
+   "overhead_ms": 10,
+   "game_ply": 80,
+   "threads": 1,
+   "optimum_ms": 105.6
+  },
+  {
+   "time_ms": 800,
+   "inc_ms": 30,
+   "overhead_ms": 10,
+   "game_ply": 150,
+   "threads": 1,
+   "optimum_ms": 52.4
+  },
+  {
+   "time_ms": 200,
+   "inc_ms": 30,
+   "overhead_ms": 10,
+   "game_ply": 160,
+   "threads": 1,
+   "optimum_ms": 18.4
+  },
+  {
+   "time_ms": 60,
+   "inc_ms": 30,
+   "overhead_ms": 10,
+   "game_ply": 170,
+   "threads": 1,
+   "optimum_ms": 10.4
+  },
+  {
+   "time_ms": 25,
+   "inc_ms": 30,
+   "overhead_ms": 10,
+   "game_ply": 171,
+   "threads": 1,
+   "optimum_ms": 1.0
+  },
+  {
+   "time_ms": 3000,
+   "inc_ms": 0,
+   "overhead_ms": 10,
+   "game_ply": 60,
+   "threads": 1,
+   "optimum_ms": 118.1
+  },
+  {
+   "time_ms": 120000,
+   "inc_ms": 1000,
+   "overhead_ms": 10,
+   "game_ply": 40,
+   "threads": 1,
+   "optimum_ms": 5237.8
+  },
+  {
+   "time_ms": 3000,
+   "inc_ms": 30,
+   "overhead_ms": 50,
+   "game_ply": 30,
+   "threads": 1,
+   "optimum_ms": 104.5
+  },
+  {
+   "time_ms": 3000,
+   "inc_ms": 30,
+   "overhead_ms": 10,
+   "game_ply": 40,
+   "threads": 4,
+   "optimum_ms": 119.7
+  },
+  {
+   "time_ms": 100,
+   "inc_ms": 30,
+   "overhead_ms": 10,
+   "game_ply": 90,
+   "threads": 4,
+   "optimum_ms": 12.1
+  },
+  {
+   "time_ms": 200,
+   "inc_ms": 300,
+   "overhead_ms": 50,
+   "game_ply": 126,
+   "threads": 1,
+   "optimum_ms": 100.0
+  },
+  {
+   "time_ms": 100,
+   "inc_ms": 300,
+   "overhead_ms": 10,
+   "game_ply": 126,
+   "threads": 4,
+   "optimum_ms": 50.0
+  }
+ ]
+}

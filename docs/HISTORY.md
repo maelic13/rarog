@@ -71,6 +71,29 @@ leaf continues here, this is the mapping; everything else is history.
 
 ## Completed current-roadmap work (dated records; PLAN owns IDs)
 
+- **2026-11-25 — The agent rules split into a core and six modules; agents
+  orient from PLAN** (`analysis/agent_rules_inventory_2026-11-25.md`).
+  `AGENTS.md` had reached 29,399 bytes, and a tool that cuts a rule file at
+  24,000 bytes, as Antigravity documents, drops its last sections: the end
+  of *Gating*, then *Documents*, *Sequencing and holds* and *Handing work
+  back*. The core every tool loads now fits an 18,000-byte budget that
+  `tools/diag/check_rules.py` enforces, and the rules for particular work
+  are in `docs/rules/`, read in full on the triggers the core's index
+  states. `tools/diag/rules_inventory.py` accounts for all 210 statements
+  of the old file. Four incident notes left the rules for this record:
+  fastchess and weather-factory were reviewed at 2.5.0 on 2026-10-04 and
+  kept, and kept again as backup only on 2026-10-14 when datagen moved to
+  Colosseum; the rule to get only the information a use needs came after
+  RAR-O09's four matches were cut to the one PLAN's rule reads; the
+  pull-request refspec became a standing one because on 2026-10-11 this
+  clone held none and the check failed; and a ref stopped being a record's
+  only carrier because on 2026-09-27, 71 cited commits were on no ref.
+  The same day the maintainer decided that GUIDE is the maintainer's board
+  and that agents orient from PLAN: its *Active workflow register* is the
+  order of work, `tools/diag/plan_leaf.py` prints it with the current
+  leaf's lines, and the mapping of classes to models moved into the core,
+  which `tools/diag/check_guide.py` holds equal to GUIDE's.
+
 - **2026-11-19 — D.7 audited, the first fit stopped and baked, D.7 reworked**
   (`analysis/d7_audit_2026-11-19.md`, RAR-S129; maintainer decisions the
   same day). The compact kernel is a faithful port: one fold defect

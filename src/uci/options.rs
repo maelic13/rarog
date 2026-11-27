@@ -19,6 +19,9 @@ pub enum OptionUpdate {
     /// `Hash` took the value: the engine thread must try the table, and say
     /// so if it cannot have it, however often the same value is sent.
     HashApplied,
+    /// `SyzygyPath` took the value: the engine thread must try loading it even
+    /// if the text matches an earlier path that loaded no tables.
+    SyzygyPathApplied,
     /// The `Clear Hash` button: nothing to store, one action to run.
     ClearHash,
     /// A recognised option whose value was not taken; the setting is
@@ -117,8 +120,8 @@ fn check(name: &'static str, default: bool, apply: fn(&mut EngineOptions, bool))
 /// Every option, in the order `uci` lists them.
 fn table() -> Vec<UciOption> {
     #[cfg_attr(
-        not(windows),
-        expect(unused_mut, reason = "LargePages is pushed only on Windows")
+        not(any(windows, target_os = "linux")),
+        expect(unused_mut, reason = "LargePages is pushed only on Windows and Linux")
     )]
     let mut options = vec![
         spin(
@@ -179,8 +182,8 @@ fn table() -> Vec<UciOption> {
             engine.syzygy.fifty_move_rule = on;
         }),
     ];
-    // Only Windows has the page allocator the option switches.
-    #[cfg(windows)]
+    // Only Windows and Linux have the page allocator the option switches.
+    #[cfg(any(windows, target_os = "linux"))]
     options.push(check("LargePages", true, |engine, on| {
         engine.large_pages = on;
     }));
@@ -297,6 +300,7 @@ pub fn apply(engine: &mut EngineOptions, args: &[String]) -> OptionUpdate {
     };
     match taken {
         Ok(()) if option.name == "Hash" => OptionUpdate::HashApplied,
+        Ok(()) if option.name == "SyzygyPath" => OptionUpdate::SyzygyPathApplied,
         Ok(()) => OptionUpdate::Applied,
         Err(Refusal::Unreadable) => OptionUpdate::Rejected {
             notice: format!("Invalid {} value.", option.name),

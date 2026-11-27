@@ -3,7 +3,7 @@
 One line per tool: what it does, and where the method that uses it lives.
 Run everything from the repository root. Measurement rules (rebuild with the
 exact features, sum per-position counters, check exit status directly) are in
-`AGENTS.md`; procedures are in `docs/PROCESS.md`. Raw outputs go to ignored
+`AGENTS.md` and its modules under `docs/rules/`; procedures are in `docs/PROCESS.md`. Raw outputs go to ignored
 `tools/results/`. Tool and fixture names are cited by ledger rows, so they do
 not change.
 
@@ -61,8 +61,8 @@ PROCESS's *Harness* section says when to run the backup as a cross-check.
 
 | Tool | Purpose | Used by |
 |---|---|---|
-| `diag/bench_counters.py` | Sum diagnostic counters over a whole `bench` run | AGENTS "Measurement"; neutrality checks |
-| `diag/phase4_differential.py` | Counter-by-counter differential against the oracle build over `diag/phase4_suite_v1.epd` | AGENTS "Measurement"; PROCESS "Matched ablation" |
+| `diag/bench_counters.py` | Sum diagnostic counters over a whole `bench` run | `docs/rules/measurement.md`; neutrality checks |
+| `diag/phase4_differential.py` | Counter-by-counter differential against the oracle build over `diag/phase4_suite_v1.epd` | `docs/rules/measurement.md`; PROCESS "Matched ablation" |
 | `diag_search_quality.ps1` | Interaction map, first-move cutoff rate and LMR readouts over `bench` | search-quality rows |
 | `diag_smp_sweep.ps1` | TT-hit and aspiration breakdown across thread counts | SMP diagnostics |
 | `diag/fixed_budget_probe.py` | Fixed-node or fixed-depth probes over an EPD suite for several engines | PLAN B.0 section 11; B.2 screens |
@@ -70,7 +70,10 @@ PROCESS's *Harness* section says when to run the backup as a cross-check.
 | `diag/answer_nodes.py` | The same comparison at a fixed node budget | answer-quality diagnostics |
 | `diag/nodes_per_move.py` | Actual nodes per move at a real time control | calibrating node budgets |
 | `diag/feature_matrix.py` | `cargo check` every feature subset | CI "Feature matrix" |
-| `diag/check_guide.py` | GUIDE/PLAN status-board and fingerprint consistency | AGENTS "Documents" |
+| `diag/check_guide.py` | GUIDE/PLAN status-board, fingerprint and model-mapping consistency | `docs/rules/documents.md` |
+| `diag/plan_leaf.py` | PLAN's register, the current leaf and the lines of any step: how an agent orients | AGENTS "Token-efficient execution" |
+| `diag/check_rules.py` | The agent rules' budgets, module index, headers and imports; `--triggered` names the modules the changed paths require | AGENTS "Keeping these rules small"; CI |
+| `diag/rules_inventory.py` | Proof that every statement of the single rulebook reached the core or a module (2026-11-25) | `analysis/agent_rules_inventory_2026-11-25.md` |
 
 ## Board and SEE
 

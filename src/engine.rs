@@ -71,8 +71,12 @@ impl Engine {
                 self.control.finish_search_if_current(epoch);
                 SearchExit::Quit
             }
-            EngineCommand::Configure { options, hash } => {
-                self.searcher.configure(&options, hash);
+            EngineCommand::Configure {
+                options,
+                hash,
+                syzygy_path,
+            } => {
+                self.searcher.configure_with(&options, hash, syzygy_path);
                 SearchExit::Stop
             }
             EngineCommand::ClearHash => {

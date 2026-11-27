@@ -12,6 +12,10 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
 
 ### Added
 
+- **Large pages on Linux.** The `LargePages` option now works on Linux too:
+  the engine asks the kernel to keep its hash table and other large tables
+  in 2 MB pages, with no setup or special rights needed. `bench` shows
+  whether they are in use.
 - **Win, draw and loss rates.** With the new option `UCI_ShowWDL` on, each
   info line also shows the engine's chances of winning, drawing and losing,
   as GUIs that support it display beside the score.
@@ -44,6 +48,18 @@ starting with version `2.0.0` to avoid confusion with an existing chess engine.
   small for even the shortest search, the engine played its first legal
   move and reported being mated; it now finishes that search first, and
   never reports a score it did not find.
+- **`SyzygyProbeLimit` applies everywhere.** With the limit below the
+  largest tables loaded, the engine still used the larger tables to choose
+  and show its move; it now uses only tables within the limit.
+- **`SyzygyProbeDepth` works as in Stockfish.** It now applies only to
+  positions with the largest number of pieces the tables cover.
+- **A tablebase folder can be loaded once it is filled.** Setting
+  `SyzygyPath` again to a folder that was empty, after copying tables
+  into it, now loads them.
+- **Tablebase folders with non-English names open on Windows.** A
+  `SyzygyPath` with characters outside the system's code page now loads.
+- **The tablebase file count on Linux and macOS.** With several folders
+  in `SyzygyPath`, the count the engine reports now covers each one.
 
 ## [2.7.0] - 2026-11-13
 

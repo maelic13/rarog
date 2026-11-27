@@ -5,7 +5,7 @@ use std::sync::{
     mpsc::Sender,
 };
 
-use crate::search::options::{EngineOptions, HashRequest, SearchOptions};
+use crate::search::options::{EngineOptions, HashRequest, SearchOptions, SyzygyPathRequest};
 
 /// Signals from the protocol thread to the search. Every command that starts a
 /// search takes a new epoch, and `stop` and `ponderhit` are scoped to the latest
@@ -196,6 +196,7 @@ pub enum EngineCommand {
     Configure {
         options: EngineOptions,
         hash: HashRequest,
+        syzygy_path: SyzygyPathRequest,
     },
     ClearHash,
     NewGame,

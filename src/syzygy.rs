@@ -272,7 +272,11 @@ pub fn initialize(path: &str) -> usize {
         tb_init(c_path.as_ptr());
         TB_LARGEST as usize
     };
-    *current_path = path.to_string();
+    if largest > 0 {
+        *current_path = path.to_string();
+    } else {
+        current_path.clear();
+    }
     LARGEST.store(largest, Ordering::Relaxed);
     largest
 }
@@ -292,11 +296,10 @@ pub fn largest() -> usize {
 pub(crate) fn tablebase_file_counts(path: &str) -> (usize, usize) {
     let mut wdl = 0usize;
     let mut dtz = 0usize;
-    for part in path
-        .split(';')
-        .map(str::trim)
-        .filter(|part| !part.is_empty())
-    {
+    for part in std::env::split_paths(path) {
+        if part.as_os_str().is_empty() {
+            continue;
+        }
         let Ok(entries) = fs::read_dir(part) else {
             continue;
         };
@@ -316,11 +319,19 @@ pub(crate) fn tablebase_file_counts(path: &str) -> (usize, usize) {
 }
 
 pub fn probe_wdl(board: &Board, use_rule50: bool) -> Option<Wdl> {
-    if !can_probe(board, use_rule50, false) {
+    if !can_probe_wdl(board, use_rule50) {
         return None;
     }
 
     wdl_from_raw(TbPosition::of(board).probe_wdl())
+}
+
+/// Options for ranking root moves against the tables.
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct RootRankOptions {
+    pub(crate) use_rule50: bool,
+    pub(crate) rank_dtz: bool,
+    pub(crate) max_pieces: usize,
 }
 
 /// Rank scale of the root ranking: a clean win ranks `MAX_DTZ`, less its
@@ -349,16 +360,16 @@ pub(crate) struct RootRanking {
 /// A move into a claimable threefold, or with `use_rule50` a rule-50 draw,
 /// ranks as a draw: Fathom does not see the game history. `None` when the
 /// root is not in the tables or a probe fails.
-pub(crate) fn rank_root_moves(
-    board: &Board,
-    use_rule50: bool,
-    rank_dtz: bool,
-) -> Option<RootRanking> {
-    if !can_probe(board, use_rule50, true) {
+pub(crate) fn rank_root_moves(board: &Board, options: RootRankOptions) -> Option<RootRanking> {
+    if !can_probe_root(board, options.max_pieces) {
         return None;
     }
-    let mut ranking = rank_by_dtz(board, use_rule50, rank_dtz || board.dtz_is_dtm())
-        .or_else(|| rank_by_wdl(board, use_rule50))?;
+    let mut ranking = rank_by_dtz(
+        board,
+        options.use_rule50,
+        options.rank_dtz || board.dtz_is_dtm(),
+    )
+    .or_else(|| rank_by_wdl(board, options.use_rule50))?;
     ranking
         .moves
         .sort_by_key(|ranked| std::cmp::Reverse(ranked.rank));
@@ -495,14 +506,19 @@ pub(crate) fn legal_move_from_root_probe(board: &Board, root_move: RootMove) -> 
     })
 }
 
-fn can_probe(board: &Board, use_rule50: bool, root: bool) -> bool {
+fn can_probe_wdl(board: &Board, use_rule50: bool) -> bool {
     if largest() == 0 || board.castling().0 != 0 {
         return false;
     }
-    if use_rule50 && !root && board.halfmove_clock() != 0 {
+    if use_rule50 && board.halfmove_clock() != 0 {
         return false;
     }
     board.occupied_count() as usize <= largest()
+}
+
+fn can_probe_root(board: &Board, max_pieces: usize) -> bool {
+    let limit = largest().min(max_pieces);
+    limit > 0 && board.castling().0 == 0 && board.occupied_count() as usize <= limit
 }
 
 fn root_move_from_result(result: u32) -> Option<RootMove> {

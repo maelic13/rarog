@@ -27,8 +27,8 @@ a chess GUI or an engine-testing tool.
 - **Optimized binaries** — published for Windows, Linux and macOS, on both
   x86-64 and ARM64, every one of them profile-guided-optimized; one x64
   download runs the fastest build for any Intel or AMD processor.
-- **Large pages on Windows** — a few percent more speed when Windows allows
-  the engine to use them; see [Large pages](#large-pages-windows).
+- **Large pages on Windows and Linux** — fewer memory lookups for the big
+  tables; see [Large pages](#large-pages).
 - **Built-in benchmark** — a `bench` command for reproducible speed and
   search comparisons.
 
@@ -75,16 +75,24 @@ is 64-bit only — there is no 32-bit build.
 Rarog is tested with Arena, ChessBase/Fritz, ChessOK Aquarium and Hiarcs Chess
 Explorer. Any UCI-compatible GUI should work.
 
-### Large pages (Windows)
+### Large pages
 
-On Windows, Rarog can keep its hash table and other large tables in 2 MB
-memory pages instead of the usual 4 KB ones. The processor then spends less
-time looking up memory addresses, and the engine searches a few percent more
-positions per second. Nothing else changes: moves and analysis are exactly
-the same.
+On Windows and Linux, Rarog can keep its hash table and other large tables
+in 2 MB memory pages instead of the usual 4 KB ones. The processor then
+spends less time looking up memory addresses; on Windows the engine searches
+a few percent more positions per second. Nothing else changes: moves and
+analysis are exactly the same. Setting `LargePages` to `false` turns them
+off.
 
-Windows allows this only for accounts that hold the *Lock pages in memory*
-right. To grant it:
+**On Linux** nothing needs to be set up: Rarog asks the kernel for
+transparent huge pages, which need no special rights. The kernel provides
+them unless its setting in `/sys/kernel/mm/transparent_hugepage/enabled` is
+`never`. `bench`'s first line, `Large pages`, reads `on` when the setting
+allows them, `off` when it does not, or `disabled` (the `LargePages` option
+is off).
+
+**On Windows** large pages are allowed only for accounts that hold the
+*Lock pages in memory* right. To grant it:
 
 1. Run `secpol.msc` (Local Security Policy; it needs administrator rights and
    is not included in Windows Home editions).
@@ -116,7 +124,7 @@ pages off without removing the right.
 | `SyzygyProbeDepth` | `1` | Minimum depth at which tablebases are probed. |
 | `SyzygyProbeLimit` | `7` | Largest tablebase to probe. `0` disables probing. |
 | `Syzygy50MoveRule` | `true` | Whether tablebase results respect the fifty-move rule. |
-| `LargePages` | `true` | Windows only. Use large pages when Windows allows them; see [Large pages](#large-pages-windows). |
+| `LargePages` | `true` | Windows and Linux. Use large pages when the system allows them; see [Large pages](#large-pages). |
 
 `SyzygyPath` accepts several folders separated by `;` on Windows or `:`
 elsewhere, and the value `<empty>` means no path at all, which is what a GUI

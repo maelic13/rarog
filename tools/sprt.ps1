@@ -86,7 +86,7 @@
 .PARAMETER Mode
     "gainer"       -> H0: elo<=3,  H1: elo>=10 (default; demand a material gain).
                       NOTE these are the HARNESS defaults, not the project's.
-                      AGENTS.md makes [0,3] the default bracket: wide bounds
+                      docs/rules/gating.md makes [0,3] the default bracket: wide bounds
                       anchored high REJECT a small true gain, so pass
                       -Elo0 0 -Elo1 3 for an ordinary candidate.
     "simplify"     -> H0: elo<=-5, H1: elo>=0     (non-regression / cleanup).

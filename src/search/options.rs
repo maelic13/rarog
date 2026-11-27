@@ -133,6 +133,15 @@ pub enum HashRequest {
     NotSent,
 }
 
+/// Whether a reconfiguration carries a `SyzygyPath` the GUI has just sent.
+/// Re-sending an unchanged path still retries loading when no tables are
+/// currently loaded, while unrelated options skip tablebase initialisation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SyzygyPathRequest {
+    Sent,
+    NotSent,
+}
+
 #[derive(Clone, Default)]
 pub struct SearchOptions {
     pub board: Board,
