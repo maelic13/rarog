@@ -430,7 +430,6 @@ pruning, is added as Phase D's last step, before the release.
 | D.17 | RESEARCH | R2 | Added 2026-11-23 (maintainer request): not before the end of Phase D; a card on GitHub-hosted runners as a lane for self-play SPRTs and tunes, then a maintainer decision on the rules it changes |
 | D.19 | RESEARCH | R2 | Added 2026-11-27 (maintainer decision: kept so it is not lost, not urgent): a multi-thread `go depth` can run for minutes on bench position 15 (RAR-P62's four-thread cell); a zero-game card first, the fix before the release; its row ahead of D.18's, which stays Phase D's last step |
 | D.18 | RESEARCH | R2 | Added 2026-11-26 (maintainer request): Phase D's last step, before the release; a card first: what stays tracked and why, what goes, the rules it touches, and the remote (delete refs only, rewrite history, or rebuild the history in a new repository), priced for the maintainer; foreign material found on the public remote: the `oracle/*` tags' Stockfish source, and Reckless and Stockfish patches on `master` |
-| D.9.4 | RESEARCH | I1 | Held 2026-11-26 on the maintainer's yes or no before D.9 closes: RAR-S93's activation read with tables in the release qualification (E.1, E.3.4), recommended by `analysis/d9_tablebase_policy_2026-11-25.md`; if yes, bring `tools/diag/tb_activation.py`'s budget formula to `src/search/time.rs` and add the read; if no, closes `NO_CHANGE` and D.9 closes with it |
 | D.12.1 | RESEARCH | R2 | Held 2026-11-23 (maintainer decision on E.0's packet): the board's work a node is level with Stockfish 16's; D.16.3.1's profile showed no board function above the donor's (2026-11-23); reopens when D.12.0 shows one |
 | D.12.1.1 | RESEARCH | I2 | Held 2026-11-23 with D.12.1 |
 | D.12.1.2 | RESEARCH | V | Held 2026-11-23 with D.12.1 |
@@ -4123,7 +4122,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
         holds at 3,694,298 on both slider backends and the replay
         reproduces every remaining count exactly. The tunable seeds go
         from 254 to 251.
-- **D.9 Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — `R2`.** Root and interior probing depth and limits,
+- **D.9 Tablebase policy: probing depth/limits, WDL/DTZ in conversion, recogniser interaction — `R2`, DONE 2026-11-27.** Root and interior probing depth and limits,
   WDL/DTZ use in conversion, interaction with the C.5 recognisers. Endgame-start
   cohort and conversion instrument decide.
   **Candidate, recorded 2026-09-10, not yet evaluated: replace vendored Fathom
@@ -4379,7 +4378,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       a hard-limit stall, a rated pool or release qualification adopting
       tables and showing clock harm, or an analysis hang needing an
       opt-in bound.
-    - **D.9.4 RAR-S93's activation read with tables in the release qualification — `I1`.**
+    - **D.9.4 RAR-S93's activation read with tables in the release qualification — `I1`, DONE 2026-11-27.**
       Held 2026-11-26 on the maintainer's yes or no before D.9 closes
       (`analysis/d9_tablebase_policy_2026-11-25.md`, *D.9 from here*).
       Recommended outside D.9's engine repairs because `tools/diag/tb_activation.py`'s
@@ -4388,10 +4387,30 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       update `tools/diag/tb_activation.py` with its test, record the
       release-qualification check in E.1 / E.3.4, and close D.9; if no:
       close `NO_CHANGE` and close D.9 with it.
-      Recommended yes 2026-11-26 (the record, *D.9.3's close verified*),
-      with the read also counting hard-limit stops: no game has tables
-      on the compact kernel, so this is the only place D.9.3's cost
-      with tables would be measured in games.
+      Recommended yes 2026-11-26 (the record, *D.9.3's close verified*).
+      *Corrected 2026-11-27:* the recommendation also had the read count
+      hard-limit stops, to measure D.9.3's cost with tables. It cannot:
+      the read starts from 3 to 6 men, every root is in the tables, and
+      the 7-to-8-man explosion D.9.3 measured cannot occur in it.
+      **Done 2026-11-27** on the maintainer's yes (2026-11-26).
+      `tools/diag/tb_activation.py` holds a tablebase-root move to today's
+      clock: `budget`'s soft bound under its hard bound and Rarog's
+      reserve, the constants read from `src/search/time.rs` (`4ad82cf`).
+      `tools/diag/test_tb_activation.py` holds it to the optimum a `diag`
+      build printed on seventeen clocks (`tb_activation_budget_v1.json`,
+      made by `tb_activation_fixture.py`, which records the source it was
+      made from), and four wrong clocks fail it, the pre-D.7.9.1 formula
+      among them (69.6 ms against the engine's 43.6 at the first move of
+      `3+0.03`). Smoked on RAR-S93's run (`tools/results/b52-activation`):
+      root moves and conversions as archived; moves over the optimum
+      rise (candidate 50 to 6,681), as they must when October's games are
+      held to today's lower optimum. The check is in E.1 and E.3.4; its
+      first read, the `d9` head against 2.7.0, is RAR-S140, handed to the
+      maintainer, and the close does not wait on it. Preparing it found
+      that the run file's documented command played without tables:
+      `colosseum.ps1` passes Hash and Threads as options, which replace
+      the run file's list, so `SyzygyPath` goes on both arms by
+      `-OptionsA`/`-OptionsB` (`fd6a0d2`).
 - **D.10 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`, DONE 2026-11-27.**
   Renumbered from D.7 on 2026-11-13 (maintainer decision), when the
   search-shape step took that number.
@@ -5711,6 +5730,18 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   Add a tablebase arm (H30): the head against the last release with Syzygy
   loaded, since the search has its own probes and CCRL testers use tables;
   Rarog's last games with tables predate D.1 (RAR-S97, 2026-10-01).
+  **The with-tables activation read** (D.9.4, 2026-11-27), a correctness
+  check of the release head: RAR-S93's design, the head against the last
+  release with `tools/colosseum/tb-activation.toml` (1,500 games of the
+  3-to-6-man endgame cohort, `3+0.03`, one thread, about two minutes),
+  `SyzygyPath` on both arms by `-OptionsA`/`-OptionsB`, read by
+  `tools/diag/tb_activation.py`. It passes with no unconverted clean
+  tablebase win on the head's side, no time loss, no fault, every game a
+  normal termination, and the head's tablebase-root share above 95% (the
+  wire). Moves over the optimum plus the box are reported, not judged:
+  RAR-S93 found that bound unsatisfiable for a box checked between Fathom
+  calls. A failure is a defect, not a strength result. RAR-S140 is its
+  first read, on the `d9` head.
   The loss table by cell (TT-1, D.4.5's tool) is read in H.3, on the
   network head's games (moved 2026-11-05: a classical head's games describe
   an engine H.3 will not tune).
@@ -5929,7 +5960,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       behaviour-neutral with the fingerprint
       held; `CHANGELOG.md`'s `[Unreleased]`, kept as changes landed,
       reviewed and dated; fmt, clippy, debug and release suites, feature
-      builds; GUIDE's checkpoint marks the release; the PR to `master`,
+      builds; E.1's with-tables activation read passing on the release
+      head (D.9.4); GUIDE's checkpoint marks the release; the PR to `master`,
       squash-merged once `CI` and `Release` are green; the
       `vX.Y.Z` tag pushed on instruction through E.3.1's workflow, by
       PROCESS *Release*.
@@ -6795,7 +6827,9 @@ labels H1–H45.
   below. Without tables about 0.09% to 0.10% of the kernel's searches at
   `3+0.03` spend 65% or more of the clock (an upper estimate, any cause),
   nearly all with under a second left; with tables nothing is measured
-  until D.9.4. The bound's size is this step's to fit; D.9.3 changed
+  (corrected 2026-11-27: "until D.9.4" removed, since D.9.4's read starts
+  inside the tables, where D.9.3's stall cannot occur). The bound's size
+  is this step's to fit; D.9.3 changed
   nothing.
   *The clock's constants are owed a fit* (from D.7.11, 2026-11-20;
   `analysis/d711_fit_2026-11-20.md`, section 1). Since D.7.9.1 the clock

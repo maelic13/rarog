@@ -1738,8 +1738,10 @@ have 13 or more men and 460 a played score under 300, and the mover scored
 - **I recommend against gating H1 now.** The kernel's fit raised both limits
   above its test seeds (5,897 to 6,877 and 6,629 to 7,475), pools play
   without tables so a gate cannot see what H1 buys, and six selected reads
-  rank nothing. The condition that would change this: D.9.4's read showing
-  clock harm with tables, or F.6 opening.
+  rank nothing. The condition that would change this: a with-tables read
+  from ordinary openings showing clock harm, or F.6 opening. (Corrected
+  2026-11-27: this named D.9.4's read, which starts inside the tables,
+  where the stall cannot occur.)
 - **Carried to F.6**, replacing the close's list of five coupled rules.
   Tested, and first: the correction's reach into depth, by the tables'
   limits and the four depth weights, with the doses above as its starting
@@ -1748,9 +1750,11 @@ have 13 or more men and 460 a played score under 300, and the mover scored
   removed the tail and left the stalls), in-check move-loop pruning. Read and
   not a lever: the fail-low walk.
 - **To H.3:** the hard bound's size, with the game count above.
-- **D.9.4:** recommended yes, with its read counting hard-limit stops, since
-  it is the only place this cost would be measured in games with tables. The
-  decision is the maintainer's.
+- **D.9.4:** recommended yes; the decision was the maintainer's (yes,
+  2026-11-26). (Corrected 2026-11-27: this also had the read count
+  hard-limit stops, as the only place this cost would be measured in games
+  with tables. It cannot measure it: the read starts from 3 to 6 men, every
+  root is in the tables, and the 7-to-8-man explosion cannot occur in it.)
 
 ## Corrections, the same day
 
