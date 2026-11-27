@@ -1,10 +1,12 @@
-# RAR-P62 — D.10's Linux read: `LargePages` on against off in one binary, transparent huge pages in WSL2, one thread by the two-step read and a four-thread cell — REGISTERED 2026-11-26, before the read
+# RAR-P62 — D.10's Linux read: `LargePages` on against off in one binary, transparent huge pages in WSL2, one thread by the two-step read and a four-thread cell — REGISTERED 2026-11-26, before the read; READ 2026-11-27: one thread +3.04%, accepted; the four-thread cell not read
 
 Indexed under *6. Throughput, build and platforms* in [`docs/EXPERIMENTS.md`](../EXPERIMENTS.md).
 
 - **Date / owner:** registered 2026-11-26 by the agent, before any timed
   run; the read is the maintainer's (timed, on an idle host).
-- Disposition: open — registered 2026-11-26; the read is the maintainer's.
+- Disposition: accepted — read 2026-11-27: one thread +3.04% (95% +2.24% .. +3.84%),
+  accepted by step 1; the four-thread cell not read (a fixed-depth blow-up at
+  four threads that predates D.10, below).
 - **Kind:** performance qualification of a behaviour-neutral change
   (PLAN D.10). Evidence layer: NPS, not Elo.
 - **Change:** D.10, `cc08bc3` on `d9`. On Linux each page allocation (512 KB
@@ -87,4 +89,54 @@ decision.
 
 ## Result
 
-Not read.
+Read 2026-11-27 by the maintainer with `~/d10-nps/run.sh` unchanged;
+archived in `analysis/artifacts/d10-thp-nps/read-20261127-105810/`
+(`kernel.txt`, `backing.txt`, `status.txt`, `1t/`, and `4t-stall/` for the
+cell's failure).
+
+- **The record.** Kernel 6.18.58.1-microsoft-standard-WSL2, `enabled`
+  `always [madvise] never`, `defrag` `[madvise]`, 2 MB pages, 32 CPUs; the
+  four copies at the registered SHA-256, unchanged after the read. The
+  wire passed: the on arm 284 of 287 MB resident in huge pages, off 0 MB
+  of 283 MB.
+- **One thread, step 1:** base 2,478,628, candidate 2,553,994 NPS;
+  **+3.04%**, 95% t-interval +2.24% .. +3.84% (t 2.447, df 6). The host
+  measure, over the whole machine: 0.5% at the start, 0.5% and 0.7% before
+  the cycles, 0.4% after, no engine, harness or build process; no disturbed
+  cycle; all 48 runs at 3,694,298 nodes. Accepted by step 1 (+0.9% or
+  more), so no step 2. Recomputed from `raw.json` by `--report` (the same
+  report) and independently (the same +3.04%).
+- **Against the prediction:** inside +2% [−0.5%, +5%], the accepted outcome
+  (0.5), and no step disturbed (0.4 predicted for at least one).
+- **The four-thread cell: not read.** The step exited 1 at 11:17 with no
+  record: its first base `bench 13 3` at `Threads=4` ran past the tool's
+  900-second limit on one bench. Reproduced afterwards, untimed (stall
+  counts with a fixed timeout, not a speed read; the host was not held
+  idle for them):
+  - `bench 13 3` at `Threads=4` stalled in 1 of 6 tries with the option off
+    and 1 of 6 on. On a stall the UCI thread waits on its pipe while the
+    main search thread and the three helpers each run at full CPU.
+  - Always on bench position 15, `8/8/p1p5/1p5p/1P5P/P1P5/8/K1k5 w - - 0 1`
+    (`bench 13 1` at four threads, a stall being 15 s without a line): the
+    pool 2 of 20, a plain build of `cc08bc3` 5 of 30, a plain build of
+    `24bc651`, before D.10, 3 of 30. It predates D.10.
+  - Alone at `go depth 13` and four threads, it went 8 s without an `info`
+    line in 10 of 40 tries on Linux (plain `24bc651`) and 2 of 30 on
+    Windows (`24bc651`, base, no PGO); the tries that finished took 0.1 to
+    9.6 s on Linux and 0.3 to 12.8 s on Windows. On a stall the main
+    thread's depth-12 or depth-13 iteration fails low again and again,
+    −1,100 cp sinking towards −10,000 with seldepth about 110, each
+    re-search costing more nodes than the last (one reached 162 M nodes in
+    12 s and was still failing low); `stop` answers with a `bestmove` at
+    once. The node rate stayed at 11–13 M a second, a normal four-thread
+    rate, so the stall is in the tree, not in a starved host.
+  - The helpers search without the depth limit (`search_worker` in
+    `src/search/threads.rs`) and are a likely source of the deep scores the
+    main thread fails low on: a reading of the code, not a measurement.
+    One thread is unaffected; the position is in every one-thread
+    `bench 13`.
+
+  Whether it becomes a step is the maintainer's decision. Until it is
+  resolved, `nps_read.py --smp` cannot read a cell on `bench 13`.
+- **Disposition: accepted.** D.10 closes `DONE`; the option stays on by
+  default on Linux. By the rule the cell decided nothing, and none is owed.

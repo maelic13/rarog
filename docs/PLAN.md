@@ -418,7 +418,6 @@ pruning, is added as Phase D's last step, before the release.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.10 | IMPLEMENTED | V | Linux transparent huge pages for the page allocations, behind `LargePages`: implemented 2026-11-26 (`cc08bc3`), `bench 13` exact on Windows and Linux; owes the Linux NPS read, RAR-P62, registered and handed to the maintainer (timed, an idle host); closes on it, behaviour-neutral, no game gate |
 | D.11.1 | RESEARCH | R2 | The originality disclosure, moved from E.3.0, widened 2026-11-23 from Coda's read; its hold, lifted for 2.7.0 (maintainer decision 2026-11-13), stands for the release after it: the donor inventory by licence at the version read, over the source, tools and documents |
 | D.11.2 | RESEARCH | R2 | After D.11.1: GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
 | D.11.3 | RESEARCH | I1 | After D.11.2: the decision carried out; registered experiments under the GPL route |
@@ -4392,7 +4391,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       with the read also counting hard-limit stops: no game has tables
       on the compact kernel, so this is the only place D.9.3's cost
       with tables would be measured in games.
-- **D.10 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`.**
+- **D.10 Large pages on Linux: transparent huge pages for the big tables — `I1`, then `V`, DONE 2026-11-27.**
   Renumbered from D.7 on 2026-11-13 (maintainer decision), when the
   search-shape step took that number.
   Added 2026-11-02 from the comparison with Reckless in D.2. `PageAllocator`
@@ -4462,6 +4461,24 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       pool in WSL since `1015348`. Its rule and prediction are in the
       record. The WSL instrument may not resolve a few percent (RAR-P57);
       the retry trigger for a `NO_CHANGE` there is a native Linux host.
+  - **Read 2026-11-27, DONE** (RAR-P62, the maintainer's run in WSL2,
+    mode `madvise`): one thread **+3.04%** NPS with the option on (95%
+    +2.24% to +3.84%; four copies, two cycles, no disturbed cycle, the host
+    at 0.5% and 0.7% before the cycles), accepted by step 1; the on arm 284
+    of 287 MB in huge pages, off 0 MB. The option stays on by default on
+    Linux. Evidence layer: NPS, not Elo.
+    - The four-thread cell was not read; by the rule it decides nothing. Its
+      first `bench 13 3` at `Threads=4` ran past `nps_read.py`'s 900-second
+      limit on one bench. The cause predates D.10 (plain builds of `24bc651`
+      and of `cc08bc3` alike, on Linux and on Windows): at four threads
+      `go depth 13` on bench position 15 (`8/8/p1p5/1p5p/1P5P/P1P5/8/K1k5 w
+      - - 0 1`) can run for minutes. The main thread's iteration fails low
+      again and again (−1,100 cp sinking towards −10,000, seldepth about
+      110), each re-search costing more nodes, while the helpers search
+      without the depth limit; `stop` still answers at once, and one thread
+      is unaffected. Recorded in RAR-P62 with its evidence; whether it
+      becomes a step is the maintainer's decision. Until then
+      `nps_read.py --smp` cannot read a cell on `bench 13`.
 - **D.11 Originality disclosure before the release cut: the donor material named, the licence settled, the notices shipped with the binaries — `R2`, then `M`.** A
   small research step with its implementation. Added 2026-10-23 by
   maintainer decision. It held the 2.7.0 cut until 2026-11-13, when the

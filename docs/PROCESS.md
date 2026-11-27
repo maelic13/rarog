@@ -495,7 +495,8 @@ the same, run through Windows' PowerShell, with the Linux side's processes
 added; Linux PGO builds of one source are byte-identical (RAR-P57), so a WSL
 read compares arms that differ by options on copies of one binary
 (RAR-P62). `--smp` reads a multi-thread cell beside a read: no fingerprint
-check and no verdict. `nps_multibuild.ps1`'s bootstrap interval is not this interval
+check and no verdict. It cannot yet read one on `bench 13`: at `Threads=4`
+a depth-13 search on bench position 15 can run for minutes (RAR-P62). `nps_multibuild.ps1`'s bootstrap interval is not this interval
 and is not quoted as one; that tool is kept only to compare with earlier rows.
 The read refuses a busy host before step 1 and step 2 by the harness's own
 measure (`--allow-busy-host` waives it, archived), and its per-cycle CPU
