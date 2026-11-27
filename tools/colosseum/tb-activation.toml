@@ -5,7 +5,14 @@
 # probe the same local 3-6-man set; colosseum.ps1 refuses a run whose sides
 # differ and records the path with its file counts.
 #
-#   ./tools/colosseum.ps1 -Mode match -RunFile tools/colosseum/tb-activation.toml #     -Book tools/books/endgame_cohort_v1.epd -EngineA <a.exe> -EngineB <b.exe> ...
+#   ./tools/colosseum.ps1 -Mode match -RunFile tools/colosseum/tb-activation.toml
+#     -Book tools/books/endgame_cohort_v1.epd -EngineA <a.exe> -EngineB <b.exe>
+#     -OptionsA "SyzygyPath=D:/chess/tablebases/syzygy3456"
+#     -OptionsB "SyzygyPath=D:/chess/tablebases/syzygy3456" ...
+#
+# The -Options pair is required: colosseum.ps1 passes Hash and Threads as
+# --a-option/--b-option, which replace the lists below whole, so without it
+# both sides play with no tables (the runner warns; found 2026-11-27, D.9.4).
 
 extend = "match-fixed.toml"
 
