@@ -36,6 +36,9 @@ line below applies; when unsure, read it.
   methods; HISTORY for a completed record; `analysis/` for a derivation.
   Extend a missing contract there, not in a parallel
   summary.
+- A summary in PLAN, GUIDE or a commit message claims no more than the
+  record it summarises: check each `never`, `zero`, `all` or `passes`
+  against the record's rows before the commit, and keep the caveat (D.9.3).
 - PLAN records capability classes, not vendor generations. Do not silently
   downgrade a class; if scope or uncertainty calls for escalation, say why and
   update PLAN and GUIDE together.
