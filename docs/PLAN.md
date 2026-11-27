@@ -4405,8 +4405,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       root moves and conversions as archived; moves over the optimum
       rise (candidate 50 to 6,681), as they must when October's games are
       held to today's lower optimum. The check is in E.1 and E.3.4; its
-      first read, the `d9` head against 2.7.0, is RAR-S140, handed to the
-      maintainer, and the close does not wait on it. Preparing it found
+      first read, the `d9` head against 2.7.0, is RAR-S140, the
+      maintainer's run, passed 2026-11-27; the close did not wait on it. Preparing it found
       that the run file's documented command played without tables:
       `colosseum.ps1` passes Hash and Threads as options, which replace
       the run file's list, so `SyzygyPath` goes on both arms by
@@ -5741,7 +5741,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   wire). Moves over the optimum plus the box are reported, not judged:
   RAR-S93 found that bound unsatisfiable for a box checked between Fathom
   calls. A failure is a defect, not a strength result. RAR-S140 is its
-  first read, on the `d9` head.
+  first read, on the `d9` head: passed 2026-11-27 (464 of 464 clean
+  wins converted, no time loss or fault).
   The loss table by cell (TT-1, D.4.5's tool) is read in H.3, on the
   network head's games (moved 2026-11-05: a classical head's games describe
   an engine H.3 will not tune).
