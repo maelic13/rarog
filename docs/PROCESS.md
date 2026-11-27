@@ -63,6 +63,12 @@ fails on a missing or disagreeing side (entries before 2026-11-08 are exempt,
 listed in `tools/diag/disposition_exempt.txt`, which only shrinks). A long
 analysis goes in an `analysis/` packet the entry cites.
 
+The registration is its own commit, made before the build or run it
+predicts, so that Git shows the order. `check_freeze.py` reads the branch's
+commits and fails on one that adds an entry with a prediction and a
+disposition other than `open`, or that adds a registration and, below it, a
+result to one `analysis/` file.
+
 ```markdown
 # RAR-<area><number> — <short name>
 
