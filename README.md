@@ -286,13 +286,22 @@ bench
 
 ## License
 
-GPL-3.0-or-later. See [LICENSE](LICENSE).
+Rarog is free software under the GNU General Public License v3.0 or later
+([LICENSE](LICENSE)). It includes [Fathom](https://github.com/jdart1/Fathom)
+for Syzygy tablebase probing, under the MIT licence
+([vendor/fathom/LICENSE](vendor/fathom/LICENSE)).
 
 ---
 
 ## Acknowledgements
 
-Rarog is an independent engine, but it benefits from the open chess-engine
-community's published ideas, testing practices, and protocol conventions.
-Special thanks to Stockfish and Reckless and their developers for the
-inspiration their work provides to chess engine authors and testers.
+- [Stockfish](https://github.com/official-stockfish/Stockfish), whose
+  classical evaluation Rarog's follows in design, and the source of many of
+  its search and engine ideas
+- [Reckless](https://github.com/codedeliveryservice/Reckless), for ideas in
+  Rarog's search and time management
+- [Triumviratus](https://github.com/Tors3/Triumviratus), for testing and
+  measurement methods
+- [Fathom](https://github.com/jdart1/Fathom), for Syzygy tablebase probing
+- The [Chess Programming Wiki](https://www.chessprogramming.org)
+- [CCRL](https://computerchess.org.uk/ccrl/) and all chess engine testers

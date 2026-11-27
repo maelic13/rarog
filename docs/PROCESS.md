@@ -186,9 +186,8 @@ presented as mature.
 
 ### The independence boundary
 
-Donors are chosen by licence (maintainer decision 2026-11-23, replacing
-2026-11-06's, which made Reckless the primary donor; PLAN rule 1 points
-here). Rarog stays GPL-3.0-or-later, and nothing enters it whose licence
+Donors are chosen by licence (maintainer decisions 2026-11-23 and
+2026-11-27, replacing 2026-11-06's; PLAN rule 1 points here). Rarog stays GPL-3.0-or-later, and nothing enters it whose licence
 would make Rarog distribute another project's code under other terms.
 
 **Stockfish** (GPL-3.0-or-later, Rarog's own licence) is the primary
@@ -212,26 +211,30 @@ and often by early-stopped SPRTs, so they order Rarog's tests and never accept
 anything. The snapshot, the checks run against Rarog and the placements are
 `analysis/triumviratus_review_2026-11-03.md`.
 
-**Reckless** (AGPL-3.0 since 2026-01-26; MIT until 2025-02-22, unlicensed
-between) is a reference for ideas only, from 2026-11-23. An AGPL engine's
-copyleft reaches further than Rarog's licence (`analysis/coda_read_2026-11-23.md`,
-*What AGPL is*), so its ideas may be read and its expression never crosses:
+**An AGPL engine, or one published without a licence** (which reserves
+every right), is a reference for ideas only and never a donor (maintainer
+decisions 2026-11-23 and 2026-11-27). AGPL's copyleft reaches further than
+Rarog's licence (`analysis/coda_read_2026-11-23.md`, *What AGPL is*), so
+its ideas may be read and its expression never crosses:
 
 - No code, transcription, formula, table, data layout, index construction
-  or constant from it, not even as a seed that a fit would move. A Reckless
-  idea that Rarog uses gets constants derived from Rarog's own quantities or
-  fitted from a start that is not the donor's value, with the derivation
-  beside it, and a comment that credits the idea, never a port.
+  or constant from it, not even as a seed that a fit would move. An idea
+  Rarog uses gets Rarog's own code and names, and constants derived from
+  Rarog's own quantities or fitted from a start that is not the other
+  engine's value.
+- It is not named as a donor in the code or the documents, and a comment
+  states the idea or the invariant, never a port. README's
+  acknowledgements may credit it for ideas.
 - No patch of its source and no quotation of its code in this repository;
-  a diagnostic that needs a modified Reckless keeps its patch outside the
+  a diagnostic that needs a modified engine keeps its patch outside the
   tree.
 - Its released binaries may be played, timed and profiled as references:
   running a binary carries no licence duty.
-- What Rarog already holds from it (the compact kernel's shape, the clock,
-  constants at its values, two transcribed places, the oracle patches) is
-  D.11's to inventory and resolve, and is not extended in the meantime.
-- The same holds for any other AGPL engine and for an engine published
-  without a licence, which reserves every right.
+- What Rarog took from such an engine before 2026-11-23 is kept as ideas
+  (maintainer decision 2026-11-27, PLAN D.11.2): its code is rewritten in
+  Rarog's own names, the clock's constants are fitted on Rarog from their
+  present values, and the other seeds still at that engine's values stay
+  as functional constants (D.11.3).
 
 From a GPL-compatible donor:
 

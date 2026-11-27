@@ -57,9 +57,9 @@ line below applies; when unsure, read it.
 - Donor engines teach mechanisms, contracts, dependencies, failure modes and
   methods. What may cross is `docs/PROCESS.md`, *The independence boundary*. Neither
   similarity nor a copied value is acceptance evidence. Stockfish is the
-  primary donor; Reckless, an AGPL engine, and any other AGPL or unlicensed
-  engine teach ideas only: no code, constant, table or patch of their source
-  enters the tree (maintainer decision 2026-11-23).
+  primary donor; an AGPL or unlicensed engine teaches ideas only and is
+  never named as a donor: no code, constant, table or patch of its source
+  enters the tree (maintainer decisions 2026-11-23 and 2026-11-27).
 - Read a donor at a named commit, `git -C <donor> show <hash>:<path>`,
   never from its working tree, and cite that hash beside any tag. State a
   bound from its constants, or how two conditions differ, only after

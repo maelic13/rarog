@@ -418,9 +418,9 @@ pruning, is added as Phase D's last step, before the release.
 
 | Leaf | Workflow state | Class | Current decision |
 |---|---|---|---|
-| D.11.2 | RESEARCH | R2 | After D.11.1, done 2026-11-27 (`analysis/d111_donor_inventory_2026-11-27.md`, with a recommendation on what route 2 resolves first): GPL-3.0 kept by maintainer decision 2026-11-23, Stockfish the primary donor and Reckless ideas only; the card's other questions (README's development line, public study material, the git history) open |
-| D.11.3 | RESEARCH | I1 | After D.11.2: the decision carried out; registered experiments under the GPL route |
-| D.11.4 | RESEARCH | M | After D.11.3: the disclosure on Coda's model; its notices ship in D.15.1's archives |
+| D.11.3 | RESEARCH | I1 | After D.11.2 (decided 2026-11-27): the decision carried out in four sub-steps; D.11.3.1 and D.11.3.2 done 2026-11-27, D.11.3.3 and D.11.3.4 open |
+| D.11.3.3 | READY_FOR_IMPLEMENTATION | I1 | After D.11.2 (decided 2026-11-27: what Rarog took from Reckless is kept as ideas; Reckless no longer a donor): the code made Rarog's own, behaviour-neutral, `bench 13` exact. Held for an idle host, since it builds and tests; resumes on the maintainer's go |
+| D.11.3.4 | RESEARCH | R2 | After D.11.3.3: the clock's 22 constants fitted on Rarog, one registered tune and gate the maintainer runs; moved from H.3 by the maintainer decision of 2026-11-27 |
 | D.12.0 | RESEARCH | R3 | Added 2026-11-14 (maintainer: Basilisk's findings are hints, not Rarog's best answer); not started: Rarog's own board interactions mapped and its options ranked before any of D.12's leaves runs |
 | D.13 | RESEARCH | R2 | Moved from D.7.8.7 2026-11-20: opens after D.7.14; built only if one thread reproduces the fingerprint, then the NPS and four-thread reads |
 | D.14 | RESEARCH | R2 | Added 2026-11-20 (maintainer request): the donor's soft-stop vote on the new clock, after the fit and D.7.14, beside D.13; a four-thread withdrawal screen at zero games first, 2% floor |
@@ -4626,7 +4626,8 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
   - No release carries the compact kernel yet; its source is on public
     `master` since PR #20.
   Licence route decided 2026-11-23 (D.11.2): GPL-3.0 kept, Stockfish the
-  primary donor, Reckless ideas only.
+  primary donor, Reckless ideas only; amended 2026-11-27 (D.11.2): what
+  was taken is kept as ideas, and Reckless is no longer a donor.
   The step's four items are carried by D.11.1 to D.11.4 below, item 4
   with D.15.1; the falsifier and stop rule above stand. Refitting donor
   constants stays outside this step under route 1 of D.11.2; under
@@ -4671,7 +4672,7 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       binary and is owed before D.11.4 quotes a figure; shared runs under
       20 tokens; Fathom's upstream commit. The recommendation for D.11.2 and
       D.11.3 is the inventory's last section, not taken.
-    - **D.11.2 The licence decision — `R2` card, then a maintainer decision.**
+    - **D.11.2 The licence decision — `R2` card, then a maintainer decision, DONE 2026-11-27.**
       After D.11.1. The card states, from the inventory, what each route
       costs (`analysis/coda_read_2026-11-23.md`, *What AGPL is*):
       1. *Relicense as AGPL-3.0-or-later.* `LICENSE`, `Cargo.toml`, README
@@ -4711,40 +4712,87 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
       README line on how Rarog is developed, the study material in the
       public repository, and the git history, which keeps the patches in
       published commits.
-    - **D.11.3 The decision carried out — `I1`, or registered experiments under route 2.**
-      After D.11.2. Route 1: the licence files, `Cargo.toml`, Reckless's
-      copyright notice where its material is, the patches labelled,
-      PROCESS and `docs/rules/research.md` where they name the licence, and a `CHANGELOG.md`
-      entry. Route 2: each part D.11.1 lists reimplemented or refitted as
-      its own registered experiment (the clock's constants as a registered
-      tune, read as Coda read its retune: values that return near the
-      donor's are functional optima, not a failure), the patches out of
-      the tree or labelled, and the boundary rewritten. Engine and
-      documentation changes in separate commits.
-      *Route 2 since 2026-11-23:* the boundary is already rewritten
-      (PROCESS); the patches leave the tree, untracked with
-      `git rm --cached` so the local bytes stay. Under the rule of that
-      day a retune seeded from a Reckless value is still a port, so a
-      refit starts from Rarog's own derivation; whether Coda's convergence
-      argument changes that is this step's question.
-    - **D.11.4 The disclosure, on Coda's model — `M`.**
-      After D.11.3; item 3 in Coda's form (the read, *How Coda discloses
-      its sources*):
-      - the review in `analysis/`, dated and kept as a living record: why
-        it exists, the principle applied (ideas and functional constants
-        against expression), the licence table at the version read, one
-        section per donor (what was taken, what was not, what was done,
-        with the commits), its scope and what is still open, "not legal
-        advice", and an invitation to open an issue;
-      - a notices file at the root for derived and studied material
-        (Reckless's notice where its material is, Fathom's MIT notice),
-        separate from `LICENSE`, shipped in D.15.1's archives;
-      - README's *Acknowledgements* and *License*, short and for users:
-        the donors by licence with what each gave (Stockfish 11's
-        evaluation design, Reckless's search shape, clock and some
-        constants, Fathom's probing) and the licence's history in a
-        sentence or two;
-      - PROCESS's boundary saying what crossed and that it is disclosed.
+      *Decided 2026-11-27 (maintainer, on D.11.1's inventory), amending
+      2026-11-23's route 2:* what Rarog took from Reckless is kept as
+      ideas. Reckless is no longer a donor and is named as one neither in
+      the code nor in the documents; README may credit it for ideas, as it
+      credits Stockfish. The kernel's shape stays, its move-loop fragments
+      are rewritten in Rarog's own names and order, and the comments state
+      ideas and invariants without naming a donor. The clock stays and its
+      constants are fitted on Rarog (D.11.3.4); the 32 seeds still at the
+      donor's values stay as functional constants. The three Reckless
+      patches leave the tree, and the parity test with its donor table
+      leaves with the code changes. No similarity screen or other
+      comparison is owed: on a hand-crafted evaluation Rarog plays
+      differently. The open questions are settled: the study material in
+      `analysis/` and the ledger is pruned with D.18; the git history stays
+      as published, not rewritten; the licences shipped are Rarog's GPL-3.0
+      and Fathom's MIT notice (D.15.1); README's line on how Rarog is
+      developed stays the maintainer's. Of the inventory's recommendation,
+      items 1 to 4, 7 and 8 are taken; 5 (the clock replaced by
+      Stockfish's) and 6 (the seeds refitted) are not.
+    - **D.11.3 The decision carried out — `I1`, then a registered fit.**
+      After D.11.2. The decision of 2026-11-27 in four sub-steps, engine and
+      documentation changes in separate commits. Closes when all four are
+      done.
+        - **D.11.3.1 The Reckless patches and trace tooling untracked — `M`, DONE 2026-11-27.**
+          The three `tools/oracle-hybrids/reckless-0756957-*.patch` and
+          `capture_trace.py`, which captured the twin's decision records,
+          left the tree with `git rm --cached`; their bytes stay on this
+          machine, ignored. The folder's README keeps the Stockfish
+          hybrids and the tree statistics only. The published commits that
+          hold them stay as they are.
+        - **D.11.3.2 The rules without Reckless as a donor — `M`, DONE 2026-11-27.**
+          PROCESS's independence boundary, `docs/rules/research.md`, Phase
+          F's rules and GUIDE's prompt: an AGPL or unlicensed engine teaches
+          ideas only and is not named as a donor; what Rarog took earlier is
+          kept as ideas, made Rarog's own by D.11.3.3 and D.11.3.4. The
+          historical records that study Reckless (the analyses, the ledger,
+          PLAN's closed steps) are D.18's to prune.
+        - **D.11.3.3 The code made Rarog's own — `I1`.**
+          Behaviour-neutral, from the inventory (`analysis/d111_donor_inventory_2026-11-27.md`).
+          Held until the host is idle, since it builds and tests (Basilisk's
+          SPRTs run on it on 2026-11-27), and resumed on the maintainer's go.
+          - the kernel's move-loop fragments that keep Reckless's text and
+            names (`src/search/compact/node.rs`, `quiescence.rs`; the
+            inventory's *1*) rewritten in Rarog's own names and order, with
+            the shared type names (`StackEntry`, the `PlyArray` reference)
+            renamed;
+          - the parity test (`src/search/compact/parity.rs`) and the donor
+            seed table `Seeds::DONOR` removed, with the tests that read it
+            moved to the shipped table or removed;
+          - every comment that says "the donor" or names Reckless rewritten
+            to state the idea or the invariant without naming a donor
+            (engine rules, *Comments*).
+
+          Contract: `bench 13` 3,694,298 / EBF 2.324 exact; debug and
+          release tests, `cargo fmt --check` and clippy at zero warnings;
+          `git grep -i reckless -- src tests` empty, and "donor" left only
+          in the `donor-eval` feature's names. It reproduces the fingerprint,
+          so it takes no strength gate (gating case 1).
+        - **D.11.3.4 The clock's constants fitted on Rarog — `R2` registration, then the maintainer's tune and gate.**
+          After D.11.3.3; moved from H.3 (maintainer decision 2026-11-27).
+          The budget's seven constants (`src/search/time.rs`, made tune
+          coordinates first) and the soft limit's fifteen (`Tm*`), fitted on
+          Rarog's games as one registered tune from their present values.
+          The clock is kept as an idea and its constants become Rarog's;
+          values that return near their start are functional optima, as
+          Coda read its own retune. The registration names the control
+          (D.7.11's clock trigger asks `10+0.1` or longer), the activation
+          read (the clock acts only in clock play, never in `bench`), the
+          gate and bracket under the gating rules, and the budget in hours;
+          the tune and the gate are the maintainer's runs.
+    - **D.11.4 README's acknowledgements and licence — `M`, DONE 2026-11-27.**
+      Short and for users, in the form Stockfish's and Reckless's READMEs
+      use (maintainer decision 2026-11-27, replacing the disclosure on
+      Coda's model). *License*: GPL-3.0-or-later, and Fathom under MIT.
+      *Acknowledgements*: Stockfish (the classical evaluation's design, many
+      search and engine ideas), Reckless (ideas for the search and the
+      clock), Triumviratus (testing and measurement methods), Fathom, the
+      Chess Programming Wiki, and CCRL with the engine testers. No notices
+      file and no public review: the licences shipped are `LICENSE` and
+      Fathom's notice, in D.15.1's archives. The line on how Rarog is
+      developed stays the maintainer's to add.
 - **D.12 Board review and rebuild: the contract audited, each component read against the donors' boards, rebuilt where another form measures better — `R2`, then `I2`/`V`.**
   Added 2026-11-14 (maintainer: the board implementation is revisited in
   depth), on the model of Basilisk's B.7 (audit and instruments, review,
@@ -6279,9 +6327,9 @@ text, and a finished parent's sub-steps, are in `docs/archive/PLAN-phaseD-done-2
 
 **Rules.** Own data only, generated by Rarog's classical head and later by its
 NNUE heads. Stockfish is the primary source for the runtime, the trainer
-pipeline and the network's design, as for the search; Reckless, AGPL-3.0,
-is read for ideas only (maintainer decisions 2026-11-23, the second
-replacing the first's Reckless-and-Stockfish; PROCESS); Triumviratus, Gyatso and Trinity are
+pipeline and the network's design, as for the search; an AGPL or
+unlicensed engine is read for ideas only (maintainer decisions
+2026-11-23 and 2026-11-27; PROCESS); Triumviratus, Gyatso and Trinity are
 secondary inputs read as research. The architecture ladder is ours. The classical evaluation stays in the tree as the
 datagen baseline and the fallback until F.9 replaces it in releases.
 
@@ -6370,10 +6418,10 @@ the leaves named, each to be confirmed here, and weigh below Stockfish:
    GPU-hours on an RTX 3080 (F.3, F.4).
 
 **Licence notes from Coda** (added 2026-11-23;
-`analysis/coda_read_2026-11-23.md`). Reckless is AGPL-3.0 and, since
-2026-11-23, a reference for ideas only (PROCESS). Coda's one
+`analysis/coda_read_2026-11-23.md`). An AGPL engine is a reference for
+ideas only (PROCESS). Coda's one
 finding of copied expression was in this phase's area: a threat-feature
-index construction and SIMD kernels modelled on Reckless's. It
+index construction and SIMD kernels modelled on an AGPL engine's. It
 reimplemented both and kept the feature mapping, which its trained net
 depends on, so a mapping a net is trained on is an interface chosen once
 (F.5, F.7). The own-data rule keeps the data licence simple, where
@@ -6602,8 +6650,8 @@ carries the architecture (F.6).
   probe-after-TT-cutoff read reopens unchanged.
 - **F.7 Architecture ladder: output buckets, king buckets, relation/threat inputs; one axis at a time — `R3` with `I2`/`V` sub-steps.** Output buckets,
   king buckets with mirroring, then relation and threat inputs, one axis
-  at a time (Stockfish's threat inputs the reference; Reckless's are ideas
-  only, never its index construction or layouts, PROCESS 2026-11-23); each net gated against the previous.
+  at a time (Stockfish's threat inputs the reference; an AGPL engine's are
+  ideas only, never its index construction or layouts, PROCESS); each net gated against the previous.
   Triumviratus inputs (2026-11-03; TN-1–TN-6, TE-2, TD-6, TD-13, TD-16). The
   rungs it climbed and what each bought: threat inputs over plain
   king-relative inputs (+50 for the engine), a pawn-pair block grafted at zero
