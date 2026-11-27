@@ -48,7 +48,10 @@ still runs, and its report and console carry a warning saying so.
 `--smp` reads arms that set `Threads` above one. Lazy SMP's node count varies
 by run, so no run is checked against a fingerprint, the arms' trees are not
 compared, and the report gives the levels and the interval with no verdict: a
-multi-thread cell beside a one-thread read, never a speed rule's read.
+multi-thread cell beside a one-thread read, never a speed rule's read. It
+cannot yet read one on `bench 13`: at `Threads=4` a depth-13 search on bench
+position 15 can run for minutes, past the 900-second limit on one bench
+(RAR-P62).
 
 On Linux under WSL the host measure is still the harness's: Windows' own
 PowerShell runs it through interop, over the whole machine, the Linux side's
